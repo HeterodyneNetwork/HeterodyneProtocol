@@ -1339,16 +1339,36 @@ document that composes one; no other document restates it.
 Token minting and every privileged use require an authenticated,
 non-conflicted private authorization view no older than the deployment's
 declared bound. The declared bound is the signed continuity-manifest member
-`authorization_view_max_age`, in seconds; when absent it is 300, and it MUST
-NOT exceed 86,400. A
-mutation additionally performs an immediate synchronization attempt against
-the canonical private ledger before authorizing, and fails closed unless it
-establishes that fresh view. A fresh token cannot extend a stale authorization
-view. A composing document or a local policy MAY shorten the effective bound
-and MUST NOT lengthen it beyond the declared value. A relying party MUST be
-able to read the declared bound before trusting a deployment, and clients
-surface it. Revocation latency at honest nodes is bounded by the declared
-value: declaring a long window is declaring slow revocation.
+`authorization_view_max_age`, in seconds. It is a required member of the
+current manifest's signed bytes and is a JSON integer from 1 through 86,400,
+inclusive. Authoring tools default it to 300 before signing; a verifier never
+supplies a missing signed value. The separate signed
+`max_checkpoint_age_seconds` member retains its inclusive 300-second ceiling.
+The manifest checkpoint age is measured from its authoritative `observed_at`
+to the signed manifest authority's `issued_at`; authorization-view age is
+measured from that authoritative `observed_at` to a trusted local effect time.
+Each bound is enforced independently, and satisfying either one cannot
+compensate for failing the other.
+
+An authorization evaluator is created only with a trusted clock and a current
+private-ledger loader. It binds the exact public repository RID, active persona
+key, and complete signed-manifest digest; the loader returns that exact
+manifest and authoritative validated ledger state. The evaluator re-runs
+issuer continuity, derives conflict and observation time from the validated
+state, and produces an opaque current-authorization-view capability. Callers
+MUST NOT provide evaluation time, checkpoint or authorization age, a freshness
+boolean, or conflict status. Immediately before a privileged effect or durable
+commit, the consumer reloads the bound state, re-runs validation, and requires
+exact manifest and checkpoint equality with the prepared capability. A change,
+conflict, failed load, or stale transition fails closed.
+
+A mutation additionally performs this immediate current-state reload before
+authorizing. A fresh token cannot extend a stale authorization view. A
+composing document or a local policy MAY shorten the effective bound and MUST
+NOT lengthen it beyond the declared value. A relying party MUST be able to read
+the declared bound before trusting a deployment, and clients surface it.
+Revocation latency at honest nodes is bounded by the declared value: declaring
+a long window is declaring slow revocation.
 
 <a id="comms-key-claims"></a>
 ## 10. Atomic typed-key claims
@@ -1782,8 +1802,9 @@ The exact manifest schema is
 `schemas/comms/oidc-continuity-manifest-v1.schema.json`. It binds profile,
 public RID, `main`, the active persona npub and raw key, exact issuer, monotonic
 sequence and predecessor digest, checkpoint-age bound, current and retiring
-key IDs/JWK digests, all status paths/URIs/digests, optional successor, and an
-active NID writer/checkpoint. `persona_npub` MUST be the canonical NIP-19
+key IDs/JWK digests, authorization-view-age bound, all status
+paths/URIs/digests, optional successor, and an active NID writer/checkpoint.
+`persona_npub` MUST be the canonical NIP-19
 encoding of `persona_key`, and the issuer's final component MUST equal that
 npub. Its Ed25519 authority proof and that writer's current ledger authority
 for the same active persona MUST verify. HTTPS and repository metadata, JWKS,

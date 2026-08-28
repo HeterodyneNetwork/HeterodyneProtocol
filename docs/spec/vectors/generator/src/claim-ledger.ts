@@ -480,6 +480,21 @@ export function canonicalValidatedCheckpoint(state: LedgerMergeResult): LedgerCh
   return structuredClone(snapshot.checkpoint);
 }
 
+export function currentAuthorizationLedgerView(state: LedgerMergeResult): Readonly<{
+  checkpoint: LedgerCheckpoint;
+  conflicted: boolean;
+}> {
+  const checkpoint = canonicalValidatedCheckpoint(state);
+  const snapshot = VALIDATED_LEDGER_SNAPSHOTS.get(state);
+  if (snapshot === undefined) {
+    throw new Error("claim-repository-unconfirmed: immutable state snapshot is absent");
+  }
+  return Object.freeze({
+    checkpoint,
+    conflicted: snapshot.conflicted_claim_ids.length > 0,
+  });
+}
+
 export function activeCanonicalClaimSemanticsAt(
   state: LedgerMergeResult,
   evaluationTime = state.checkpoint.observed_at,

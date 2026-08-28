@@ -64,6 +64,7 @@ export type ContinuityManifestBody = {
   sequence: number;
   predecessor_digest: string | null;
   max_checkpoint_age_seconds: number;
+  authorization_view_max_age: number;
   current_jwks_sha256: string;
   current_signing_key_id: string;
   current_signing_jwk_sha256: string;
@@ -539,7 +540,11 @@ function validateManifestIntrinsic(manifest: ContinuityManifest): void {
       `${parsed.origin}${parsed.pathname}` !== manifest.issuer || parsed.pathname !== `/oidc/${manifest.persona_npub}`) {
     throw new Error("oidc-issuer-mismatch: manifest issuer is not exact");
   }
-  if (manifest.max_checkpoint_age_seconds > 300 || manifest.retiring_jwks_sha256.includes(manifest.current_signing_jwk_sha256) ||
+  if (!Number.isSafeInteger(manifest.max_checkpoint_age_seconds) || manifest.max_checkpoint_age_seconds < 0 ||
+      manifest.max_checkpoint_age_seconds > 300 ||
+      !Number.isSafeInteger(manifest.authorization_view_max_age) || manifest.authorization_view_max_age < 1 ||
+      manifest.authorization_view_max_age > 86_400 ||
+      manifest.retiring_jwks_sha256.includes(manifest.current_signing_jwk_sha256) ||
       manifest.retiring_signing_key_ids.includes(manifest.current_signing_key_id) ||
       manifest.retiring_signing_key_ids.length !== manifest.retiring_jwks_sha256.length ||
       jcsCanonicalize(manifest.retiring_signing_key_ids) !== jcsCanonicalize([...manifest.retiring_signing_key_ids].sort()) ||

@@ -1,7 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { createHash } from "node:crypto";
+import { nip19 } from "nostr-tools";
+import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import {
+  createAuthorizationFreshnessAuthority,
+  evaluateAuthorizationFreshness,
+  type CurrentAuthorizationView,
+} from "./authorization-freshness.js";
+import { buildClaimLedgerScenario } from "./claim-ledger-test-support.js";
 import {
   authorizeInvitation,
-  evaluateAuthorizationFreshness,
   evaluateDeviceAuthorizationAttempt,
   evaluateInvitePreauthorization,
   evaluatePendingEnrollment,
@@ -14,11 +21,73 @@ import {
   retentionDecision,
   validateControlTokenUse,
 } from "./control-profile.js";
+import { buildFixtures } from "./fixtures.js";
+import { utf8Bytes } from "./hex.js";
+import { jcsCanonicalize } from "./jcs.js";
+import { OIDC_RSA_ONE } from "./oidc-rsa-fixtures.js";
+import {
+  continuityManifestDigest,
+  createContinuityAuthorityProof,
+  type ContinuityManifest,
+  type ContinuityManifestBody,
+} from "./token-status.js";
 
 const client = "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798";
 const node = "22".repeat(32);
 const group = "33".repeat(32);
 const jkt = "2JF8vg9etJzjFwZwmkvhBLLZ0bfMVVOPivYR5lFtcec";
+const fixtures = buildFixtures();
+let freshnessScenario: Awaited<ReturnType<typeof buildClaimLedgerScenario>>;
+
+beforeAll(async () => {
+  freshnessScenario = await buildClaimLedgerScenario(fixtures);
+});
+
+function currentAuthorizationView(clock: { now: number }): CurrentAuthorizationView {
+  const state = freshnessScenario.issuerKeyEpochOneState;
+  const personaKey = freshnessScenario.persona;
+  const personaNpub = nip19.npubEncode(personaKey);
+  const sha256 = (value: Uint8Array): string => createHash("sha256").update(value).digest("hex");
+  const body: ContinuityManifestBody = {
+    profile: "heterodyne-oidc-continuity-v1",
+    repository_rid: freshnessScenario.rid,
+    branch: "main",
+    persona_npub: personaNpub,
+    persona_key: personaKey,
+    issuer: `https://node.example/oidc/${personaNpub}`,
+    sequence: 0,
+    predecessor_digest: null,
+    max_checkpoint_age_seconds: 300,
+    authorization_view_max_age: 300,
+    current_jwks_sha256: sha256(utf8Bytes(jcsCanonicalize({ keys: [OIDC_RSA_ONE.public_jwk] }))),
+    current_signing_key_id: OIDC_RSA_ONE.key_id,
+    current_signing_jwk_sha256: sha256(utf8Bytes(jcsCanonicalize(OIDC_RSA_ONE.public_jwk))),
+    retiring_signing_key_ids: [],
+    retiring_jwks_sha256: [],
+    status_lists: [],
+    successor: null,
+    authority: {
+      writer_nid: freshnessScenario.writerOne.did_key,
+      issued_at: state.checkpoint.observed_at,
+      checkpoint: state.checkpoint,
+    },
+  };
+  const manifest: ContinuityManifest = {
+    ...body,
+    authority_proof: createContinuityAuthorityProof(body, freshnessScenario.writerOne.private_key),
+  };
+  const authority = createAuthorizationFreshnessAuthority({
+    repository_rid: manifest.repository_rid,
+    persona_key: manifest.persona_key,
+    manifest_digest: continuityManifestDigest(manifest),
+  }, {
+    trusted_now: () => clock.now,
+    load_current_view: () => ({ manifest, ledger_state: state }),
+  });
+  const result = evaluateAuthorizationFreshness(authority, manifest);
+  if (result.verdict !== "accept") throw new Error(`freshness fixture rejected: ${result.reason}`);
+  return result.view;
+}
 
 describe("Marmot Control invitation and entitlement", () => {
   const invitation = {
@@ -113,9 +182,47 @@ describe("Marmot Control invitation and entitlement", () => {
 
 describe("node-scoped Marmot-bound tokens", () => {
   const object = { class: "config_namespace" as const, id: "ui" };
-  const currentEntitlement = {
+  let currentEntitlement: {
+    record_id: string;
+    persona: string;
+    client_key: string;
+    client_class: "automated";
+    approving_node: string;
+    approving_authority: string;
+    methods: string[];
+    objects: typeof object[];
+    limits: Record<string, number>;
+    capabilities: Array<"control.token.extended">;
+    token_lifetime_default_seconds: 300;
+    token_lifetime_max_seconds: number;
+    inbound_execution: boolean;
+    agent_role: string;
+    predecessor: null;
+    state: "active";
+    created_at: number;
+    expires_at: null;
+    signer: string;
+    signature: string;
+  };
+  let freshnessClock: { now: number };
+  let issuance: {
+    group_id: string;
+    audience: string;
+    node_key: string;
+    issuance_nonce: string;
+    requested_lifetime_seconds: number;
+    node_policy_max_seconds: number;
+    authorization_view: CurrentAuthorizationView;
+    methods: string[];
+    objects: typeof object[];
+    entitlement: typeof currentEntitlement;
+    limits: Record<string, number>;
+  };
+
+  beforeEach(() => {
+    currentEntitlement = {
     record_id: "44".repeat(32),
-    persona: "aa".repeat(32),
+    persona: freshnessScenario.persona,
     client_key: client,
     client_class: "automated" as const,
     approving_node: node,
@@ -140,25 +247,22 @@ describe("node-scoped Marmot-bound tokens", () => {
     expires_at: null,
     signer: node,
     signature: "66".repeat(64),
-  };
-  const issuance = {
-    group_id: group,
-    issuer: "https://node.example/oidc/persona",
-    audience: "urn:heterodyne:control:node-a",
-    node_key: node,
-    registry_checkpoint: "55".repeat(32),
-    issuance_nonce: "77".repeat(32),
-    requested_lifetime_seconds: 300,
-    node_policy_max_seconds: 3600,
-    now: 1_000,
-    authorization_view_authenticated: true,
-    authorization_view_conflicted: false,
-    authorization_view_age_seconds: 0,
-    methods: ["config.get"],
-    objects: [object],
-    entitlement: currentEntitlement,
-    limits: { max_content_bytes: 1_024, rate_count: 10 },
-  };
+    };
+    freshnessClock = { now: freshnessScenario.issuerKeyEpochOneState.checkpoint.observed_at };
+    issuance = {
+      group_id: group,
+      audience: "urn:heterodyne:control:node-a",
+      node_key: node,
+      issuance_nonce: "77".repeat(32),
+      requested_lifetime_seconds: 300,
+      node_policy_max_seconds: 3600,
+      authorization_view: currentAuthorizationView(freshnessClock),
+      methods: ["config.get"],
+      objects: [object],
+      entitlement: currentEntitlement,
+      limits: { max_content_bytes: 1_024, rate_count: 10 },
+    };
+  });
 
   it("issues five minutes by default, permits explicit extension, and never refreshes", () => {
     expect(issueControlToken(issuance)).toMatchObject({
@@ -169,7 +273,7 @@ describe("node-scoped Marmot-bound tokens", () => {
         client_class: currentEntitlement.client_class,
         scope: "control",
         limits: issuance.limits,
-        registry_checkpoint: issuance.registry_checkpoint,
+        registry_checkpoint: freshnessScenario.issuerKeyEpochOneState.checkpoint.commit_oid,
         agent_role: currentEntitlement.agent_role,
         cnf: { jkt },
       },
@@ -192,19 +296,15 @@ describe("node-scoped Marmot-bound tokens", () => {
     const use = {
       token: token.token,
       signature_valid: true,
-      now: 1_100,
-      expected_issuer: issuance.issuer,
+      expected_issuer: token.token.iss,
       expected_audience: issuance.audience,
       expected_node_key: node,
       authenticated_sender_jkt: jkt,
       group_id: group,
-      authorization_view_authenticated: true,
-      authorization_view_conflicted: false,
-      authorization_view_age_seconds: 100,
+      authorization_view: issuance.authorization_view,
       method: "config.get",
       object,
       current_entitlement: currentEntitlement,
-      current_registry_checkpoint: issuance.registry_checkpoint,
       required_scope: "control",
       usage: { max_content_bytes: 512, rate_count: 1 },
       required_agent_role: "agent:newsletter",
@@ -226,19 +326,15 @@ describe("node-scoped Marmot-bound tokens", () => {
     const use = {
       token: token.token,
       signature_valid: true,
-      now: 1_100,
-      expected_issuer: issuance.issuer,
+      expected_issuer: token.token.iss,
       expected_audience: issuance.audience,
       expected_node_key: node,
       authenticated_sender_jkt: jkt,
       group_id: group,
-      authorization_view_authenticated: true,
-      authorization_view_conflicted: false,
-      authorization_view_age_seconds: 100,
+      authorization_view: issuance.authorization_view,
       method: "config.get",
       object,
       current_entitlement: currentEntitlement,
-      current_registry_checkpoint: issuance.registry_checkpoint,
       required_scope: "control",
       usage: { max_content_bytes: 512, rate_count: 1 },
       required_agent_role: "agent:newsletter",
@@ -261,11 +357,11 @@ describe("node-scoped Marmot-bound tokens", () => {
   });
 
   it("caps authorization-view age at 300 seconds for minting and use", () => {
-    expect(issueControlToken({ ...issuance, authorization_view_age_seconds: 301 }))
-      .toEqual({ verdict: "reject", reason_code: "control-authorization-view-stale" });
-    expect(evaluateAuthorizationFreshness({ authenticated: true, conflicted: false, age_seconds: 300, mutation: false, immediate_sync_succeeded: false }))
-      .toEqual({ verdict: "accept" });
-    expect(evaluateAuthorizationFreshness({ authenticated: true, conflicted: false, age_seconds: 100, mutation: true, immediate_sync_succeeded: false }))
+    freshnessClock.now = freshnessScenario.issuerKeyEpochOneState.checkpoint.observed_at + 300;
+    issuance.authorization_view = currentAuthorizationView(freshnessClock);
+    expect(issueControlToken(issuance)).toMatchObject({ verdict: "accept" });
+    freshnessClock.now += 1;
+    expect(issueControlToken(issuance))
       .toEqual({ verdict: "reject", reason_code: "control-authorization-view-stale" });
   });
 });

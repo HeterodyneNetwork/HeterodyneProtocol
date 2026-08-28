@@ -110,6 +110,7 @@ function manifestBodyFor(
     sequence: 0,
     predecessor_digest: null,
     max_checkpoint_age_seconds: 300,
+    authorization_view_max_age: 300,
     current_jwks_sha256: sha256(jwksBytes()),
     current_signing_key_id: OIDC_RSA_ONE.key_id,
     current_signing_jwk_sha256: sha256(utf8Bytes(jcsCanonicalize(OIDC_RSA_ONE.public_jwk))),
@@ -479,6 +480,30 @@ describe("live active-persona issuer continuity", () => {
         allowed: false,
         reason_code: "oidc-issuer-authority-invalid",
       });
+  });
+
+  it("signs and independently validates both manifest freshness bounds", () => {
+    const body = manifestBodyFor(generateToken());
+    expect(resolveIssuerContinuity(null, signedManifest({
+      ...body,
+      authorization_view_max_age: 86_400,
+    }), continuityContext())).toMatchObject({ allowed: true });
+    expect(resolveIssuerContinuity(null, signedManifest({
+      ...body,
+      max_checkpoint_age_seconds: 301,
+    }), continuityContext())).toMatchObject({ allowed: false });
+    for (const authorizationViewMaxAge of [0, 86_401, 300.5]) {
+      expect(resolveIssuerContinuity(null, signedManifest({
+        ...body,
+        authorization_view_max_age: authorizationViewMaxAge,
+      }), continuityContext()), String(authorizationViewMaxAge)).toMatchObject({ allowed: false });
+    }
+
+    const manifest = signedManifest(body);
+    expect(resolveIssuerContinuity(null, {
+      ...manifest,
+      authorization_view_max_age: 301,
+    }, continuityContext())).toMatchObject({ allowed: false });
   });
 
   it("validates a same-persona refresh and rejects a broken predecessor", () => {

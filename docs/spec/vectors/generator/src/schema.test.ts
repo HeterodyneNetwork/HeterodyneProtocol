@@ -655,6 +655,7 @@ describe("trusted private seed and flexible agent schemas", () => {
     sequence: 0,
     predecessor_digest: null,
     max_checkpoint_age_seconds: 300,
+    authorization_view_max_age: 300,
     current_jwks_sha256: h("7"),
     current_signing_key_id: "B".repeat(43),
     current_signing_jwk_sha256: h("8"),
@@ -757,6 +758,35 @@ describe("trusted private seed and flexible agent schemas", () => {
       "oidc-continuity-manifest-v1.schema.json",
       missingPersona,
     )).toMatch(/persona_key|required/);
+  });
+
+  it("requires independent closed checkpoint and authorization-view freshness bounds", () => {
+    expect(validateCommsSchema(
+      "oidc-continuity-manifest-v1.schema.json",
+      { ...continuity, authorization_view_max_age: 86_400 },
+    )).toBeNull();
+
+    for (const authorizationViewMaxAge of [0, 86_401, 300.5]) {
+      expect(validateCommsSchema(
+        "oidc-continuity-manifest-v1.schema.json",
+        { ...continuity, authorization_view_max_age: authorizationViewMaxAge },
+      ), String(authorizationViewMaxAge)).not.toBeNull();
+    }
+
+    const missing = { ...continuity } as Record<string, unknown>;
+    delete missing.authorization_view_max_age;
+    expect(validateCommsSchema(
+      "oidc-continuity-manifest-v1.schema.json",
+      missing,
+    )).toMatch(/authorization_view_max_age|required/);
+    expect(validateCommsSchema(
+      "oidc-continuity-manifest-v1.schema.json",
+      { ...continuity, authorization_view_fresh: true },
+    )).toMatch(/additionalProperties/);
+    expect(validateCommsSchema(
+      "oidc-continuity-manifest-v1.schema.json",
+      { ...continuity, max_checkpoint_age_seconds: 301 },
+    )).toMatch(/maximum/);
   });
 });
 

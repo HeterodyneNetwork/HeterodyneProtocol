@@ -11,6 +11,7 @@ import {
   createIssuerKeyEpochPayload,
   createSignedLedgerRecord,
   createStatusInvalidationRecords,
+  currentAuthorizationLedgerView,
   deriveActiveIssuerNids,
   determineHistoricalTokenReturnability,
   evaluateMintingAttempt,
@@ -812,6 +813,38 @@ describe("multi-writer OIDC issuer authority", () => {
       expect(canMint(checkpoint.observed_at, checkpoint, 300, state, true).reason_code)
         .toBe("oidc-issuer-authority-invalid");
     }
+  });
+
+  it("derives authorization-view observation and conflict only from validated ledger state", () => {
+    const active = currentAuthorizationLedgerView(s.issuerKeyEpochOneState);
+    expect(active).toEqual({
+      checkpoint: s.issuerKeyEpochOneState.checkpoint,
+      conflicted: false,
+    });
+
+    const records = [
+      ...s.issuerKeyEpochOneState.records,
+      s.grantOne,
+      s.grantDivergent,
+    ];
+    const repository = buildLedgerRepositoryEvidence({
+      repository_rid: s.rid,
+      confirmed_records: records,
+      observed_at: s.issuerKeyEpochOneState.checkpoint.observed_at + 1,
+      prior: s.issuerKeyEpochOneRepository.repository,
+    });
+    const conflicted = mergeClaimLedger(
+      records,
+      [],
+      repository.checkpoint,
+      s.makeTask5Context(repository.repository),
+    );
+    expect(currentAuthorizationLedgerView(conflicted)).toEqual({
+      checkpoint: repository.checkpoint,
+      conflicted: true,
+    });
+    expect(() => currentAuthorizationLedgerView(structuredClone(conflicted)))
+      .toThrow(/validated ledger state/);
   });
 
   it("persists the exact mint bound and permits zero only at the checkpoint instant", () => {

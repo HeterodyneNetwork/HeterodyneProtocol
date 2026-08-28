@@ -302,6 +302,17 @@ checkpoint MUST validate on every request. It grants nothing beyond the
 stored signer record, is rejected by another node, and has no refresh token.
 The default is five minutes. Sixty minutes is an absolute maximum.
 
+Token issuance and token-protected effects consume only Comms' opaque current
+authorization view. Control does not accept a caller-provided clock,
+freshness/conflict boolean, or checkpoint/view age. Immediately before minting
+or authorizing an effect, the node uses the view's captured trusted clock and
+current-ledger loader to re-run continuity and freshness and to require the
+exact bound manifest and checkpoint. Token `iat` and private-state checkpoint
+come from that effect-time result. Passing one of Comms' independent
+checkpoint and authorization-view bounds never excuses failing the other.
+This baseline composition depends on Core and Comms only; Workspace is not an
+authorization prerequisite.
+
 <a id="control-request-processing"></a>
 ## 6. Request and operation processing
 
@@ -316,6 +327,11 @@ Before a signature or other side effect, the full node validates in order:
 7. the exact signer availability with no fallback;
 8. Comms automation attribution when the request is automated; and
 9. a durable operation reservation before any side effect.
+
+The current-authorization-view reload defined by Comms occurs immediately
+before the durable reservation or effect that consumes the decision. A view
+prepared earlier is not evidence that the same manifest, checkpoint, conflict
+state, or age remains current at effect time.
 
 The operation record conforms to
 `docs/spec/schemas/control/control-operation-record-v1.schema.json`. It binds

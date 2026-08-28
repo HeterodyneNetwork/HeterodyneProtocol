@@ -1,5 +1,9 @@
 import { createHash } from "node:crypto";
 import { secp256k1 } from "@noble/curves/secp256k1";
+import {
+  revalidateAuthorizationViewAtEffect,
+  type CurrentAuthorizationView,
+} from "./authorization-freshness.js";
 import { jcsCanonicalize } from "./jcs.js";
 
 // This module remains the compatibility evaluator for the explicitly frozen
@@ -180,17 +184,12 @@ export type ControlAuthorizationRecord = {
 export type TokenIssuanceInput = {
   entitlement: ControlAuthorizationRecord;
   group_id: string;
-  issuer: string;
   audience: string;
   node_key: string;
-  registry_checkpoint: string;
   issuance_nonce: string;
   requested_lifetime_seconds: number;
   node_policy_max_seconds: number;
-  now: number;
-  authorization_view_authenticated: boolean;
-  authorization_view_conflicted: boolean;
-  authorization_view_age_seconds: number;
+  authorization_view: CurrentAuthorizationView;
   methods: string[];
   objects: ControlAuthorizationObject[];
   limits: Record<string, number>;
@@ -320,25 +319,23 @@ function controlTokenJti(claims: ControlTokenIdentityClaims): string {
 export function issueControlToken(input: TokenIssuanceInput):
   | { verdict: "accept"; lifetime_seconds: number; refresh_token: null; token: ControlToken }
   | Reject {
+  const currentView = revalidateAuthorizationViewAtEffect(input.authorization_view);
+  if (currentView.verdict === "reject") {
+    return { verdict: "reject", reason_code: currentView.reason };
+  }
+  const now = currentView.evaluated_at;
   const entitlement = input.entitlement;
-  if (!validAuthorization(entitlement, input.now)) {
+  if (!validAuthorization(entitlement, now)) {
     return { verdict: "reject", reason_code: "control-token-invalid" };
   }
-  const freshness = evaluateAuthorizationFreshness({
-    authenticated: input.authorization_view_authenticated,
-    conflicted: input.authorization_view_conflicted,
-    age_seconds: input.authorization_view_age_seconds,
-    mutation: false,
-    immediate_sync_succeeded: false,
-  });
-  if (freshness.verdict === "reject") return freshness;
   const clientJkt = controlClientJkt(entitlement.client_key);
   if (clientJkt === null
+    || entitlement.persona !== currentView.persona_key
     || !canonicalHex256(input.group_id)
     || !canonicalHex256(input.node_key)
-    || !canonicalHex256(input.registry_checkpoint)
+    || !canonicalHex256(currentView.checkpoint.commit_oid)
     || !canonicalHex256(input.issuance_nonce)
-    || input.issuer.length === 0
+    || currentView.issuer.length === 0
     || input.audience.length === 0
     || !valuesAreAuthorized(input.methods, entitlement.methods)
     || !objectsAreAuthorized(input.objects, entitlement.objects)
@@ -359,11 +356,11 @@ export function issueControlToken(input: TokenIssuanceInput):
   }
   const claims: ControlTokenIdentityClaims = {
     typ: "at+jwt",
-    iss: input.issuer,
+    iss: currentView.issuer,
     aud: input.audience,
     sub: entitlement.client_key,
-    iat: input.now,
-    exp: input.now + input.requested_lifetime_seconds,
+    iat: now,
+    exp: now + input.requested_lifetime_seconds,
     cnf: { jkt: clientJkt },
     group_id: input.group_id,
     authorization_id: entitlement.record_id,
@@ -373,7 +370,7 @@ export function issueControlToken(input: TokenIssuanceInput):
     methods: normalizedValues(input.methods),
     objects: normalizedObjects(input.objects),
     limits: normalizedLimits(input.limits),
-    registry_checkpoint: input.registry_checkpoint,
+    registry_checkpoint: currentView.checkpoint.commit_oid,
     issuance_nonce: input.issuance_nonce,
     node_key: input.node_key,
     ...(entitlement.agent_role === undefined ? {} : { agent_role: entitlement.agent_role }),
@@ -393,17 +390,13 @@ export function issueControlToken(input: TokenIssuanceInput):
 export type TokenUseInput = {
   token: ControlToken;
   signature_valid: boolean;
-  now: number;
   expected_issuer: string;
   expected_audience: string;
   expected_node_key: string;
   authenticated_sender_jkt: string;
   group_id: string;
   current_entitlement: ControlAuthorizationRecord;
-  current_registry_checkpoint: string;
-  authorization_view_authenticated: boolean;
-  authorization_view_conflicted: boolean;
-  authorization_view_age_seconds: number;
+  authorization_view: CurrentAuthorizationView;
   required_scope: string;
   method: string;
   object: ControlAuthorizationObject;
@@ -412,11 +405,16 @@ export type TokenUseInput = {
 };
 
 export function validateControlTokenUse(input: TokenUseInput): { verdict: "accept" } | Reject {
+  const currentView = revalidateAuthorizationViewAtEffect(input.authorization_view);
+  if (currentView.verdict === "reject") {
+    return { verdict: "reject", reason_code: currentView.reason };
+  }
+  const now = currentView.evaluated_at;
   const token = input.token;
   if (!input.signature_valid || token.typ !== "at+jwt" || token.iss !== input.expected_issuer) {
     return { verdict: "reject", reason_code: "control-token-invalid" };
   }
-  if (input.now < token.iat || input.now >= token.exp
+  if (now < token.iat || now >= token.exp
     || token.exp <= token.iat || token.exp - token.iat > 3_600) {
     return { verdict: "reject", reason_code: "control-token-invalid" };
   }
@@ -432,17 +430,9 @@ export function validateControlTokenUse(input: TokenUseInput): { verdict: "accep
     return { verdict: "reject", reason_code: "control-token-invalid" };
   }
   const entitlement = input.current_entitlement;
-  if (!validAuthorization(entitlement, input.now)) {
+  if (!validAuthorization(entitlement, now)) {
     return { verdict: "reject", reason_code: "control-token-invalid" };
   }
-  const freshness = evaluateAuthorizationFreshness({
-    authenticated: input.authorization_view_authenticated,
-    conflicted: input.authorization_view_conflicted,
-    age_seconds: input.authorization_view_age_seconds,
-    mutation: false,
-    immediate_sync_succeeded: false,
-  });
-  if (freshness.verdict === "reject") return freshness;
   const clientJkt = controlClientJkt(entitlement.client_key);
   const scopes = token.scope.split(" ");
   const tokenRole = token.agent_role ?? null;
@@ -450,6 +440,8 @@ export function validateControlTokenUse(input: TokenUseInput): { verdict: "accep
   const tokenObjectKeys = token.objects.map(objectKey);
   const normalizedTokenObjectKeys = normalizedObjects(token.objects).map(objectKey);
   if (clientJkt === null
+    || entitlement.persona !== currentView.persona_key
+    || token.iss !== currentView.issuer
     || !canonicalBase64urlSha256(token.cnf.jkt)
     || token.cnf.jkt !== clientJkt
     || input.authenticated_sender_jkt !== clientJkt
@@ -457,8 +449,8 @@ export function validateControlTokenUse(input: TokenUseInput): { verdict: "accep
     || token.sub !== entitlement.client_key
     || token.client_id !== entitlement.client_key
     || token.client_class !== entitlement.client_class
-    || token.registry_checkpoint !== input.current_registry_checkpoint
-    || !canonicalHex256(input.current_registry_checkpoint)
+    || token.registry_checkpoint !== currentView.checkpoint.commit_oid
+    || !canonicalHex256(currentView.checkpoint.commit_oid)
     || token.exp - token.iat > entitlement.token_lifetime_max_seconds
     || (token.exp - token.iat > 300
       && !entitlement.capabilities.includes("control.token.extended"))
@@ -477,20 +469,6 @@ export function validateControlTokenUse(input: TokenUseInput): { verdict: "accep
     || !limitsAreAuthorized(input.usage, token.limits)
     || !limitsAreAuthorized(input.usage, entitlement.limits)) {
     return { verdict: "reject", reason_code: "control-token-invalid" };
-  }
-  return { verdict: "accept" };
-}
-
-export function evaluateAuthorizationFreshness(input: {
-  authenticated: boolean;
-  conflicted: boolean;
-  age_seconds: number;
-  mutation: boolean;
-  immediate_sync_succeeded: boolean;
-}): { verdict: "accept" } | Reject {
-  if (!input.authenticated || input.conflicted || input.age_seconds > 300
-    || input.age_seconds < 0 || (input.mutation && !input.immediate_sync_succeeded)) {
-    return { verdict: "reject", reason_code: "control-authorization-view-stale" };
   }
   return { verdict: "accept" };
 }
