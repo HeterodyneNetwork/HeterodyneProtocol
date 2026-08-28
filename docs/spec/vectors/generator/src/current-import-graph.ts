@@ -7,24 +7,6 @@ const SOURCE_ROOT = resolve(import.meta.dirname);
 const NODE_BUILTINS = new Set(
   builtinModules.map((specifier) => specifier.replace(/^node:/u, "")),
 );
-const RUNTIME_LOADER_CAPABILITIES = new Set([
-  "AsyncFunction",
-  "AsyncGeneratorFunction",
-  "Function",
-  "GeneratorFunction",
-  "constructor",
-  "createRequire",
-  "eval",
-  "getBuiltinModule",
-  "globalThis",
-  "require",
-]);
-const RUNTIME_CODE_MODULES = new Set([
-  "module",
-  "node:module",
-  "node:vm",
-  "vm",
-]);
 export const CURRENT_TSCONFIG_PATH = resolve(SOURCE_ROOT, "../tsconfig.current.json");
 
 function isInside(candidate: string, root: string): boolean {
@@ -75,87 +57,10 @@ function staticSpecifier(
   return expression.text;
 }
 
-function rejectRuntimeLoader(
-  path: string,
-  source: ts.SourceFile,
-  node: ts.Node,
-): never {
-  const location = source.getLineAndCharacterOfPosition(node.getStart(source));
-  throw new Error(
-    `runtime-loader syntax prohibited in current vector graph: ${path}`
-      + `:${location.line + 1}:${location.character + 1}`,
-  );
-}
-
-function validateStaticOnly(
-  source: ts.SourceFile,
-  path: string,
-  checker: ts.TypeChecker,
-): void {
-  const visit = (node: ts.Node): void => {
-    // External-module import-equals is the one permitted require-shaped static
-    // form. TypeScript resolves it before the graph follows the literal edge.
-    if (
-      ts.isImportEqualsDeclaration(node)
-      && ts.isExternalModuleReference(node.moduleReference)
-    ) {
-      const expression = node.moduleReference.expression;
-      if (
-        expression !== undefined
-        && ts.isStringLiteralLike(expression)
-        && RUNTIME_CODE_MODULES.has(expression.text)
-      ) rejectRuntimeLoader(path, source, node);
-      return;
-    }
-
-    if (
-      ts.isCallExpression(node)
-      && node.expression.kind === ts.SyntaxKind.ImportKeyword
-    ) rejectRuntimeLoader(path, source, node);
-
-    if (
-      (ts.isImportDeclaration(node) || ts.isExportDeclaration(node))
-      && node.moduleSpecifier !== undefined
-      && ts.isStringLiteralLike(node.moduleSpecifier)
-      && RUNTIME_CODE_MODULES.has(node.moduleSpecifier.text)
-    ) rejectRuntimeLoader(path, source, node);
-
-    if (
-      ts.isIdentifier(node)
-      && RUNTIME_LOADER_CAPABILITIES.has(node.text)
-    ) rejectRuntimeLoader(path, source, node);
-
-    if (ts.isIdentifier(node) && node.text === "module") {
-      const symbol = checker.getSymbolAtLocation(node);
-      const locallyDeclared = symbol?.declarations?.some((declaration) =>
-        declaration.getSourceFile() === source
-      ) === true;
-      if (!locallyDeclared) rejectRuntimeLoader(path, source, node);
-    }
-
-    if (
-      ts.isElementAccessExpression(node)
-      && node.argumentExpression !== undefined
-      && ts.isStringLiteralLike(node.argumentExpression)
-      && RUNTIME_LOADER_CAPABILITIES.has(node.argumentExpression.text)
-    ) rejectRuntimeLoader(path, source, node);
-
-    if (
-      ts.isPropertyAccessExpression(node)
-      && RUNTIME_LOADER_CAPABILITIES.has(node.name.text)
-    ) rejectRuntimeLoader(path, source, node);
-
-    ts.forEachChild(node, visit);
-  };
-  visit(source);
-}
-
 function collectStaticSpecifiers(
   source: ts.SourceFile,
   path: string,
-  checker: ts.TypeChecker,
 ): string[] {
-  validateStaticOnly(source, path, checker);
   const specifiers: string[] = [];
   for (const statement of source.statements) {
     if (ts.isImportDeclaration(statement)) {
@@ -196,7 +101,7 @@ export function currentModuleSpecifiers(
     true,
     ts.ScriptKind.TS,
   );
-  return collectStaticSpecifiers(source, canonical, program.getTypeChecker());
+  return collectStaticSpecifiers(source, canonical);
 }
 
 export function currentNamedImports(path: string): Set<string> {
@@ -281,11 +186,7 @@ export function currentModuleDependencies(entry: string): string[] {
       true,
       ts.ScriptKind.TS,
     );
-    for (const specifier of collectStaticSpecifiers(
-      source,
-      canonical,
-      program.getTypeChecker(),
-    )) {
+    for (const specifier of collectStaticSpecifiers(source, canonical)) {
       const dependency = resolveCurrentModule(
         canonical,
         specifier,

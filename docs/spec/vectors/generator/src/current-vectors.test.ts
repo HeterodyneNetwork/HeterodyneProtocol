@@ -62,7 +62,28 @@ afterEach(() => {
 });
 
 describe("current vector catalog import boundary", () => {
-  it("rejects runtime-loader capabilities even when escaped through dormant closures, containers, or parameters", () => {
+  it("audits compiler-resolved composition without claiming runtime capability denial", () => {
+    const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-composition-only-"));
+    temporaryRoots.push(root);
+    writeFileSync(
+      resolve(root, "index.ts"),
+      [
+        'import { current } from "./current.js";',
+        'const getBuiltin = globalThis.Reflect.get(process, "getBuiltinModule");',
+        'const makeRequire = globalThis.Reflect.get(getBuiltin("node:module"), "createRequire");',
+        'const AsyncFunction = globalThis.Reflect.getPrototypeOf(async function () {}).constructor;',
+        'void makeRequire; void AsyncFunction; void current;',
+      ].join("\n"),
+    );
+    writeFileSync(resolve(root, "current.ts"), "export const current = true;\n");
+
+    expect(moduleDependencies(resolve(root, "index.ts"))).toEqual([
+      realpathSync(resolve(root, "current.ts")),
+      realpathSync(resolve(root, "index.ts")),
+    ].sort());
+  });
+
+  it("does not mistake runtime syntax for compiler-resolved composition", () => {
     const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-capability-escapes-"));
     temporaryRoots.push(root);
     const fixtures = new Map<string, string>([
@@ -109,12 +130,11 @@ describe("current vector catalog import boundary", () => {
     for (const [file, source] of fixtures) {
       const path = resolve(root, file);
       writeFileSync(path, source);
-      expect(() => moduleDependencies(path), file)
-        .toThrow(/runtime-loader syntax prohibited in current vector graph/u);
+      expect(moduleDependencies(path), file).toEqual([realpathSync(path)]);
     }
   });
 
-  it("rejects concealed runtime code construction and loader namespace access", () => {
+  it("makes no capability claim for concealed runtime code construction", () => {
     const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-concealed-code-"));
     temporaryRoots.push(root);
     const fixtures = new Map<string, string>([
@@ -184,8 +204,7 @@ describe("current vector catalog import boundary", () => {
     for (const [file, source] of fixtures) {
       const path = resolve(root, file);
       writeFileSync(path, source);
-      expect(() => moduleDependencies(path), file)
-        .toThrow(/runtime-loader syntax prohibited in current vector graph/u);
+      expect(moduleDependencies(path), file).toEqual([realpathSync(path)]);
     }
   });
 
@@ -226,7 +245,7 @@ describe("current vector catalog import boundary", () => {
       ].sort());
   });
 
-  it("rejects require aliases and createRequire instead of traversing them", () => {
+  it("does not treat runtime require aliases as static composition edges", () => {
     const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-aliases-"));
     temporaryRoots.push(root);
     writeFileSync(
@@ -247,11 +266,11 @@ describe("current vector catalog import boundary", () => {
       "legacy-create-require.ts",
     ]) writeFileSync(resolve(root, file), "export const value = true;\n");
 
-    expect(() => moduleDependencies(resolve(root, "index.ts")))
-      .toThrow(/runtime-loader syntax prohibited in current vector graph/u);
+    expect(moduleDependencies(resolve(root, "index.ts")))
+      .toEqual([realpathSync(resolve(root, "index.ts"))]);
   });
 
-  it("fails closed on nonliteral aliased module loads", () => {
+  it("ignores nonliteral runtime loads in the composition audit", () => {
     const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-nonliteral-"));
     temporaryRoots.push(root);
     writeFileSync(
@@ -262,11 +281,11 @@ describe("current vector catalog import boundary", () => {
         "localRequire(hidden);",
       ].join("\n"),
     );
-    expect(() => moduleDependencies(resolve(root, "index.ts")))
-      .toThrow(/runtime-loader syntax prohibited in current vector graph/u);
+    expect(moduleDependencies(resolve(root, "index.ts")))
+      .toEqual([realpathSync(resolve(root, "index.ts"))]);
   });
 
-  it("rejects loader aliases introduced by assignment and destructuring", () => {
+  it("ignores assigned and destructured runtime loader aliases", () => {
     const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-bindings-"));
     temporaryRoots.push(root);
     writeFileSync(
@@ -287,11 +306,11 @@ describe("current vector catalog import boundary", () => {
       "legacy-array.ts",
     ]) writeFileSync(resolve(root, file), "export const value = true;\n");
 
-    expect(() => moduleDependencies(resolve(root, "index.ts")))
-      .toThrow(/runtime-loader syntax prohibited in current vector graph/u);
+    expect(moduleDependencies(resolve(root, "index.ts")))
+      .toEqual([realpathSync(resolve(root, "index.ts"))]);
   });
 
-  it("rejects later-assigned and destructured createRequire factories", () => {
+  it("ignores assigned createRequire factories in the composition audit", () => {
     const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-create-require-bindings-"));
     temporaryRoots.push(root);
     writeFileSync(
@@ -311,11 +330,11 @@ describe("current vector catalog import boundary", () => {
     writeFileSync(resolve(root, "topics-created-assigned.ts"), "export const value = true;\n");
     writeFileSync(resolve(root, "snapshot-created-object.ts"), "export const value = true;\n");
 
-    expect(() => moduleDependencies(resolve(root, "index.ts")))
-      .toThrow(/runtime-loader syntax prohibited in current vector graph/u);
+    expect(moduleDependencies(resolve(root, "index.ts")))
+      .toEqual([realpathSync(resolve(root, "index.ts"))]);
   });
 
-  it("rejects dormant loader capabilities even after reassignment or shadowing", () => {
+  it("does not interpret reassignment or shadowing for composition", () => {
     const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-shadowing-"));
     temporaryRoots.push(root);
     writeFileSync(
@@ -334,11 +353,11 @@ describe("current vector catalog import boundary", () => {
     writeFileSync(resolve(root, "topics-reassigned.ts"), "export const value = true;\n");
     writeFileSync(resolve(root, "snapshot-shadowed.ts"), "export const value = true;\n");
 
-    expect(() => moduleDependencies(resolve(root, "index.ts")))
-      .toThrow(/runtime-loader syntax prohibited in current vector graph/u);
+    expect(moduleDependencies(resolve(root, "index.ts")))
+      .toEqual([realpathSync(resolve(root, "index.ts"))]);
   });
 
-  it("rejects possibly-live loader aliases without provenance interpretation", () => {
+  it("does not infer possibly-live runtime aliases as static edges", () => {
     const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-ambiguous-"));
     temporaryRoots.push(root);
     writeFileSync(
@@ -353,8 +372,8 @@ describe("current vector catalog import boundary", () => {
     );
     writeFileSync(resolve(root, "topics-ambiguous.ts"), "export const value = true;\n");
 
-    expect(() => moduleDependencies(resolve(root, "index.ts")))
-      .toThrow(/runtime-loader syntax prohibited in current vector graph/u);
+    expect(moduleDependencies(resolve(root, "index.ts")))
+      .toEqual([realpathSync(resolve(root, "index.ts"))]);
   });
 
   it("resolves configured local aliases through TypeScript and rejects missing ones", () => {
@@ -406,7 +425,8 @@ describe("current vector catalog import boundary", () => {
 
   it("makes current authoring consume only the current catalog", () => {
     const imports = importedNames(authorPath);
-    expect(imports.has("buildCurrentVectors")).toBe(true);
+    expect(imports.has("buildIsolatedCurrentCatalog")).toBe(true);
+    expect(imports.has("buildCurrentVectors")).toBe(false);
     expect(imports.has("buildSnapshotCompatibleVectors")).toBe(false);
   });
 

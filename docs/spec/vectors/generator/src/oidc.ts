@@ -1,5 +1,5 @@
 import { createHash, createHmac, createPrivateKey, createPublicKey, sign, verify, type JsonWebKey } from "node:crypto";
-import { nip19 } from "nostr-tools";
+import * as nip19 from "nostr-tools/nip19";
 import type { AuthorizationDecision, ClaimVerificationContext, JsonValue } from "./claims.js";
 import { jcsCanonicalize } from "./jcs.js";
 import {

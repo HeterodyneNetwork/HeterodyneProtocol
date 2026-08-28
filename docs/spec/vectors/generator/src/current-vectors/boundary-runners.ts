@@ -29,7 +29,7 @@ import * as workspace from "../workspace.js";
 import * as workspaceAssurance from "../workspace-assurance.js";
 import * as workspacePolicy from "../workspace-policy.js";
 import * as nip49 from "nostr-tools/nip49";
-import { nip44 } from "nostr-tools";
+import * as nip44 from "nostr-tools/nip44";
 import { bytesToHex, hexToBytes } from "../hex.js";
 import type { CurrentCaseFixture } from "./types.js";
 import { currentProfileOracleForVector } from "./profile-oracles.js";

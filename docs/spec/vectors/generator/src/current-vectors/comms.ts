@@ -1,4 +1,4 @@
-import { nip44 } from "nostr-tools";
+import * as nip44 from "nostr-tools/nip44";
 import { schnorr } from "@noble/curves/secp256k1";
 import { injectAgentAttribution, validateAgentAccessToken, validateWorkloadRegistration, type AgentTokenValidationInput, } from "../agent-authorship.js";
 import { buildAuthorizationFreshnessTestSupport } from "../authorization-freshness-test-support.js";

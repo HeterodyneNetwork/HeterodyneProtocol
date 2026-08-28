@@ -9,7 +9,7 @@ import {
 import { deflateSync, inflateSync } from "node:zlib";
 import { ed25519 } from "@noble/curves/ed25519";
 import { schnorr } from "@noble/curves/secp256k1";
-import { nip19 } from "nostr-tools";
+import * as nip19 from "nostr-tools/nip19";
 import {
   canonicalValidatedCheckpoint,
   activeIssuerWriterNidsAt,
