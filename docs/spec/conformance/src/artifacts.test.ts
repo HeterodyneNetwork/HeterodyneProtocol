@@ -55,11 +55,37 @@ function upgradeSnapshotToSchema3(input: TestCorpus): void {
   vector.invariants = ["CORE-I-VERIFY-BEFORE-USE"];
   vector.reason_codes = [];
   writeJson(input.snapshotRoot, vectorPath, vector);
-  writeText(input.snapshotRoot, "docs/spec/vectors/coverage/assurance.md", "# assurance\n");
   refreshSnapshotManifest(input.snapshotRoot);
 }
 
 describe("loadCorpus split roots", () => {
+  it("keeps the default synthetic corpus pinned to its historical schema-2 contract", () => {
+    const input = corpus();
+    const schema = readJson(input.snapshotRoot, vectorSchemaPath);
+    const schemaVersion = (schema.properties as Record<string, Record<string, unknown>>)
+      .vector_schema_version?.const;
+
+    expect(schemaVersion).toBe("2.0.0");
+    expect(readTestManifest(input.snapshotRoot)).toMatchObject({
+      vector_schema_version: "2.0.0",
+      vector_count: 1,
+    });
+    expect(readJson(input.snapshotRoot, vectorPath)).toMatchObject({
+      vector_id: "core.valid",
+      vector_schema_version: "2.0.0",
+    });
+  });
+
+  it("constructs schema-3 fixtures with the complete six-owner coverage projection", () => {
+    const input = corpus({ withAssurance: true });
+    const assuranceCoveragePath = "docs/spec/vectors/coverage/assurance.md";
+    upgradeSnapshotToSchema3(input);
+
+    expect(existsSync(resolve(input.snapshotRoot, assuranceCoveragePath))).toBe(true);
+    expect((readTestManifest(input.snapshotRoot).artifacts as Array<{ path: string }>)
+      .map(({ path }) => path)).toContain(assuranceCoveragePath);
+  });
+
   it("loads the live six-document source family", () => {
     const input = corpus({ withAssurance: true });
 
