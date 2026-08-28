@@ -28,7 +28,7 @@ export const snapshotCommit = "2".repeat(40);
 export const registryEntrySetDigest =
   "0250925c750aa782924c6ebc6eebd4d085f7c16dc72175077b9e5188b251ace9";
 
-const snapshotSupportPaths = [
+const historicalSnapshotSupportPaths = [
   fixturesPath,
   vectorSchemaPath,
   "docs/spec/vectors/schema/reason-codes.json",
@@ -41,6 +41,15 @@ const snapshotSupportPaths = [
   "docs/spec/vectors/coverage/workspace.md",
   "docs/spec/vectors/coverage/family.md",
 ] as const;
+
+function snapshotSupportPathsFor(vectorSchemaVersion: string): string[] {
+  return vectorSchemaVersion === "3.0.0"
+    ? [
+      ...historicalSnapshotSupportPaths,
+      "docs/spec/vectors/coverage/assurance.md",
+    ].sort()
+    : [...historicalSnapshotSupportPaths];
+}
 
 export type TestCorpus = LoadCorpusOptions & { root: string };
 
@@ -125,7 +134,7 @@ export function refreshSnapshotManifest(
   if (typeof vectorSchemaVersion !== "string") {
     throw new Error("synthetic packaged vector schema has no version const");
   }
-  const paths = [...vectors, ...snapshotSupportPaths].sort();
+  const paths = [...vectors, ...snapshotSupportPathsFor(vectorSchemaVersion)].sort();
   writeJson(root, snapshotManifestPath, {
     snapshot_schema: "1",
     source_commit: pinnedSourceCommit,

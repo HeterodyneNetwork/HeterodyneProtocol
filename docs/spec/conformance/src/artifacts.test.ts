@@ -32,6 +32,33 @@ function corpus(options: { withVector?: boolean; withAssurance?: boolean } = {})
   return value;
 }
 
+function upgradeSnapshotToSchema3(input: TestCorpus): void {
+  const schema = readJson(input.snapshotRoot, vectorSchemaPath);
+  const properties = schema.properties as Record<string, unknown>;
+  const required = schema.required as string[];
+  properties.vector_schema_version = { const: "3.0.0" };
+  properties.invariants = {
+    type: "array",
+    minItems: 1,
+    uniqueItems: true,
+    items: { type: "string" },
+  };
+  properties.reason_codes = {
+    type: "array",
+    uniqueItems: true,
+    items: { type: "string" },
+  };
+  required.push("invariants", "reason_codes");
+  writeJson(input.snapshotRoot, vectorSchemaPath, schema);
+  const vector = readJson(input.snapshotRoot, vectorPath);
+  vector.vector_schema_version = "3.0.0";
+  vector.invariants = ["CORE-I-VERIFY-BEFORE-USE"];
+  vector.reason_codes = [];
+  writeJson(input.snapshotRoot, vectorPath, vector);
+  writeText(input.snapshotRoot, "docs/spec/vectors/coverage/assurance.md", "# assurance\n");
+  refreshSnapshotManifest(input.snapshotRoot);
+}
+
 describe("loadCorpus split roots", () => {
   it("loads the live six-document source family", () => {
     const input = corpus({ withAssurance: true });
@@ -85,6 +112,44 @@ describe("loadCorpus split roots", () => {
     expect(loaded.corpus).not.toHaveProperty("registryDigest");
     expect(loaded.corpus?.vectorSchemaVersion).toBe("2.0.0");
     expect(loaded.corpus?.vectors.map(({ value }) => value.vector_id)).toEqual(["core.valid"]);
+    expect(loaded.corpus?.vectors[0]?.value).not.toHaveProperty("invariants");
+    expect(loaded.corpus?.vectors[0]?.value).not.toHaveProperty("reason_codes");
+  });
+
+  it("loads schema-3 traceability without backfilling historical vectors", () => {
+    const input = corpus({ withAssurance: true });
+    upgradeSnapshotToSchema3(input);
+
+    const loaded = loadCorpus(input);
+
+    expect(loaded.issues).toEqual([]);
+    expect(loaded.corpus?.vectorSchemaVersion).toBe("3.0.0");
+    expect(loaded.corpus?.vectors[0]?.value).toMatchObject({
+      vector_schema_version: "3.0.0",
+      invariants: ["CORE-I-VERIFY-BEFORE-USE"],
+      reason_codes: [],
+    });
+  });
+
+  it("rejects schema-3 vectors without sorted exact traceability even under a permissive schema", () => {
+    const input = corpus({ withAssurance: true });
+    upgradeSnapshotToSchema3(input);
+    const schema = readJson(input.snapshotRoot, vectorSchemaPath);
+    schema.required = (schema.required as string[]).filter((member) =>
+      member !== "invariants" && member !== "reason_codes"
+    );
+    writeJson(input.snapshotRoot, vectorSchemaPath, schema);
+    const vector = readJson(input.snapshotRoot, vectorPath);
+    delete vector.invariants;
+    delete vector.reason_codes;
+    writeJson(input.snapshotRoot, vectorPath, vector);
+    refreshSnapshotManifest(input.snapshotRoot);
+
+    expect(loadCorpus(input).issues).toContainEqual({
+      code: "invalid-document-shape",
+      path: vectorPath,
+      message: "vector does not match the 3.0.0 snapshot corpus shape",
+    });
   });
 
   it("rejects a legacy version reference even when a permissive snapshot schema allows it", () => {

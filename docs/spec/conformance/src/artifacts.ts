@@ -77,7 +77,7 @@ const specificationPaths = [
   { path: "docs/spec/heterodyne-social.md", required: true },
   { path: "docs/spec/heterodyne-workspace.md", required: true },
 ] as const;
-const snapshotSupportPaths = [
+const historicalSnapshotSupportPaths = [
   fixturesPath,
   vectorSchemaPath,
   "docs/spec/vectors/schema/reason-codes.json",
@@ -90,6 +90,16 @@ const snapshotSupportPaths = [
   "docs/spec/vectors/coverage/workspace.md",
   "docs/spec/vectors/coverage/family.md",
 ] as const;
+const currentSnapshotSupportPaths = [
+  ...historicalSnapshotSupportPaths,
+  "docs/spec/vectors/coverage/assurance.md",
+].sort(compareText);
+
+function supportPathsFor(vectorSchemaVersion: string | undefined): readonly string[] {
+  return vectorSchemaVersion === "3.0.0"
+    ? currentSnapshotSupportPaths
+    : historicalSnapshotSupportPaths;
+}
 const requiredRegistryPaths = [
   featuresPath,
   kindsPath,
@@ -563,13 +573,17 @@ function parseConformanceCheck(
   return value as ConformanceCheckDocument;
 }
 
-function parseVector(value: unknown): VectorDocument | undefined {
+function parseVector(
+  value: unknown,
+  vectorSchemaVersion: unknown,
+): VectorDocument | undefined {
   if (
     !isRecord(value)
     || Object.hasOwn(value, "spec_version")
     || typeof value.vector_id !== "string"
     || value.vector_id.length === 0
-    || value.vector_schema_version !== "2.0.0"
+    || value.vector_schema_version !== vectorSchemaVersion
+    || value.vector_schema_version !== "2.0.0" && value.vector_schema_version !== "3.0.0"
     || typeof value.owner_document !== "string"
     || !ownerDocuments.has(value.owner_document)
     || !isStringArray(value.spec_refs)
@@ -585,7 +599,29 @@ function parseVector(value: unknown): VectorDocument | undefined {
         || !value.conformance_checks.every((check) => parseConformanceCheck(check, value) !== undefined)
         || new Set(value.conformance_checks.map(canonicalize)).size !== value.conformance_checks.length))
   ) return undefined;
+  if (value.vector_schema_version === "3.0.0") {
+    if (
+      !isSortedUniqueStringArray(value.invariants, false)
+      || !isSortedUniqueStringArray(value.reason_codes, true)
+      || value.reason_codes.length > 1
+    ) return undefined;
+    const expectedReason = value.expected_output.verdict === "reject"
+      ? value.expected_output.reason_code
+      : undefined;
+    if (
+      expectedReason === undefined && value.reason_codes.length !== 0
+      || typeof expectedReason === "string"
+        && (value.reason_codes.length !== 1 || value.reason_codes[0] !== expectedReason)
+      || expectedReason !== undefined && typeof expectedReason !== "string"
+    ) return undefined;
+  }
   return value as VectorDocument;
+}
+
+function isSortedUniqueStringArray(value: unknown, emptyAllowed: boolean): value is string[] {
+  return isStringArray(value)
+    && (emptyAllowed || value.length > 0)
+    && value.every((entry, index) => index === 0 || value[index - 1]! < entry);
 }
 
 function parseRegistryManifest(value: unknown): RegistryDocument["manifest"] | undefined {
@@ -720,6 +756,7 @@ export function loadCorpus(
     ? undefined
     : parseSnapshotManifest(manifestValue, manifestSource, issues);
   const vectorPaths = snapshotVectorPaths(snapshotRoot, issues);
+  const snapshotSupportPaths = supportPathsFor(manifest?.vectorSchemaVersion);
   const expectedPaths = [...vectorPaths, ...snapshotSupportPaths].sort(compareText);
   const snapshotPaths = [...new Set([
     ...expectedPaths,
@@ -824,9 +861,10 @@ export function loadCorpus(
       shapeIssue(issues, path, "vector does not match vector.schema.json");
       continue;
     }
-    const vector = parseVector(value);
+    const vector = parseVector(value, schemaVersionMember);
     if (vector === undefined) {
-      shapeIssue(issues, path, "vector does not match the 2.0.0 snapshot corpus shape");
+      const expectedVersion = schemaVersionMember === "3.0.0" ? "3.0.0" : "2.0.0";
+      shapeIssue(issues, path, `vector does not match the ${expectedVersion} snapshot corpus shape`);
       continue;
     }
     const firstPath = vectorIds.get(vector.vector_id);

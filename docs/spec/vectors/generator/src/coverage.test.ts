@@ -2,17 +2,18 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { authorAllVectors } from "./author.js";
 import {
   INACTIVE_PROFILE_IDS,
+  NON_WIRE_REASON_EXCLUSIONS,
   PENDING_PROFILE_IDS,
   buildCoverage,
+  findInvariantCoverageIssues,
   findProfileCoverageIssues,
+  findReasonCoverageIssues,
   writeCoverage,
 } from "./coverage.js";
-import { buildFixtures } from "./snapshot-fixtures-adapter.js";
+import { buildCurrentVectors } from "./current-vectors/index.js";
 import { loadRegistry } from "./registry.js";
-import { buildAllVectors } from "./topics.js";
 
 const tempDirs: string[] = [];
 afterEach(async () => {
@@ -20,75 +21,125 @@ afterEach(async () => {
   tempDirs.length = 0;
 });
 
-describe("family coverage", () => {
-  it("is a sorted lossless projection with active Control coverage", async () => {
-    const vectors = (await buildAllVectors(buildFixtures())).map(({ vector }) => vector);
+describe("current family coverage", () => {
+  it("is a sorted lossless six-owner schema-3 projection with complete closure", async () => {
+    const vectors = (await buildCurrentVectors()).map(({ vector }) => vector);
     const coverage = buildCoverage(vectors);
     expect(coverage.map(({ vector_id }) => vector_id)).toEqual(
       [...coverage.map(({ vector_id }) => vector_id)].sort(),
     );
     expect(new Set(coverage.map(({ vector_id }) => vector_id)).size).toBe(vectors.length);
+    expect(vectors.every(({ vector_schema_version }) => vector_schema_version === "3.0.0"))
+      .toBe(true);
     expect(coverage.every((entry) => !Object.hasOwn(entry, "spec_version"))).toBe(true);
-    expect(coverage.filter(({ owner_document }) => owner_document === "control")).toHaveLength(66);
-    expect(coverage.filter(({ owner_document }) => owner_document === "workspace")).toHaveLength(40);
-    expect(coverage).toContainEqual(expect.objectContaining({
-      vector_id: "control/invitation-enrollment-only",
-      profile: "heterodyne-control-marmot-frame-v1",
-      spec_refs: ["heterodyne:0.5.0#control-invitation-policy"],
-    }));
-    expect(coverage).toContainEqual(expect.objectContaining({
-      vector_id: "control/sftp-grant-expired",
-      spec_refs: ["heterodyne:0.5.0#control-sftp-recovery"],
-    }));
+    expect(new Set(coverage.map(({ owner_document }) => owner_document))).toEqual(new Set([
+      "assurance",
+      "comms",
+      "control",
+      "core",
+      "social",
+      "workspace",
+    ]));
+    expect(coverage.every(({ invariants }) => invariants.length > 0)).toBe(true);
     const registry = loadRegistry(resolve(import.meta.dirname, "../../../../../"));
+    expect(findInvariantCoverageIssues(registry, coverage)).toEqual([]);
+    expect(findReasonCoverageIssues(registry, coverage)).toEqual([]);
     expect(findProfileCoverageIssues(registry, coverage)).toEqual([]);
     expect(PENDING_PROFILE_IDS).toEqual([]);
     expect(INACTIVE_PROFILE_IDS).toEqual([]);
   }, 30_000);
+
+  it("reports missing owner-bound invariant, reason, and profile evidence", async () => {
+    const registry = loadRegistry(resolve(import.meta.dirname, "../../../../../"));
+    const coverage = buildCoverage((await buildCurrentVectors()).map(({ vector }) => vector));
+    const invariant = registry.security_invariants.find(({ id }) =>
+      coverage.some((entry) => entry.invariants.includes(id))
+    )!;
+    const withoutInvariant = coverage.map((entry) => ({
+      ...entry,
+      invariants: entry.invariants.filter((id) => id !== invariant.id),
+    }));
+    expect(findInvariantCoverageIssues(registry, withoutInvariant)).toContain(
+      `uncovered invariant: ${invariant.id}`,
+    );
+
+    const excluded = new Set(NON_WIRE_REASON_EXCLUSIONS.map(({ code }) => code));
+    const reason = registry.reason_codes.find(({ code }) =>
+      !excluded.has(code) && coverage.some((entry) => entry.reason_codes.includes(code))
+    )!;
+    const withoutReason = coverage.map((entry) => ({
+      ...entry,
+      reason_codes: entry.reason_codes.filter((code) => code !== reason.code),
+    }));
+    expect(findReasonCoverageIssues(registry, withoutReason)).toContain(
+      `uncovered reason code: ${reason.code}`,
+    );
+
+    const profile = registry.kinds.flatMap(({ profiles }) => profiles)[0]!;
+    expect(findProfileCoverageIssues(
+      registry,
+      coverage.map((entry) => entry.profile === profile.profile_id
+        ? { ...entry, profile: undefined }
+        : entry),
+    )).toContain(`uncovered profile: ${profile.profile_id}`);
+    const profiled = coverage.find((entry) => entry.profile === profile.profile_id)!;
+    expect(findProfileCoverageIssues(registry, coverage.map((entry) => entry === profiled
+      ? { ...entry, owner_document: profile.owner === "core" ? "comms" : "core" }
+      : entry,
+    ))).toContain(`profile owner mismatch: ${profiled.vector_id} -> ${profile.profile_id}`);
+  }, 30_000);
+
+  it("keeps the non-wire reason exclusion audit closed and specific", () => {
+    expect(new Set(NON_WIRE_REASON_EXCLUSIONS.map(({ code }) => code)).size)
+      .toBe(NON_WIRE_REASON_EXCLUSIONS.length);
+    expect(NON_WIRE_REASON_EXCLUSIONS.every(({ justification }) =>
+      justification.trim().length >= 24
+    )).toBe(true);
+  });
 
   it("keeps qualified snapshot references without adding version metadata", () => {
     const coverage = buildCoverage([{
       vector_id: "identity/example",
       owner_document: "core",
       spec_refs: ["heterodyne:core#core-root-attestation"],
+      invariants: ["CORE-I-IDENTITY-INTEGRITY"],
+      reason_codes: [],
     }]);
 
     expect(coverage).toEqual([{
       vector_id: "identity/example",
       owner_document: "core",
       spec_refs: ["heterodyne:core#core-root-attestation"],
+      invariants: ["CORE-I-IDENTITY-INTEGRITY"],
+      reason_codes: [],
     }]);
   });
 
   it("rejects an unlisted uncovered profile", async () => {
-    const coverage = buildCoverage(
-      (await buildAllVectors(buildFixtures())).map(({ vector }) => vector),
-    );
+    const coverage = buildCoverage((await buildCurrentVectors()).map(({ vector }) => vector));
     const registry = structuredClone(loadRegistry(resolve(import.meta.dirname, "../../../../../")));
     registry.kinds[0].profiles.push({
       profile_id: "unlisted-future-profile",
       owner: "comms",
       discriminator: "test:unlisted",
       stamping: false,
-      first_version: "heterodyne/0.5.0",
+      first_version: "heterodyne/0.6.0",
       status: "draft",
     });
-    expect(findProfileCoverageIssues(registry, coverage)).toEqual([
+    expect(findProfileCoverageIssues(registry, coverage)).toContain(
       "uncovered profile: unlisted-future-profile",
-    ]);
+    );
   }, 30_000);
 
-  it("writes deterministic active-Control Markdown from the manifest", async () => {
+  it("writes deterministic six-owner Markdown from the current manifest", async () => {
     const vectorRoot = await mkdtemp(join(tmpdir(), "heterodyne-vector-coverage-"));
     tempDirs.push(vectorRoot);
-    await authorAllVectors(vectorRoot);
     await writeCoverage(vectorRoot);
-    const first = await readFile(join(vectorRoot, "coverage", "control.md"), "utf8");
+    const first = await readFile(join(vectorRoot, "coverage", "assurance.md"), "utf8");
     await writeCoverage(vectorRoot);
-    const second = await readFile(join(vectorRoot, "coverage", "control.md"), "utf8");
+    const second = await readFile(join(vectorRoot, "coverage", "assurance.md"), "utf8");
     expect(second).toBe(first);
-    expect(first).toContain("Status: `conformant`");
-    expect(first).toContain("control/invitation-enrollment-only");
-    expect(first).toContain("control/sftp-grant-expired");
+    expect(first).toContain("assurance/enrollment-pending-w-minus-one");
+    expect(first).toContain("assurance/witness-threshold-pass");
   }, 30_000);
 });

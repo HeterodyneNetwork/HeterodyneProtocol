@@ -39,10 +39,11 @@ describe("protocol document family", () => {
     ).trim().split(/\r?\n/u).map((path) => path.replaceAll("\\", "/"));
     const frozenOrHistoricalBuilders = resolvedFiles.filter((path) =>
       /\/src\/(?:topics[^/]*|snapshot[^/]*)\.ts$/u.test(path)
-      || /\/src\/(?:author|coverage|verify|cli)\.ts$/u.test(path)
+      || /\/src\/(?:author|verify|cli)\.ts$/u.test(path)
     );
 
     expect(frozenOrHistoricalBuilders).toEqual([]);
+    expect(resolvedFiles.some((path) => /\/src\/coverage\.ts$/u.test(path))).toBe(true);
   });
 
   it("keeps live OIDC continuity on active-persona authority", () => {

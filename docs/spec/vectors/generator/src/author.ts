@@ -10,9 +10,14 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { dirname, join, relative, resolve, sep } from "node:path";
-import { buildFixtures } from "./snapshot-fixtures-adapter.js";
+import type { AnySchema } from "ajv";
+import { buildFixtures } from "./fixtures.js";
 import { REASON_CODES } from "./reason-codes.js";
-import { VECTOR_SCHEMA, validateVectorOrThrow } from "./schema.js";
+import {
+  CURRENT_VECTOR_SCHEMA_VERSION,
+  VECTOR_SCHEMA,
+  validateVectorOrThrow,
+} from "./schema.js";
 import {
   buildSnapshotManifest,
   isSnapshotTopLevelVectorFile,
@@ -27,13 +32,19 @@ import {
   snapshotVectorValidator,
   validateRawVector,
 } from "./snapshot-envelope.js";
-import { buildSnapshotCompatibleVectors } from "./snapshot-topic-runtime.js";
 import type { RawVector, SnapshotVector } from "./types.js";
-import { writeCoverageFromVectors } from "./coverage.js";
+import {
+  writeCoverageFromVectors,
+  writeHistoricalCoverageFromVectors,
+} from "./coverage.js";
+import { buildCurrentVectors } from "./current-vectors/index.js";
 
 export async function authorAllVectors(outputDir: string): Promise<string[]> {
-  const fixtures = buildFixtures();
-  const vectors = await buildSnapshotCompatibleVectors(fixtures);
+  const fixtures = {
+    ...buildFixtures(),
+    vector_schema_version: CURRENT_VECTOR_SCHEMA_VERSION,
+  };
+  const vectors = await buildCurrentVectors();
   const written: string[] = [];
 
   await removeRetiredVectors(
@@ -57,6 +68,7 @@ export async function authorAllVectors(outputDir: string): Promise<string[]> {
     await writeJson(join(outputDir, relativePath), vector);
     written.push(relativePath);
   }
+  await writeCoverageFromVectors(outputDir, vectors.map(({ vector }) => vector));
 
   return written.sort();
 }
@@ -93,7 +105,10 @@ export async function packageSnapshot(
       && raw !== null
       && (raw as Record<string, unknown>).owner_document === "assurance"
   );
-  const packagedSchema = buildSnapshotVectorSchema(rawSchema, includesAssurance);
+  const currentSchema = sourceVectorSchemaVersion(rawSchema) === CURRENT_VECTOR_SCHEMA_VERSION;
+  const packagedSchema = currentSchema
+    ? buildCurrentSnapshotVectorSchema(rawSchema, includesAssurance)
+    : buildSnapshotVectorSchema(rawSchema, includesAssurance);
   const validatePackagedVector = snapshotVectorValidator(packagedSchema);
   const rawFixtures = JSON.parse(await readFile(join(rawRoot, "fixtures.json"), "utf8"));
   const destinationVectorRoot = join(snapshotRoot, SNAPSHOT_VECTOR_ROOT);
@@ -102,7 +117,9 @@ export async function packageSnapshot(
   await mkdir(destinationVectorRoot, { recursive: true });
   await writeJson(
     join(destinationVectorRoot, "fixtures.json"),
-    normalizeSnapshotFixtures(rawFixtures),
+    currentSchema
+      ? normalizeCurrentSnapshotFixtures(rawFixtures)
+      : normalizeSnapshotFixtures(rawFixtures),
   );
   await writeJson(join(destinationVectorRoot, "schema/vector.schema.json"), packagedSchema);
   const rawReasonCodes = JSON.parse(
@@ -125,10 +142,15 @@ export async function packageSnapshot(
     let packaged: SnapshotVector;
     try {
       validateRawVector(raw, rawSchema);
-      packaged = normalizeSnapshotVector(raw);
+      packaged = currentSchema
+        ? normalizeCurrentSnapshotVector(raw)
+        : normalizeSnapshotVector(raw);
       validatePackagedVector(packaged);
       if (!preservesVectorBehavior(raw as RawVector, packaged)) {
         throw new Error(`snapshot-vector-behavior-changed: ${packaged.vector_id}`);
+      }
+      if (currentSchema && !preservesCurrentTraceability(raw, packaged)) {
+        throw new Error(`snapshot-vector-traceability-changed: ${packaged.vector_id}`);
       }
     } catch (error) {
       throw new Error(
@@ -141,7 +163,14 @@ export async function packageSnapshot(
     );
     snapshotVectors.push(packaged);
   }
-  await writeCoverageFromVectors(destinationVectorRoot, snapshotVectors);
+  if (currentSchema) {
+    await writeCoverageFromVectors(
+      destinationVectorRoot,
+      snapshotVectors.filter((vector) => vector.vector_schema_version === "3.0.0"),
+    );
+  } else {
+    await writeHistoricalCoverageFromVectors(destinationVectorRoot, snapshotVectors);
+  }
 
   const manifest = buildSnapshotManifest(snapshotRoot, sourceCommit);
   await writeFile(
@@ -150,6 +179,98 @@ export async function packageSnapshot(
     "utf8",
   );
   return manifest;
+}
+
+const CURRENT_SOURCE_REF = /^heterodyne:[^#]+#([a-z0-9][a-z0-9-]*)$/u;
+const CURRENT_OWNERS = new Set(["core", "assurance", "comms", "control", "social", "workspace"]);
+
+function sourceVectorSchemaVersion(sourceSchema: unknown): string | null {
+  if (!isRecord(sourceSchema) || !isRecord(sourceSchema.properties)) return null;
+  const version = sourceSchema.properties.vector_schema_version;
+  return isRecord(version) && typeof version.const === "string" ? version.const : null;
+}
+
+/** Build the versionless rolling-snapshot envelope without down-converting 3.x trace data. */
+function buildCurrentSnapshotVectorSchema(
+  sourceSchema: unknown,
+  includesAssurance: boolean,
+): AnySchema {
+  if (!isRecord(sourceSchema) || !isRecord(sourceSchema.properties)) {
+    throw new Error("raw-vector-schema-invalid: schema must define properties");
+  }
+  const schema = structuredClone(sourceSchema);
+  if (!isRecord(schema) || !isRecord(schema.properties)) {
+    throw new Error("raw-vector-schema-invalid: schema must define properties");
+  }
+  delete schema.properties.spec_version;
+  schema.properties.vector_schema_version = { const: CURRENT_VECTOR_SCHEMA_VERSION };
+  const ownerDocument = schema.properties.owner_document;
+  if (!includesAssurance && isRecord(ownerDocument) && Array.isArray(ownerDocument.enum)) {
+    ownerDocument.enum = ownerDocument.enum.filter((owner) => owner !== "assurance");
+  }
+  const sourceRefs = isRecord(schema.properties.spec_refs)
+    ? schema.properties.spec_refs
+    : {};
+  const referenceOwners = includesAssurance
+    ? "core|assurance|comms|control|social|workspace"
+    : "core|comms|control|social|workspace";
+  schema.properties.spec_refs = {
+    ...sourceRefs,
+    items: {
+      type: "string",
+      pattern: `^heterodyne:(${referenceOwners})#[a-z0-9][a-z0-9-]*$`,
+    },
+  };
+  if (Array.isArray(schema.required)) {
+    schema.required = schema.required.filter((name) => name !== "spec_version");
+  }
+  return schema as AnySchema;
+}
+
+function normalizeCurrentSnapshotVector(raw: unknown): SnapshotVector {
+  if (!isRecord(raw)) throw new Error("raw-vector-invalid: vector must be an object");
+  const ownerDocument = raw.owner_document;
+  if (typeof ownerDocument !== "string" || !CURRENT_OWNERS.has(ownerDocument)) {
+    throw new Error("raw-vector-invalid: owner_document must be a known document");
+  }
+  if (!Array.isArray(raw.spec_refs) || raw.spec_refs.length !== 1) {
+    throw new Error("raw-vector-invalid: spec_refs must contain exactly one current ref");
+  }
+  const sourceRef = raw.spec_refs[0];
+  const match = typeof sourceRef === "string" ? CURRENT_SOURCE_REF.exec(sourceRef) : null;
+  if (match === null) {
+    throw new Error("raw-vector-invalid: spec_refs must contain a well-formed current ref");
+  }
+  const { spec_version: _draftVersion, ...withoutDraftVersion } = raw;
+  return {
+    ...withoutDraftVersion,
+    vector_schema_version: CURRENT_VECTOR_SCHEMA_VERSION,
+    owner_document: ownerDocument,
+    spec_refs: [`heterodyne:${ownerDocument}#${match[1]}`],
+  } as SnapshotVector;
+}
+
+function normalizeCurrentSnapshotFixtures(raw: unknown): Record<string, unknown> {
+  if (!isRecord(raw)) throw new Error("raw-fixtures-invalid: fixtures must be an object");
+  const { spec_version: _draftVersion, ...fixtures } = raw;
+  return { ...fixtures, vector_schema_version: CURRENT_VECTOR_SCHEMA_VERSION };
+}
+
+function preservesCurrentTraceability(raw: unknown, packaged: SnapshotVector): boolean {
+  if (
+    packaged.vector_schema_version !== CURRENT_VECTOR_SCHEMA_VERSION
+    || !isRecord(raw)
+    || !Array.isArray(raw.invariants)
+    || !Array.isArray(raw.reason_codes)
+  ) {
+    return false;
+  }
+  return JSON.stringify(raw.invariants) === JSON.stringify(packaged.invariants)
+    && JSON.stringify(raw.reason_codes) === JSON.stringify(packaged.reason_codes);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 export type ReplacementOperations = {

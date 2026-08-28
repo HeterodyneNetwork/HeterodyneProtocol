@@ -1353,12 +1353,22 @@ describe("active-account Marmot repository schemas", () => {
 });
 
 describe("vector schema", () => {
-  const valid = (owner: "core" | "comms" | "social" | "control") => ({
+  const invariantFor = {
+    core: "CORE-I-VERIFY-BEFORE-USE",
+    assurance: "ASSURANCE-I-CORE-OPTIONALITY",
+    comms: "COMMS-I-TIER3-BLIND-CARRIER",
+    control: "CONTROL-I-AUDIT-AT-REST",
+    social: "SOCIAL-I-NIP01-AUTHORSHIP",
+    workspace: "WORKSPACE-I-NO-AMBIENT-AUTHORITY",
+  } as const;
+  const valid = (owner: keyof typeof invariantFor) => ({
     vector_id: `versioning/${owner}-metadata`,
-    vector_schema_version: "1.0.0",
+    vector_schema_version: "3.0.0",
     owner_document: owner,
     spec_version: "heterodyne/0.6.0",
     spec_refs: [`heterodyne:0.6.0#${owner}-conformance`],
+    invariants: [invariantFor[owner]],
+    reason_codes: [],
     description: "exact family metadata",
     direction: "consume",
     input: {},
@@ -1373,7 +1383,7 @@ describe("vector schema", () => {
       expected_terminal_stage: "signature",
     };
     expect(() => validateVectorOrThrow({
-      ...valid("core"), vector_schema_version: "1.1.0", conformance_checks: [check],
+      ...valid("core"), conformance_checks: [check],
     })).not.toThrow();
     for (const invalid of [
       { ...check, profile: "generator-v1" },
@@ -1381,11 +1391,11 @@ describe("vector schema", () => {
       { ...check, inferred: true },
     ]) {
       expect(() => validateVectorOrThrow({
-        ...valid("core"), vector_schema_version: "1.1.0", conformance_checks: [invalid],
+        ...valid("core"), conformance_checks: [invalid],
       })).toThrow();
     }
     expect(() => validateVectorOrThrow({
-      ...valid("core"), vector_schema_version: "1.1.0", conformance_checks: [check, check],
+      ...valid("core"), conformance_checks: [check, check],
     })).toThrow();
   });
 
@@ -1405,12 +1415,10 @@ describe("vector schema", () => {
     ]) {
       expect(() => validateVectorOrThrow({
         ...valid("core"),
-        vector_schema_version: "1.1.0",
         conformance_checks: [{ ...baseCheck, expected_terminal_stage }],
       })).toThrow(/context_pointer|required/);
       expect(() => validateVectorOrThrow({
         ...valid("core"),
-        vector_schema_version: "1.1.0",
         conformance_checks: [{
           ...baseCheck,
           context_pointer: "/input/context",
@@ -1424,10 +1432,12 @@ describe("vector schema", () => {
     expect(() =>
       validateVectorOrThrow({
         vector_id: "identity/root-attestation-valid",
-        vector_schema_version: "1.0.0",
+        vector_schema_version: "3.0.0",
         owner_document: "core",
         spec_version: "heterodyne/0.6.0",
         spec_refs: ["heterodyne:0.6.0#core-root-attestation"],
+        invariants: ["CORE-I-IDENTITY-INTEGRITY"],
+        reason_codes: [],
         description: "root attestation is reproduced byte-identically",
         direction: "produce",
         input: { hello: "world" },
@@ -1441,8 +1451,11 @@ describe("vector schema", () => {
 
   it("keeps the generator schema as the draft raw-authoring contract", () => {
     expect(VECTOR_SCHEMA.required).toContain("spec_version");
-    expect((VECTOR_SCHEMA.properties.vector_schema_version as { pattern: string }).pattern)
-      .toBe("^\\d+\\.\\d+\\.\\d+$");
+    expect(VECTOR_SCHEMA.required).toEqual(expect.arrayContaining([
+      "invariants",
+      "reason_codes",
+    ]));
+    expect(VECTOR_SCHEMA.properties.vector_schema_version).toEqual({ const: "3.0.0" });
   });
 
   it("rejects an unqualified version and a bare section reference", () => {
@@ -1452,7 +1465,7 @@ describe("vector schema", () => {
       .toThrow();
   });
 
-  it.each(["core", "comms", "social", "control"] as const)(
+  it.each(["core", "assurance", "comms", "control", "social", "workspace"] as const)(
     "accepts the exact %s runtime metadata",
     (owner) => expect(() => validateVectorOrThrow(valid(owner))).not.toThrow(),
   );
@@ -1503,13 +1516,15 @@ describe("vector schema", () => {
     expect(() =>
       validateVectorOrThrow({
         vector_id: "stamping/null-profile",
-        vector_schema_version: "1.0.0",
+        vector_schema_version: "3.0.0",
         owner_document: "core",
         owner_version: "heterodyne/0.6.0",
         dependency_versions: {},
         profile_revision: 1,
         profile: null,
         spec_refs: ["heterodyne:0.6.0#core-version-stamps"],
+        invariants: ["CORE-I-VERIFY-BEFORE-USE"],
+        reason_codes: [],
         description: "optional means absent, not null",
         direction: "round-trip",
         input: {},
@@ -1523,9 +1538,51 @@ describe("vector schema", () => {
     (direction) => expect(() => validateVectorOrThrow({
       ...valid("core"),
       direction,
+      reason_codes: ["bad_signature"],
       expected_output: { verdict: "reject" },
     })).toThrow(/reason_code/),
   );
+
+  it("requires nonempty sorted unique registered invariants owned by the vector document", () => {
+    for (const invariants of [
+      [],
+      ["CORE-I-VERIFY-BEFORE-USE", "CORE-I-IDENTITY-INTEGRITY"],
+      ["CORE-I-VERIFY-BEFORE-USE", "CORE-I-VERIFY-BEFORE-USE"],
+      ["NOT-REGISTERED"],
+      ["COMMS-I-TIER3-BLIND-CARRIER"],
+    ]) {
+      expect(() => validateVectorOrThrow({ ...valid("core"), invariants }), invariants.join(","))
+        .toThrow(/invariant/i);
+    }
+  });
+
+  it("binds reject traceability to the exact registered expected reason", () => {
+    expect(() => validateVectorOrThrow({
+      ...valid("core"),
+      reason_codes: ["bad_signature"],
+      expected_output: { verdict: "reject", reason_code: "bad_signature" },
+    })).not.toThrow();
+    for (const reason_codes of [
+      [],
+      ["nip01_raw_mismatch", "bad_signature"],
+      ["bad_signature", "bad_signature"],
+      ["nip01_raw_mismatch"],
+      ["not-registered"],
+    ]) {
+      expect(() => validateVectorOrThrow({
+        ...valid("core"),
+        reason_codes,
+        expected_output: { verdict: "reject", reason_code: "bad_signature" },
+      }), reason_codes.join(",")).toThrow(/reason/i);
+    }
+  });
+
+  it("requires accept vectors to carry an empty reason trace", () => {
+    expect(() => validateVectorOrThrow({
+      ...valid("core"),
+      reason_codes: ["bad_signature"],
+    })).toThrow(/reason/i);
+  });
 });
 
 describe("credential-continuity schema registry", () => {
