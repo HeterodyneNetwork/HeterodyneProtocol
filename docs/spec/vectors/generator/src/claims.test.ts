@@ -54,7 +54,7 @@ const semanticWithoutId = () => ({
   expires_at: issuedAt + 86400,
   audience: [epoch.pubkey],
   visibility: "repository-private" as const,
-  spec_version: "heterodyne/0.5.0" as const,
+  spec_version: "heterodyne/0.6.0" as const,
   profile_revision: 2 as const,
 });
 
@@ -218,7 +218,7 @@ describe("claim revocation envelopes", () => {
       revoked_at: issuedAt + 9,
       reason_code: "claim-revoked",
       revoker: { type: "nostr-secp256k1", value: epoch.pubkey },
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       profile_revision: 2,
     } as unknown as ClaimRevocation;
     expect(new TextDecoder().decode(revocationProofPayload(stamped))).toBe(
@@ -227,7 +227,7 @@ describe("claim revocation envelopes", () => {
         profile_revision: 2,
         reason_code: stamped.reason_code,
         revoked_at: stamped.revoked_at,
-        spec_version: "heterodyne/0.5.0",
+        spec_version: "heterodyne/0.6.0",
       })}`,
     );
     const stampedEvent = await revocationEvent(stamped);
@@ -240,7 +240,7 @@ describe("claim revocation envelopes", () => {
     const wrongVersionEvent = await revocationEvent({ ...stamped, spec_version: "heterodyne/0.5.1" } as unknown as ClaimRevocation);
     const legacyVersionEvent = await revocationEvent({
       ...missingVersion,
-      comms_version: "heterodyne/0.5.0",
+      comms_version: "heterodyne/0.6.0",
     } as unknown as ClaimRevocation);
     const wrongRevisionEvent = await revocationEvent({ ...stamped, profile_revision: 1 } as unknown as ClaimRevocation);
     expect(() => validateClaimRevocationEnvelope(missingVersionEvent))
@@ -259,7 +259,7 @@ describe("claim revocation envelopes", () => {
       revoked_at: issuedAt + 9,
       reason_code: "claim-revoked",
       revoker: { type: "nostr-secp256k1", value: epoch.pubkey },
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       profile_revision: 2,
     } as unknown as ClaimRevocation;
     const cases = [
@@ -646,7 +646,7 @@ describe("claim trust, attenuation, and authorization state", () => {
       audience: [epoch.pubkey, "https://rp.example"],
       resources: ["rad:claims", "rad:claims/device"],
       visibility: "repository-private",
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       profile_revision: 2,
       ...overrides,
     };

@@ -49,7 +49,7 @@ beforeAll(async () => {
     ],
     content: JSON.stringify({
       profile: "heterodyne.social.agent-policy-receipt.v1",
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       event_id: offendingEvent.id,
       event_author: deviceKey,
       agent_association: agentAssociation,
@@ -73,7 +73,7 @@ beforeAll(async () => {
     kind: 10000,
     tags: [
       ["heterodyne", "social-agent-policy-list-v1"],
-      ["spec_version", "heterodyne/0.5.0"],
+      ["spec_version", "heterodyne/0.6.0"],
       ["p", deviceKey],
       ["e", receiptEvent.id],
       ["agent_violation", deviceKey, receiptEvent.id, reason],
@@ -93,7 +93,7 @@ beforeAll(async () => {
     ],
     content: JSON.stringify({
       profile: "heterodyne.social.agent-policy-receipt.v1",
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       event_id: legacyEventId,
       device_key: legacyDeviceKey,
       cold_root: legacyColdRoot,
@@ -111,7 +111,7 @@ beforeAll(async () => {
     kind: 10000,
     tags: [
       ["heterodyne", "social-agent-policy-list-v1"],
-      ["spec_version", "heterodyne/0.5.0"],
+      ["spec_version", "heterodyne/0.6.0"],
       ["p", legacyDeviceKey],
       ["e", legacyReceiptEvent.id],
       ["agent_violation", legacyDeviceKey, legacyReceiptEvent.id, reason],
@@ -131,7 +131,7 @@ beforeAll(async () => {
     ],
     content: JSON.stringify({
       profile: "heterodyne.social.agent-policy-correction.v1",
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       receipt_id: legacyReceiptEvent.id,
       device_key: legacyDeviceKey,
       corrected_at: 902,
@@ -482,7 +482,7 @@ describe("correction and current list removal", () => {
       ],
       content: JSON.stringify({
         profile: "heterodyne.social.agent-policy-correction.v1",
-        spec_version: "heterodyne/0.5.0",
+        spec_version: "heterodyne/0.6.0",
         corrects_receipt_id: receiptEvent.id,
         event_id: offendingEvent.id,
         event_author: deviceKey,
@@ -530,7 +530,7 @@ describe("correction and current list removal", () => {
       ],
       content: JSON.stringify({
         profile: "heterodyne.social.agent-policy-correction.v1",
-        spec_version: "heterodyne/0.5.0",
+        spec_version: "heterodyne/0.6.0",
         corrects_receipt_id: receiptEvent.id,
         event_id: offendingEvent.id,
         event_author: deviceKey,
@@ -569,7 +569,7 @@ describe("correction and current list removal", () => {
       ],
       content: JSON.stringify({
         profile: "heterodyne.social.agent-policy-correction.v1",
-        spec_version: "heterodyne/0.5.0",
+        spec_version: "heterodyne/0.6.0",
         corrects_receipt_id: receiptEvent.id,
         event_id: offendingEvent.id,
         event_author: deviceKey,

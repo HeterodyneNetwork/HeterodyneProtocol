@@ -8,7 +8,7 @@ export type { DocumentId } from "./types.js";
  * version and the same registry revision, so one string is the only source
  * of truth for both.
  */
-export const FAMILY_VERSION = "0.5.0";
+export const FAMILY_VERSION = "0.6.0";
 
 export const QUALIFIED_VERSION = `heterodyne/${FAMILY_VERSION}`;
 

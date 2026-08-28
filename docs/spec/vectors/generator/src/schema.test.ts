@@ -109,7 +109,7 @@ describe("Social active-author policy schemas", () => {
   const policy = { id: "network.heterodyne.agent-policy", version: "1.0.0" };
   const receipt = {
     profile: "heterodyne.social.agent-policy-receipt.v1",
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     event_id: h("b"),
     event_author: author,
     agent_association: association,
@@ -123,7 +123,7 @@ describe("Social active-author policy schemas", () => {
   };
   const correction = {
     profile: "heterodyne.social.agent-policy-correction.v1",
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     corrects_receipt_id: h("c"),
     event_id: receipt.event_id,
     event_author: author,
@@ -202,7 +202,7 @@ describe("multi-persona Control schemas", () => {
   const audience = "https://node.example/nip46/persona-1";
   const grant = {
     profile: "heterodyne.control.signer-grant.v1",
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     grant_id: grantId,
     vault_id: vaultId,
     persona_active_key: persona,
@@ -244,7 +244,7 @@ describe("multi-persona Control schemas", () => {
   };
   const recoveryGrant = {
     profile: "heterodyne.control.compromise-reset-grant.v1",
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     recovery_id: h("e"),
     persona_active_key: persona,
     successor_active_key: successor,
@@ -264,7 +264,7 @@ describe("multi-persona Control schemas", () => {
   };
   const recoveryCompletion = {
     profile: "heterodyne.control.compromise-reset-completion.v1",
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     recovery_id: recoveryGrant.recovery_id,
     persona_active_key: persona,
     successor_active_key: successor,
@@ -328,7 +328,7 @@ describe("multi-persona Control schemas", () => {
     ["control-client-authorization-v1.schema.json", grant],
     ["control-agent-publish-v1.schema.json", {
       profile: "heterodyne.control.agent-publish-intent.v1",
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       grant_id: grantId,
       vault_id: vaultId,
       persona_active_key: persona,
@@ -347,7 +347,7 @@ describe("multi-persona Control schemas", () => {
     }],
     ["control-audit-record-v1.schema.json", {
       profile: "heterodyne.control.audit-record.v1",
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       grant_id: grantId,
       vault_id: vaultId,
       persona_active_key: persona,
@@ -367,7 +367,7 @@ describe("multi-persona Control schemas", () => {
     }],
     ["control-capability-set-v1.schema.json", {
       profile: "heterodyne.control.capability-set.v1",
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       node_mode: "full",
       max_persona_vaults: 16,
       custody_modes: ["local", "nip46"],
@@ -379,7 +379,7 @@ describe("multi-persona Control schemas", () => {
     }],
     ["control-device-authorization-state-v1.schema.json", {
       profile: "heterodyne.control.device-authorization-state.v1",
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       transaction_id: h("8"),
       grant_id: grantId,
       oidc_authorization_id: grant.oidc_authorization_id,
@@ -409,7 +409,7 @@ describe("multi-persona Control schemas", () => {
     }],
     ["control-operation-record-v1.schema.json", {
       profile: "heterodyne.control.signing-operation.v1",
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       operation_id: h("b"),
       request_id: "nostr-tools-1",
       grant_id: grantId,
@@ -600,7 +600,7 @@ describe("trusted private seed and flexible agent schemas", () => {
   const privateRid = "rad:z3gqcJUoA1n9HaHKufZs5FCSGazv5";
   const acl = {
     profile: "heterodyne.trusted-seed-acl.v1",
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     administrator_account: administratorAccount,
     accounts: [{ account_key: personaKey, roles: ["read", "write"] }],
     h: "private-routing-id",
@@ -1117,7 +1117,7 @@ describe("one-time invite schemas", () => {
       secret: "66".repeat(32),
     })).not.toThrow();
     expect(() => validateOneTimeInviteResponseSchemaOrThrow({
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       purpose: "dm",
       descriptor_digest: "77".repeat(32),
       responder_account: "88".repeat(32),
@@ -1136,7 +1136,7 @@ describe("one-time invite schemas", () => {
       device_private_key: "77".repeat(32),
     })).toThrow(/additional/);
     expect(() => validateOneTimeInviteResponseSchemaOrThrow({
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       purpose: "dm",
       descriptor_digest: "77".repeat(32),
       responder_account: "88".repeat(32),
@@ -1175,7 +1175,7 @@ describe("one-time invite schemas", () => {
       secret: "66".repeat(32),
     })).toThrow();
     expect(() => validateOneTimeInviteResponseSchemaOrThrow({
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       purpose: "device-enrollment",
       descriptor_digest: "77".repeat(32),
       responder_account: "88".repeat(32),
@@ -1217,7 +1217,7 @@ describe("active-account Marmot repository schemas", () => {
   });
 
   const directory = {
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     profile: "standard-compatible",
     stable_group_id: "stable-group-1",
     account_key: accountKey,
@@ -1237,7 +1237,7 @@ describe("active-account Marmot repository schemas", () => {
   };
 
   const manifest = {
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     account_key: accountKey,
     writer_nid: writerNid,
     consumed_keypackage_id: "keypackage-1",
@@ -1251,7 +1251,7 @@ describe("active-account Marmot repository schemas", () => {
   };
 
   const bundle = {
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     account_key: accountKey,
     writer_nid: writerNid,
     manifest,
@@ -1261,7 +1261,7 @@ describe("active-account Marmot repository schemas", () => {
   };
 
   const routingBinding = {
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     stable_group_id: "stable-group-1",
     generation: 3,
     h: "marmot-routing-id",
@@ -1278,7 +1278,7 @@ describe("active-account Marmot repository schemas", () => {
   };
 
   const genesis = {
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     stable_group_id_digest: h("7"),
     generation: 3,
     h: "marmot-routing-id",
@@ -1357,8 +1357,8 @@ describe("vector schema", () => {
     vector_id: `versioning/${owner}-metadata`,
     vector_schema_version: "1.0.0",
     owner_document: owner,
-    spec_version: "heterodyne/0.5.0",
-    spec_refs: [`heterodyne:0.5.0#${owner}-conformance`],
+    spec_version: "heterodyne/0.6.0",
+    spec_refs: [`heterodyne:0.6.0#${owner}-conformance`],
     description: "exact family metadata",
     direction: "consume",
     input: {},
@@ -1426,8 +1426,8 @@ describe("vector schema", () => {
         vector_id: "identity/root-attestation-valid",
         vector_schema_version: "1.0.0",
         owner_document: "core",
-        spec_version: "heterodyne/0.5.0",
-        spec_refs: ["heterodyne:0.5.0#core-root-attestation"],
+        spec_version: "heterodyne/0.6.0",
+        spec_refs: ["heterodyne:0.6.0#core-root-attestation"],
         description: "root attestation is reproduced byte-identically",
         direction: "produce",
         input: { hello: "world" },
@@ -1467,13 +1467,13 @@ describe("vector schema", () => {
 
   it("rejects references above the owner in the layering", () => {
     expect(() => validateVectorOrThrow({
-      ...valid("social"), spec_refs: ["heterodyne:0.5.0#control-conformance"],
+      ...valid("social"), spec_refs: ["heterodyne:0.6.0#control-conformance"],
     })).toThrow(/spec_ref/);
     expect(() => validateVectorOrThrow({
-      ...valid("comms"), spec_refs: ["heterodyne:0.5.0#social-conformance"],
+      ...valid("comms"), spec_refs: ["heterodyne:0.6.0#social-conformance"],
     })).toThrow(/spec_ref/);
     expect(() => validateVectorOrThrow({
-      ...valid("core"), spec_refs: ["heterodyne:0.5.0#comms-conformance"],
+      ...valid("core"), spec_refs: ["heterodyne:0.6.0#comms-conformance"],
     })).toThrow(/spec_ref/);
   });
 
@@ -1481,16 +1481,16 @@ describe("vector schema", () => {
     expect(() => validateVectorOrThrow({
       ...valid("core"),
       spec_refs: [
-        "heterodyne:0.5.0#core-versioning",
-        "heterodyne:0.5.0#core-conformance",
+        "heterodyne:0.6.0#core-versioning",
+        "heterodyne:0.6.0#core-conformance",
       ],
     })).toThrow(/spec_refs|one|item/i);
   });
 
   it("allows one Control reference to either document beneath it", () => {
     for (const specRef of [
-      "heterodyne:0.5.0#core-version-stamps",
-      "heterodyne:0.5.0#comms-subprotocol-negotiation",
+      "heterodyne:0.6.0#core-version-stamps",
+      "heterodyne:0.6.0#comms-subprotocol-negotiation",
     ]) {
       expect(() => validateVectorOrThrow({
         ...valid("control"),
@@ -1505,11 +1505,11 @@ describe("vector schema", () => {
         vector_id: "stamping/null-profile",
         vector_schema_version: "1.0.0",
         owner_document: "core",
-        owner_version: "heterodyne/0.5.0",
+        owner_version: "heterodyne/0.6.0",
         dependency_versions: {},
         profile_revision: 1,
         profile: null,
-        spec_refs: ["heterodyne:0.5.0#core-version-stamps"],
+        spec_refs: ["heterodyne:0.6.0#core-version-stamps"],
         description: "optional means absent, not null",
         direction: "round-trip",
         input: {},
@@ -1557,7 +1557,7 @@ describe("Comms claim schemas", () => {
     not_before: 1784390400,
     expires_at: 1784476800,
     visibility: "repository-private",
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     profile_revision: 2,
     credential_ledger_persona: "34".repeat(32),
     credential_ledger_generation: 0,
@@ -1570,7 +1570,7 @@ describe("Comms claim schemas", () => {
     expect(() => validateKeyClaimSchemaOrThrow(missingVersion)).toThrow(/spec_version|required/);
     expect(() => validateKeyClaimSchemaOrThrow({
       ...missingVersion,
-      comms_version: "heterodyne/0.5.0",
+      comms_version: "heterodyne/0.6.0",
     })).toThrow(/spec_version|required|additional/);
     expect(() => validateKeyClaimSchemaOrThrow({
       ...base,
@@ -1608,7 +1608,7 @@ describe("Comms claim schemas", () => {
       revoked_at: 1784390500,
       reason_code: "claim-revoked",
       revoker: key,
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       profile_revision: 2,
     };
     expect(() => validateClaimRevocationSchemaOrThrow(revocation)).not.toThrow();
@@ -1617,7 +1617,7 @@ describe("Comms claim schemas", () => {
     expect(() => validateClaimRevocationSchemaOrThrow(missingVersion)).toThrow(/spec_version|required/);
     expect(() => validateClaimRevocationSchemaOrThrow({
       ...missingVersion,
-      comms_version: "heterodyne/0.5.0",
+      comms_version: "heterodyne/0.6.0",
     })).toThrow(/spec_version|required|additional/);
     expect(() => validateClaimRevocationSchemaOrThrow(missingRevision)).toThrow(/profile_revision|required/);
     expect(() => validateClaimRevocationSchemaOrThrow({ ...revocation, spec_version: "heterodyne/0.5.1" })).toThrow(/spec_version|const/);
@@ -1642,7 +1642,7 @@ describe("Comms claim schemas", () => {
       revoked_at: 1784390500,
       reason_code: "claim-revoked",
       revoker: { type: "jwk-thumbprint", value: "B".repeat(43) },
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       profile_revision: 2,
       proof: {
         type: "jwk-jws",

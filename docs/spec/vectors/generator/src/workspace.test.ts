@@ -107,7 +107,7 @@ const grantApproval = (
   const approver_key = bytesToHex(schnorr.getPublicKey(secretKey));
   const unsigned = {
     profile: "heterodyne.workspace-grant-approval.v1",
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     workspace_key: WORKSPACE_KEY,
     policy_head: POLICY_HEAD,
     predecessor: PREDECESSOR,
@@ -150,7 +150,7 @@ const invitationAcceptance = (
 ): Record<string, unknown> => {
   const unsigned = {
     profile: "heterodyne.workspace-invitation-acceptance.v1",
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     grant_id: grantId,
     grant_operation_digest: operationDigest,
     workspace_key: WORKSPACE_KEY,
@@ -184,7 +184,7 @@ const successorReauthorization = (
 ): Record<string, unknown> => {
   const unsigned = {
     profile: "heterodyne.workspace-successor-reauthorization.v1",
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     workspace_key: WORKSPACE_KEY,
     prior_account: OTHER_KEY,
     new_account: APPROVER_A_KEY,
@@ -236,7 +236,7 @@ const keyRequestDigest = (request: Record<string, unknown>): string => bytesToHe
 
 const grantActivationFixture = () => {
   const unsignedGrant = {
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     object_type: "role-grant-v1",
     workspace_key: WORKSPACE_KEY,
     policy_head: POLICY_HEAD,
@@ -321,7 +321,7 @@ const grantActivationFixture = () => {
 
 const signedRelationship = (): Record<string, unknown> => {
   const relationship = signWorkspaceObject({
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     object_type: "workspace-relationship-v1",
     workspace_key: WORKSPACE_KEY,
     policy_head: POLICY_HEAD,
@@ -355,7 +355,7 @@ const signedRelationship = (): Record<string, unknown> => {
 const signedRelationshipReceipt = (
   relationship: Record<string, unknown>,
 ): Record<string, unknown> => signWorkspaceObject({
-  spec_version: "heterodyne/0.5.0",
+  spec_version: "heterodyne/0.6.0",
   object_type: "workspace-relationship-receipt-v1",
   workspace_key: OTHER_KEY,
   policy_head: "77".repeat(32),
@@ -383,7 +383,7 @@ const affiliationEvidence = (
 ): Record<string, unknown> => {
   const unsigned = {
     profile: "heterodyne.workspace-affiliation-evidence.v1",
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     relationship_id: H64,
     source_workspace_key: WORKSPACE_KEY,
     source_role_id: H64,
@@ -446,7 +446,7 @@ const jointDelegateProof = (
   const delegate_key = bytesToHex(schnorr.getPublicKey(secretKey));
   const unsigned = {
     profile: "heterodyne.workspace-joint-delegate.v1",
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     joint_workspace_key: JOINT_KEY,
     relationship_id: H64,
     delegate_key,
@@ -469,7 +469,7 @@ const jointDelegateProof = (
 
 const jointGovernanceFixture = (threshold = 2) => {
   const joint = signWorkspaceObject({
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     object_type: "joint-workspace-relationship-v1",
     workspace_key: JOINT_KEY,
     policy_head: POLICY_HEAD,
@@ -544,7 +544,7 @@ const currentAuthorityObjects = (
   assurance: typeof WORKSPACE_ASSURANCE | null = null,
 ): Record<string, unknown>[] => {
   const common = {
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     workspace_key: WORKSPACE_KEY,
     policy_head: POLICY_HEAD,
     predecessor: PREDECESSOR,
@@ -857,7 +857,7 @@ const repositoryViewEvidence = (
     ];
   const unsigned = {
     profile: "heterodyne.workspace-repository-view.v1",
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     resolver_policy: "radicle-verified-complete-v1",
     resolver_version: "1.0.0",
     workspace_key: WORKSPACE_KEY,
@@ -1096,7 +1096,7 @@ describe("Workspace configured repository resolver", () => {
     const childRoleId = "12".repeat(32);
     const childCheckpointId = "13".repeat(32);
     const common = {
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       workspace_key: WORKSPACE_KEY,
       policy_head: POLICY_HEAD,
       predecessor: PREDECESSOR,
@@ -1914,7 +1914,7 @@ describe("Workspace evaluator input boundary", () => {
 describe("Workspace signed objects", () => {
   it("accepts a bare active-key workspace and binds exact policy, predecessor, checkpoint, repository, and digest", () => {
     const object = signWorkspaceObject({
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       object_type: "workspace-manifest-v1",
       workspace_key: WORKSPACE_KEY,
       policy_head: POLICY_HEAD,
@@ -1962,7 +1962,7 @@ describe("Workspace signed objects", () => {
 
   it("rejects delegate, host, seed, and repository-writer signatures as ambient governance", () => {
     const signedByCarrier = signWorkspaceObject({
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       object_type: "workspace-manifest-v1",
       workspace_key: OTHER_KEY,
       policy_head: POLICY_HEAD,
@@ -2191,7 +2191,7 @@ describe("Workspace role authorization", () => {
     const api = await import("./workspace.js");
     let trustedNow = 1_720_000_350;
     const unsignedGrant = {
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       object_type: "role-grant-v1",
       workspace_key: WORKSPACE_KEY,
       policy_head: POLICY_HEAD,
@@ -2350,7 +2350,7 @@ describe("Workspace role authorization", () => {
     const grantId = "ed".repeat(32);
     const nonceOpening = "de".repeat(32);
     const unsignedGrant = {
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       object_type: "role-grant-v1",
       workspace_key: WORKSPACE_KEY,
       policy_head: POLICY_HEAD,
@@ -2606,7 +2606,7 @@ describe("Workspace role authorization", () => {
         },
       )));
       const unsignedGrant = {
-        spec_version: "heterodyne/0.5.0",
+        spec_version: "heterodyne/0.6.0",
         object_type: "role-grant-v1",
         workspace_key: WORKSPACE_KEY,
         policy_head: POLICY_HEAD,
@@ -2639,7 +2639,7 @@ describe("Workspace role authorization", () => {
         const approverKey = bytesToHex(schnorr.getPublicKey(secretKey));
         const unsigned = {
           profile: "heterodyne.workspace-grant-approval.v1",
-          spec_version: "heterodyne/0.5.0",
+          spec_version: "heterodyne/0.6.0",
           workspace_key: WORKSPACE_KEY,
           policy_head: POLICY_HEAD,
           predecessor: PREDECESSOR,
@@ -2709,7 +2709,7 @@ describe("Workspace role authorization", () => {
       if (state.verdict !== "accept") throw new Error("fixture boundary state rejected");
       const unsignedAcceptance = {
         profile: "heterodyne.workspace-invitation-acceptance.v1",
-        spec_version: "heterodyne/0.5.0",
+        spec_version: "heterodyne/0.6.0",
         grant_id: grantId,
         grant_operation_digest: operationDigest,
         workspace_key: WORKSPACE_KEY,
@@ -3241,7 +3241,7 @@ describe("Workspace hosts, keys, repositories, and freshness", () => {
     let trustedNow = 1_720_000_400;
     expect(api.authenticateWorkspaceSuccessorReauthorization).toBeTypeOf("function");
     const pendingGrantBase = {
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       object_type: "role-grant-v1",
       workspace_key: WORKSPACE_KEY,
       policy_head: POLICY_HEAD,
@@ -3286,7 +3286,7 @@ describe("Workspace hosts, keys, repositories, and freshness", () => {
       recipient: { type: "marmot-mls-leaf", value: LEAF },
     }, WORKSPACE_SECRET);
     const pendingEnvelope = signWorkspaceObject({
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       object_type: "resource-key-envelope-v1",
       workspace_key: WORKSPACE_KEY,
       policy_head: POLICY_HEAD,
@@ -3976,7 +3976,7 @@ describe("Workspace hosts, keys, repositories, and freshness", () => {
     });
     const aclBody = {
       profile: "heterodyne.trusted-seed-acl.v1",
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       administrator_account: WORKSPACE_KEY,
       accounts: [{ account_key: OTHER_KEY, roles: ["read", "write"] }],
       h: "workspace-private-route",

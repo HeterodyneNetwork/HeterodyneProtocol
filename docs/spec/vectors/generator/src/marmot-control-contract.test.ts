@@ -12,7 +12,7 @@ describe("Marmot Control canonical contract", () => {
   it("activates baseline Control from the active key without Double Ratchet or Assurance gating", () => {
     const control = read("docs/spec/heterodyne-control.md");
 
-    expect(control).toContain('"spec_version": "heterodyne/0.5.0"');
+    expect(control).toContain('"spec_version": "heterodyne/0.6.0"');
     expect(control).toContain('"transport_owner": "marmot"');
     expect(control).toContain('"can_claim_control_conformance": true');
     expect(control).toMatch(/bare[\s\S]*active Nostr key[\s\S]*complete Control persona/i);

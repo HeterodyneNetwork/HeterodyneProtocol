@@ -33,7 +33,7 @@ export type ClaimVisibility = "public" | "pairwise-private" | "repository-privat
 export type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
 
 export const CLAIM_REVOCATION_PROFILE = {
-  spec_version: "heterodyne/0.5.0",
+  spec_version: "heterodyne/0.6.0",
   profile_revision: 2,
 } as const;
 
@@ -63,7 +63,7 @@ export type ClaimSemanticBody = {
   parent_claim_id?: string;
   constraints?: DelegationConstraints;
   revokers?: KeyRef[];
-  spec_version: "heterodyne/0.5.0";
+  spec_version: "heterodyne/0.6.0";
   profile_revision: 2;
 };
 
@@ -78,7 +78,7 @@ export type ClaimRevocation = {
   reason_code: string;
   revoker: KeyRef;
   proof?: KeyProof;
-  spec_version: "heterodyne/0.5.0";
+  spec_version: "heterodyne/0.6.0";
   profile_revision: 2;
 };
 

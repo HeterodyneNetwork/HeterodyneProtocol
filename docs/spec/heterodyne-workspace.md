@@ -964,6 +964,7 @@ The list below is descriptive:
 - **WORKSPACE-I-HOST-AUTHORITY-SEPARATION:** Hosting or trusted-seed availability does not grant governance authority, while key-custody hosts remain explicit confidentiality trust boundaries.
 - **WORKSPACE-I-RADICLE-BACKSTOP:** Every effective role retains an authorized Radicle locator and eligible Radicle-backed relay host independent of optional Nostr relays.
 - **WORKSPACE-I-DEVICE-LEAF-SEPARATION:** Each active-account device has an independently revocable Marmot leaf and receives only envelopes bound to that exact account, device, and leaf.
+- **WORKSPACE-I-OPTIONAL-ASSURANCE:** A Workspace remains valid under a bare active key with no Assurance profile; once an optional Assurance profile is activated, ordinary active-key governance alone cannot weaken, replace, or remove it, and any transition requires matching current Assurance authorization over the same canonical policy-transition digest.
 
 Implementations MUST bound private invitation and KeyPackage processing,
 repository and relay storage, history requests, key-envelope work, and failed
@@ -1015,9 +1016,11 @@ features are claimed, so the profile does not restate them.
     "WORKSPACE-I-INHERITANCE-NARROWS",
     "WORKSPACE-I-PRIVATE-TOPOLOGY",
     "WORKSPACE-I-CARRIER-NOT-AUTHORITY",
+    "WORKSPACE-I-AUTHENTICATED-CURRENT-STATE",
     "WORKSPACE-I-REVOCATION-FUTURE-ONLY",
     "WORKSPACE-I-FRESHNESS-BOUNDED",
-    "WORKSPACE-I-HOST-AUTHORITY-SEPARATION"
+    "WORKSPACE-I-HOST-AUTHORITY-SEPARATION",
+    "WORKSPACE-I-OPTIONAL-ASSURANCE"
   ]
 }
 ```

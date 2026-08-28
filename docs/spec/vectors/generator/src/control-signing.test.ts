@@ -69,7 +69,7 @@ function resignGrant(value: SigningGrant, secret = personaSecret): SigningGrant 
 
 const grant = signGrant({
   profile: "heterodyne.control.signer-grant.v1",
-  spec_version: "heterodyne/0.5.0",
+  spec_version: "heterodyne/0.6.0",
   grant_id: hex("7"),
   vault_id: vaultId,
   persona_active_key: persona,
@@ -214,7 +214,7 @@ function automatedIntent(
 ): AutomatedPublication {
   return {
     profile: "heterodyne.control.agent-publish-intent.v1",
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     grant_id: automationGrant.grant_id,
     vault_id: automationGrant.vault_id,
     persona_active_key: automationGrant.persona_active_key,
@@ -885,7 +885,7 @@ describe("Control NIP-46 signer grant authorization", () => {
 describe("OIDC activation and automated publication", () => {
   const pending = {
     profile: "heterodyne.control.device-authorization-state.v1" as const,
-    spec_version: "heterodyne/0.5.0" as const,
+    spec_version: "heterodyne/0.6.0" as const,
     transaction_id: hex("c"),
     grant_id: grant.grant_id,
     oidc_authorization_id: grant.oidc_authorization_id,
@@ -1415,7 +1415,7 @@ describe("OIDC activation and automated publication", () => {
     } as SigningGrant & { automation_policy: Record<string, unknown> });
     const policyIntent = {
       profile: "heterodyne.control.agent-publish-intent.v1" as const,
-      spec_version: "heterodyne/0.5.0" as const,
+      spec_version: "heterodyne/0.6.0" as const,
       grant_id: policyGrant.grant_id,
       vault_id: policyGrant.vault_id,
       persona_active_key: policyGrant.persona_active_key,
@@ -1466,7 +1466,7 @@ describe("OIDC activation and automated publication", () => {
     } as SigningGrant & { automation_policy: Record<string, unknown> });
     const publication: AutomatedPublication = {
       profile: "heterodyne.control.agent-publish-intent.v1",
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       grant_id: otherSigner,
       vault_id: vaultId,
       persona_active_key: persona,
@@ -1757,7 +1757,7 @@ describe("Control compromise reset", () => {
     .digest("hex");
   const recoveryGrant = signRecoveryGrant({
     profile: "heterodyne.control.compromise-reset-grant.v1",
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     recovery_id: hex("1"),
     persona_active_key: persona,
     successor_active_key: otherPersona,
@@ -1958,7 +1958,7 @@ describe("Control compromise reset", () => {
   };
   const completion = signRecoveryCompletion({
     profile: "heterodyne.control.compromise-reset-completion.v1",
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     recovery_id: recoveryGrant.recovery_id,
     persona_active_key: persona,
     successor_active_key: otherPersona,

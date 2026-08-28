@@ -12,7 +12,7 @@ export type TrustedSeedRole = "read" | "write";
 
 export type TrustedSeedAcl = {
   profile: "heterodyne.trusted-seed-acl.v1";
-  spec_version: "heterodyne/0.5.0";
+  spec_version: "heterodyne/0.6.0";
   administrator_account: string;
   accounts: Array<{ account_key: string; roles: TrustedSeedRole[] }>;
   h: string;

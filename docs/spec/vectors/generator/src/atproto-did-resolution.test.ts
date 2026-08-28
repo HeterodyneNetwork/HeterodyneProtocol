@@ -602,7 +602,7 @@ async function bindingObservationFixture(): Promise<{
   const nostrSecret = "17".repeat(32);
   const pubkey = getPublicKey(nostrSecret);
   const canonicalPayload = JSON.stringify({
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     did,
     did_signing_key_id: method,
     pubkey,

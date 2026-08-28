@@ -48,16 +48,16 @@ live registry and schemas govern when a short definition omits a condition.
 **Strict profile**
 : A conformance profile whose required invariant set is the transitive closure
   of declared prerequisite profiles plus only the invariants it adds. Core,
-  Comms, Control, Social, and Workspace register document-specific strict
-  profiles. Assurance is an optional document claim and currently has no strict
-  profile; there is no singular strict profile for the six-document family.
+  Assurance, Comms, Control, Social, and Workspace register document-specific
+  strict profiles; the Assurance claim itself remains optional. There is no
+  singular strict profile for the six-document family.
 
 **Family registry revision**
 : The authoring revision in `docs/spec/registry/manifest.json` for the current
   registry entry set. It is not a wire member and is not a released version.
 
 **Claim profile revision**
-: The frozen claim schema member `profile_revision` has value `2`, distinct from the current family registry revision 14. It labels the claim-profile
+: The frozen claim schema member `profile_revision` has value `2`, distinct from the current family registry revision 15. It labels the claim-profile
   wire shape and does not track registry authoring changes.
 
 ## Discovery and storage

@@ -13,7 +13,7 @@ import {
 import { AUX_RAND } from "./vector-helpers.js";
 
 type Binding = {
-  spec_version: "heterodyne/0.5.0";
+  spec_version: "heterodyne/0.6.0";
   did: string;
   did_signing_key_id: string;
   pubkey: string;
@@ -25,7 +25,7 @@ type Binding = {
 };
 
 type Revocation = {
-  spec_version: "heterodyne/0.5.0";
+  spec_version: "heterodyne/0.6.0";
   record_type: "atproto_link_revocation";
   did: string;
   pubkey: string;
@@ -89,7 +89,7 @@ const resolverAuthority = createAtprotoResolverAuthority({
   max_ttl: 600,
 });
 const binding: Binding = {
-  spec_version: "heterodyne/0.5.0",
+  spec_version: "heterodyne/0.6.0",
   did: "did:web:alice.example",
   did_signing_key_id: "did:web:alice.example#atproto",
   pubkey,
@@ -789,7 +789,7 @@ describe("ATProto active-key binding", () => {
 
 function revocationFor(value: Binding, revoked_at: number): Revocation {
   return {
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     record_type: "atproto_link_revocation",
     did: value.did,
     pubkey: value.pubkey,

@@ -13,7 +13,7 @@ const HOST_NID = "did:key:z6MkwQp8f8Y11L3WJYJ4hXa1";
 const SEED_NID = "did:key:z6Mkq7ZBA1Vh9fVhKo2H2iW4";
 
 const base = (object_type: string) => ({
-  spec_version: "heterodyne/0.5.0",
+  spec_version: "heterodyne/0.6.0",
   object_type,
   workspace_key: H64,
   policy_head: H64_B,

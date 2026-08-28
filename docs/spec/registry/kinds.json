@@ -5,14 +5,14 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": [
         {
           "profile_id": "heterodyne-core-rotation-breadcrumb-profile-v1",
           "owner": "core",
           "discriminator": "production-rule:rotation-breadcrumb-kind0-v1",
           "stamping": false,
-          "first_version": "heterodyne/0.6.0",
+          "first_version": "heterodyne/0.5.0",
           "status": "draft"
         }
       ]
@@ -22,14 +22,14 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": [
         {
           "profile_id": "heterodyne-core-rotation-breadcrumb-note-v1",
           "owner": "core",
           "discriminator": "production-rule:rotation-breadcrumb-kind1-v1",
           "stamping": false,
-          "first_version": "heterodyne/0.6.0",
+          "first_version": "heterodyne/0.5.0",
           "status": "draft"
         },
         {
@@ -37,7 +37,7 @@
           "owner": "comms",
           "discriminator": "tag:heterodyne_wrap=room_key.v2",
           "stamping": true,
-          "first_version": "heterodyne/0.6.0",
+          "first_version": "heterodyne/0.5.0",
           "status": "draft"
         },
         {
@@ -45,7 +45,7 @@
           "owner": "comms",
           "discriminator": "production-rule:agent-attribution-v1",
           "stamping": false,
-          "first_version": "heterodyne/0.6.0",
+          "first_version": "heterodyne/0.5.0",
           "status": "draft"
         }
       ]
@@ -55,7 +55,7 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": []
     },
     {
@@ -63,7 +63,7 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": []
     },
     {
@@ -71,14 +71,14 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": [
         {
           "profile_id": "heterodyne-comms-tier3-wrapped-content-kind-6-v1",
           "owner": "comms",
           "discriminator": "tag:heterodyne_wrap=room_key.v2",
           "stamping": true,
-          "first_version": "heterodyne/0.6.0",
+          "first_version": "heterodyne/0.5.0",
           "status": "draft"
         },
         {
@@ -86,7 +86,7 @@
           "owner": "comms",
           "discriminator": "production-rule:agent-attribution-v1",
           "stamping": false,
-          "first_version": "heterodyne/0.6.0",
+          "first_version": "heterodyne/0.5.0",
           "status": "draft"
         }
       ]
@@ -96,14 +96,14 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": [
         {
           "profile_id": "heterodyne-comms-agent-attribution-kind-7-v1",
           "owner": "comms",
           "discriminator": "production-rule:agent-attribution-v1",
           "stamping": false,
-          "first_version": "heterodyne/0.6.0",
+          "first_version": "heterodyne/0.5.0",
           "status": "draft"
         }
       ]
@@ -113,7 +113,7 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": []
     },
     {
@@ -121,7 +121,7 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": []
     },
     {
@@ -129,7 +129,7 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": []
     },
     {
@@ -137,14 +137,14 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": [
         {
           "profile_id": "heterodyne-comms-tier3-wrapped-content-kind-16-v1",
           "owner": "comms",
           "discriminator": "tag:heterodyne_wrap=room_key.v2",
           "stamping": true,
-          "first_version": "heterodyne/0.6.0",
+          "first_version": "heterodyne/0.5.0",
           "status": "draft"
         },
         {
@@ -152,7 +152,7 @@
           "owner": "comms",
           "discriminator": "production-rule:agent-attribution-v1",
           "stamping": false,
-          "first_version": "heterodyne/0.6.0",
+          "first_version": "heterodyne/0.5.0",
           "status": "draft"
         }
       ]
@@ -162,7 +162,7 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": []
     },
     {
@@ -170,7 +170,7 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": []
     },
     {
@@ -186,7 +186,7 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": []
     },
     {
@@ -194,14 +194,14 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": [
         {
           "profile_id": "heterodyne-comms-tier3-wrapped-content-kind-1063-v1",
           "owner": "comms",
           "discriminator": "tag:heterodyne_wrap=room_key.v2",
           "stamping": true,
-          "first_version": "heterodyne/0.6.0",
+          "first_version": "heterodyne/0.5.0",
           "status": "draft"
         },
         {
@@ -209,7 +209,7 @@
           "owner": "comms",
           "discriminator": "production-rule:agent-attribution-v1",
           "stamping": false,
-          "first_version": "heterodyne/0.6.0",
+          "first_version": "heterodyne/0.5.0",
           "status": "draft"
         }
       ]
@@ -219,7 +219,7 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": []
     },
     {
@@ -227,14 +227,14 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": [
         {
           "profile_id": "heterodyne-comms-agent-attribution-kind-1985-v1",
           "owner": "comms",
           "discriminator": "production-rule:agent-attribution-v1",
           "stamping": false,
-          "first_version": "heterodyne/0.6.0",
+          "first_version": "heterodyne/0.5.0",
           "status": "draft"
         },
         {
@@ -242,7 +242,7 @@
           "owner": "social",
           "discriminator": "tags:L=network.heterodyne.agent-policy,l=<reason>@network.heterodyne.agent-policy",
           "stamping": true,
-          "first_version": "heterodyne/0.6.0",
+          "first_version": "heterodyne/0.5.0",
           "status": "draft"
         }
       ]
@@ -252,14 +252,14 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": [
         {
           "profile_id": "heterodyne-comms-agent-attribution-kind-4550-v1",
           "owner": "comms",
           "discriminator": "production-rule:agent-attribution-v1",
           "stamping": false,
-          "first_version": "heterodyne/0.6.0",
+          "first_version": "heterodyne/0.5.0",
           "status": "draft"
         }
       ]
@@ -269,7 +269,7 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": []
     },
     {
@@ -277,7 +277,7 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": []
     },
     {
@@ -285,14 +285,14 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": [
         {
           "profile_id": "heterodyne-social-mute-list-v1",
           "owner": "social",
           "discriminator": "tag:heterodyne=social-mute-list-v1",
           "stamping": true,
-          "first_version": "heterodyne/0.6.0",
+          "first_version": "heterodyne/0.5.0",
           "status": "draft"
         },
         {
@@ -300,7 +300,7 @@
           "owner": "social",
           "discriminator": "tag:heterodyne=social-agent-policy-list-v1",
           "stamping": true,
-          "first_version": "heterodyne/0.6.0",
+          "first_version": "heterodyne/0.5.0",
           "status": "draft"
         }
       ]
@@ -310,7 +310,7 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": []
     },
     {
@@ -318,7 +318,7 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": []
     },
     {
@@ -326,7 +326,7 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": []
     },
     {
@@ -334,7 +334,7 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": []
     },
     {
@@ -342,7 +342,7 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": []
     },
     {
@@ -350,7 +350,7 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": []
     },
     {
@@ -358,7 +358,7 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": []
     },
     {
@@ -366,7 +366,7 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": []
     },
     {
@@ -374,7 +374,7 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": []
     },
     {
@@ -382,7 +382,7 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": []
     },
     {
@@ -390,7 +390,7 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": []
     },
     {
@@ -398,14 +398,14 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": [
         {
           "profile_id": "heterodyne-comms-tier3-wrapped-content-kind-30023-v1",
           "owner": "comms",
           "discriminator": "tag:heterodyne_wrap=room_key.v2",
           "stamping": true,
-          "first_version": "heterodyne/0.6.0",
+          "first_version": "heterodyne/0.5.0",
           "status": "draft"
         },
         {
@@ -413,7 +413,7 @@
           "owner": "comms",
           "discriminator": "production-rule:agent-attribution-v1",
           "stamping": false,
-          "first_version": "heterodyne/0.6.0",
+          "first_version": "heterodyne/0.5.0",
           "status": "draft"
         }
       ]
@@ -423,7 +423,7 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": []
     },
     {
@@ -431,14 +431,14 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": [
         {
           "profile_id": "heterodyne-comms-tier3-wrapped-content-kind-30402-v1",
           "owner": "comms",
           "discriminator": "tag:heterodyne_wrap=room_key.v2",
           "stamping": true,
-          "first_version": "heterodyne/0.6.0",
+          "first_version": "heterodyne/0.5.0",
           "status": "draft"
         }
       ]
@@ -448,7 +448,7 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": []
     },
     {
@@ -456,14 +456,14 @@
       "allocation_authority": "heterodyne",
       "base_schema_owner": "assurance",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": [
         {
           "profile_id": "heterodyne-assurance-active-key-acceptance-v1",
           "owner": "assurance",
           "discriminator": "content.profile=heterodyne.assurance.active-key-acceptance.v1",
           "stamping": false,
-          "first_version": "heterodyne/0.6.0",
+          "first_version": "heterodyne/0.5.0",
           "status": "draft"
         }
       ]
@@ -473,14 +473,14 @@
       "allocation_authority": "heterodyne",
       "base_schema_owner": "assurance",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": [
         {
           "profile_id": "heterodyne-assurance-associated-key-v1",
           "owner": "assurance",
           "discriminator": "content.profile=heterodyne.assurance.associated-key.v1",
           "stamping": false,
-          "first_version": "heterodyne/0.6.0",
+          "first_version": "heterodyne/0.5.0",
           "status": "draft"
         }
       ]
@@ -490,14 +490,14 @@
       "allocation_authority": "heterodyne",
       "base_schema_owner": "assurance",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": [
         {
           "profile_id": "heterodyne-assurance-enrollment-inception-v1",
           "owner": "assurance",
           "discriminator": "content.profile=heterodyne.assurance.enrollment-inception.v1",
           "stamping": false,
-          "first_version": "heterodyne/0.6.0",
+          "first_version": "heterodyne/0.5.0",
           "status": "draft"
         }
       ]
@@ -507,14 +507,14 @@
       "allocation_authority": "heterodyne",
       "base_schema_owner": "assurance",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": [
         {
           "profile_id": "heterodyne-assurance-succession-v1",
           "owner": "assurance",
           "discriminator": "content.profile=heterodyne.assurance.succession.v1",
           "stamping": false,
-          "first_version": "heterodyne/0.6.0",
+          "first_version": "heterodyne/0.5.0",
           "status": "draft"
         }
       ]
@@ -524,7 +524,7 @@
       "allocation_authority": "heterodyne",
       "base_schema_owner": "social",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": []
     },
     {
@@ -532,7 +532,7 @@
       "allocation_authority": "heterodyne",
       "base_schema_owner": "core",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": []
     },
     {
@@ -557,7 +557,7 @@
       "allocation_authority": "heterodyne",
       "base_schema_owner": "social",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": []
     },
     {
@@ -565,7 +565,7 @@
       "allocation_authority": "heterodyne",
       "base_schema_owner": "social",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": []
     },
     {
@@ -573,7 +573,7 @@
       "allocation_authority": "heterodyne",
       "base_schema_owner": "core",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": []
     },
     {
@@ -581,7 +581,7 @@
       "allocation_authority": "heterodyne",
       "base_schema_owner": "comms",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": []
     },
     {
@@ -589,7 +589,7 @@
       "allocation_authority": "heterodyne",
       "base_schema_owner": "comms",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": []
     },
     {
@@ -597,14 +597,14 @@
       "allocation_authority": "heterodyne",
       "base_schema_owner": "comms",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": [
         {
           "profile_id": "heterodyne-comms-key-claim-nostr-bip340-v1",
           "owner": "comms",
           "discriminator": "production-rule:claim-subject-pop;proof=nostr-bip340-v1",
           "stamping": false,
-          "first_version": "heterodyne/0.6.0",
+          "first_version": "heterodyne/0.5.0",
           "status": "draft"
         },
         {
@@ -612,7 +612,7 @@
           "owner": "comms",
           "discriminator": "production-rule:claim-subject-pop;proof=radicle-ed25519-v1",
           "stamping": false,
-          "first_version": "heterodyne/0.6.0",
+          "first_version": "heterodyne/0.5.0",
           "status": "draft"
         },
         {
@@ -620,7 +620,7 @@
           "owner": "comms",
           "discriminator": "production-rule:claim-subject-pop;proof=jwk-jws-v1",
           "stamping": false,
-          "first_version": "heterodyne/0.6.0",
+          "first_version": "heterodyne/0.5.0",
           "status": "draft"
         }
       ]
@@ -630,14 +630,14 @@
       "allocation_authority": "heterodyne",
       "base_schema_owner": "comms",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": [
         {
           "profile_id": "heterodyne-comms-claim-revocation-nostr-bip340-v1",
           "owner": "comms",
           "discriminator": "production-rule:claim-revoker;proof=nostr-bip340-v1",
           "stamping": false,
-          "first_version": "heterodyne/0.6.0",
+          "first_version": "heterodyne/0.5.0",
           "status": "draft"
         },
         {
@@ -645,7 +645,7 @@
           "owner": "comms",
           "discriminator": "production-rule:claim-revoker;proof=radicle-ed25519-v1",
           "stamping": false,
-          "first_version": "heterodyne/0.6.0",
+          "first_version": "heterodyne/0.5.0",
           "status": "draft"
         },
         {
@@ -653,7 +653,7 @@
           "owner": "comms",
           "discriminator": "production-rule:claim-revoker;proof=jwk-jws-v1",
           "stamping": false,
-          "first_version": "heterodyne/0.6.0",
+          "first_version": "heterodyne/0.5.0",
           "status": "draft"
         }
       ]
@@ -663,14 +663,14 @@
       "allocation_authority": "heterodyne",
       "base_schema_owner": "control",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": [
         {
           "profile_id": "heterodyne-control-marmot-frame-v1",
           "owner": "control",
           "discriminator": "marmot-inner-only;content=control-frame-v1",
           "stamping": false,
-          "first_version": "heterodyne/0.6.0",
+          "first_version": "heterodyne/0.5.0",
           "status": "draft"
         }
       ]
@@ -680,7 +680,7 @@
       "allocation_authority": "heterodyne",
       "base_schema_owner": "comms",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": []
     },
     {
@@ -688,7 +688,7 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": []
     },
     {
@@ -696,7 +696,7 @@
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
       "status": "draft",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "profiles": []
     }
   ]

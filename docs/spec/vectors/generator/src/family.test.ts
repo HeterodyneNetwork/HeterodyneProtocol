@@ -58,6 +58,7 @@ describe("protocol document family", () => {
   });
 
   it("parses the single family version", () => {
+    expect(FAMILY_VERSION).toBe("0.6.0");
     expect(QUALIFIED_VERSION).toBe(`heterodyne/${FAMILY_VERSION}`);
     expect(parseFamilyVersion("heterodyne/0.5.0")).toBe("0.5.0");
     expect(parseFamilyVersion("heterodyne/1.2.3-rc.1+build.5")).toBe(
@@ -71,6 +72,9 @@ describe("protocol document family", () => {
 
   it("rejects a version other than the current release", () => {
     expect(() => assertCurrentFamilyVersion(QUALIFIED_VERSION)).not.toThrow();
+    expect(() => assertCurrentFamilyVersion("heterodyne/0.5.0")).toThrow(
+      "heterodyne/0.6.0",
+    );
     expect(() => assertCurrentFamilyVersion("heterodyne/0.4.0")).toThrow(
       QUALIFIED_VERSION,
     );
@@ -78,12 +82,12 @@ describe("protocol document family", () => {
 
   it("negotiates only the exact current family version", () => {
     expect(negotiateExactFamilyVersion(
-      ["heterodyne/0.5.0"],
-      ["heterodyne/0.5.0"],
-    )).toBe("heterodyne/0.5.0");
+      ["heterodyne/0.6.0"],
+      ["heterodyne/0.6.0"],
+    )).toBe("heterodyne/0.6.0");
     expect(negotiateExactFamilyVersion(
+      ["heterodyne/0.6.0"],
       ["heterodyne/0.5.0"],
-      ["heterodyne/0.4.0"],
     )).toBeNull();
     expect(negotiateExactFamilyVersion(
       ["core/0.5.0"],

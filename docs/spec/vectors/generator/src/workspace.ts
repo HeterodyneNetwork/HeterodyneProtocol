@@ -552,7 +552,7 @@ export function authenticateWorkspaceRepositoryView(value: unknown):
       "signature",
     ])
     || evidence.profile !== "heterodyne.workspace-repository-view.v1"
-    || evidence.spec_version !== "heterodyne/0.5.0"
+    || evidence.spec_version !== "heterodyne/0.6.0"
     || typeof evidence.resolver_policy !== "string"
     || !config.allowed_policies.includes(evidence.resolver_policy)
     || compareWorkspaceSemver(evidence.resolver_version, config.minimum_version) < 0
@@ -1489,7 +1489,7 @@ function validateGrantApprovalSnapshot(
     "signature",
   ])
     || value.profile !== "heterodyne.workspace-grant-approval.v1"
-    || value.spec_version !== "heterodyne/0.5.0"
+    || value.spec_version !== "heterodyne/0.6.0"
     || !isH64(value.workspace_key)
     || !isH64(value.policy_head)
     || !(value.predecessor === null || isH64(value.predecessor))
@@ -2019,7 +2019,7 @@ export function consumeWorkspaceInvitationAcceptance(value: unknown):
       "signature",
     ])
     || acceptanceValue.profile !== "heterodyne.workspace-invitation-acceptance.v1"
-    || acceptanceValue.spec_version !== "heterodyne/0.5.0"
+    || acceptanceValue.spec_version !== "heterodyne/0.6.0"
     || !isH64(acceptanceValue.grant_id)
     || !isH64(acceptanceValue.grant_operation_digest)
     || !isH64(acceptanceValue.workspace_key)
@@ -2186,7 +2186,7 @@ export function authenticateWorkspaceSuccessorReauthorization(value: unknown):
       "new_account_signature",
     ])
     || reauthorizationValue.profile !== "heterodyne.workspace-successor-reauthorization.v1"
-    || reauthorizationValue.spec_version !== "heterodyne/0.5.0"
+    || reauthorizationValue.spec_version !== "heterodyne/0.6.0"
     || !isH64(reauthorizationValue.workspace_key)
     || !isH64(reauthorizationValue.prior_account)
     || !isH64(reauthorizationValue.new_account)
@@ -2540,7 +2540,7 @@ export function evaluateAllowance(value: unknown): WorkspaceVerdict {
     "signature",
   ])
     || affiliation.profile !== "heterodyne.workspace-affiliation-evidence.v1"
-    || affiliation.spec_version !== "heterodyne/0.5.0"
+    || affiliation.spec_version !== "heterodyne/0.6.0"
     || affiliation.relationship_id !== object.relationship_id
     || affiliation.source_workspace_key !== source.state.workspace_key
     || affiliation.source_role_id !== object.source_role_id
@@ -2700,7 +2700,7 @@ function validateJointDelegateProofSnapshot(
     "signature",
   ])
     || value.profile !== "heterodyne.workspace-joint-delegate.v1"
-    || value.spec_version !== "heterodyne/0.5.0"
+    || value.spec_version !== "heterodyne/0.6.0"
     || !isH64(value.joint_workspace_key)
     || !isH64(value.relationship_id)
     || !isH64(value.delegate_key)

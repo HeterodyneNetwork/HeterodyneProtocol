@@ -71,7 +71,7 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
       audience: [persona],
       resources: [resource],
       visibility: "repository-private",
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       profile_revision: 2,
       ...overrides,
     };

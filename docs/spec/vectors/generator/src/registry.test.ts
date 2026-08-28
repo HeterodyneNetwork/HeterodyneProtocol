@@ -33,8 +33,69 @@ function currentEntrySet(registry: Registry): RegistryEntrySet {
   });
 }
 
+const NEW_0_6_REGISTRY_IDS = {
+  features: [],
+  kinds: [1040, 31006],
+  kind_profiles: ["heterodyne-assurance-enrollment-contest-profile-v1"],
+  objects: ["enrollment-observation-receipt-v1"],
+  proof_domains: [
+    "heterodyne-assurance-enrollment-observation-v1",
+    "heterodyne-workspace-assurance-authorization-v1",
+  ],
+  reason_codes: [
+    "core-created-at-premature",
+    "workspace-assurance-state-required",
+    "assurance-enrollment-pending-window",
+    "assurance-enrollment-contested",
+  ],
+  security_invariants: [
+    "WORKSPACE-I-OPTIONAL-ASSURANCE",
+    "ASSURANCE-I-ENROLLMENT-WINDOWED",
+    "COMMS-I-TIER3-CONFINED",
+  ],
+} as const;
+
 describe("revisioned protocol registry", () => {
   const registry = loadRegistry(repositoryRoot);
+
+  it("preserves historical first versions and closes the new 0.6 ID set", () => {
+    const at06 = {
+      features: registry.features
+        .filter(({ first_version }) => first_version === "heterodyne/0.6.0")
+        .map(({ id }) => id),
+      kinds: registry.kinds
+        .filter(({ first_version }) => first_version === "heterodyne/0.6.0")
+        .map(({ kind }) => kind),
+      kind_profiles: registry.kinds
+        .flatMap(({ profiles }) => profiles)
+        .filter(({ first_version }) => first_version === "heterodyne/0.6.0")
+        .map(({ profile_id }) => profile_id),
+      objects: registry.objects
+        .filter(({ first_version }) => first_version === "heterodyne/0.6.0")
+        .map(({ id }) => id),
+      proof_domains: registry.proof_domains
+        .filter(({ first_version }) => first_version === "heterodyne/0.6.0")
+        .map(({ id }) => id),
+      reason_codes: registry.reason_codes
+        .filter(({ first_version }) => first_version === "heterodyne/0.6.0")
+        .map(({ code }) => code),
+      security_invariants: registry.security_invariants
+        .filter(({ first_version }) => first_version === "heterodyne/0.6.0")
+        .map(({ id }) => id),
+    };
+
+    expect(at06).toEqual(NEW_0_6_REGISTRY_IDS);
+    expect(registry.kinds
+      .flatMap(({ profiles }) => profiles)
+      .find(({ profile_id }) =>
+        profile_id === "heterodyne-assurance-enrollment-inception-v1"
+      )?.first_version).toBe("heterodyne/0.5.0");
+    expect(registry.kinds
+      .flatMap(({ profiles }) => profiles)
+      .find(({ profile_id }) =>
+        profile_id === "heterodyne-assurance-enrollment-contest-profile-v1"
+      )?.first_version).toBe("heterodyne/0.6.0");
+  });
 
   it("assigns node-scoped JWT ownership only to Control", () => {
     const featureIds = registry.features.map(({ id }) => id);
@@ -366,6 +427,25 @@ describe("revisioned protocol registry", () => {
       ],
     });
     expect(registry.proof_domains.find(
+      ({ id }) => id === "heterodyne-workspace-assurance-authorization-v1",
+    )).toMatchObject({
+      owner: "workspace",
+      first_version: "heterodyne/0.6.0",
+      suites: ["bip340"],
+      bound_members: [
+        "evaluated_at",
+        "next_assurance",
+        "next_policy_head",
+        "previous_assurance",
+        "previous_policy_head",
+        "profile",
+        "suite",
+        "transition_digest",
+        "verification_key",
+        "workspace_key",
+      ],
+    });
+    expect(registry.proof_domains.find(
       ({ id }) => id === "heterodyne-workspace-successor-reauthorization-v1",
     )).toMatchObject({
       owner: "workspace",
@@ -599,7 +679,7 @@ describe("revisioned protocol registry", () => {
         "core.repo-relay-client.v1",
         "comms.radicle-backed-marmot-relay.v1",
       ],
-      spec_ref: "heterodyne:0.5.0#comms-trusted-seed-private-relay",
+      spec_ref: "heterodyne:0.6.0#comms-trusted-seed-private-relay",
     });
     expect(feature("comms.agent-authorship.v1").prerequisites)
       .toEqual(["comms.oidc-jwt-projection.v1"]);
@@ -682,14 +762,14 @@ describe("revisioned protocol registry", () => {
     expect(feature("control.multi-persona-vaults.v1")).toMatchObject({
       owner: "control",
       prerequisites: ["comms.marmot-conversations.v1"],
-      spec_ref: "heterodyne:0.5.0#control-persona-vaults",
+      spec_ref: "heterodyne:0.6.0#control-persona-vaults",
     });
     expect(feature("control.nip46-oidc-signing.v1")).toMatchObject({
       prerequisites: [
         "comms.oidc-jwt-projection.v1",
         "control.multi-persona-vaults.v1",
       ],
-      spec_ref: "heterodyne:0.5.0#control-nip46-signing",
+      spec_ref: "heterodyne:0.6.0#control-nip46-signing",
     });
     expect(feature("control.agent-workload-publication.v1").prerequisites)
       .toEqual([
@@ -958,8 +1038,8 @@ describe("revisioned protocol registry", () => {
     ]));
   });
 
-  it("keeps baseline and historical reason ownership at revision 14", () => {
-    expect(registry.manifest.revision).toBe(14);
+  it("keeps baseline and historical reason ownership at revision 15", () => {
+    expect(registry.manifest.revision).toBe(15);
     const reasons = new Map(
       registry.reason_codes.map((entry) => [entry.code, entry]),
     );

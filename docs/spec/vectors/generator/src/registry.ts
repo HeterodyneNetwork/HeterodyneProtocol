@@ -3,7 +3,10 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Ajv, type AnySchema, type ErrorObject } from "ajv";
-import { assertCurrentFamilyVersion, FAMILY_VERSION } from "./family.js";
+import {
+  FAMILY_VERSION,
+  parseFamilyVersion,
+} from "./family.js";
 import type { DocumentId } from "./types.js";
 
 export type RegistryStatus = "draft" | "stable" | "frozen";
@@ -248,13 +251,13 @@ function validateUniqueEntries(registry: RegistryEntrySet): void {
 
 function validateEntryMetadata(registry: RegistryEntrySet): void {
   for (const entry of registry.kinds) {
-    assertCurrentFamilyVersion(entry.first_version);
+    assertRegistryFirstVersion(entry.first_version);
     for (const profile of entry.profiles) {
-      assertCurrentFamilyVersion(profile.first_version);
+      assertRegistryFirstVersion(profile.first_version);
     }
   }
   for (const entry of registry.reason_codes) {
-    assertCurrentFamilyVersion(entry.first_version);
+    assertRegistryFirstVersion(entry.first_version);
     for (const ref of entry.spec_refs) {
       if (!QUALIFIED_REFERENCE.test(ref)) {
         throw new Error(`unqualified registry spec reference: ${ref}`);
@@ -263,7 +266,7 @@ function validateEntryMetadata(registry: RegistryEntrySet): void {
   }
   const featureIds = new Set(registry.features.map((entry) => entry.id));
   for (const entry of registry.security_invariants) {
-    assertCurrentFamilyVersion(entry.first_version);
+    assertRegistryFirstVersion(entry.first_version);
     const prefix = `${entry.owner.toUpperCase()}-I-`;
     if (!entry.id.startsWith(prefix)) {
       throw new Error(`security invariant owner mismatch: ${entry.id}`);
@@ -280,11 +283,11 @@ function validateEntryMetadata(registry: RegistryEntrySet): void {
   }
   validateFeatures(registry.features);
   for (const entry of registry.objects) {
-    assertCurrentFamilyVersion(entry.first_version);
+    assertRegistryFirstVersion(entry.first_version);
     assertUnique(entry.carriers, `duplicate object carrier: ${entry.id}`);
   }
   for (const entry of registry.proof_domains) {
-    assertCurrentFamilyVersion(entry.first_version);
+    assertRegistryFirstVersion(entry.first_version);
     // Bound members are canonicalized under JCS, so a declaration whose
     // members are unsorted does not describe the bytes an implementer signs.
     const sorted = [...entry.bound_members].sort();
@@ -294,13 +297,31 @@ function validateEntryMetadata(registry: RegistryEntrySet): void {
   }
 }
 
+function assertRegistryFirstVersion(value: string): void {
+  const [major, minor, patch] = parseFamilyVersion(value)
+    .split(/[+-]/u, 1)[0]
+    .split(".")
+    .map((part) => Number.parseInt(part, 10));
+  const [currentMajor, currentMinor, currentPatch] = FAMILY_VERSION
+    .split(/[+-]/u, 1)[0]
+    .split(".")
+    .map((part) => Number.parseInt(part, 10));
+  if (
+    major > currentMajor
+    || (major === currentMajor && minor > currentMinor)
+    || (major === currentMajor && minor === currentMinor && patch > currentPatch)
+  ) {
+    throw new Error(`registry first version ${value} exceeds heterodyne/${FAMILY_VERSION}`);
+  }
+}
+
 function validateFeatures(features: FeatureEntry[]): void {
   const byId = new Map(features.map((entry) => [entry.id, entry]));
   for (const entry of features) {
     if (!entry.id.startsWith(`${entry.owner}.`)) {
       throw new Error(`feature owner mismatch: ${entry.id}`);
     }
-    assertCurrentFamilyVersion(entry.first_version);
+    assertRegistryFirstVersion(entry.first_version);
     if (!QUALIFIED_REFERENCE.test(entry.spec_ref)) {
       throw new Error(`unqualified feature spec reference: ${entry.spec_ref}`);
     }

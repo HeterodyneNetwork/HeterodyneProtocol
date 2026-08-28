@@ -72,6 +72,12 @@ outer binding in [§8](#assurance-enrollment-window). It carries no generic
 Heterodyne stamping tag. Enrollment observation receipts are signed portable
 objects rather than Nostr events and conform to
 [`enrollment-observation-receipt-v1.schema.json`](schemas/assurance/enrollment-observation-receipt-v1.schema.json).
+Their BIP-340 signature covers the
+[`heterodyne:0.6.0#core-proof-bytes`](heterodyne-core.md#core-proof-bytes)
+bytes for domain `heterodyne-assurance-enrollment-observation-v1` and binds
+`active_key`, `cold_root`, `conflict_free`, `first_observed_at`,
+`inception_event_id`, `last_observed_at`, `profile`, `spec_version`, and
+`witness_key`; `signature` itself is excluded.
 
 The outer NIP-01 `pubkey` is always the key that actually signed the event.
 The `active_key`, `cold_root`, `issuer`, `subject_key`, and proof keys inside
@@ -558,6 +564,30 @@ Assurance implementations preserve these registered invariants:
 - **ASSURANCE-I-NO-IMPLICIT-CONTINUATION:** Succession transfers no succession authority, associated-key issuance policy, subordinate key, repository, group, delegate, financial, or application authority unless the record explicitly reauthorizes it.
 - **ASSURANCE-I-ASSOCIATED-KEY-BOUNDS:** Associated keys are accepted only for their exact head, active-key or epoch-threshold issuance ceiling, narrowed role and scope, issuer, subject, time bounds, active-grant proof requirements, and non-revoked state.
 - **ASSURANCE-I-EXPORT-LOSSLESS:** KERI export either preserves every security-relevant accepted Assurance semantic or fails without emitting a misleading partial identity.
+
+<a id="assurance-strict-profile"></a>
+### 14.1 Assurance strict profile
+
+The Assurance strict profile composes the Core strict closure and adds every
+baseline Assurance invariant. Feature-bound continuity, associated-key, and
+KERI-export invariants remain obligations of their owning feature claims and
+are not restated by the profile.
+
+<!-- fixture:assurance-strict-profile -->
+```json
+{
+  "profile_id": "heterodyne-assurance-strict-v1",
+  "conformance_class": "Core+Assurance",
+  "state": "active",
+  "requires_profiles": [
+    "heterodyne-core-strict-v1"
+  ],
+  "adds_invariants": [
+    "ASSURANCE-I-CORE-OPTIONALITY",
+    "ASSURANCE-I-ENROLLMENT-WINDOWED"
+  ]
+}
+```
 
 <a id="assurance-continuity-conformance"></a>
 ## 15. Optional conformance claims

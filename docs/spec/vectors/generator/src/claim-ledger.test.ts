@@ -820,6 +820,7 @@ describe("multi-writer OIDC issuer authority", () => {
     expect(active).toEqual({
       checkpoint: s.issuerKeyEpochOneState.checkpoint,
       conflicted: false,
+      state: s.issuerKeyEpochOneState,
     });
 
     const records = [
@@ -842,9 +843,10 @@ describe("multi-writer OIDC issuer authority", () => {
     expect(currentAuthorizationLedgerView(conflicted)).toEqual({
       checkpoint: repository.checkpoint,
       conflicted: true,
+      state: conflicted,
     });
     expect(() => currentAuthorizationLedgerView(structuredClone(conflicted)))
-      .toThrow(/validated ledger state/);
+      .toThrow(/canonical merged ledger state/);
   });
 
   it("persists the exact mint bound and permits zero only at the checkpoint instant", () => {

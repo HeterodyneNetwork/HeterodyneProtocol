@@ -2,42 +2,42 @@
   "proof_domains": [
     {
       "id": "heterodyne-control-signer-grant-v1",
-      "owner": "control", "first_version": "heterodyne/0.6.0", "status": "draft",
+      "owner": "control", "first_version": "heterodyne/0.5.0", "status": "draft",
       "bound_members": ["unsigned_grant"],
       "suites": ["bip340"],
       "description": "Active persona authorization of one exact closed NIP-46 signer grant."
     },
     {
       "id": "heterodyne-control-compromise-reset-grant-v1",
-      "owner": "control", "first_version": "heterodyne/0.6.0", "status": "draft",
+      "owner": "control", "first_version": "heterodyne/0.5.0", "status": "draft",
       "bound_members": ["unsigned_grant"],
       "suites": ["bip340"],
       "description": "Old active account or pinned Assurance authority authorization of one exact compromise reset."
     },
     {
       "id": "heterodyne-control-compromise-reset-completion-v1",
-      "owner": "control", "first_version": "heterodyne/0.6.0", "status": "draft",
+      "owner": "control", "first_version": "heterodyne/0.5.0", "status": "draft",
       "bound_members": ["unsigned_completion"],
       "suites": ["bip340"],
       "description": "Successor account acceptance of one exact reset completion and evidence-bundle digest."
     },
     {
       "id": "heterodyne-control-reset-state-evidence-v1",
-      "owner": "control", "first_version": "heterodyne/0.6.0", "status": "draft",
+      "owner": "control", "first_version": "heterodyne/0.5.0", "status": "draft",
       "bound_members": ["action", "authority_class", "effective_at", "evidence_id", "prior_authorization_digest", "recovery_id", "signer", "subject_id"],
       "suites": ["bip340"],
       "description": "Authenticated individual revocation, invalidation, or stalled-state evidence."
     },
     {
       "id": "heterodyne-control-mls-commit-evidence-v1",
-      "owner": "control", "first_version": "heterodyne/0.6.0", "status": "draft",
+      "owner": "control", "first_version": "heterodyne/0.5.0", "status": "draft",
       "bound_members": ["unsigned_commit_evidence"],
       "suites": ["bip340"],
       "description": "Prior-group-verifier attestation over raw MLS Commit bytes, prior state, exact leaf transition, and successor state."
     },
     {
       "id": "heterodyne-control-mls-keypackage-evidence-v1",
-      "owner": "control", "first_version": "heterodyne/0.6.0", "status": "draft",
+      "owner": "control", "first_version": "heterodyne/0.5.0", "status": "draft",
       "bound_members": ["unsigned_keypackage_evidence"],
       "suites": ["bip340"],
       "description": "Pinned MLS verifier attestation over a successor-bound standard Nostr KeyPackage event and decoded package binding."
@@ -45,7 +45,7 @@
     {
       "id": "heterodyne-nid-binding-v1",
       "owner": "assurance",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "status": "draft",
       "bound_members": [
         "cold_root",
@@ -60,7 +60,7 @@
     {
       "id": "heterodyne-assurance-succession-transition-v1",
       "owner": "assurance",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "status": "draft",
       "bound_members": [
         "active_key",
@@ -92,7 +92,7 @@
     {
       "id": "heterodyne-assurance-associated-key-record-v1",
       "owner": "assurance",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "status": "draft",
       "bound_members": [
         "active_key",
@@ -120,7 +120,7 @@
     {
       "id": "heterodyne-assurance-downgrade-v1",
       "owner": "assurance",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "status": "draft",
       "bound_members": [
         "active_key",
@@ -156,9 +156,31 @@
       "description": "A configured Assurance witness signs the domain-separated JCS digest of every closed enrollment observation receipt member except signature."
     },
     {
+      "id": "heterodyne-workspace-assurance-authorization-v1",
+      "owner": "workspace",
+      "first_version": "heterodyne/0.6.0",
+      "status": "draft",
+      "bound_members": [
+        "evaluated_at",
+        "next_assurance",
+        "next_policy_head",
+        "previous_assurance",
+        "previous_policy_head",
+        "profile",
+        "suite",
+        "transition_digest",
+        "verification_key",
+        "workspace_key"
+      ],
+      "suites": [
+        "bip340"
+      ],
+      "description": "An embedding-supplied Assurance-history key signs the exact closed Workspace Assurance transition authorization, binding both policy heads, both optional profiles, transition digest, and evaluation time."
+    },
+    {
       "id": "heterodyne-node-advert-v1",
       "owner": "core",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "status": "draft",
       "bound_members": [
         "endpoint",
@@ -175,7 +197,7 @@
     {
       "id": "heterodyne-claim-pop-v1",
       "owner": "comms",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "status": "draft",
       "bound_members": [
         "audience",
@@ -196,7 +218,7 @@
     {
       "id": "heterodyne-claim-revocation-v1",
       "owner": "comms",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "status": "draft",
       "bound_members": [
         "claim_id",
@@ -214,7 +236,7 @@
     {
       "id": "heterodyne-one-time-invite-v1",
       "owner": "comms",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "status": "draft",
       "bound_members": [
         "descriptor"
@@ -227,7 +249,7 @@
     {
       "id": "heterodyne-one-time-invite-response-v1",
       "owner": "comms",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "status": "draft",
       "bound_members": [
         "response"
@@ -240,7 +262,7 @@
     {
       "id": "heterodyne-trusted-seed-acl-v1",
       "owner": "comms",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "status": "draft",
       "bound_members": [
         "accounts[].account_key",
@@ -272,7 +294,7 @@
     {
       "id": "heterodyne-workspace-repository-view-v1",
       "owner": "workspace",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "status": "draft",
       "bound_members": [
         "authority_checkpoint",
@@ -302,7 +324,7 @@
     {
       "id": "heterodyne-workspace-object-set-v1",
       "owner": "workspace",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "status": "draft",
       "bound_members": [
         "object_ids"
@@ -316,7 +338,7 @@
     {
       "id": "heterodyne-workspace-invitation-nonce-v1",
       "owner": "workspace",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "status": "draft",
       "bound_members": [
         "grant_id",
@@ -334,7 +356,7 @@
     {
       "id": "heterodyne-workspace-invitation-acceptance-v1",
       "owner": "workspace",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "status": "draft",
       "bound_members": [
         "authority_checkpoint",
@@ -362,7 +384,7 @@
     {
       "id": "heterodyne-workspace-successor-reauthorization-v1",
       "owner": "workspace",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "status": "draft",
       "bound_members": [
         "authority_checkpoint",
@@ -401,7 +423,7 @@
     {
       "id": "heterodyne-workspace-affiliation-evidence-v1",
       "owner": "workspace",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "status": "draft",
       "bound_members": [
         "authority_checkpoint",
@@ -426,7 +448,7 @@
     {
       "id": "heterodyne-workspace-grant-approval-v1",
       "owner": "workspace",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "status": "draft",
       "bound_members": [
         "approver_key",
@@ -448,7 +470,7 @@
     {
       "id": "heterodyne-workspace-joint-delegate-v1",
       "owner": "workspace",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "status": "draft",
       "bound_members": [
         "authority_checkpoint",
@@ -472,7 +494,7 @@
     {
       "id": "heterodyne-workspace-grant-operation-v1",
       "owner": "workspace",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "status": "draft",
       "bound_members": [
         "activates_at",
@@ -506,7 +528,7 @@
     {
       "id": "heterodyne-workspace-joint-operation-v1",
       "owner": "workspace",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "status": "draft",
       "bound_members": [
         "authority_checkpoint",
@@ -524,7 +546,7 @@
     {
       "id": "heterodyne-workspace-key-request-v1",
       "owner": "workspace",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "status": "draft",
       "bound_members": [
         "authenticated_account",
@@ -544,7 +566,7 @@
     {
       "id": "heterodyne-workspace-object-v1",
       "owner": "workspace",
-      "first_version": "heterodyne/0.6.0",
+      "first_version": "heterodyne/0.5.0",
       "status": "draft",
       "bound_members": [
         "authority_checkpoint",

@@ -12,6 +12,7 @@ const LIVE_AUTHORIZATION_CONSUMERS = [
   "claims.ts",
   "control-signing.ts",
   "radicle.ts",
+  "replaceable-selection.ts",
   "social-atproto.ts",
   "social-events.ts",
   "social-nip72.ts",

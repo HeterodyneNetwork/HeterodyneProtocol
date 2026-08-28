@@ -55,7 +55,7 @@ async function signedAcl(
 ): Promise<Record<string, unknown>> {
   const acl = {
     profile: "heterodyne.trusted-seed-acl.v1",
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     administrator_account: administratorAccount,
     accounts: [{ account_key: account, roles: ["read", "write"] }],
     h: route,

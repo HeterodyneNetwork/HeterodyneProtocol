@@ -18,7 +18,7 @@ import {
 } from "./replaceable-selection.js";
 
 export type AtprotoBinding = {
-  spec_version: "heterodyne/0.5.0";
+  spec_version: "heterodyne/0.6.0";
   did: string;
   did_signing_key_id: string;
   pubkey: string;
@@ -30,7 +30,7 @@ export type AtprotoBinding = {
 };
 
 export type AtprotoRevocation = {
-  spec_version: "heterodyne/0.5.0";
+  spec_version: "heterodyne/0.6.0";
   record_type: "atproto_link_revocation";
   did: string;
   pubkey: string;
@@ -694,7 +694,7 @@ function parseBinding(value: unknown): AtprotoBinding | null {
       .join("\0")
   ) return null;
   if (
-    record.spec_version !== "heterodyne/0.5.0"
+    record.spec_version !== "heterodyne/0.6.0"
     || typeof record.did !== "string"
     || !isCanonicalDid(record.did)
     || typeof record.did_signing_key_id !== "string"
@@ -713,7 +713,7 @@ function parseBinding(value: unknown): AtprotoBinding | null {
       && (typeof record.rid !== "string" || !isCanonicalRid(record.rid))
   ) return null;
   return {
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     did: record.did,
     did_signing_key_id: record.did_signing_key_id,
     pubkey: record.pubkey,
@@ -733,7 +733,7 @@ function parseRevocation(value: unknown): AtprotoRevocation | null {
       "binding_hash", "did", "generation", "nonce", "pubkey", "record_type",
       "revoked_at", "spec_version",
     ].join("\0")
-    || record.spec_version !== "heterodyne/0.5.0"
+    || record.spec_version !== "heterodyne/0.6.0"
     || record.record_type !== "atproto_link_revocation"
     || typeof record.did !== "string"
     || !isCanonicalDid(record.did)
@@ -749,7 +749,7 @@ function parseRevocation(value: unknown): AtprotoRevocation | null {
     || (record.revoked_at as number) < 0
   ) return null;
   return {
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     record_type: "atproto_link_revocation",
     did: record.did,
     pubkey: record.pubkey,

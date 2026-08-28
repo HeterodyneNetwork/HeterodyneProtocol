@@ -24,6 +24,24 @@ const repositoryRoot = resolve(import.meta.dirname, "../../../../../");
 const read = (path: string) => readFileSync(resolve(repositoryRoot, path), "utf8");
 const temps: string[] = [];
 
+type StrictProfileFixture = {
+  profile_id: string;
+  requires_profiles: string[];
+  adds_invariants: string[];
+};
+
+function strict(profileId: string): StrictProfileFixture {
+  const fixturePattern =
+    /<!--\s*fixture:[^>]*strict-profile[^>]*-->\s*```json[ \t]*\r?\n([\s\S]*?)\r?\n```/giu;
+  for (const document of ["core", "assurance", "comms", "control", "social", "workspace"]) {
+    for (const match of read(`docs/spec/heterodyne-${document}.md`).matchAll(fixturePattern)) {
+      const fixture = JSON.parse(match[1]) as StrictProfileFixture;
+      if (fixture.profile_id === profileId) return fixture;
+    }
+  }
+  throw new Error(`missing strict profile fixture: ${profileId}`);
+}
+
 afterEach(() => {
   for (const path of temps.splice(0)) rmSync(path, { recursive: true, force: true });
 });
@@ -739,11 +757,11 @@ describe("canonical family documentation", () => {
     expect(maintained).toContain("5d4bb5fb58b35c88d8a9db120a09f1087237f35c");
   });
 
-  it("does not invent an Assurance or singular six-document strict profile", () => {
+  it("documents every document strict profile without a singular family profile", () => {
     const guides = `${read("README.md")}\n${read("docs/glossary.md")}`;
-    expect(guides).not.toContain("heterodyne-assurance-strict-v1");
+    expect(guides).toContain("heterodyne-assurance-strict-v1");
     expect(guides).not.toMatch(/six[- ]document strict profile/i);
-    expect(guides).toMatch(/Assurance[\s\S]{0,160}no strict profile/i);
+    expect(guides).not.toMatch(/Assurance[\s\S]{0,160}no strict profile/i);
   });
 
   it("limits the seven-day warning-only rule to kind 0 and kind 10002", () => {
@@ -779,7 +797,7 @@ describe("canonical family documentation", () => {
       ["social", "social-lists"],
     ] as const;
     for (const [document, anchor] of sources) {
-      expect(index).toContain(`heterodyne:0.5.0#${anchor}`);
+      expect(index).toContain(`heterodyne:0.6.0#${anchor}`);
       expect(read(`docs/spec/heterodyne-${document}.md`))
         .toContain(`<a id="${anchor}"></a>`);
     }
@@ -1131,6 +1149,19 @@ describe("canonical family documentation", () => {
     );
   });
 
+  it("closes the 0.6 Assurance, Comms, and Workspace strict profiles", () => {
+    expect(strict("heterodyne-assurance-strict-v1").requires_profiles)
+      .toEqual(["heterodyne-core-strict-v1"]);
+    expect(strict("heterodyne-assurance-strict-v1").adds_invariants)
+      .toContain("ASSURANCE-I-ENROLLMENT-WINDOWED");
+    expect(strict("heterodyne-comms-strict-v1").adds_invariants)
+      .toContain("COMMS-I-TIER3-CONFINED");
+    expect(strict("heterodyne-workspace-strict-v1").adds_invariants)
+      .toContain("WORKSPACE-I-OPTIONAL-ASSURANCE");
+    expect(strict("heterodyne-workspace-strict-v1").adds_invariants)
+      .not.toContain("WORKSPACE-I-GOVERNANCE-ASSURED");
+  });
+
   it("scopes every invariant to baseline or one feature its own document owns", () => {
     const registry = loadRegistry(repositoryRoot);
     const features = new Set(registry.features.map(({ id }) => id));
@@ -1186,7 +1217,7 @@ describe("registry-bound artifacts", () => {
     }
   });
 
-  it("carries the single family version on every registry entry", () => {
+  it("retains historical registry introductions alongside the current family version", () => {
     const registry = loadRegistry(repositoryRoot);
     const versions = new Set([
       ...registry.kinds.map(({ first_version }) => first_version),
@@ -1196,8 +1227,12 @@ describe("registry-bound artifacts", () => {
       ...registry.security_invariants.map(({ first_version }) => first_version),
       ...registry.features.map(({ first_version }) => first_version),
       ...registry.objects.map(({ first_version }) => first_version),
+      ...registry.proof_domains.map(({ first_version }) => first_version),
     ]);
-    expect([...versions]).toEqual(["heterodyne/0.5.0"]);
+    expect([...versions].sort()).toEqual([
+      "heterodyne/0.5.0",
+      "heterodyne/0.6.0",
+    ]);
   });
 
   it("resolves every feature prerequisite within the registry", () => {
