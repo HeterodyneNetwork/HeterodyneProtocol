@@ -11,11 +11,20 @@ import { resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { evaluateAssuranceCompromiseContinuation } from "./assurance-policy.js";
 import { evaluateSuccession } from "./assurance.js";
+import { buildClaimLedgerScenario } from "./claim-ledger-test-support.js";
+import { buildLedgerRepositoryEvidence } from "./claim-ledger.js";
 import { validateControlSignedEffect } from "./control-policy.js";
 import { buildCurrentCases, buildCurrentVectors } from "./current-vectors/index.js";
-import { assertProjectionPreservesVerdict } from "./current-vectors/boundary-runners.js";
+import {
+  assertProjectionPreservesVerdict,
+  invokeCurrentBoundary,
+} from "./current-vectors/boundary-runners.js";
 import { buildProfileCases } from "./current-vectors/profiles.js";
-import { CURRENT_PROFILE_ORACLES } from "./current-vectors/profile-oracles.js";
+import {
+  CURRENT_PROFILE_ORACLES,
+  currentProfileOracleForVector,
+} from "./current-vectors/profile-oracles.js";
+import { buildFixtures } from "./fixtures.js";
 import { validateCurrentKindProfileNegotiation } from "./profile-negotiation.js";
 import { loadRegistry } from "./registry.js";
 import { validateVectorOrThrow } from "./schema.js";
@@ -46,6 +55,58 @@ afterEach(() => {
 });
 
 describe("current vector catalog import boundary", () => {
+  it("rejects runtime-loader capabilities even when escaped through dormant closures, containers, or parameters", () => {
+    const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-capability-escapes-"));
+    temporaryRoots.push(root);
+    const fixtures = new Map<string, string>([
+      [
+        "closure.ts",
+        [
+          "const getLoader = () => require;",
+          "const loader = getLoader();",
+          'loader("./topics-closure.js");',
+        ].join("\n"),
+      ],
+      [
+        "object-container.ts",
+        [
+          "const loaders = { current: require };",
+          'loaders.current("./topics-object-container.js");',
+        ].join("\n"),
+      ],
+      [
+        "array-container.ts",
+        [
+          "const loaders = [require];",
+          'loaders[0]("./topics-array-container.js");',
+        ].join("\n"),
+      ],
+      [
+        "parameter.ts",
+        [
+          "function invoke(loader: (specifier: string) => unknown) {",
+          '  return loader("./topics-parameter.js");',
+          "}",
+          "invoke(require);",
+        ].join("\n"),
+      ],
+      [
+        "dormant.ts",
+        [
+          "if (false) {",
+          '  void import("./topics-dormant.js");',
+          "}",
+        ].join("\n"),
+      ],
+    ]);
+    for (const [file, source] of fixtures) {
+      const path = resolve(root, file);
+      writeFileSync(path, source);
+      expect(() => moduleDependencies(path), file)
+        .toThrow(/runtime-loader syntax prohibited in current vector graph/u);
+    }
+  });
+
   it("keeps the complete catalog graph free of historical authoring modules", () => {
     expect(compilerConfigPath(catalogEntry)).toBe(currentConfigPath);
     const graph = moduleDependencies(catalogEntry);
@@ -53,7 +114,7 @@ describe("current vector catalog import boundary", () => {
       .toEqual([]);
   }, 60_000);
 
-  it("cannot hide forbidden modules behind re-exports or executable import forms", () => {
+  it("follows every compiler-resolved static re-export and import-equals edge", () => {
     const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-imports-"));
     temporaryRoots.push(root);
     mkdirSync(resolve(root, "nested"), { recursive: true });
@@ -62,20 +123,14 @@ describe("current vector catalog import boundary", () => {
       [
         'export { value as named } from "./topics-named.js";',
         'export * from "./topics-star.js";',
-        'void import("./snapshot-dynamic.js");',
         'import legacy = require("./legacy-import-equals.js");',
-        'require("./kel.js");',
-        'module.require("./kel-replay.js");',
         'void legacy;',
       ].join("\n"),
     );
     for (const file of [
       "topics-named.ts",
       "topics-star.ts",
-      "snapshot-dynamic.ts",
       "legacy-import-equals.ts",
-      "kel.ts",
-      "kel-replay.ts",
     ]) {
       writeFileSync(resolve(root, file), "export const value = true;\n");
     }
@@ -83,16 +138,13 @@ describe("current vector catalog import boundary", () => {
     const graph = moduleDependencies(resolve(root, "index.ts"));
     expect(graph.filter((path) => forbidden.some((pattern) => pattern.test(path))))
       .toEqual([
-        realpathSync(resolve(root, "kel-replay.ts")),
-        realpathSync(resolve(root, "kel.ts")),
         realpathSync(resolve(root, "legacy-import-equals.ts")),
-        realpathSync(resolve(root, "snapshot-dynamic.ts")),
         realpathSync(resolve(root, "topics-named.ts")),
         realpathSync(resolve(root, "topics-star.ts")),
       ].sort());
   });
 
-  it("cannot hide forbidden modules behind require aliases or createRequire", () => {
+  it("rejects require aliases and createRequire instead of traversing them", () => {
     const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-aliases-"));
     temporaryRoots.push(root);
     writeFileSync(
@@ -113,13 +165,8 @@ describe("current vector catalog import boundary", () => {
       "legacy-create-require.ts",
     ]) writeFileSync(resolve(root, file), "export const value = true;\n");
 
-    expect(moduleDependencies(resolve(root, "index.ts")).filter((path) =>
-      forbidden.some((pattern) => pattern.test(path))
-    )).toEqual([
-      realpathSync(resolve(root, "legacy-create-require.ts")),
-      realpathSync(resolve(root, "snapshot-module-alias.ts")),
-      realpathSync(resolve(root, "topics-alias.ts")),
-    ].sort());
+    expect(() => moduleDependencies(resolve(root, "index.ts")))
+      .toThrow(/runtime-loader syntax prohibited in current vector graph/u);
   });
 
   it("fails closed on nonliteral aliased module loads", () => {
@@ -134,10 +181,10 @@ describe("current vector catalog import boundary", () => {
       ].join("\n"),
     );
     expect(() => moduleDependencies(resolve(root, "index.ts")))
-      .toThrow(/nonliteral CommonJS require/u);
+      .toThrow(/runtime-loader syntax prohibited in current vector graph/u);
   });
 
-  it("follows loader aliases introduced by assignment and destructuring", () => {
+  it("rejects loader aliases introduced by assignment and destructuring", () => {
     const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-bindings-"));
     temporaryRoots.push(root);
     writeFileSync(
@@ -158,16 +205,11 @@ describe("current vector catalog import boundary", () => {
       "legacy-array.ts",
     ]) writeFileSync(resolve(root, file), "export const value = true;\n");
 
-    expect(moduleDependencies(resolve(root, "index.ts")).filter((path) =>
-      forbidden.some((pattern) => pattern.test(path))
-    )).toEqual([
-      realpathSync(resolve(root, "legacy-array.ts")),
-      realpathSync(resolve(root, "snapshot-object.ts")),
-      realpathSync(resolve(root, "topics-assigned.ts")),
-    ].sort());
+    expect(() => moduleDependencies(resolve(root, "index.ts")))
+      .toThrow(/runtime-loader syntax prohibited in current vector graph/u);
   });
 
-  it("follows later-assigned and destructured createRequire factories", () => {
+  it("rejects later-assigned and destructured createRequire factories", () => {
     const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-create-require-bindings-"));
     temporaryRoots.push(root);
     writeFileSync(
@@ -187,15 +229,11 @@ describe("current vector catalog import boundary", () => {
     writeFileSync(resolve(root, "topics-created-assigned.ts"), "export const value = true;\n");
     writeFileSync(resolve(root, "snapshot-created-object.ts"), "export const value = true;\n");
 
-    expect(moduleDependencies(resolve(root, "index.ts")).filter((path) =>
-      forbidden.some((pattern) => pattern.test(path))
-    )).toEqual([
-      realpathSync(resolve(root, "snapshot-created-object.ts")),
-      realpathSync(resolve(root, "topics-created-assigned.ts")),
-    ].sort());
+    expect(() => moduleDependencies(resolve(root, "index.ts")))
+      .toThrow(/runtime-loader syntax prohibited in current vector graph/u);
   });
 
-  it("invalidates reassigned aliases and respects lexical shadowing", () => {
+  it("rejects dormant loader capabilities even after reassignment or shadowing", () => {
     const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-shadowing-"));
     temporaryRoots.push(root);
     writeFileSync(
@@ -214,12 +252,11 @@ describe("current vector catalog import boundary", () => {
     writeFileSync(resolve(root, "topics-reassigned.ts"), "export const value = true;\n");
     writeFileSync(resolve(root, "snapshot-shadowed.ts"), "export const value = true;\n");
 
-    expect(moduleDependencies(resolve(root, "index.ts")).filter((path) =>
-      forbidden.some((pattern) => pattern.test(path))
-    )).toEqual([]);
+    expect(() => moduleDependencies(resolve(root, "index.ts")))
+      .toThrow(/runtime-loader syntax prohibited in current vector graph/u);
   });
 
-  it("fails closed when a possibly-live loader alias has ambiguous provenance", () => {
+  it("rejects possibly-live loader aliases without provenance interpretation", () => {
     const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-ambiguous-"));
     temporaryRoots.push(root);
     writeFileSync(
@@ -235,7 +272,7 @@ describe("current vector catalog import boundary", () => {
     writeFileSync(resolve(root, "topics-ambiguous.ts"), "export const value = true;\n");
 
     expect(() => moduleDependencies(resolve(root, "index.ts")))
-      .toThrow(/ambiguous CommonJS loader/u);
+      .toThrow(/runtime-loader syntax prohibited in current vector graph/u);
   });
 
   it("resolves configured local aliases through TypeScript and rejects missing ones", () => {
@@ -256,7 +293,7 @@ describe("current vector catalog import boundary", () => {
       realpathSync(resolve(root, "src/topics-path.ts")),
     );
 
-    writeFileSync(resolve(root, "missing.ts"), 'void import("@local/missing.js");\n');
+    writeFileSync(resolve(root, "missing.ts"), 'export * from "@local/missing.js";\n');
     expect(() => moduleDependencies(resolve(root, "missing.ts")))
       .toThrow(/unresolved current vector import/u);
   });
@@ -266,11 +303,23 @@ describe("current vector catalog import boundary", () => {
     temporaryRoots.push(root);
     writeFileSync(
       resolve(root, "index.ts"),
-      'void import("@heterodyne-test/missing-current-vector-leaf");\n',
+      'export * from "@heterodyne-test/missing-current-vector-leaf";\n',
     );
 
     expect(() => moduleDependencies(resolve(root, "index.ts")))
       .toThrow(/unresolved current vector import/u);
+  });
+
+  it("accepts only Node builtins present in builtinModules", () => {
+    const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-builtins-"));
+    temporaryRoots.push(root);
+    writeFileSync(resolve(root, "valid.ts"), 'import "node:assert";\n');
+    expect(moduleDependencies(resolve(root, "valid.ts")))
+      .toEqual([realpathSync(resolve(root, "valid.ts"))]);
+
+    writeFileSync(resolve(root, "unknown.ts"), 'import "node:not-a-current-builtin";\n');
+    expect(() => moduleDependencies(resolve(root, "unknown.ts")))
+      .toThrow(/unknown Node builtin in current vector graph/u);
   });
 
   it("makes current authoring consume only the current catalog", () => {
@@ -390,6 +439,170 @@ describe("current 0.6 vector catalog", () => {
     expect(underMutation.input).toEqual(expected.input);
     expect(validateCurrentKindProfileNegotiation(mutated, underMutation.input))
       .toEqual({ verdict: "reject", reason: "profile-metadata-mismatch" });
+  });
+
+  it("rejects a Core breadcrumb profile when its NIP-01 signature or identity is mutated", async () => {
+    const original = (await buildProfileCases()).find(({ vector_id }) =>
+      vector_id === "core/profile-heterodyne-core-rotation-breadcrumb-note-v1"
+    )!;
+    for (const [mutation, expectedReason] of [
+      [
+        (input: Record<string, unknown>) => {
+          const event = input.event !== null && typeof input.event === "object"
+            ? input.event as Record<string, unknown>
+            : {};
+          input.event = { ...event, sig: "00".repeat(64) };
+        },
+        "bad_signature",
+      ],
+      [
+        (input: Record<string, unknown>) => {
+          input.active_persona_key = "ff".repeat(32);
+        },
+        "delegation_mismatch",
+      ],
+    ] as const) {
+      const fixture = structuredClone(original);
+      mutation(fixture.input as Record<string, unknown>);
+      const oracle = currentProfileOracleForVector(fixture.vector_id)!;
+      await expect(invokeCurrentBoundary(oracle.semantic_boundary, fixture))
+        .resolves.toMatchObject({
+          projected_output: { verdict: "reject", reason_code: expectedReason },
+        });
+    }
+  });
+
+  it("rejects a Tier-3 profile when its carrier, repository, or recipient escapes confinement", async () => {
+    const original = (await buildProfileCases()).find(({ vector_id }) =>
+      vector_id === "comms/profile-heterodyne-comms-tier3-wrapped-content-kind-1-v1"
+    )!;
+    for (const [mutation, expectedReason] of [
+      [
+        (input: Record<string, unknown>) => Object.assign(input, {
+          private_group: true,
+          requested_route: "wss://public-relay.example",
+          authorized_routes: ["rad:z3CurrentPrivateRepository"],
+        }),
+        "marmot-private-route-required",
+      ],
+      [
+        (input: Record<string, unknown>) => {
+          input.private_group = false;
+        },
+        "marmot-private-route-required",
+      ],
+      [
+        (input: Record<string, unknown>) => {
+          input.selected = ["ff".repeat(32)];
+        },
+        "tier3-recipient-not-active-device",
+      ],
+    ] as const) {
+      const fixture = structuredClone(original);
+      mutation(fixture.input as Record<string, unknown>);
+      const oracle = currentProfileOracleForVector(fixture.vector_id)!;
+      await expect(invokeCurrentBoundary(oracle.semantic_boundary, fixture))
+        .resolves.toMatchObject({
+          projected_output: { verdict: "reject", reason_code: expectedReason },
+        });
+    }
+  });
+
+  it("rejects a revocation profile when the signed revocation is mutated before merge", async () => {
+    const profile = (await buildProfileCases()).find(({ vector_id }) =>
+      vector_id === "comms/profile-heterodyne-comms-claim-revocation-nostr-bip340-v1"
+    )!;
+    const ledger = await buildClaimLedgerScenario(buildFixtures());
+    const records = [
+      ledger.claimRecordOne,
+      ledger.claimRecordTwo,
+      ledger.grantOne,
+      ledger.revocationRecord,
+    ];
+    const repository = buildLedgerRepositoryEvidence({
+      repository_rid: ledger.rid,
+      confirmed_records: records,
+      observed_at: ledger.now + 60,
+      prior: ledger.baseRepository.repository,
+    });
+    const request = ledger.requestFor(ledger.claimRecordOne, ledger.claimOne);
+    request.verification_context.now = repository.checkpoint.observed_at;
+    const mutatedRevocation = structuredClone(ledger.revocationRecord);
+    const artifact = (mutatedRevocation.payload as {
+      revocation_artifact: { event: { sig: string } };
+    }).revocation_artifact;
+    artifact.event.sig = "00".repeat(64);
+    const fixture = {
+      ...profile,
+      boundary_args: [
+        profile.input,
+        [ledger.claimRecordOne, ledger.claimRecordTwo, ledger.grantOne],
+        [ledger.claimRecordOne, ledger.claimRecordTwo, mutatedRevocation],
+        repository.checkpoint,
+        ledger.makeContext(repository.repository),
+        ledger.writerOne.did_key,
+        request,
+      ],
+    };
+    const oracle = currentProfileOracleForVector(fixture.vector_id)!;
+
+    await expect(invokeCurrentBoundary(oracle.semantic_boundary, fixture))
+      .resolves.toMatchObject({
+        projected_output: { verdict: "reject" },
+      });
+  });
+
+  it("rejects a Control profile when account, leaf, grant, content, or secret confinement is crossed", async () => {
+    const original = (await buildProfileCases()).find(({ vector_id }) =>
+      vector_id === "control/profile-heterodyne-control-marmot-frame-v1"
+    )!;
+    Object.assign(original.input, {
+      active_account: "11".repeat(32),
+      authenticated_account: "11".repeat(32),
+      grant_account: "11".repeat(32),
+      requested_device: "device-one",
+      grant_device: "device-one",
+      requested_leaf: "leaf-one",
+      grant_leaf: "leaf-one",
+      requested_group: "group-one",
+      grant_group: "group-one",
+      requested_grant: "grant-one",
+      grant_id: "grant-one",
+      requested_content_ids: ["content-one"],
+      granted_content_ids: ["content-one"],
+      requested_secret_classes: [],
+    });
+    const mutations = [
+      (input: Record<string, unknown>) => {
+        input.authenticated_account = "22".repeat(32);
+      },
+      (input: Record<string, unknown>) => {
+        input.active_account = "not-a-canonical-account";
+        input.authenticated_account = "not-a-canonical-account";
+        input.grant_account = "not-a-canonical-account";
+      },
+      (input: Record<string, unknown>) => {
+        input.requested_leaf = "leaf-other";
+      },
+      (input: Record<string, unknown>) => {
+        input.requested_grant = "grant-other";
+      },
+      (input: Record<string, unknown>) => {
+        input.requested_content_ids = ["content-other"];
+      },
+      (input: Record<string, unknown>) => {
+        input.requested_secret_classes = ["marmot-leaf-secret"];
+      },
+    ];
+    for (const mutation of mutations) {
+      const fixture = structuredClone(original);
+      mutation(fixture.input as Record<string, unknown>);
+      const oracle = currentProfileOracleForVector(fixture.vector_id)!;
+      await expect(invokeCurrentBoundary(oracle.semantic_boundary, fixture))
+        .resolves.toMatchObject({
+          projected_output: { verdict: "reject", reason_code: "control-token-invalid" },
+        });
+    }
   });
 
   it("binds all 31 fixed profile rows to their exercised live boundary", async () => {

@@ -33,6 +33,34 @@ describe("current Assurance pin and export policy", () => {
       .toEqual({ verdict: "reject", reason_code: "keri_wire_format_rejected" });
   });
 
+  it("classifies only complete small and large CESR count and native field-map prefixes", () => {
+    for (const serialized_record of [
+      "-FAAcurrent-cesr-count",
+      "--FAAAAAcurrent-large-cesr-count",
+      "-GAAcurrent-cesr-field-map",
+      "--GAAAAAcurrent-large-cesr-field-map",
+    ]) {
+      expect(validateAssuranceWireFormat({ serialized_record }), serialized_record)
+        .toEqual({ verdict: "reject", reason_code: "keri_wire_format_rejected" });
+    }
+    for (const serialized_record of [
+      "-F",
+      "-FA",
+      "-F!A",
+      "--F",
+      "--FAAAA",
+      "-G",
+      "-GA",
+      "-G?A",
+      "--G",
+      "--GAAAA",
+      "-HAAnear-miss",
+    ]) {
+      expect(validateAssuranceWireFormat({ serialized_record }), serialized_record)
+        .toEqual({ verdict: "reject", reason_code: "assurance-schema-invalid" });
+    }
+  });
+
   it("accepts only an exact canonical closed NIP-01 envelope", async () => {
     const event = await signEvent({
       secretKey: "41".repeat(32),

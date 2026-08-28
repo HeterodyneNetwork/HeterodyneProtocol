@@ -306,6 +306,110 @@ async function executeCurrentBoundary(
       },
     };
   }
+  if (
+    boundaryId
+    === "privacy-crypto.deriveTier3IndexKey+nostr-tools.nip44+follow-up-hardening.resolveTier3Recipients+comms-policy.evaluatePrivateMarmotRoute"
+  ) {
+    const input = fixture.input as {
+      audience_key: string;
+      key_id: string;
+      plaintext: string;
+      memberPersonas: readonly string[];
+      devices: readonly {
+        persona: string;
+        pubkey: string;
+        active: boolean;
+        role: "human-device" | "full-node" | "agent";
+      }[];
+      selected: readonly string[];
+      private_group: boolean;
+      requested_route: string;
+      authorized_routes: readonly string[];
+    };
+    const key = privacyCrypto.deriveTier3IndexKey(input.audience_key, input.key_id);
+    const ciphertext = nip44.v2.encrypt(
+      input.plaintext,
+      key,
+      hexToBytes("61".repeat(32)),
+    );
+    const recovered = nip44.v2.decrypt(ciphertext, key);
+    const crypto = {
+      derived_key: bytesToHex(key),
+      ciphertext,
+      recovered_plaintext: recovered,
+      authenticated_round_trip: recovered === input.plaintext
+        && ciphertext !== input.plaintext,
+    };
+    const recipients = followUpHardening.resolveTier3Recipients({
+      memberPersonas: input.memberPersonas,
+      devices: input.devices,
+      selected: input.selected,
+    });
+    const route = input.private_group === true
+      ? commsPolicy.evaluatePrivateMarmotRoute({
+          private_group: true,
+          requested_route: input.requested_route,
+          authorized_routes: input.authorized_routes,
+        })
+      : {
+          verdict: "reject" as const,
+          reason_code: "marmot-private-route-required" as const,
+        };
+    const rejection = recipients.verdict === "reject"
+      ? recipients
+      : route.verdict === "reject"
+        ? route
+        : crypto.authenticated_round_trip
+          ? null
+          : { verdict: "reject" as const };
+    const raw = rejection === null
+      ? { verdict: "accept" as const, crypto, recipients, route }
+      : { ...rejection, crypto, recipients, route };
+    return { raw_result: raw, projected_output: raw };
+  }
+  if (
+    boundaryId
+    === "profile-negotiation.verifyCurrentClaimProofProfile+claim-ledger.mergeClaimLedger+evaluateReaderAccess"
+  ) {
+    const [proofInput, left, right, checkpoint, context, readerNid, request] =
+      fixture.boundary_args ?? [];
+    const proof = profileNegotiation.verifyCurrentClaimProofProfile(proofInput);
+    if (proof.verdict === "reject") {
+      const raw = { ...proof, proof };
+      return { raw_result: raw, projected_output: raw };
+    }
+    try {
+      const state = claimLedger.mergeClaimLedger(
+        left as Parameters<typeof claimLedger.mergeClaimLedger>[0],
+        right as Parameters<typeof claimLedger.mergeClaimLedger>[1],
+        checkpoint as Parameters<typeof claimLedger.mergeClaimLedger>[2],
+        context as Parameters<typeof claimLedger.mergeClaimLedger>[3],
+      );
+      const authorization = claimLedger.evaluateReaderAccess(
+        readerNid as Parameters<typeof claimLedger.evaluateReaderAccess>[0],
+        state,
+        request as Parameters<typeof claimLedger.evaluateReaderAccess>[2],
+      );
+      const revocationEnforced = authorization.allowed === false
+        && authorization.state === "revoked"
+        && authorization.reason_code === "claim-revoked"
+        && (state.authenticated_revocations?.length ?? 0) > 0;
+      const raw = {
+        verdict: revocationEnforced ? "accept" as const : "reject" as const,
+        proof,
+        state,
+        authorization,
+      };
+      return { raw_result: raw, projected_output: raw };
+    } catch (error) {
+      const raw = {
+        verdict: "reject" as const,
+        reason_code: claimLedger.ledgerErrorReason(error),
+        proof,
+      };
+      return { raw_result: raw, projected_output: raw };
+    }
+  }
   if (boundaryId === "claims.validateClaimRevocationEnvelope+authorizeWithClaim") {
     const [event, leaf, chain, suppliedContext] = fixture.boundary_args ?? [];
     const revocation = claims.validateClaimRevocationEnvelope(
@@ -727,7 +831,9 @@ export async function invokeCurrentBoundary(
   assertProjectionPreservesVerdict(
     rawVerdict,
     execution.projected_output,
-    rawSemanticReason(boundaryId, fixture, execution.raw_result),
+    rawVerdict === "accept"
+      ? undefined
+      : rawSemanticReason(boundaryId, fixture, execution.raw_result),
   );
   return registryComparison === undefined
     ? execution

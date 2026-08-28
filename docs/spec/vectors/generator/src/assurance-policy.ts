@@ -118,6 +118,35 @@ export function evaluateAssuranceCompromiseContinuation(input: Readonly<{
   return { verdict: "accept" };
 }
 
+const CESR_WIRE_PREFIXES = [
+  { selector: "-F", countWidth: 2 },
+  { selector: "--F", countWidth: 5 },
+  { selector: "-G", countWidth: 2 },
+  { selector: "--G", countWidth: 5 },
+] as const;
+
+function isCesrBase64UrlCodeUnit(code: number): boolean {
+  return (code >= 0x30 && code <= 0x39)
+    || (code >= 0x41 && code <= 0x5a)
+    || code === 0x2d
+    || code === 0x5f
+    || (code >= 0x61 && code <= 0x7a);
+}
+
+/** Classifies only the bounded selector and complete CESR counter bytes. */
+function hasCompleteCesrWirePrefix(serialized: string): boolean {
+  for (const { selector, countWidth } of CESR_WIRE_PREFIXES) {
+    if (!serialized.startsWith(selector)) continue;
+    const countEnd = selector.length + countWidth;
+    if (serialized.length < countEnd) return false;
+    for (let index = selector.length; index < countEnd; index += 1) {
+      if (!isCesrBase64UrlCodeUnit(serialized.charCodeAt(index))) return false;
+    }
+    return true;
+  }
+  return false;
+}
+
 /** Enforces NIP-01 as the only Assurance wire and storage representation. */
 export function validateAssuranceWireFormat(input: Readonly<{
   serialized_record: string;
@@ -136,7 +165,7 @@ export function validateAssuranceWireFormat(input: Readonly<{
   if (typeof serialized !== "string" || serialized.length === 0 || serialized.length > 1_048_576) {
     return { verdict: "reject", reason_code: "assurance-schema-invalid" };
   }
-  if (/^(?:-F[A-Za-z0-9_-]*|KERI\d)/u.test(serialized)) {
+  if (hasCompleteCesrWirePrefix(serialized) || /^KERI\d/u.test(serialized)) {
     return { verdict: "reject", reason_code: "keri_wire_format_rejected" };
   }
 

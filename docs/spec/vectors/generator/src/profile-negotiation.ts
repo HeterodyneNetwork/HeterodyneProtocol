@@ -9,6 +9,7 @@ import { schnorr } from "@noble/curves/secp256k1";
 import { hexToBytes } from "./hex.js";
 import { validateControlFrameSchemaOrThrow } from "./schema.js";
 import { validateControlFrameBoundary } from "./control-policy.js";
+import { controlGroupAdmission } from "./marmot-admission.js";
 
 export type CurrentProfileWireProbe = Readonly<{
   content_is_heterodyne_json: boolean;
@@ -260,4 +261,118 @@ export function validateCurrentControlFrameProfile(value: unknown):
   if (policy.verdict === "reject") return policy;
   const frameType = (input.frame as Readonly<{ frame_type: string }>).frame_type;
   return { verdict: "accept", transport: "marmot-inner", frame_type: frameType };
+}
+
+type CurrentControlGrantProfileInput = Readonly<{
+  active_account: string;
+  authenticated_account: string;
+  grant_account: string;
+  requested_device: string;
+  grant_device: string;
+  requested_leaf: string;
+  grant_leaf: string;
+  requested_group: string;
+  grant_group: string;
+  requested_grant: string;
+  grant_id: string;
+  requested_content_ids: readonly string[];
+  granted_content_ids: readonly string[];
+  requested_secret_classes: readonly string[];
+}>;
+
+function isClosedStringArray(value: unknown): value is readonly string[] {
+  return Array.isArray(value)
+    && value.every((member) => typeof member === "string" && member.length > 0)
+    && new Set(value).size === value.length;
+}
+
+/**
+ * Enforces the exact node account, device leaf, group, grant-filtered content,
+ * and zero-secret result for one closed Control Marmot frame.
+ */
+export function validateCurrentControlGrantProfile(value: unknown):
+  | Readonly<{
+      verdict: "accept";
+      transport: "marmot-inner";
+      frame_type: string;
+      active_account: string;
+      device_leaf: string;
+      grant_id: string;
+      content_ids: readonly string[];
+      released_secrets: readonly [];
+    }>
+  | Readonly<{
+      verdict: "reject";
+      reason_code: "control-frame-invalid" | "control-token-invalid";
+    }> {
+  const frame = validateCurrentControlFrameProfile(value);
+  if (frame.verdict === "reject") {
+    return {
+      verdict: "reject",
+      reason_code: frame.reason_code === "control-frame-invalid"
+        ? "control-frame-invalid"
+        : "control-token-invalid",
+    };
+  }
+  const input = value as CurrentControlGrantProfileInput;
+  const scalarFields = [
+    input.active_account,
+    input.authenticated_account,
+    input.grant_account,
+    input.requested_device,
+    input.grant_device,
+    input.requested_leaf,
+    input.grant_leaf,
+    input.requested_group,
+    input.grant_group,
+    input.requested_grant,
+    input.grant_id,
+  ];
+  const accounts = [
+    input.active_account,
+    input.authenticated_account,
+    input.grant_account,
+  ];
+  if (
+    scalarFields.some((field) => typeof field !== "string" || field.length === 0)
+    || accounts.some((account) => !/^[0-9a-f]{64}$/u.test(account))
+    || !isClosedStringArray(input.requested_content_ids)
+    || !isClosedStringArray(input.granted_content_ids)
+    || !isClosedStringArray(input.requested_secret_classes)
+  ) return { verdict: "reject", reason_code: "control-token-invalid" };
+
+  const accountMatches = input.active_account === input.authenticated_account
+    && input.active_account === input.grant_account;
+  const exactGrant = input.requested_device === input.grant_device
+    && input.requested_leaf === input.grant_leaf
+    && input.requested_group === input.grant_group
+    && input.requested_grant === input.grant_id;
+  const grantedContent = new Set(input.granted_content_ids);
+  const contentConfined = input.requested_content_ids.every((id) => grantedContent.has(id));
+  const secretsConfined = input.requested_secret_classes.length === 0;
+  const admission = controlGroupAdmission({
+    cryptographic_valid: true,
+    member_count: 2,
+    node_account_matches: accountMatches,
+    supported_control_profile: true,
+    invitation_mode: "off",
+    temporary_mode_unexpired: false,
+    resource_available: exactGrant && contentConfined && secretsConfined,
+    entitlement_state: "active",
+    purpose_bound_invite_valid: false,
+    explicit_local_decision: "none",
+  });
+  if (admission.outcome !== "accept-authorized") {
+    return { verdict: "reject", reason_code: "control-token-invalid" };
+  }
+  return {
+    verdict: "accept",
+    transport: frame.transport,
+    frame_type: frame.frame_type,
+    active_account: input.active_account,
+    device_leaf: input.requested_leaf,
+    grant_id: input.requested_grant,
+    content_ids: [...input.requested_content_ids],
+    released_secrets: [],
+  };
 }

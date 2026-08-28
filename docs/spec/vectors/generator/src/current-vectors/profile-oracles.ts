@@ -19,6 +19,8 @@ const PROFILE_VERSION = "heterodyne/0.5.0";
 const CURRENT_PROFILE_VERSION = "heterodyne/0.6.0";
 const KEY = "11".repeat(32);
 const OTHER_KEY = "22".repeat(32);
+const CORE_BREADCRUMB_SECRET = "33".repeat(32);
+const TIER3_PRIVATE_ROUTE = "rad:z3CurrentPrivateRepository";
 
 function fixedTuple(
   kind: number,
@@ -131,6 +133,42 @@ function attributionInput(kind: number): Readonly<Record<string, unknown>> {
   };
 }
 
+function coreBreadcrumbInput(kind: 0 | 1): Readonly<Record<string, unknown>> {
+  const secret = hexToBytes(CORE_BREADCRUMB_SECRET);
+  const event = {
+    pubkey: bytesToHex(schnorr.getPublicKey(secret)),
+    created_at: 1_800_000_000,
+    kind,
+    tags: [["d", `current-core-breadcrumb-kind-${kind}`]],
+    content: kind === 0
+      ? JSON.stringify({ name: "Current Core breadcrumb" })
+      : "Current Core rotation breadcrumb",
+  };
+  const nip01Raw = JSON.stringify([
+    0,
+    event.pubkey,
+    event.created_at,
+    event.kind,
+    event.tags,
+    event.content,
+  ]);
+  const digest = sha256(new TextEncoder().encode(nip01Raw));
+  return {
+    event: {
+      ...event,
+      id: bytesToHex(digest),
+      sig: bytesToHex(schnorr.sign(
+        digest,
+        secret,
+        hexToBytes("00".repeat(32)),
+      )),
+    },
+    nip01_raw: nip01Raw,
+    stamp_policy: "forbidden",
+    active_persona_key: event.pubkey,
+  };
+}
+
 function proofInput(
   suite: "nostr-bip340" | "radicle-ed25519" | "jwk-jws",
   purpose: "claim-subject-pop" | "claim-revoker",
@@ -191,14 +229,9 @@ for (const [kind, suffix] of [[0, "profile"], [1, "note"]] as const) {
       `production-rule:rotation-breadcrumb-kind${kind}-v1`,
       false,
     ),
-    "follow-up-hardening.validateCanonicalProfile",
+    "core-policy.validateCorePersonaSignedEvent",
     ["CORE-I-IDENTITY-INTEGRITY"],
-    {
-      canonicalRepoSelected: true,
-      publisher: KEY,
-      delegatedPublisher: KEY,
-      nip05Present: false,
-    },
+    coreBreadcrumbInput(kind),
   ));
 }
 
@@ -211,12 +244,20 @@ for (const kind of [1, 6, 16, 1063, 30023, 30402] as const) {
       "tag:heterodyne_wrap=room_key.v2",
       true,
     ),
-    "privacy-crypto.deriveTier3IndexKey+nostr-tools.nip44",
+    "privacy-crypto.deriveTier3IndexKey+nostr-tools.nip44+follow-up-hardening.resolveTier3Recipients+comms-policy.evaluatePrivateMarmotRoute",
     ["COMMS-I-TIER3-BLIND-CARRIER", "COMMS-I-TIER3-CONFINED"],
     {
       audience_key: "40".repeat(32),
       key_id: `current-profile-tier3-kind-${kind}`,
       plaintext: JSON.stringify({ kind, audience: "fixed-current-profile" }),
+      memberPersonas: [KEY],
+      devices: [
+        { persona: KEY, pubkey: OTHER_KEY, active: true, role: "human-device" },
+      ],
+      selected: [OTHER_KEY],
+      private_group: true,
+      requested_route: TIER3_PRIVATE_ROUTE,
+      authorized_routes: [TIER3_PRIVATE_ROUTE],
     },
   ));
 }
@@ -312,7 +353,9 @@ for (const [kind, purpose, profileStem, invariant] of [
         `production-rule:${purpose};proof=${profileSuffix}`,
         false,
       ),
-      "profile-negotiation.verifyCurrentClaimProofProfile",
+      purpose === "claim-revoker"
+        ? "profile-negotiation.verifyCurrentClaimProofProfile+claim-ledger.mergeClaimLedger+evaluateReaderAccess"
+        : "profile-negotiation.verifyCurrentClaimProofProfile",
       [invariant],
       proofInput(suite, purpose),
     ));
@@ -327,7 +370,7 @@ rows.push(oracle(
     "marmot-inner-only;content=control-frame-v1",
     false,
   ),
-  "profile-negotiation.validateCurrentControlFrameProfile",
+  "profile-negotiation.validateCurrentControlGrantProfile",
   ["CONTROL-I-MARMOT-GRANT-CONFINEMENT"],
   {
     transport: "marmot-inner",
@@ -340,6 +383,20 @@ rows.push(oracle(
       access_token: "current-profile-token",
       payload: { method: "status" },
     },
+    active_account: KEY,
+    authenticated_account: KEY,
+    grant_account: KEY,
+    requested_device: "device-one",
+    grant_device: "device-one",
+    requested_leaf: "leaf-one",
+    grant_leaf: "leaf-one",
+    requested_group: "group-one",
+    grant_group: "group-one",
+    requested_grant: "grant-one",
+    grant_id: "grant-one",
+    requested_content_ids: ["content-one"],
+    granted_content_ids: ["content-one"],
+    requested_secret_classes: [],
   },
 ));
 
