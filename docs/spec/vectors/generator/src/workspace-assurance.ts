@@ -1,7 +1,9 @@
 import { types as utilTypes } from "node:util";
+import { schnorr } from "@noble/curves/secp256k1";
 import { sha256 } from "@noble/hashes/sha2";
-import { bytesToHex, utf8Bytes } from "./hex.js";
+import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
+import { proofBytes } from "./proof-bytes.js";
 
 export type WorkspaceAssuranceConfig = Readonly<{
   trusted_now: () => number;
@@ -16,6 +18,7 @@ export type WorkspaceAssuranceConfig = Readonly<{
     transition_digest: string;
     evaluated_at: number;
   }>) => unknown;
+  attest_transition: (input: WorkspaceAssuranceAttestationInput) => unknown;
 }>;
 
 declare const workspaceAssuranceAuthorityBrand: unique symbol;
@@ -39,8 +42,28 @@ type WorkspaceAssuranceTransition = Readonly<{
   next_assurance: WorkspaceAssuranceProfile | null;
 }>;
 
+export type WorkspaceAssuranceAttestationInput = WorkspaceAssuranceTransition & Readonly<{
+  transition_digest: string;
+  evaluated_at: number;
+}>;
+
+export type WorkspaceAssuranceAuthorization = WorkspaceAssuranceAttestationInput & Readonly<{
+  profile: "heterodyne.workspace.assurance-authorization.v1";
+  suite: "bip340";
+  verification_key: string;
+  signature: string;
+}>;
+
+export type WorkspaceAssuranceHistoryTrustAnchor = Readonly<{
+  suite: "bip340";
+  public_key: string;
+}>;
+
 export type WorkspaceAssuranceVerdict =
-  | Readonly<{ verdict: "accept" }>
+  | Readonly<{
+    verdict: "accept";
+    authorization: WorkspaceAssuranceAuthorization | null;
+  }>
   | Readonly<{
     verdict: "reject";
     reason_code: "workspace-assurance-state-required";
@@ -62,13 +85,16 @@ export function createWorkspaceAssuranceAuthority(
     "trusted_now",
     "resolve_verified_enrollment",
     "authorize_removal",
+    "attest_transition",
   ]);
   const trustedNow = descriptorValue(descriptors?.trusted_now);
   const resolveVerifiedEnrollment = descriptorValue(descriptors?.resolve_verified_enrollment);
   const authorizeRemoval = descriptorValue(descriptors?.authorize_removal);
+  const attestTransition = descriptorValue(descriptors?.attest_transition);
   if (typeof trustedNow !== "function"
     || typeof resolveVerifiedEnrollment !== "function"
-    || typeof authorizeRemoval !== "function") {
+    || typeof authorizeRemoval !== "function"
+    || typeof attestTransition !== "function") {
     throw new TypeError("invalid Workspace Assurance configuration");
   }
   const authority = Object.freeze({}) as WorkspaceAssuranceAuthority;
@@ -78,6 +104,7 @@ export function createWorkspaceAssuranceAuthority(
       "resolve_verified_enrollment"
     ],
     authorize_removal: authorizeRemoval as WorkspaceAssuranceConfig["authorize_removal"],
+    attest_transition: attestTransition as WorkspaceAssuranceConfig["attest_transition"],
   }));
   return authority;
 }
@@ -89,7 +116,7 @@ export function evaluateWorkspaceAssuranceTransition(
   const transition = captureTransition(input);
   if (transition === null) return reject();
   if (transition.previous_assurance === null && transition.next_assurance === null) {
-    return { verdict: "accept" };
+    return { verdict: "accept", authorization: null };
   }
   if (authority === null || typeof authority !== "object") return reject();
   const config = AUTHORITIES.get(authority);
@@ -128,7 +155,48 @@ export function evaluateWorkspaceAssuranceTransition(
     }
     if (!isAuthorizedRemoval(result, transitionDigest, evaluatedAt)) return reject();
   }
-  return { verdict: "accept" };
+  if (sameProfile(previous, next)) return { verdict: "accept", authorization: null };
+  const transitionDigest = digestTransition(transition);
+  const attestationInput = Object.freeze({
+    ...transition,
+    transition_digest: transitionDigest,
+    evaluated_at: evaluatedAt,
+  });
+  let attestation: unknown;
+  try {
+    attestation = config.attest_transition(attestationInput);
+  } catch {
+    return reject();
+  }
+  const authorization = captureAuthorization(attestation);
+  if (authorization === null
+    || !authorizationMatchesTransition(authorization, transition, transitionDigest, evaluatedAt)
+    || !validAuthorizationSignature(authorization)) return reject();
+  return { verdict: "accept", authorization };
+}
+
+export function verifyWorkspaceAssuranceAuthorization(
+  trustAnchors: readonly WorkspaceAssuranceHistoryTrustAnchor[],
+  input: unknown,
+  value: unknown,
+): WorkspaceAssuranceVerdict {
+  const transition = captureTransition(input);
+  const authorization = captureAuthorization(value);
+  if (transition === null || authorization === null || sameProfile(
+    transition.previous_assurance,
+    transition.next_assurance,
+  )) return reject();
+  const transitionDigest = digestTransition(transition);
+  if (!authorizationMatchesTransition(
+    authorization,
+    transition,
+    transitionDigest,
+    authorization.evaluated_at,
+  )
+    || !trustAnchors.some((anchor) => anchor.suite === "bip340"
+      && anchor.public_key === authorization.verification_key)
+    || !validAuthorizationSignature(authorization)) return reject();
+  return { verdict: "accept", authorization };
 }
 
 function hasVerifiedEnrollment(
@@ -172,6 +240,82 @@ function isAuthorizedRemoval(
   return descriptorValue(descriptors?.authorized) === true
     && descriptorValue(descriptors?.transition_digest) === transitionDigest
     && descriptorValue(descriptors?.evaluated_at) === evaluatedAt;
+}
+
+function captureAuthorization(value: unknown): WorkspaceAssuranceAuthorization | null {
+  const descriptors = exactDataDescriptors(value, [
+    "profile",
+    "suite",
+    "verification_key",
+    "workspace_key",
+    "previous_policy_head",
+    "next_policy_head",
+    "previous_assurance",
+    "next_assurance",
+    "transition_digest",
+    "evaluated_at",
+    "signature",
+  ]);
+  if (descriptors === null) return null;
+  const previousAssurance = captureProfile(descriptorValue(descriptors.previous_assurance));
+  const nextAssurance = captureProfile(descriptorValue(descriptors.next_assurance));
+  const previousPolicyHead = descriptorValue(descriptors.previous_policy_head);
+  const authorization = {
+    profile: descriptorValue(descriptors.profile),
+    suite: descriptorValue(descriptors.suite),
+    verification_key: descriptorValue(descriptors.verification_key),
+    workspace_key: descriptorValue(descriptors.workspace_key),
+    previous_policy_head: previousPolicyHead,
+    next_policy_head: descriptorValue(descriptors.next_policy_head),
+    previous_assurance: previousAssurance,
+    next_assurance: nextAssurance,
+    transition_digest: descriptorValue(descriptors.transition_digest),
+    evaluated_at: descriptorValue(descriptors.evaluated_at),
+    signature: descriptorValue(descriptors.signature),
+  };
+  if (authorization.profile !== "heterodyne.workspace.assurance-authorization.v1"
+    || authorization.suite !== "bip340"
+    || !isH64(authorization.verification_key)
+    || !isH64(authorization.workspace_key)
+    || !(previousPolicyHead === null || isH64(previousPolicyHead))
+    || !isH64(authorization.next_policy_head)
+    || previousAssurance === undefined
+    || nextAssurance === undefined
+    || !isH64(authorization.transition_digest)
+    || !isSafeNonNegativeInteger(authorization.evaluated_at)
+    || typeof authorization.signature !== "string"
+    || !/^[0-9a-f]{128}$/u.test(authorization.signature)) return null;
+  return Object.freeze(authorization) as WorkspaceAssuranceAuthorization;
+}
+
+function authorizationMatchesTransition(
+  authorization: WorkspaceAssuranceAuthorization,
+  transition: WorkspaceAssuranceTransition,
+  transitionDigest: string,
+  evaluatedAt: number,
+): boolean {
+  return authorization.workspace_key === transition.workspace_key
+    && authorization.previous_policy_head === transition.previous_policy_head
+    && authorization.next_policy_head === transition.next_policy_head
+    && sameProfile(authorization.previous_assurance, transition.previous_assurance)
+    && sameProfile(authorization.next_assurance, transition.next_assurance)
+    && authorization.transition_digest === transitionDigest
+    && authorization.evaluated_at === evaluatedAt;
+}
+
+function validAuthorizationSignature(
+  authorization: WorkspaceAssuranceAuthorization,
+): boolean {
+  const { signature, ...unsigned } = authorization;
+  try {
+    return schnorr.verify(
+      hexToBytes(signature),
+      proofBytes("heterodyne-workspace-assurance-authorization-v1", unsigned),
+      hexToBytes(authorization.verification_key),
+    );
+  } catch {
+    return false;
+  }
 }
 
 function digestTransition(transition: WorkspaceAssuranceTransition): string {

@@ -82,7 +82,10 @@ identities MUST be fixed when the resolver is configured, each result MUST be
 captured atomically as a closed value, and lazy, substituted, or additional
 members MUST be rejected. A request-provided cold root, state label, proof
 boolean, or evaluation time has no authority and violates a closed request
-shape when present.
+shape when present. The embedding also fixes a fourth callback that attests
+completed profile-changing transitions; this callback and the verification,
+removal-authorization, and trusted-clock callbacks are captured once as exact
+own data members of the same opaque authority.
 
 Once the profile is active, a consumer MUST revalidate that exact binding
 when accepting each current Workspace state and immediately before every
@@ -125,6 +128,40 @@ ordinary Workspace governance decision and the
 optional authority therefore authorize the same complete canonical policy
 transition; a digest, time, or authorization result for any other transition
 MUST be rejected with `workspace-assurance-state-required`.
+
+After the applicable current enrollment and removal checks succeed, every
+transition that changes `assurance` from one profile value to another,
+including activation, replacement, and removal, MUST obtain a durable result
+from the embedding's transition-attestation callback. The callback input is
+the exact transition object above together with its `transition_digest` and
+the same sampled `evaluated_at`. Its result is this exact closed object:
+
+```json
+{
+  "profile": "heterodyne.workspace.assurance-authorization.v1",
+  "suite": "bip340",
+  "verification_key": "<configured Assurance-history key>",
+  "workspace_key": "<workspace_key>",
+  "previous_policy_head": "<transition predecessor or null>",
+  "next_policy_head": "<next policy_head>",
+  "previous_assurance": "<previous assurance object or null>",
+  "next_assurance": "<next assurance object or null>",
+  "transition_digest": "<digest>",
+  "evaluated_at": 1720000400,
+  "signature": "<BIP-340 signature>"
+}
+```
+
+The illustrative assurance values are again objects or JSON `null`, not
+strings. `signature` is lowercase 128-character hex over
+[`heterodyne:0.6.0#core-proof-bytes`](heterodyne-core.md#core-proof-bytes) for
+domain `heterodyne-workspace-assurance-authorization-v1` and the exact object
+above without `signature`. The receipt MUST exactly repeat every transition
+field, digest, and clock sample supplied to the callback; its key and signature
+MUST be valid; and open, accessor-backed, stale, mismatched, or malformed
+results MUST be rejected. This additional callback and portable signed result
+are an intentional cost of allowing a bare current policy to validate durable
+history without retaining the former live verification authority.
 
 The signature covers the
 [`heterodyne:0.6.0#core-proof-bytes`](heterodyne-core.md#core-proof-bytes) bytes for domain
@@ -169,29 +206,47 @@ observation time, and complete signed object set. It MUST derive every
 history whose signature, head, predecessor, or assurance profile disagrees
 with that policy object.
 
+The resolver separately configures the BIP-340 public trust roots permitted to
+verify durable Assurance-history receipts. Those roots MUST be locally fixed,
+closed, unique, and disjoint from repository-view attestation keys. A
+repository signature, repository operator, caller-supplied key, or ordinary
+Workspace governance signature alone MUST NOT create or validate an Assurance
+receipt.
+
 `policy_history` is the nonempty, complete genesis-to-current array of closed
-entries containing exactly `policy_head`, nullable `predecessor`, and
-`assurance`. Each `assurance` value is either JSON `null` or the exact closed
+entries containing exactly `policy_head`, nullable `predecessor`, `assurance`,
+and nullable `authorization`. Each `assurance` value is either JSON `null` or the exact closed
 profile defined at [`heterodyne:0.6.0#workspace-optional-assurance`](#workspace-optional-assurance).
+`authorization` is exactly the signed durable receipt above when that entry
+changes the prior entry's assurance value and is JSON `null` otherwise. A
+receipt's `evaluated_at` MUST be no later than the signed repository view's
+`observed_at`.
 The first entry has null `predecessor`; every later entry's `predecessor` is
 exactly the immediately prior entry's unique `policy_head`; and the final
 entry's head, predecessor, and assurance profile exactly equal the current
 view and current `workspace-policy-v1`. A partial, reordered, duplicated,
 forked, or profile-inconsistent history is invalid. Because the repository
-verification signature covers this complete array, a new resolver can replay
-the same authenticated consecutive profile transitions even when it did not
-observe each intermediate current view.
+verification signature covers this complete array and the separately trusted
+receipt signature supplies the optional authority decision, a new resolver can
+verify the same consecutive profile transitions even when it did not observe
+each intermediate current view.
 
-The consumer MUST replay every consecutive `policy_history` transition
-through the optional Assurance boundary before accepting the view. This
-includes a bare-to-Assurance activation and every Assurance replacement or
-removal, so skipping an intermediate view or recreating the resolver cannot
-erase the dual-authority obligation. For a resolver that already accepted a
-generation, that generation's complete policy history MUST be an exact prefix
-of every later accepted history. A changed prior profile or predecessor fails
-with `workspace_repository_invalid`; a correctly bound transition lacking its
-required optional authority result fails with
+The consumer MUST verify the durable receipt for every assurance-changing
+transition before accepting a fresh view. For a resolver that already accepted
+a generation, that generation's complete policy history MUST be an exact
+prefix of every later accepted history; the consumer MAY trust that exact
+prefix and verify only newly appended receipts. A changed prior profile,
+predecessor, or receipt fails with `workspace_repository_invalid`; a missing,
+extra, forged, wrong-key, stale, or transition-mismatched receipt fails with
 `workspace-assurance-state-required`.
+
+After historical verification, a current policy with an active profile still
+requires live current-state revalidation through the opaque authority. A
+current policy with no profile MUST NOT re-run former enrollment, removal, or
+attestation callbacks: its durable history stands only on the separately
+verified signed receipts. Thus skipping an intermediate view, recreating the
+resolver, or later refreshing a bare policy cannot erase dual authority and
+cannot turn historical Assurance into a permanent live callback dependency.
 
 `object_ids` is the unique, strictly increasing byte-sorted array of SHA-256
 JCS object identifiers; set-equivalent reordering is invalid.

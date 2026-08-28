@@ -57,6 +57,9 @@ const JOINT_KEY = bytesToHex(schnorr.getPublicKey(JOINT_SECRET));
 const UNAUTHORIZED_APPROVER_SECRET = "06".repeat(32);
 const RESOLVER_SECRET = "07".repeat(32);
 const RESOLVER_KEY = bytesToHex(schnorr.getPublicKey(RESOLVER_SECRET));
+const ASSURANCE_HISTORY_SECRET = "08".repeat(32);
+const ASSURANCE_HISTORY_KEY = bytesToHex(schnorr.getPublicKey(ASSURANCE_HISTORY_SECRET));
+const UNTRUSTED_ASSURANCE_HISTORY_SECRET = "09".repeat(32);
 const RESOURCE_ID = "aa".repeat(32);
 const ACTOR_GRANT_ID = "bb".repeat(32);
 const REVOCATION_ID = "cc".repeat(32);
@@ -64,6 +67,7 @@ const ASSURANCE_INCEPTION_EVENT_ID = "ef".repeat(32);
 const GENESIS_POLICY_HEAD = "d0".repeat(32);
 const ASSURED_POLICY_HEAD = "d1".repeat(32);
 const FINAL_POLICY_HEAD = "d2".repeat(32);
+const LATER_POLICY_HEAD = "d3".repeat(32);
 const WORKSPACE_ASSURANCE = Object.freeze({
   profile: "heterodyne.workspace.assurance.v1" as const,
   inception_event_id: ASSURANCE_INCEPTION_EVENT_ID,
@@ -688,13 +692,100 @@ type PolicyHistoryEntry = Readonly<{
   policy_head: string;
   predecessor: string | null;
   assurance: typeof WORKSPACE_ASSURANCE | null;
+  authorization: WorkspaceAssuranceAuthorization | null;
 }>;
+
+type WorkspaceAssuranceAuthorization = Readonly<{
+  profile: "heterodyne.workspace.assurance-authorization.v1";
+  suite: "bip340";
+  verification_key: string;
+  workspace_key: string;
+  previous_policy_head: string | null;
+  next_policy_head: string;
+  previous_assurance: typeof WORKSPACE_ASSURANCE | null;
+  next_assurance: typeof WORKSPACE_ASSURANCE | null;
+  transition_digest: string;
+  evaluated_at: number;
+  signature: string;
+}>;
+
+const assuranceProfilesEqual = (
+  left: typeof WORKSPACE_ASSURANCE | null,
+  right: typeof WORKSPACE_ASSURANCE | null,
+): boolean => left === null ? right === null : right !== null
+  && left.profile === right.profile
+  && left.inception_event_id === right.inception_event_id
+  && left.required_state === right.required_state;
+
+const assuranceTransitionDigest = (
+  previousPolicyHead: string | null,
+  nextPolicyHead: string,
+  previousAssurance: typeof WORKSPACE_ASSURANCE | null,
+  nextAssurance: typeof WORKSPACE_ASSURANCE | null,
+): string => bytesToHex(sha256(utf8Bytes(jcsCanonicalize({
+    profile: "heterodyne.workspace.assurance-transition.v1",
+    workspace_key: WORKSPACE_KEY,
+    previous_policy_head: previousPolicyHead,
+    next_policy_head: nextPolicyHead,
+    previous_assurance: previousAssurance,
+    next_assurance: nextAssurance,
+  }))));
+
+const signAssuranceAuthorization = (
+  previousPolicyHead: string | null,
+  nextPolicyHead: string,
+  previousAssurance: typeof WORKSPACE_ASSURANCE | null,
+  nextAssurance: typeof WORKSPACE_ASSURANCE | null,
+  options: Readonly<{
+    secret_key?: string;
+    evaluated_at?: number;
+    changed?: Readonly<Record<string, unknown>>;
+  }> = {},
+): WorkspaceAssuranceAuthorization => {
+  const secretKey = options.secret_key ?? ASSURANCE_HISTORY_SECRET;
+  const unsigned = {
+    profile: "heterodyne.workspace.assurance-authorization.v1" as const,
+    suite: "bip340" as const,
+    verification_key: bytesToHex(schnorr.getPublicKey(secretKey)),
+    workspace_key: WORKSPACE_KEY,
+    previous_policy_head: previousPolicyHead,
+    next_policy_head: nextPolicyHead,
+    previous_assurance: previousAssurance,
+    next_assurance: nextAssurance,
+    transition_digest: assuranceTransitionDigest(
+      previousPolicyHead,
+      nextPolicyHead,
+      previousAssurance,
+      nextAssurance,
+    ),
+    evaluated_at: options.evaluated_at ?? 1_720_000_000,
+    ...options.changed,
+  };
+  return {
+    ...unsigned,
+    signature: bytesToHex(schnorr.sign(
+      proofBytes("heterodyne-workspace-assurance-authorization-v1", unsigned),
+      secretKey,
+      "00".repeat(32),
+    )),
+  } as WorkspaceAssuranceAuthorization;
+};
 
 const policyHistoryEntry = (
   policy_head: string,
   predecessor: string | null,
   assurance: typeof WORKSPACE_ASSURANCE | null,
-): PolicyHistoryEntry => ({ policy_head, predecessor, assurance });
+  previousAssurance: typeof WORKSPACE_ASSURANCE | null = null,
+  authorization: WorkspaceAssuranceAuthorization | null = assuranceProfilesEqual(
+    previousAssurance,
+    assurance,
+  ) ? null : signAssuranceAuthorization(
+    predecessor,
+    policy_head,
+    previousAssurance,
+    assurance,
+  ),
+): PolicyHistoryEntry => ({ policy_head, predecessor, assurance, authorization });
 
 const receivingAuthorityObjects = (): Record<string, unknown>[] => {
   const receivingPolicy = "77".repeat(32);
@@ -798,6 +889,24 @@ const repositoryViewEvidence = (
 };
 
 describe("Workspace configured repository resolver", () => {
+  it("keeps repository attestation keys disjoint from Assurance history roots", async () => {
+    const api = await import("./workspace.js");
+    expect(() => api.createWorkspaceRepositoryResolverAuthority({
+      trust_anchors: [{ suite: "bip340", public_key: RESOLVER_KEY }],
+      assurance_history_trust_anchors: [{ suite: "bip340", public_key: RESOLVER_KEY }],
+      allowed_policies: ["radicle-verified-complete-v1"],
+      minimum_version: "1.0.0",
+      max_ttl: 600,
+      max_view_age: 300,
+      repositories: [{
+        workspace_key: WORKSPACE_KEY,
+        repository_rid: "rad:zWorkspace",
+        pinned_head: H40,
+      }],
+      trusted_now: () => 1_720_000_400,
+    })).toThrow("workspace_repository_invalid");
+  });
+
   it("mints current state only from configured, complete, current repository evidence", async () => {
     const api = await import("./workspace.js") as typeof import("./workspace.js") & {
       createWorkspaceRepositoryResolverAuthority?: (input: unknown) => object;
@@ -1165,6 +1274,8 @@ describe("Workspace configured repository resolver", () => {
 describe("Workspace optional Assurance composition", () => {
   const resolverConfig = (
     assuranceAuthority?: ReturnType<typeof createWorkspaceAssuranceAuthority>,
+    assuranceHistoryKeys: readonly string[] = assuranceAuthority === undefined
+      ? [] : [ASSURANCE_HISTORY_KEY],
   ) => ({
     trust_anchors: [{ suite: "bip340" as const, public_key: RESOLVER_KEY }],
     allowed_policies: ["radicle-verified-complete-v1"],
@@ -1178,6 +1289,12 @@ describe("Workspace optional Assurance composition", () => {
     }],
     trusted_now: () => 1_720_000_400,
     ...(assuranceAuthority === undefined ? {} : { assurance_authority: assuranceAuthority }),
+    ...(assuranceHistoryKeys.length === 0 ? {} : {
+      assurance_history_trust_anchors: assuranceHistoryKeys.map((public_key) => ({
+        suite: "bip340" as const,
+        public_key,
+      })),
+    }),
   });
 
   const assuranceAuthority = (
@@ -1201,6 +1318,21 @@ describe("Workspace optional Assurance composition", () => {
       evaluated_at,
     }),
     authorize_removal: authorizeRemoval,
+    attest_transition: (input: Readonly<{
+      workspace_key: string;
+      previous_policy_head: string | null;
+      next_policy_head: string;
+      previous_assurance: typeof WORKSPACE_ASSURANCE | null;
+      next_assurance: typeof WORKSPACE_ASSURANCE | null;
+      transition_digest: string;
+      evaluated_at: number;
+    }>) => signAssuranceAuthorization(
+      input.previous_policy_head,
+      input.next_policy_head,
+      input.previous_assurance,
+      input.next_assurance,
+      { evaluated_at: input.evaluated_at },
+    ),
   });
 
   it("keeps bare-key policy resolution independent of an Assurance authority", async () => {
@@ -1324,12 +1456,27 @@ describe("Workspace optional Assurance composition", () => {
       policyHistoryEntry(GENESIS_POLICY_HEAD, null, null),
       policyHistoryEntry(ASSURED_POLICY_HEAD, GENESIS_POLICY_HEAD, WORKSPACE_ASSURANCE),
     ];
-    const nextEvidence = repositoryViewEvidence(bareObjects, {
+    const unilateralEvidence = repositoryViewEvidence(bareObjects, {
       policy_head: FINAL_POLICY_HEAD,
       predecessor: ASSURED_POLICY_HEAD,
       policy_history: [
         ...assuredHistory,
         policyHistoryEntry(FINAL_POLICY_HEAD, ASSURED_POLICY_HEAD, null),
+      ],
+      observed_at: 1_720_000_200,
+      expires_at: 1_720_000_750,
+    });
+    const nextEvidence = repositoryViewEvidence(bareObjects, {
+      policy_head: FINAL_POLICY_HEAD,
+      predecessor: ASSURED_POLICY_HEAD,
+      policy_history: [
+        ...assuredHistory,
+        policyHistoryEntry(
+          FINAL_POLICY_HEAD,
+          ASSURED_POLICY_HEAD,
+          null,
+          WORKSPACE_ASSURANCE,
+        ),
       ],
       observed_at: 1_720_000_200,
       expires_at: 1_720_000_750,
@@ -1349,24 +1496,20 @@ describe("Workspace optional Assurance composition", () => {
     })).toMatchObject({ verdict: "accept" });
     expect(api.authenticateWorkspaceRepositoryView({
       authority: unilateral,
-      evidence: nextEvidence,
+      evidence: unilateralEvidence,
       objects: bareObjects,
     })).toEqual({
       verdict: "reject",
       reason_code: "workspace-assurance-state-required",
     });
 
-    let removalInput: unknown;
     const dual = api.createWorkspaceRepositoryResolverAuthority(resolverConfig(assuranceAuthority(
       () => "verified",
-      (input) => {
-        removalInput = input;
-        return {
-          authorized: true,
-          transition_digest: input.transition_digest,
-          evaluated_at: input.evaluated_at,
-        };
-      },
+      ({ transition_digest, evaluated_at }) => ({
+        authorized: true,
+        transition_digest,
+        evaluated_at,
+      }),
     )));
     expect(api.authenticateWorkspaceRepositoryView({
       authority: dual,
@@ -1382,12 +1525,6 @@ describe("Workspace optional Assurance composition", () => {
       evidence: nextEvidence,
       objects: bareObjects,
     })).toMatchObject({ verdict: "accept", state: expect.any(Object) });
-    expect(removalInput).toMatchObject({
-      workspace_key: WORKSPACE_KEY,
-      inception_event_id: ASSURANCE_INCEPTION_EVENT_ID,
-      transition_digest: expect.stringMatching(/^[0-9a-f]{64}$/u),
-      evaluated_at: 1_720_000_400,
-    });
   });
 
   it("rejects a skipped assured intermediate before accepting the final bare policy", async () => {
@@ -1401,8 +1538,20 @@ describe("Workspace optional Assurance composition", () => {
     const genesisHistory = [policyHistoryEntry(GENESIS_POLICY_HEAD, null, null)];
     const completeHistory = [
       ...genesisHistory,
-      policyHistoryEntry(ASSURED_POLICY_HEAD, GENESIS_POLICY_HEAD, WORKSPACE_ASSURANCE),
-      policyHistoryEntry(FINAL_POLICY_HEAD, ASSURED_POLICY_HEAD, null),
+      policyHistoryEntry(
+        ASSURED_POLICY_HEAD,
+        GENESIS_POLICY_HEAD,
+        WORKSPACE_ASSURANCE,
+        null,
+        null,
+      ),
+      policyHistoryEntry(
+        FINAL_POLICY_HEAD,
+        ASSURED_POLICY_HEAD,
+        null,
+        WORKSPACE_ASSURANCE,
+        null,
+      ),
     ];
     const authority = api.createWorkspaceRepositoryResolverAuthority(
       resolverConfig(assuranceAuthority(() => "verified")),
@@ -1442,8 +1591,20 @@ describe("Workspace optional Assurance composition", () => {
     );
     const completeHistory = [
       policyHistoryEntry(GENESIS_POLICY_HEAD, null, null),
-      policyHistoryEntry(ASSURED_POLICY_HEAD, GENESIS_POLICY_HEAD, WORKSPACE_ASSURANCE),
-      policyHistoryEntry(FINAL_POLICY_HEAD, ASSURED_POLICY_HEAD, null),
+      policyHistoryEntry(
+        ASSURED_POLICY_HEAD,
+        GENESIS_POLICY_HEAD,
+        WORKSPACE_ASSURANCE,
+        null,
+        null,
+      ),
+      policyHistoryEntry(
+        FINAL_POLICY_HEAD,
+        ASSURED_POLICY_HEAD,
+        null,
+        WORKSPACE_ASSURANCE,
+        null,
+      ),
     ];
     const authority = api.createWorkspaceRepositoryResolverAuthority(
       resolverConfig(assuranceAuthority(() => "verified")),
@@ -1506,6 +1667,209 @@ describe("Workspace optional Assurance composition", () => {
       }),
       objects: finalObjects,
     })).toEqual({ verdict: "reject", reason_code: "workspace_repository_invalid" });
+  });
+
+  it("resolves later bare policy from a trusted removal prefix without former callbacks", async () => {
+    const api = await import("./workspace.js");
+    let enrollmentState: "verified" | "pending" = "verified";
+    const authority = api.createWorkspaceRepositoryResolverAuthority(resolverConfig(
+      assuranceAuthority(() => enrollmentState, ({ transition_digest, evaluated_at }) => ({
+        authorized: true,
+        transition_digest,
+        evaluated_at,
+      })),
+    ));
+    const assuredObjects = authorityObjectsAtPolicy(
+      ASSURED_POLICY_HEAD,
+      GENESIS_POLICY_HEAD,
+      WORKSPACE_ASSURANCE,
+    );
+    const assuredHistory = [
+      policyHistoryEntry(GENESIS_POLICY_HEAD, null, null),
+      policyHistoryEntry(ASSURED_POLICY_HEAD, GENESIS_POLICY_HEAD, WORKSPACE_ASSURANCE),
+    ];
+    expect(api.authenticateWorkspaceRepositoryView({
+      authority,
+      evidence: repositoryViewEvidence(assuredObjects, {
+        policy_head: ASSURED_POLICY_HEAD,
+        predecessor: GENESIS_POLICY_HEAD,
+        policy_history: assuredHistory,
+      }),
+      objects: assuredObjects,
+    })).toMatchObject({ verdict: "accept", state: expect.any(Object) });
+
+    const removalHistory = [
+      ...assuredHistory,
+      policyHistoryEntry(
+        FINAL_POLICY_HEAD,
+        ASSURED_POLICY_HEAD,
+        null,
+        WORKSPACE_ASSURANCE,
+      ),
+    ];
+    const finalObjects = authorityObjectsAtPolicy(
+      FINAL_POLICY_HEAD,
+      ASSURED_POLICY_HEAD,
+      null,
+    );
+    expect(api.authenticateWorkspaceRepositoryView({
+      authority,
+      evidence: repositoryViewEvidence(finalObjects, {
+        policy_head: FINAL_POLICY_HEAD,
+        predecessor: ASSURED_POLICY_HEAD,
+        policy_history: removalHistory,
+        observed_at: 1_720_000_200,
+        expires_at: 1_720_000_750,
+      }),
+      objects: finalObjects,
+    })).toMatchObject({ verdict: "accept", state: expect.any(Object) });
+
+    enrollmentState = "pending";
+    const laterObjects = authorityObjectsAtPolicy(
+      LATER_POLICY_HEAD,
+      FINAL_POLICY_HEAD,
+      null,
+    );
+    expect(api.authenticateWorkspaceRepositoryView({
+      authority,
+      evidence: repositoryViewEvidence(laterObjects, {
+        policy_head: LATER_POLICY_HEAD,
+        predecessor: FINAL_POLICY_HEAD,
+        policy_history: [
+          ...removalHistory,
+          policyHistoryEntry(LATER_POLICY_HEAD, FINAL_POLICY_HEAD, null),
+        ],
+        observed_at: 1_720_000_300,
+        expires_at: 1_720_000_800,
+      }),
+      objects: laterObjects,
+    })).toMatchObject({ verdict: "accept", state: expect.any(Object) });
+  });
+
+  it("resolves a durable bare removal history in a fresh resolver without callbacks", async () => {
+    const api = await import("./workspace.js");
+    const finalObjects = authorityObjectsAtPolicy(
+      FINAL_POLICY_HEAD,
+      ASSURED_POLICY_HEAD,
+      null,
+    );
+    const authority = api.createWorkspaceRepositoryResolverAuthority(
+      resolverConfig(undefined, [ASSURANCE_HISTORY_KEY]),
+    );
+    expect(api.authenticateWorkspaceRepositoryView({
+      authority,
+      evidence: repositoryViewEvidence(finalObjects, {
+        policy_head: FINAL_POLICY_HEAD,
+        predecessor: ASSURED_POLICY_HEAD,
+        policy_history: [
+          policyHistoryEntry(GENESIS_POLICY_HEAD, null, null),
+          policyHistoryEntry(ASSURED_POLICY_HEAD, GENESIS_POLICY_HEAD, WORKSPACE_ASSURANCE),
+          policyHistoryEntry(
+            FINAL_POLICY_HEAD,
+            ASSURED_POLICY_HEAD,
+            null,
+            WORKSPACE_ASSURANCE,
+          ),
+        ],
+      }),
+      objects: finalObjects,
+    })).toMatchObject({ verdict: "accept", state: expect.any(Object) });
+  });
+
+  it("rejects missing, forged, wrong-key, mismatched, and extra durable authorization", async () => {
+    const api = await import("./workspace.js");
+    const finalObjects = authorityObjectsAtPolicy(
+      FINAL_POLICY_HEAD,
+      ASSURED_POLICY_HEAD,
+      null,
+    );
+    const validRemoval = signAssuranceAuthorization(
+      ASSURED_POLICY_HEAD,
+      FINAL_POLICY_HEAD,
+      WORKSPACE_ASSURANCE,
+      null,
+    );
+    const forgedRemoval = {
+      ...validRemoval,
+      signature: `${validRemoval.signature.slice(0, -1)}${validRemoval.signature.endsWith("0") ? "1" : "0"}`,
+    };
+    const invalidAuthorizations: readonly (WorkspaceAssuranceAuthorization | null)[] = [
+      null,
+      forgedRemoval,
+      signAssuranceAuthorization(
+        ASSURED_POLICY_HEAD,
+        FINAL_POLICY_HEAD,
+        WORKSPACE_ASSURANCE,
+        null,
+        { secret_key: UNTRUSTED_ASSURANCE_HISTORY_SECRET },
+      ),
+      signAssuranceAuthorization(
+        ASSURED_POLICY_HEAD,
+        LATER_POLICY_HEAD,
+        WORKSPACE_ASSURANCE,
+        null,
+      ),
+    ];
+    for (const authorization of invalidAuthorizations) {
+      const authority = api.createWorkspaceRepositoryResolverAuthority(
+        resolverConfig(undefined, [ASSURANCE_HISTORY_KEY]),
+      );
+      expect(api.authenticateWorkspaceRepositoryView({
+        authority,
+        evidence: repositoryViewEvidence(finalObjects, {
+          policy_head: FINAL_POLICY_HEAD,
+          predecessor: ASSURED_POLICY_HEAD,
+          policy_history: [
+            policyHistoryEntry(GENESIS_POLICY_HEAD, null, null),
+            policyHistoryEntry(ASSURED_POLICY_HEAD, GENESIS_POLICY_HEAD, WORKSPACE_ASSURANCE),
+            policyHistoryEntry(
+              FINAL_POLICY_HEAD,
+              ASSURED_POLICY_HEAD,
+              null,
+              WORKSPACE_ASSURANCE,
+              authorization,
+            ),
+          ],
+        }),
+        objects: finalObjects,
+      })).toEqual({
+        verdict: "reject",
+        reason_code: "workspace-assurance-state-required",
+      });
+    }
+
+    const authority = api.createWorkspaceRepositoryResolverAuthority(
+      resolverConfig(undefined, [ASSURANCE_HISTORY_KEY]),
+    );
+    expect(api.authenticateWorkspaceRepositoryView({
+      authority,
+      evidence: repositoryViewEvidence(finalObjects, {
+        policy_head: FINAL_POLICY_HEAD,
+        predecessor: ASSURED_POLICY_HEAD,
+        policy_history: [
+          {
+            ...policyHistoryEntry(GENESIS_POLICY_HEAD, null, null),
+            authorization: signAssuranceAuthorization(
+              null,
+              GENESIS_POLICY_HEAD,
+              null,
+              WORKSPACE_ASSURANCE,
+            ),
+          },
+          policyHistoryEntry(ASSURED_POLICY_HEAD, GENESIS_POLICY_HEAD, WORKSPACE_ASSURANCE),
+          policyHistoryEntry(
+            FINAL_POLICY_HEAD,
+            ASSURED_POLICY_HEAD,
+            null,
+            WORKSPACE_ASSURANCE,
+          ),
+        ],
+      }),
+      objects: finalObjects,
+    })).toEqual({
+      verdict: "reject",
+      reason_code: "workspace-assurance-state-required",
+    });
   });
 });
 

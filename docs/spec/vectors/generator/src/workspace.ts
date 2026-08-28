@@ -78,6 +78,7 @@ type WorkspaceResolverConfig = Readonly<{
   trusted_now: () => number;
   invitation_store: object | null;
   assurance_authority: WorkspaceAssuranceAuthority | null;
+  assurance_history_trust_anchors: readonly WorkspaceAssuranceHistoryTrustAnchor[];
   accepted_views: Map<string, Readonly<{
     head: string;
     observed_at: number;
@@ -125,6 +126,7 @@ type WorkspacePolicyHistoryEntry = Readonly<{
   policy_head: string;
   predecessor: string | null;
   assurance: WorkspaceAssuranceProfile | null;
+  authorization: WorkspaceAssuranceAuthorization | null;
 }>;
 
 const WORKSPACE_RESOLVER_AUTHORITIES = new WeakMap<object, WorkspaceResolverConfig>();
@@ -320,12 +322,15 @@ export function createWorkspaceRepositoryResolverAuthority(
     "max_ttl",
     "max_view_age",
     "repositories",
-  ], ["invitation_store", "assurance_authority"]);
+  ], ["invitation_store", "assurance_authority"], [
+    "assurance_history_trust_anchors",
+  ]);
   const input = captured?.data;
   const trustedNow = captured?.opaque.trusted_now;
   const invitationStore = captured?.opaque.invitation_store;
   const assuranceAuthority = captured?.opaque.assurance_authority;
   const minimumVersion = parseWorkspaceSemver(input?.minimum_version);
+  const assuranceHistoryTrustAnchors = input?.assurance_history_trust_anchors;
   if (input === undefined
     || typeof trustedNow !== "function"
     || !Array.isArray(input.trust_anchors)
@@ -354,6 +359,18 @@ export function createWorkspaceRepositoryResolverAuthority(
       const repository = candidate as Record<string, unknown>;
       return `${repository.workspace_key}:${repository.repository_rid}`;
     })).size !== input.repositories.length
+    || (assuranceHistoryTrustAnchors !== undefined
+      && (!Array.isArray(assuranceHistoryTrustAnchors)
+        || assuranceHistoryTrustAnchors.length === 0
+        || !assuranceHistoryTrustAnchors.every(isWorkspaceAssuranceHistoryTrustAnchor)
+        || new Set(assuranceHistoryTrustAnchors.map((candidate) => {
+          const anchor = candidate as WorkspaceAssuranceHistoryTrustAnchor;
+          return `${anchor.suite}:${anchor.public_key}`;
+        })).size !== assuranceHistoryTrustAnchors.length
+        || assuranceHistoryTrustAnchors.some((candidate) =>
+          (input.trust_anchors as WorkspaceRepositoryTrustAnchor[]).some((repositoryAnchor) =>
+            repositoryAnchor.suite === candidate.suite
+              && repositoryAnchor.public_key === candidate.public_key))))
     || (invitationStore !== undefined
       && (invitationStore === null || typeof invitationStore !== "object"
         || !WORKSPACE_INVITATION_STORES.has(invitationStore)))
@@ -374,6 +391,9 @@ export function createWorkspaceRepositoryResolverAuthority(
     assurance_authority: assuranceAuthority === undefined
       ? null
       : assuranceAuthority as WorkspaceAssuranceAuthority,
+    assurance_history_trust_anchors: assuranceHistoryTrustAnchors === undefined
+      ? []
+      : assuranceHistoryTrustAnchors as WorkspaceAssuranceHistoryTrustAnchor[],
     accepted_views: new Map(),
   });
   return authority;
@@ -658,15 +678,45 @@ export function authenticateWorkspaceRepositoryView(value: unknown):
       && !workspacePolicyHistoryIsPrefix(previousRecord.policy_history, policyHistory))) {
     return { verdict: "reject", reason_code: "workspace_repository_invalid" };
   }
+  const trustedPrefixLength = previousRecord?.policy_history.length ?? 0;
   for (const [index, entry] of policyHistory.entries()) {
+    if (index < trustedPrefixLength) continue;
     const prior = index === 0 ? null : policyHistory[index - 1];
-    if (entry.assurance === null && (prior?.assurance ?? null) === null) continue;
-    const assuranceDecision = evaluateWorkspaceAssuranceTransition(config.assurance_authority, {
+    const transition = {
       workspace_key: currentState.workspace_key,
       previous_policy_head: entry.predecessor,
       next_policy_head: entry.policy_head,
       previous_assurance: prior?.assurance ?? null,
       next_assurance: entry.assurance,
+    };
+    const changed = !workspaceAssuranceProfilesEqual(
+      transition.previous_assurance,
+      transition.next_assurance,
+    );
+    if (!changed) {
+      if (entry.authorization !== null) {
+        return { verdict: "reject", reason_code: "workspace-assurance-state-required" };
+      }
+      continue;
+    }
+    if (entry.authorization === null
+      || entry.authorization.evaluated_at > evidence.observed_at) {
+      return { verdict: "reject", reason_code: "workspace-assurance-state-required" };
+    }
+    const assuranceDecision = verifyWorkspaceAssuranceAuthorization(
+      config.assurance_history_trust_anchors,
+      transition,
+      entry.authorization,
+    );
+    if (assuranceDecision.verdict !== "accept") return assuranceDecision;
+  }
+  if (assurance !== null) {
+    const assuranceDecision = evaluateWorkspaceAssuranceTransition(config.assurance_authority, {
+      workspace_key: currentState.workspace_key,
+      previous_policy_head: currentState.policy_head,
+      next_policy_head: currentState.policy_head,
+      previous_assurance: assurance,
+      next_assurance: assurance,
     });
     if (assuranceDecision.verdict !== "accept") return assuranceDecision;
   }
@@ -3307,12 +3357,15 @@ function captureWorkspacePolicyHistory(
       "policy_head",
       "predecessor",
       "assurance",
+      "authorization",
     ])
       || !isH64(candidate.policy_head)
       || !(candidate.predecessor === null || isH64(candidate.predecessor))) return null;
     const assurance = captureWorkspaceAssuranceProfile(candidate.assurance);
+    const authorization = captureWorkspaceAssuranceAuthorization(candidate.authorization);
     const prior = history[index - 1];
     if (assurance === undefined
+      || authorization === undefined
       || seen.has(candidate.policy_head)
       || (index === 0
         ? candidate.predecessor !== null
@@ -3322,6 +3375,7 @@ function captureWorkspacePolicyHistory(
       policy_head: candidate.policy_head,
       predecessor: candidate.predecessor,
       assurance,
+      authorization,
     }));
   }
   return deepFreeze(history);
@@ -3346,8 +3400,74 @@ function workspacePolicyHistoryIsPrefix(
     return candidate !== undefined
       && entry.policy_head === candidate.policy_head
       && entry.predecessor === candidate.predecessor
-      && workspaceAssuranceProfilesEqual(entry.assurance, candidate.assurance);
+      && workspaceAssuranceProfilesEqual(entry.assurance, candidate.assurance)
+      && workspaceAssuranceAuthorizationsEqual(entry.authorization, candidate.authorization);
   });
+}
+
+function captureWorkspaceAssuranceAuthorization(
+  value: unknown,
+): WorkspaceAssuranceAuthorization | null | undefined {
+  if (value === null) return null;
+  const snapshot = snapshotJsonRecord(value);
+  if (snapshot === null || !hasExactMembers(snapshot, [
+    "profile",
+    "suite",
+    "verification_key",
+    "workspace_key",
+    "previous_policy_head",
+    "next_policy_head",
+    "previous_assurance",
+    "next_assurance",
+    "transition_digest",
+    "evaluated_at",
+    "signature",
+  ])) return undefined;
+  const previousAssurance = captureWorkspaceAssuranceProfile(snapshot.previous_assurance);
+  const nextAssurance = captureWorkspaceAssuranceProfile(snapshot.next_assurance);
+  if (snapshot.profile !== "heterodyne.workspace.assurance-authorization.v1"
+    || snapshot.suite !== "bip340"
+    || !isH64(snapshot.verification_key)
+    || !isH64(snapshot.workspace_key)
+    || !(snapshot.previous_policy_head === null || isH64(snapshot.previous_policy_head))
+    || !isH64(snapshot.next_policy_head)
+    || previousAssurance === undefined
+    || nextAssurance === undefined
+    || !isH64(snapshot.transition_digest)
+    || !isSafeNonNegativeInteger(snapshot.evaluated_at)
+    || typeof snapshot.signature !== "string"
+    || !/^[0-9a-f]{128}$/u.test(snapshot.signature)) return undefined;
+  return deepFreeze({
+    profile: "heterodyne.workspace.assurance-authorization.v1",
+    suite: "bip340",
+    verification_key: snapshot.verification_key,
+    workspace_key: snapshot.workspace_key,
+    previous_policy_head: snapshot.previous_policy_head,
+    next_policy_head: snapshot.next_policy_head,
+    previous_assurance: previousAssurance,
+    next_assurance: nextAssurance,
+    transition_digest: snapshot.transition_digest,
+    evaluated_at: snapshot.evaluated_at,
+    signature: snapshot.signature,
+  });
+}
+
+function workspaceAssuranceAuthorizationsEqual(
+  left: WorkspaceAssuranceAuthorization | null,
+  right: WorkspaceAssuranceAuthorization | null,
+): boolean {
+  if (left === null || right === null) return left === right;
+  return left.profile === right.profile
+    && left.suite === right.suite
+    && left.verification_key === right.verification_key
+    && left.workspace_key === right.workspace_key
+    && left.previous_policy_head === right.previous_policy_head
+    && left.next_policy_head === right.next_policy_head
+    && workspaceAssuranceProfilesEqual(left.previous_assurance, right.previous_assurance)
+    && workspaceAssuranceProfilesEqual(left.next_assurance, right.next_assurance)
+    && left.transition_digest === right.transition_digest
+    && left.evaluated_at === right.evaluated_at
+    && left.signature === right.signature;
 }
 function hasExactShape(
   value: Record<string, unknown>,
@@ -3365,6 +3485,7 @@ function captureWorkspaceRequest(
   opaqueMembers: readonly string[],
   dataMembers: readonly string[],
   optionalOpaqueMembers: readonly string[] = [],
+  optionalDataMembers: readonly string[] = [],
 ): {
   opaque: Readonly<Record<string, unknown>>;
   data: Readonly<Record<string, unknown>>;
@@ -3375,7 +3496,8 @@ function captureWorkspaceRequest(
     const descriptors = Object.getOwnPropertyDescriptors(value);
     const keys = Reflect.ownKeys(value);
     const stringKeys = keys.filter((key): key is string => typeof key === "string");
-    const presentOptionalMembers = optionalOpaqueMembers.filter((member) =>
+    const presentOptionalMembers = [...optionalOpaqueMembers, ...optionalDataMembers]
+      .filter((member) =>
       stringKeys.includes(member));
     const expectedMembers = [...opaqueMembers, ...dataMembers, ...presentOptionalMembers].sort();
     if (keys.some((key) => typeof key !== "string")
@@ -3403,6 +3525,15 @@ function isWorkspaceRepositoryTrustAnchor(
   return isRecord(value)
     && hasExactMembers(value, ["suite", "public_key"])
     && (value.suite === "ed25519" || value.suite === "bip340")
+    && isH64(value.public_key);
+}
+
+function isWorkspaceAssuranceHistoryTrustAnchor(
+  value: unknown,
+): value is WorkspaceAssuranceHistoryTrustAnchor {
+  return isRecord(value)
+    && hasExactMembers(value, ["suite", "public_key"])
+    && value.suite === "bip340"
     && isH64(value.public_key);
 }
 
@@ -3441,6 +3572,9 @@ import {
 import { WORKSPACE_SCHEMAS } from "./workspace-schemas.js";
 import {
   evaluateWorkspaceAssuranceTransition,
+  verifyWorkspaceAssuranceAuthorization,
+  type WorkspaceAssuranceAuthorization,
   type WorkspaceAssuranceAuthority,
+  type WorkspaceAssuranceHistoryTrustAnchor,
   type WorkspaceAssuranceProfile,
 } from "./workspace-assurance.js";
