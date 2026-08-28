@@ -271,7 +271,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "core-policy.validateCorePersonaSignedEvent",
     "owner_document": "assurance",
     "spec_refs": [
-      "heterodyne:0.6.0#core-verification"
+      "heterodyne:0.6.0#assurance-scope"
     ],
     "invariants": [
       "ASSURANCE-I-CORE-OPTIONALITY"
@@ -513,7 +513,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "agent-authorship.injectAgentAttribution",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:0.6.0#comms-mandatory-pre-sign-attribution"
+      "heterodyne:0.6.0#comms-agent-attribution"
     ],
     "invariants": [
       "COMMS-I-AGENT-ATTRIBUTION",
@@ -616,7 +616,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "agent-authorship.validateWorkloadRegistration+validateAgentAccessToken",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:0.6.0#comms-fail-closed-authorization-and-privacy"
+      "heterodyne:0.6.0#comms-agent-fail-closed"
     ],
     "invariants": [
       "COMMS-I-AGENT-SIGNER-BINDING",
@@ -700,7 +700,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "claims.authorizeWithClaim",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:0.6.0#comms-verification-trust-proof-of-possession-and-state"
+      "heterodyne:0.6.0#comms-claim-verification"
     ],
     "invariants": [
       "COMMS-I-CLAIM-ATTENUATION",
@@ -868,7 +868,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "claims.authorizeWithClaim",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:0.6.0#comms-authoritative-private-persona-claim-ledger"
+      "heterodyne:0.6.0#comms-claim-ledger"
     ],
     "invariants": [
       "COMMS-I-CLAIM-REPOSITORY-AUTHORITY"
@@ -933,7 +933,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "privacy-crypto.deriveConfigPostKey+nostr-tools.nip44",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:0.6.0#comms-config-repository-protection-profile"
+      "heterodyne:0.6.0#comms-config-repository"
     ],
     "invariants": [
       "COMMS-I-CONFIG-AT-REST",
@@ -1036,7 +1036,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "claim-ledger.mergeClaimLedger+evaluateReaderAccess",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:0.6.0#comms-authoritative-private-persona-claim-ledger"
+      "heterodyne:0.6.0#comms-claim-ledger"
     ],
     "invariants": [
       "COMMS-I-CLAIM-REVOCATION",
@@ -1048,7 +1048,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "claim-ledger.evaluateReaderAccess",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:0.6.0#comms-authoritative-private-persona-claim-ledger"
+      "heterodyne:0.6.0#comms-claim-ledger"
     ],
     "invariants": [
       "COMMS-I-LEDGER-CONFINEMENT"
@@ -1074,7 +1074,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "marmot-routing-policy.evaluateMarmotDurability",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:0.6.0#comms-exact-event-and-media-bytes"
+      "heterodyne:0.6.0#comms-marmot-exact-bytes"
     ],
     "invariants": [
       "COMMS-I-MARMOT-EXACT-BYTES"
@@ -1085,7 +1085,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "marmot-routing-policy.evaluateMarmotRetention",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:0.6.0#comms-retention-and-non-erasure"
+      "heterodyne:0.6.0#comms-marmot-retention"
     ],
     "invariants": [
       "COMMS-I-RADICLE-NON-ERASURE"
@@ -1109,7 +1109,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "marmot-admission.ordinaryConversationAdmission",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:0.6.0#comms-ordinary-conversation-hook"
+      "heterodyne:0.6.0#comms-ordinary-conversation-admission"
     ],
     "invariants": [
       "COMMS-I-MARMOT-ACCOUNT-IDENTITY",
@@ -1122,7 +1122,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "marmot-routing-policy.evaluateMarmotDurability",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:0.6.0#comms-rotation-transaction-and-durable-acknowledgement"
+      "heterodyne:0.6.0#comms-marmot-rotation"
     ],
     "invariants": [
       "COMMS-I-MARMOT-EXACT-BYTES"
@@ -1161,7 +1161,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "marmot-routing-policy.evaluateMarmotRoutingBinding",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:0.6.0#comms-routing-generations-and-bindings"
+      "heterodyne:0.6.0#comms-marmot-routing-generation"
     ],
     "invariants": [
       "COMMS-I-RADICLE-ROUTING-AUTHORITY"
@@ -1185,7 +1185,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "marmot-routing-policy.evaluateMarmotRoutingBinding",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:0.6.0#comms-routing-generations-and-bindings"
+      "heterodyne:0.6.0#comms-marmot-routing-generation"
     ],
     "invariants": [
       "COMMS-I-RADICLE-ROUTING-AUTHORITY"
@@ -1211,7 +1211,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "comms-policy.validatePrivateBroadcast",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:0.6.0#comms-encrypted-audience-posts"
+      "heterodyne:0.6.0#comms-tier-three-profile"
     ],
     "invariants": [
       "COMMS-I-MARMOT-UPSTREAM-AUTHORITY"
@@ -1224,7 +1224,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "oidc.projectAccessToken+validateProjectedJwt",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:0.6.0#comms-interoperable-jwt-projection"
+      "heterodyne:0.6.0#comms-jwt-projection"
     ],
     "invariants": [
       "COMMS-I-JWT-TYPE-AUDIENCE",
@@ -1236,7 +1236,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "oidc.validateProjectedJwt",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:0.6.0#comms-interoperable-jwt-projection"
+      "heterodyne:0.6.0#comms-jwt-projection"
     ],
     "invariants": [
       "COMMS-I-JWT-TYPE-AUDIENCE"
@@ -1249,7 +1249,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "oidc.validateAuthorizationRequest",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:0.6.0#comms-authorization-clients-consent-and-release"
+      "heterodyne:0.6.0#comms-oidc-authorization"
     ],
     "invariants": [
       "COMMS-I-CLAIM-RELEASE",
@@ -1261,7 +1261,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "oidc.validateAuthorizationRequest",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:0.6.0#comms-authorization-clients-consent-and-release"
+      "heterodyne:0.6.0#comms-oidc-authorization"
     ],
     "invariants": [
       "COMMS-I-CLAIM-RELEASE"
@@ -1274,7 +1274,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "oidc.validateAuthorizationRequest",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:0.6.0#comms-authorization-clients-consent-and-release"
+      "heterodyne:0.6.0#comms-oidc-authorization"
     ],
     "invariants": [
       "COMMS-I-CLAIM-RELEASE"
@@ -1287,7 +1287,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "oidc.validateAuthorizationRequest",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:0.6.0#comms-authorization-clients-consent-and-release"
+      "heterodyne:0.6.0#comms-oidc-authorization"
     ],
     "invariants": [
       "COMMS-I-CLAIM-RELEASE"
@@ -1300,7 +1300,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "oidc.validateAuthorizationRequest",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:0.6.0#comms-authorization-clients-consent-and-release"
+      "heterodyne:0.6.0#comms-oidc-authorization"
     ],
     "invariants": [
       "COMMS-I-CLAIM-RELEASE"
@@ -1326,7 +1326,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "oidc.validateIssuerMetadata",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:0.6.0#comms-radicle-issuer-continuity"
+      "heterodyne:0.6.0#comms-issuer-continuity"
     ],
     "invariants": [
       "COMMS-I-ISSUER-CONTINUITY"
@@ -1339,7 +1339,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "oidc.validateIssuerMetadata",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:0.6.0#comms-radicle-issuer-continuity"
+      "heterodyne:0.6.0#comms-issuer-continuity"
     ],
     "invariants": [
       "COMMS-I-ISSUER-CONTINUITY"
@@ -1376,7 +1376,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "oidc.validateProjectedJwt",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:0.6.0#comms-interoperable-jwt-projection"
+      "heterodyne:0.6.0#comms-jwt-projection"
     ],
     "invariants": [
       "COMMS-I-JWT-TYPE-AUDIENCE"
@@ -1643,7 +1643,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "comms-policy.validatePublicReaderRendering",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:0.6.0#comms-public-reader-feature"
+      "heterodyne:0.6.0#comms-public-reader"
     ],
     "invariants": [
       "COMMS-I-PUBLIC-READER-TIER1-ONLY"
@@ -1656,7 +1656,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "public-reader.resolvePublicAsset",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:0.6.0#comms-public-reader-feature"
+      "heterodyne:0.6.0#comms-public-reader"
     ],
     "invariants": [
       "COMMS-I-PUBLIC-READER-TIER1-ONLY"
@@ -1667,7 +1667,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "public-reader.validateBootstrapRelay",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:0.6.0#comms-launcher-and-content-security"
+      "heterodyne:0.6.0#comms-public-reader-security"
     ],
     "invariants": [
       "COMMS-I-PUBLIC-READER-TIER1-ONLY"
@@ -1680,7 +1680,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "public-reader.parseLauncherFragment",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:0.6.0#comms-universal-public-launcher"
+      "heterodyne:0.6.0#comms-public-launcher"
     ],
     "invariants": [
       "COMMS-I-PUBLIC-READER-TIER1-ONLY"
@@ -1693,7 +1693,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "privacy-crypto.deriveTier3IndexKey+nostr-tools.nip44",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:0.6.0#comms-audience-encryption-profile-tiers-2-and-3"
+      "heterodyne:0.6.0#comms-tier-three-profile"
     ],
     "invariants": [
       "COMMS-I-CLIENT-SIDE-DELIVERY",
@@ -3023,7 +3023,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "social-policy.evaluateAgentModerationEvidence",
     "owner_document": "social",
     "spec_refs": [
-      "heterodyne:0.6.0#social-agent-policy"
+      "heterodyne:0.6.0#social-agent-policy-receipts"
     ],
     "invariants": [
       "SOCIAL-I-AGENT-AUTHORSHIP-EXACT"
@@ -3036,7 +3036,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "social-policy.evaluateAgentModerationEvidence",
     "owner_document": "social",
     "spec_refs": [
-      "heterodyne:0.6.0#social-agent-policy"
+      "heterodyne:0.6.0#social-agent-policy-receipts"
     ],
     "invariants": [
       "SOCIAL-I-AGENT-AUTHORSHIP-EXACT"
@@ -3049,7 +3049,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "agent-moderation.validateAgentPolicyList",
     "owner_document": "social",
     "spec_refs": [
-      "heterodyne:0.6.0#social-agent-policy"
+      "heterodyne:0.6.0#social-agent-policy-list"
     ],
     "invariants": [
       "SOCIAL-I-AGENT-POLICY-LOCAL"
@@ -3062,7 +3062,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "agent-moderation.validateAgentPolicyReceipt",
     "owner_document": "social",
     "spec_refs": [
-      "heterodyne:0.6.0#social-agent-policy"
+      "heterodyne:0.6.0#social-agent-policy-receipts"
     ],
     "invariants": [
       "SOCIAL-I-AGENT-POLICY-LOCAL"
@@ -3075,7 +3075,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "social-policy.evaluateAgentModerationEvidence",
     "owner_document": "social",
     "spec_refs": [
-      "heterodyne:0.6.0#social-agent-policy"
+      "heterodyne:0.6.0#social-agent-policy-receipts"
     ],
     "invariants": [
       "SOCIAL-I-AGENT-AUTHORSHIP-EXACT"
@@ -3324,7 +3324,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "workspace-policy.evaluateWorkspaceCapabilityBoundary",
     "owner_document": "workspace",
     "spec_refs": [
-      "heterodyne:0.6.0#workspace-authorization"
+      "heterodyne:0.6.0#workspace-security"
     ],
     "invariants": [
       "WORKSPACE-I-CARRIER-NOT-AUTHORITY",
@@ -3338,7 +3338,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "workspace-policy.evaluateWorkspaceCapabilityBoundary",
     "owner_document": "workspace",
     "spec_refs": [
-      "heterodyne:0.6.0#workspace-authorization"
+      "heterodyne:0.6.0#workspace-role-policy"
     ],
     "invariants": [
       "WORKSPACE-I-AUTHENTICATED-CURRENT-STATE",
@@ -3390,7 +3390,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "workspace.evaluateRoleLeafChange",
     "owner_document": "workspace",
     "spec_refs": [
-      "heterodyne:0.6.0#workspace-device-leaves"
+      "heterodyne:0.6.0#workspace-role-control"
     ],
     "invariants": [
       "WORKSPACE-I-DEVICE-LEAF-SEPARATION",
@@ -3402,7 +3402,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "workspace-policy.evaluateWorkspaceResourceKeySeparation",
     "owner_document": "workspace",
     "spec_refs": [
-      "heterodyne:0.6.0#workspace-resource-key-delivery"
+      "heterodyne:0.6.0#workspace-key-delivery"
     ],
     "invariants": [
       "WORKSPACE-I-INDEPENDENT-RESOURCE-KEYS"
@@ -3413,7 +3413,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "workspace-policy.evaluateWorkspaceCapabilityBoundary",
     "owner_document": "workspace",
     "spec_refs": [
-      "heterodyne:0.6.0#workspace-inheritance"
+      "heterodyne:0.6.0#workspace-role-policy"
     ],
     "invariants": [
       "WORKSPACE-I-INHERITANCE-NARROWS"
@@ -3439,7 +3439,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "workspace.evaluatePrivateProjection",
     "owner_document": "workspace",
     "spec_refs": [
-      "heterodyne:0.6.0#workspace-private-discovery"
+      "heterodyne:0.6.0#workspace-privacy"
     ],
     "invariants": [
       "WORKSPACE-I-PRIVATE-TOPOLOGY"
@@ -3450,7 +3450,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "workspace.evaluatePrivateProjection",
     "owner_document": "workspace",
     "spec_refs": [
-      "heterodyne:0.6.0#workspace-private-discovery"
+      "heterodyne:0.6.0#workspace-privacy"
     ],
     "invariants": [
       "WORKSPACE-I-PRIVATE-TOPOLOGY"
@@ -3463,7 +3463,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "workspace.resolveEffectiveHosts",
     "owner_document": "workspace",
     "spec_refs": [
-      "heterodyne:0.6.0#workspace-hosting"
+      "heterodyne:0.6.0#workspace-advertisements"
     ],
     "invariants": [
       "WORKSPACE-I-HOST-AUTHORITY-SEPARATION",
@@ -3501,7 +3501,7 @@ const CURRENT_CASE_CONTRACTS = {
     "boundary_id": "workspace-policy.evaluateWorkspaceCapabilityBoundary",
     "owner_document": "workspace",
     "spec_refs": [
-      "heterodyne:0.6.0#workspace-revocation"
+      "heterodyne:0.6.0#workspace-grants"
     ],
     "invariants": [
       "WORKSPACE-I-REVOCATION-FUTURE-ONLY"

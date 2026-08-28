@@ -522,6 +522,27 @@ function loadFamilyDocuments(repoRoot: string): FamilyDocument[] {
   });
 }
 
+function anchorInventory(
+  documents: readonly FamilyDocument[],
+): ReadonlyMap<DocumentId, ReadonlySet<string>> {
+  const inventory = new Map<DocumentId, ReadonlySet<string>>();
+  for (const document of documents) {
+    const anchors = new Set<string>();
+    for (const line of document.lines) {
+      for (const match of line.matchAll(EXPLICIT_ANCHOR)) anchors.add(match[1]);
+    }
+    inventory.set(document.document, anchors);
+  }
+  return inventory;
+}
+
+/** Explicit live specification anchors keyed by their owning family document. */
+export function loadFamilyAnchorInventory(
+  repoRoot: string,
+): ReadonlyMap<DocumentId, ReadonlySet<string>> {
+  return anchorInventory(loadFamilyDocuments(repoRoot));
+}
+
 type VersionQualifierSurface = {
   path: string;
   text: string;
@@ -669,7 +690,11 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
   const documents = loadFamilyDocuments(repoRoot);
   const issues: FamilyDocIssue[] = [];
   const anchors = new Map<string, { path: string; line: number }>();
-  const documentAnchors = new Set<string>();
+  const documentAnchors = new Set(
+    [...anchorInventory(documents)].flatMap(([document, documentValues]) =>
+      [...documentValues].map((anchor) => `${document}:${anchor}`)
+    ),
+  );
   const sections = new Map<DocumentId, Set<string>>();
   const anchorOwner = new Map<string, DocumentId>();
 
@@ -683,7 +708,6 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
     for (const [index, line] of document.lines.entries()) {
       for (const match of line.matchAll(EXPLICIT_ANCHOR)) {
         const anchor = match[1];
-        documentAnchors.add(`${document.document}:${anchor}`);
         anchorOwner.set(anchor, document.document);
         const existing = anchors.get(anchor);
         if (existing !== undefined) {

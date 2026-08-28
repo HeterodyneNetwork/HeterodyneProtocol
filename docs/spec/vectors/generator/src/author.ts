@@ -38,13 +38,20 @@ import {
   writeHistoricalCoverageFromVectors,
 } from "./coverage.js";
 import { buildCurrentVectors } from "./current-vectors/index.js";
+import { assertCurrentSpecReferencesResolve } from "./current-traceability.js";
 
-export async function authorAllVectors(outputDir: string): Promise<string[]> {
+const DEFAULT_REPOSITORY_ROOT = resolve(import.meta.dirname, "../../../../../");
+
+export async function authorAllVectors(
+  outputDir: string,
+  repositoryRoot = DEFAULT_REPOSITORY_ROOT,
+): Promise<string[]> {
   const fixtures = {
     ...buildFixtures(),
     vector_schema_version: CURRENT_VECTOR_SCHEMA_VERSION,
   };
   const vectors = await buildCurrentVectors();
+  assertCurrentSpecReferencesResolve(vectors, repositoryRoot);
   const written: string[] = [];
 
   await removeRetiredVectors(
