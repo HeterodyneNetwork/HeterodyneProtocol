@@ -146,6 +146,18 @@ an enrollment context; it grants no signer authority. Implementations MUST
 enforce finite pending-group counts, a finite lifetime, and rate and burst
 limits before durable admission.
 
+Invitation and pending-group evaluation is preparation, not durable admission.
+The durable enrollment commit accepts a closed enrollment identifier, group,
+client key, and Comms opaque current-authorization-view capability; it accepts
+no caller clock, freshness/conflict value, authorization age, checkpoint, or
+entitlement state. The consumer snapshots and freezes the closed enrollment
+input before it immediately revalidates the capability at the effect boundary.
+Only that effect-time result supplies commit time, repository/persona/manifest
+binding, issuer, and private-state checkpoint. A failed reload, changed
+manifest or checkpoint, conflict, stale transition, or forged capability
+commits nothing. An accepted commit still creates only `enrollment-only` state
+with no signer authority.
+
 <a id="control-one-time-invites"></a>
 Purpose-bound invites use the provider-independent Comms one-time-invite
 format. An invite can authenticate rendezvous with a full node but cannot

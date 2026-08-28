@@ -1,41 +1,30 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import {
-  createAuthorizationFreshnessAuthority,
-  evaluateAuthorizationFreshness,
   type CurrentAuthorizationView,
 } from "./authorization-freshness.js";
-import { buildClaimLedgerScenario } from "./claim-ledger-test-support.js";
-import { buildFixtures } from "./fixtures.js";
-import { utf8Bytes } from "./hex.js";
-import { jcsCanonicalize } from "./jcs.js";
-import { OIDC_RSA_ONE } from "./oidc-rsa-fixtures.js";
 import { nip19 } from "nostr-tools";
-import { createHash } from "node:crypto";
 import {
+  commitControlEnrollment,
   issueControlToken,
   validateControlTokenUse,
   type ControlAuthorizationRecord,
 } from "./control-profile.js";
-import {
-  continuityManifestDigest,
-  createContinuityAuthorityProof,
-  type ContinuityManifest,
-  type ContinuityManifestBody,
-} from "./token-status.js";
+import { buildAuthorizationFreshnessTestSupport } from "./authorization-freshness-test-support.js";
+import { buildLedgerRepositoryEvidence, mergeClaimLedger } from "./claim-ledger.js";
 
-const fixtures = buildFixtures();
-let scenario: Awaited<ReturnType<typeof buildClaimLedgerScenario>>;
+type FreshnessSupport = Awaited<ReturnType<typeof buildAuthorizationFreshnessTestSupport>>;
+let support: FreshnessSupport;
+let scenario: FreshnessSupport["scenario"];
 
 beforeAll(async () => {
-  scenario = await buildClaimLedgerScenario(fixtures);
+  support = await buildAuthorizationFreshnessTestSupport();
+  scenario = support.scenario;
   entitlement = {
     ...authorizationRecord,
     persona: scenario.persona,
   };
 });
 
-const sha256 = (value: Uint8Array): string =>
-  createHash("sha256").update(value).digest("hex");
 const client = "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798";
 const node = "22".repeat(32);
 const group = "33".repeat(32);
@@ -65,48 +54,7 @@ const authorizationRecord: ControlAuthorizationRecord = {
 let entitlement: ControlAuthorizationRecord;
 
 function currentView(clock: { now: number }): CurrentAuthorizationView {
-  const state = scenario.issuerKeyEpochOneState;
-  const personaKey = fixtures.personas.alice.epoch_keys.epoch_1.pubkey;
-  const personaNpub = nip19.npubEncode(personaKey);
-  const body: ContinuityManifestBody = {
-    profile: "heterodyne-oidc-continuity-v1",
-    repository_rid: scenario.rid,
-    branch: "main",
-    persona_npub: personaNpub,
-    persona_key: personaKey,
-    issuer: `https://node.example/oidc/${personaNpub}`,
-    sequence: 0,
-    predecessor_digest: null,
-    max_checkpoint_age_seconds: 300,
-    authorization_view_max_age: 300,
-    current_jwks_sha256: sha256(utf8Bytes(jcsCanonicalize({ keys: [OIDC_RSA_ONE.public_jwk] }))),
-    current_signing_key_id: OIDC_RSA_ONE.key_id,
-    current_signing_jwk_sha256: sha256(utf8Bytes(jcsCanonicalize(OIDC_RSA_ONE.public_jwk))),
-    retiring_signing_key_ids: [],
-    retiring_jwks_sha256: [],
-    status_lists: [],
-    successor: null,
-    authority: {
-      writer_nid: scenario.writerOne.did_key,
-      issued_at: state.checkpoint.observed_at,
-      checkpoint: state.checkpoint,
-    },
-  };
-  const manifest: ContinuityManifest = {
-    ...body,
-    authority_proof: createContinuityAuthorityProof(body, scenario.writerOne.private_key),
-  };
-  const authority = createAuthorizationFreshnessAuthority({
-    repository_rid: manifest.repository_rid,
-    persona_key: manifest.persona_key,
-    manifest_digest: continuityManifestDigest(manifest),
-  }, {
-    trusted_now: () => clock.now,
-    load_current_view: () => ({ manifest, ledger_state: state }),
-  });
-  const evaluated = evaluateAuthorizationFreshness(authority, manifest);
-  if (evaluated.verdict !== "accept") throw new Error(`fixture rejected: ${evaluated.reason}`);
-  return evaluated.view;
+  return support.currentView(clock);
 }
 
 function issuanceInput(view: CurrentAuthorizationView) {
@@ -129,15 +77,7 @@ describe("Control opaque authorization view integration", () => {
   it("derives token time and checkpoint from effect-time revalidation", () => {
     const clock = { now: scenario.issuerKeyEpochOneState.checkpoint.observed_at + 10 };
     const view = currentView(clock);
-    const issued = issueControlToken({
-      ...issuanceInput(view),
-      now: 1,
-      issuer: "https://attacker.invalid/oidc/substituted",
-      registry_checkpoint: "00".repeat(32),
-      authorization_view_authenticated: false,
-      authorization_view_conflicted: true,
-      authorization_view_age_seconds: 999_999,
-    } as never);
+    const issued = issueControlToken(issuanceInput(view));
     expect(issued).toMatchObject({
       verdict: "accept",
       token: {
@@ -145,6 +85,19 @@ describe("Control opaque authorization view integration", () => {
         iss: `https://node.example/oidc/${nip19.npubEncode(scenario.persona)}`,
         registry_checkpoint: scenario.issuerKeyEpochOneState.checkpoint.commit_oid,
       },
+    });
+    const callerAuthoredAuthority = {
+      ...issuanceInput(view),
+      now: 1,
+      issuer: "https://attacker.invalid/oidc/substituted",
+      registry_checkpoint: "00".repeat(32),
+      authorization_view_authenticated: false,
+      authorization_view_conflicted: true,
+      authorization_view_age_seconds: 999_999,
+    };
+    expect(issueControlToken(callerAuthoredAuthority)).toEqual({
+      verdict: "reject",
+      reason_code: "control-token-invalid",
     });
   });
 
@@ -163,13 +116,7 @@ describe("Control opaque authorization view integration", () => {
     const clock = { now: checkpoint.observed_at };
     const view = currentView(clock);
     clock.now = checkpoint.observed_at + 301;
-    expect(issueControlToken({
-      ...issuanceInput(view),
-      now: checkpoint.observed_at,
-      authorization_view_authenticated: true,
-      authorization_view_conflicted: false,
-      authorization_view_age_seconds: 0,
-    } as never)).toEqual({
+    expect(issueControlToken(issuanceInput(view))).toEqual({
       verdict: "reject",
       reason_code: "control-authorization-view-stale",
     });
@@ -201,5 +148,94 @@ describe("Control opaque authorization view integration", () => {
       usage: { calls: 1 },
       required_agent_role: null,
     }).verdict).toBe("accept");
+  });
+
+  it("commits enrollment only after effect-time view revalidation", () => {
+    const checkpoint = scenario.issuerKeyEpochOneState.checkpoint;
+    const clock = { now: checkpoint.observed_at };
+    const view = currentView(clock);
+    const input = {
+      enrollment_id: "77".repeat(32),
+      group_id: group,
+      client_key: client,
+      authorization_view: view,
+    };
+    expect(commitControlEnrollment(input)).toMatchObject({
+      verdict: "accept",
+      enrollment: {
+        state: "enrollment-only",
+        authority: false,
+        committed_at: checkpoint.observed_at,
+        registry_checkpoint: checkpoint.commit_oid,
+        repository_rid: scenario.rid,
+        persona_key: scenario.persona,
+      },
+    });
+
+    clock.now += 301;
+    expect(commitControlEnrollment(input)).toEqual({
+      verdict: "reject",
+      reason_code: "control-authorization-view-stale",
+    });
+    expect(commitControlEnrollment({ ...input, authorization_view: {} as CurrentAuthorizationView })).toEqual({
+      verdict: "reject",
+      reason_code: "control-authorization-view-stale",
+    });
+  });
+
+  it("does not commit enrollment after manifest or checkpoint substitution", () => {
+    const state = scenario.issuerKeyEpochOneState;
+    const manifest = support.signedManifest(state);
+    const substituted = support.signedManifest(state, { authorization_view_max_age: 301 });
+    const clock = { now: state.checkpoint.observed_at };
+    let loadedManifest = manifest;
+    const view = support.currentView(
+      clock,
+      state,
+      manifest,
+      () => ({ manifest: loadedManifest, ledger_state: state }),
+    );
+    loadedManifest = substituted;
+    expect(commitControlEnrollment({
+      enrollment_id: "77".repeat(32),
+      group_id: group,
+      client_key: client,
+      authorization_view: view,
+    })).toEqual({
+      verdict: "reject",
+      reason_code: "oidc-issuer-authority-invalid",
+    });
+
+    let loadedState = state;
+    loadedManifest = manifest;
+    const checkpointView = support.currentView(
+      clock,
+      state,
+      manifest,
+      () => ({ manifest, ledger_state: loadedState }),
+    );
+    const records = [...state.records, scenario.grantOne, scenario.grantDivergent];
+    const repository = buildLedgerRepositoryEvidence({
+      repository_rid: scenario.rid,
+      confirmed_records: records,
+      observed_at: state.checkpoint.observed_at + 1,
+      prior: scenario.issuerKeyEpochOneRepository.repository,
+    });
+    loadedState = mergeClaimLedger(
+      records,
+      [],
+      repository.checkpoint,
+      scenario.makeTask5Context(repository.repository),
+    );
+    expect(loadedState.conflicted_claim_ids).not.toEqual([]);
+    expect(commitControlEnrollment({
+      enrollment_id: "77".repeat(32),
+      group_id: group,
+      client_key: client,
+      authorization_view: checkpointView,
+    })).toEqual({
+      verdict: "reject",
+      reason_code: "control-authorization-view-stale",
+    });
   });
 });

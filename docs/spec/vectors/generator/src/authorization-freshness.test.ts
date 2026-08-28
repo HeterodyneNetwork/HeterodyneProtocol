@@ -4,97 +4,29 @@ import {
   evaluateAuthorizationFreshness,
   revalidateAuthorizationViewAtEffect,
   type AuthorizationFreshnessAuthority,
-  type AuthoritativeAuthorizationView,
 } from "./authorization-freshness.js";
 import {
   buildLedgerRepositoryEvidence,
   mergeClaimLedger,
-  type LedgerMergeResult,
 } from "./claim-ledger.js";
-import { buildClaimLedgerScenario } from "./claim-ledger-test-support.js";
-import { buildFixtures } from "./fixtures.js";
-import { utf8Bytes } from "./hex.js";
-import { jcsCanonicalize } from "./jcs.js";
-import { OIDC_RSA_ONE } from "./oidc-rsa-fixtures.js";
-import { nip19 } from "nostr-tools";
-import { createHash } from "node:crypto";
-import {
-  continuityManifestDigest,
-  createContinuityAuthorityProof,
-  type ContinuityManifest,
-  type ContinuityManifestBody,
-} from "./token-status.js";
+import { buildAuthorizationFreshnessTestSupport } from "./authorization-freshness-test-support.js";
+import { continuityManifestDigest } from "./token-status.js";
 
-const fixtures = buildFixtures();
-let scenario: Awaited<ReturnType<typeof buildClaimLedgerScenario>>;
+type FreshnessSupport = Awaited<ReturnType<typeof buildAuthorizationFreshnessTestSupport>>;
+let support: FreshnessSupport;
+let scenario: FreshnessSupport["scenario"];
 
 beforeAll(async () => {
-  scenario = await buildClaimLedgerScenario(fixtures);
+  support = await buildAuthorizationFreshnessTestSupport();
+  scenario = support.scenario;
 });
 
-const sha256 = (value: Uint8Array): string =>
-  createHash("sha256").update(value).digest("hex");
-
-function signedManifest(
-  state: LedgerMergeResult,
-  options: {
-    checkpoint_age?: number;
-    authorization_view_max_age?: number;
-  } = {},
-): ContinuityManifest {
-  const personaKey = fixtures.personas.alice.epoch_keys.epoch_1.pubkey;
-  const personaNpub = nip19.npubEncode(personaKey);
-  const body: ContinuityManifestBody = {
-    profile: "heterodyne-oidc-continuity-v1",
-    repository_rid: scenario.rid,
-    branch: "main",
-    persona_npub: personaNpub,
-    persona_key: personaKey,
-    issuer: `https://node.example/oidc/${personaNpub}`,
-    sequence: 0,
-    predecessor_digest: null,
-    max_checkpoint_age_seconds: 300,
-    authorization_view_max_age: options.authorization_view_max_age ?? 300,
-    current_jwks_sha256: sha256(utf8Bytes(jcsCanonicalize({ keys: [OIDC_RSA_ONE.public_jwk] }))),
-    current_signing_key_id: OIDC_RSA_ONE.key_id,
-    current_signing_jwk_sha256: sha256(utf8Bytes(jcsCanonicalize(OIDC_RSA_ONE.public_jwk))),
-    retiring_signing_key_ids: [],
-    retiring_jwks_sha256: [],
-    status_lists: [],
-    successor: null,
-    authority: {
-      writer_nid: scenario.writerOne.did_key,
-      issued_at: state.checkpoint.observed_at + (options.checkpoint_age ?? 0),
-      checkpoint: state.checkpoint,
-    },
-  };
-  return {
-    ...body,
-    authority_proof: createContinuityAuthorityProof(body, scenario.writerOne.private_key),
-  };
+function signedManifest(...args: Parameters<FreshnessSupport["signedManifest"]>) {
+  return support.signedManifest(...args);
 }
 
-function authorityFor(
-  manifest: ContinuityManifest,
-  state: LedgerMergeResult,
-  clock: { now: number },
-  load = (): AuthoritativeAuthorizationView => ({ manifest, ledger_state: state }),
-): AuthorizationFreshnessAuthority {
-  return createAuthorizationFreshnessAuthority({
-    repository_rid: manifest.repository_rid,
-    persona_key: manifest.persona_key,
-    manifest_digest: continuityManifestDigest(manifest),
-  }, {
-    trusted_now: () => clock.now,
-    load_current_view: (binding) => {
-      if (binding.repository_rid !== manifest.repository_rid
-        || binding.persona_key !== manifest.persona_key
-        || binding.manifest_digest !== continuityManifestDigest(manifest)) {
-        throw new Error("freshness loader received an unbound request");
-      }
-      return load();
-    },
-  });
+function authorityFor(...args: Parameters<FreshnessSupport["authorityFor"]>) {
+  return support.authorityFor(...args);
 }
 
 describe("opaque current authorization freshness", () => {
@@ -196,12 +128,14 @@ describe("opaque current authorization freshness", () => {
       persona_key: manifest.persona_key,
       manifest_digest: continuityManifestDigest(manifest),
     };
-    expect(() => createAuthorizationFreshnessAuthority(binding, {
+    const callerAuthoredSource = {
       trusted_now: () => state.checkpoint.observed_at,
       load_current_view: () => ({ manifest, ledger_state: state }),
       now: state.checkpoint.observed_at,
       authorization_view_authenticated: true,
-    } as never)).toThrow(/authority source/i);
+    };
+    expect(() => createAuthorizationFreshnessAuthority(binding, callerAuthoredSource))
+      .toThrow(/authority source/i);
     expect(evaluateAuthorizationFreshness({} as AuthorizationFreshnessAuthority, manifest)).toEqual({
       verdict: "reject",
       reason: "control-authorization-view-stale",

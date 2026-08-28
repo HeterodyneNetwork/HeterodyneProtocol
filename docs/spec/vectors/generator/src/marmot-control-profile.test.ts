@@ -1,14 +1,8 @@
-import { createHash } from "node:crypto";
-import { nip19 } from "nostr-tools";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
-import {
-  createAuthorizationFreshnessAuthority,
-  evaluateAuthorizationFreshness,
-  type CurrentAuthorizationView,
-} from "./authorization-freshness.js";
-import { buildClaimLedgerScenario } from "./claim-ledger-test-support.js";
+import type { CurrentAuthorizationView } from "./authorization-freshness.js";
 import {
   authorizeInvitation,
+  commitControlEnrollment,
   evaluateDeviceAuthorizationAttempt,
   evaluateInvitePreauthorization,
   evaluatePendingEnrollment,
@@ -21,72 +15,23 @@ import {
   retentionDecision,
   validateControlTokenUse,
 } from "./control-profile.js";
-import { buildFixtures } from "./fixtures.js";
-import { utf8Bytes } from "./hex.js";
-import { jcsCanonicalize } from "./jcs.js";
-import { OIDC_RSA_ONE } from "./oidc-rsa-fixtures.js";
-import {
-  continuityManifestDigest,
-  createContinuityAuthorityProof,
-  type ContinuityManifest,
-  type ContinuityManifestBody,
-} from "./token-status.js";
+import { buildAuthorizationFreshnessTestSupport } from "./authorization-freshness-test-support.js";
 
 const client = "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798";
 const node = "22".repeat(32);
 const group = "33".repeat(32);
 const jkt = "2JF8vg9etJzjFwZwmkvhBLLZ0bfMVVOPivYR5lFtcec";
-const fixtures = buildFixtures();
-let freshnessScenario: Awaited<ReturnType<typeof buildClaimLedgerScenario>>;
+type FreshnessSupport = Awaited<ReturnType<typeof buildAuthorizationFreshnessTestSupport>>;
+let freshness: FreshnessSupport;
+let freshnessScenario: FreshnessSupport["scenario"];
 
 beforeAll(async () => {
-  freshnessScenario = await buildClaimLedgerScenario(fixtures);
+  freshness = await buildAuthorizationFreshnessTestSupport();
+  freshnessScenario = freshness.scenario;
 });
 
 function currentAuthorizationView(clock: { now: number }): CurrentAuthorizationView {
-  const state = freshnessScenario.issuerKeyEpochOneState;
-  const personaKey = freshnessScenario.persona;
-  const personaNpub = nip19.npubEncode(personaKey);
-  const sha256 = (value: Uint8Array): string => createHash("sha256").update(value).digest("hex");
-  const body: ContinuityManifestBody = {
-    profile: "heterodyne-oidc-continuity-v1",
-    repository_rid: freshnessScenario.rid,
-    branch: "main",
-    persona_npub: personaNpub,
-    persona_key: personaKey,
-    issuer: `https://node.example/oidc/${personaNpub}`,
-    sequence: 0,
-    predecessor_digest: null,
-    max_checkpoint_age_seconds: 300,
-    authorization_view_max_age: 300,
-    current_jwks_sha256: sha256(utf8Bytes(jcsCanonicalize({ keys: [OIDC_RSA_ONE.public_jwk] }))),
-    current_signing_key_id: OIDC_RSA_ONE.key_id,
-    current_signing_jwk_sha256: sha256(utf8Bytes(jcsCanonicalize(OIDC_RSA_ONE.public_jwk))),
-    retiring_signing_key_ids: [],
-    retiring_jwks_sha256: [],
-    status_lists: [],
-    successor: null,
-    authority: {
-      writer_nid: freshnessScenario.writerOne.did_key,
-      issued_at: state.checkpoint.observed_at,
-      checkpoint: state.checkpoint,
-    },
-  };
-  const manifest: ContinuityManifest = {
-    ...body,
-    authority_proof: createContinuityAuthorityProof(body, freshnessScenario.writerOne.private_key),
-  };
-  const authority = createAuthorizationFreshnessAuthority({
-    repository_rid: manifest.repository_rid,
-    persona_key: manifest.persona_key,
-    manifest_digest: continuityManifestDigest(manifest),
-  }, {
-    trusted_now: () => clock.now,
-    load_current_view: () => ({ manifest, ledger_state: state }),
-  });
-  const result = evaluateAuthorizationFreshness(authority, manifest);
-  if (result.verdict !== "accept") throw new Error(`freshness fixture rejected: ${result.reason}`);
-  return result.view;
+  return freshness.currentView(clock);
 }
 
 describe("Marmot Control invitation and entitlement", () => {
@@ -156,6 +101,26 @@ describe("Marmot Control invitation and entitlement", () => {
       .toEqual({ verdict: "accept", state: "enrollment-only", expires_at: 2_800 });
     expect(evaluatePendingEnrollment({ created_at: 1_000, now: 2_800 }))
       .toEqual({ verdict: "reject", reason_code: "control-enrollment-unavailable" });
+  });
+
+  it("commits enrollment-only state through the opaque current authorization view", () => {
+    const state = freshnessScenario.issuerKeyEpochOneState;
+    const clock = { now: state.checkpoint.observed_at };
+    const authorizationView = currentAuthorizationView(clock);
+    expect(commitControlEnrollment({
+      enrollment_id: "77".repeat(32),
+      group_id: group,
+      client_key: client,
+      authorization_view: authorizationView,
+    })).toMatchObject({
+      verdict: "accept",
+      enrollment: {
+        state: "enrollment-only",
+        authority: false,
+        committed_at: state.checkpoint.observed_at,
+        registry_checkpoint: state.checkpoint.commit_oid,
+      },
+    });
   });
 
   it("converges reductions, absorbs revocation, and rejects unconsented expansion", () => {

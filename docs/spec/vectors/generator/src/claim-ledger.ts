@@ -35,6 +35,7 @@ import {
   type NostrSignedEvent,
   type VerifiedNostrEvent,
 } from "./nostr.js";
+import { snapshotClosedDataTree } from "./closed-data.js";
 
 export type LedgerRecordType =
   | "claim"
@@ -483,15 +484,24 @@ export function canonicalValidatedCheckpoint(state: LedgerMergeResult): LedgerCh
 export function currentAuthorizationLedgerView(state: LedgerMergeResult): Readonly<{
   checkpoint: LedgerCheckpoint;
   conflicted: boolean;
+  state: LedgerMergeResult;
 }> {
-  const checkpoint = canonicalValidatedCheckpoint(state);
+  assertValidatedLedgerState(state);
   const snapshot = VALIDATED_LEDGER_SNAPSHOTS.get(state);
   if (snapshot === undefined) {
     throw new Error("claim-repository-unconfirmed: immutable state snapshot is absent");
   }
+  const capturedState = snapshotClosedDataTree(state, "current authorization ledger state");
+  if (jcsCanonicalize(capturedState) !== jcsCanonicalize(snapshot)) {
+    throw new Error("claim-repository-conflict: validated ledger state was mutated after merge");
+  }
+  const immutableState = snapshotClosedDataTree(snapshot, "current authorization ledger snapshot");
+  VALIDATED_LEDGER_STATES.add(immutableState);
+  VALIDATED_LEDGER_SNAPSHOTS.set(immutableState, immutableState);
   return Object.freeze({
-    checkpoint,
+    checkpoint: immutableState.checkpoint,
     conflicted: snapshot.conflicted_claim_ids.length > 0,
+    state: immutableState,
   });
 }
 

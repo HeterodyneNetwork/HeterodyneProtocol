@@ -5,6 +5,7 @@ import {
   type LedgerMergeResult,
 } from "./claim-ledger.js";
 import { jcsCanonicalize } from "./jcs.js";
+import { captureExactDataObject, snapshotClosedDataTree } from "./closed-data.js";
 import {
   continuityManifestDigest,
   resolveIssuerContinuity,
@@ -62,20 +63,28 @@ export function createAuthorizationFreshnessAuthority(
     load_current_view: (binding: AuthorizationViewBinding) => AuthoritativeAuthorizationView;
   },
 ): AuthorizationFreshnessAuthority {
-  if (Object.keys(binding).sort().join("\0") !== "manifest_digest\0persona_key\0repository_rid") {
-    throw new Error("authorization freshness authority binding must be exact");
-  }
-  if (Object.keys(source).sort().join("\0") !== "load_current_view\0trusted_now") {
-    throw new Error("authorization freshness authority source must be exact");
-  }
-  if (typeof source.trusted_now !== "function" || typeof source.load_current_view !== "function") {
+  const capturedBinding = captureExactDataObject(binding, [[
+    "repository_rid", "persona_key", "manifest_digest",
+  ]], "authorization freshness authority binding");
+  const capturedSource = captureExactDataObject(source, [[
+    "trusted_now", "load_current_view",
+  ]], "authorization freshness authority source");
+  if (typeof capturedSource.trusted_now !== "function" ||
+      typeof capturedSource.load_current_view !== "function" ||
+      typeof capturedBinding.repository_rid !== "string" ||
+      typeof capturedBinding.persona_key !== "string" ||
+      typeof capturedBinding.manifest_digest !== "string") {
     throw new Error("authorization freshness authority source must contain trusted functions");
   }
   const authority = Object.freeze({}) as AuthorizationFreshnessAuthority;
   AUTHORITY_RECORDS.set(authority, {
-    binding: Object.freeze({ ...binding }),
-    trusted_now: source.trusted_now,
-    load_current_view: source.load_current_view,
+    binding: Object.freeze({
+      repository_rid: capturedBinding.repository_rid,
+      persona_key: capturedBinding.persona_key,
+      manifest_digest: capturedBinding.manifest_digest,
+    }),
+    trusted_now: capturedSource.trusted_now as () => number,
+    load_current_view: capturedSource.load_current_view as AuthorityRecord["load_current_view"],
   });
   return authority;
 }
@@ -147,43 +156,52 @@ function loadAndEvaluate(
   const record = isObject(authority) ? AUTHORITY_RECORDS.get(authority) : undefined;
   if (record === undefined) return rejected("control-authorization-view-stale");
   try {
-    if (presentedManifest.repository_rid !== record.binding.repository_rid
-      || presentedManifest.persona_key !== record.binding.persona_key
-      || continuityManifestDigest(presentedManifest) !== record.binding.manifest_digest) {
+    const presented = snapshotClosedDataTree(presentedManifest, "presented authorization manifest");
+    if (presented.repository_rid !== record.binding.repository_rid
+      || presented.persona_key !== record.binding.persona_key
+      || continuityManifestDigest(presented) !== record.binding.manifest_digest) {
       return rejected("oidc-issuer-authority-invalid");
     }
     const evaluatedAt = record.trusted_now();
     if (!Number.isSafeInteger(evaluatedAt) || evaluatedAt < 0) {
       return rejected("control-authorization-view-stale");
     }
-    const loaded = record.load_current_view(Object.freeze({ ...record.binding }));
-    const allowedKeys = loaded.previous_manifest === undefined
-      ? "ledger_state\0manifest"
-      : "ledger_state\0manifest\0previous_manifest";
-    if (!isObject(loaded) || Object.keys(loaded).sort().join("\0") !== allowedKeys) {
-      return rejected("control-authorization-view-stale");
-    }
-    if (jcsCanonicalize(loaded.manifest) !== jcsCanonicalize(presentedManifest)
-      || continuityManifestDigest(loaded.manifest) !== record.binding.manifest_digest) {
+    const loadedValues = captureExactDataObject(
+      record.load_current_view(record.binding),
+      [["manifest", "ledger_state"], ["manifest", "ledger_state", "previous_manifest"]],
+      "authoritative authorization loader result",
+    );
+    const loadedManifest = snapshotClosedDataTree(
+      loadedValues.manifest as ContinuityManifest,
+      "authoritative authorization manifest",
+    );
+    const previousManifest = loadedValues.previous_manifest === undefined || loadedValues.previous_manifest === null
+      ? null
+      : snapshotClosedDataTree(
+        loadedValues.previous_manifest as ContinuityManifest,
+        "previous authoritative authorization manifest",
+      );
+    const ledgerView = currentAuthorizationLedgerView(loadedValues.ledger_state as LedgerMergeResult);
+    if (jcsCanonicalize(loadedManifest) !== jcsCanonicalize(presented)
+      || continuityManifestDigest(loadedManifest) !== record.binding.manifest_digest) {
       return rejected("oidc-issuer-authority-invalid");
     }
-    const ledgerView = currentAuthorizationLedgerView(loaded.ledger_state);
-    if (jcsCanonicalize(loaded.manifest.authority.checkpoint) !== jcsCanonicalize(ledgerView.checkpoint)) {
+    if (jcsCanonicalize(loadedManifest.authority.checkpoint) !== jcsCanonicalize(ledgerView.checkpoint)) {
       return rejected("control-authorization-view-stale");
     }
     const continuity = resolveIssuerContinuity(
-      loaded.previous_manifest ?? null,
-      loaded.manifest,
+      previousManifest,
+      loadedManifest,
       {
         identity: {
-          persona_npub: loaded.manifest.persona_npub,
-          persona_key: loaded.manifest.persona_key,
+          persona_npub: loadedManifest.persona_npub,
+          persona_key: loadedManifest.persona_key,
         },
         repository_rid: record.binding.repository_rid,
         canonical_branch: "main",
-        writer_nid: loaded.manifest.authority.writer_nid,
+        writer_nid: loadedManifest.authority.writer_nid,
         now: evaluatedAt,
-        ledger_state: loaded.ledger_state,
+        ledger_state: ledgerView.state,
         succession_authority: null,
         active_persona_authority: null,
       },
@@ -191,21 +209,21 @@ function loadAndEvaluate(
     if (!continuity.allowed) return rejected("oidc-issuer-authority-invalid");
 
     const checkpointFreshness = evaluateLedgerCheckpointEligibility(
-      loaded.manifest.authority.issued_at,
+      loadedManifest.authority.issued_at,
       ledgerView.checkpoint,
-      loaded.manifest.max_checkpoint_age_seconds,
+      loadedManifest.max_checkpoint_age_seconds,
     );
     if (!checkpointFreshness.allowed) return rejected("oidc-checkpoint-stale");
     if (ledgerView.conflicted
-      || !Number.isSafeInteger(loaded.manifest.authorization_view_max_age)
-      || loaded.manifest.authorization_view_max_age < 1
-      || loaded.manifest.authorization_view_max_age > 86_400
+      || !Number.isSafeInteger(loadedManifest.authorization_view_max_age)
+      || loadedManifest.authorization_view_max_age < 1
+      || loadedManifest.authorization_view_max_age > 86_400
       || evaluatedAt < ledgerView.checkpoint.observed_at
-      || evaluatedAt - ledgerView.checkpoint.observed_at > loaded.manifest.authorization_view_max_age) {
+      || evaluatedAt - ledgerView.checkpoint.observed_at > loadedManifest.authorization_view_max_age) {
       return rejected("control-authorization-view-stale");
     }
     return {
-      manifest: structuredClone(loaded.manifest),
+      manifest: loadedManifest,
       checkpoint: structuredClone(ledgerView.checkpoint),
       evaluated_at: evaluatedAt,
     };
