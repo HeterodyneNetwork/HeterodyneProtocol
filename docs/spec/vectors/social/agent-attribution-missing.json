@@ -1,0 +1,37 @@
+{
+  "vector_id": "social/agent-attribution-missing",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "social",
+  "spec_refs": [
+    "heterodyne:social#social-agent-policy"
+  ],
+  "invariants": [
+    "SOCIAL-I-AGENT-AUTHORSHIP-EXACT"
+  ],
+  "reason_codes": [
+    "agent-attribution-missing"
+  ],
+  "description": "The current Social semantic boundary rejects agent attribution missing.",
+  "direction": "consume",
+  "input": {
+    "event": {
+      "pubkey": "5c4e0dec7215e26833938730e5e505aa62504da85ba57106a46b5a2404fc9d8e",
+      "created_at": 1800100000,
+      "kind": 1,
+      "tags": [],
+      "content": "ordinary vanilla Nostr authorship",
+      "id": "5966e224b3ce05f03415334201bc41e105251cb0051fcf163332b9e620171b8d",
+      "sig": "37fce14e292d37febbb73d26d0d9ce63ab6149ca588d52bc24b9ebcb87e04c6951d3964a9da63b73216a10936988e01326a5bf89fb84e4a21488202db7a56b0a"
+    },
+    "automated": true,
+    "publication_path": "comms-authorized",
+    "expected_agent_association": {
+      "kind": "key",
+      "value": "5c4e0dec7215e26833938730e5e505aa62504da85ba57106a46b5a2404fc9d8e"
+    }
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "agent-attribution-missing"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "vector_id": "comms/marmot-premature-ack",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-rotation-transaction-and-durable-acknowledgement"
+  ],
+  "invariants": [
+    "COMMS-I-MARMOT-EXACT-BYTES"
+  ],
+  "reason_codes": [
+    "marmot-premature-ack"
+  ],
+  "description": "A requested publisher acknowledgement is rejected until its exact bytes cross the configured durability boundary.",
+  "direction": "produce",
+  "input": {
+    "signed_event_bytes_preserved": true,
+    "encrypted_media_bytes_preserved": true,
+    "durable_local": false,
+    "configured_host_acceptances": 0,
+    "acknowledgement_requested": true
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "marmot-premature-ack"
+  }
+}

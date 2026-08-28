@@ -1,0 +1,25 @@
+{
+  "vector_id": "core/nip49-key-material-round-trip",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "core",
+  "spec_refs": [
+    "heterodyne:core#core-keys-repository"
+  ],
+  "invariants": [
+    "CORE-I-KEY-MATERIAL-AT-REST"
+  ],
+  "reason_codes": [],
+  "description": "Deterministic synthetic NIP-49 wrapping decrypts to the exact original persona secret key.",
+  "direction": "round-trip",
+  "input": {
+    "secret_key": "0000000000000000000000000000000000000000000000000000000000000001",
+    "password": "current-vector-passphrase",
+    "salt": "70707070707070707070707070707070",
+    "nonce": "717171717171717171717171717171717171717171717171"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "ncryptsec": "ncryptsec1qgg8qurswpc8qurswpc8qurswpc8qut3w9chzut3w9chzut3w9chzut3w9chzut3w9cs9n65ce6ukq2ahs38z38eyrv8rxtkx4sj065ns3f7glfrul0yxszewqxse0z5th2zkewfpvmjxyjzwqrxhhkz",
+    "recovered_secret": "0000000000000000000000000000000000000000000000000000000000000001"
+  }
+}

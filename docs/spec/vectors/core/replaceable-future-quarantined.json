@@ -1,0 +1,43 @@
+{
+  "vector_id": "core/replaceable-future-quarantined",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "core",
+  "spec_refs": [
+    "heterodyne:core#core-created-at-bound"
+  ],
+  "invariants": [
+    "CORE-I-VERIFY-BEFORE-USE"
+  ],
+  "reason_codes": [
+    "core-created-at-premature"
+  ],
+  "description": "A replaceable event more than 900 seconds ahead is quarantined without being selected.",
+  "direction": "consume",
+  "input": {
+    "trusted_now": 1800000000,
+    "candidates": [
+      {
+        "pubkey": "e4d24944ed947bc34ed14ea4b2e063aa27ebd8da658577a263f55a631c7f656a",
+        "created_at": 1800000901,
+        "kind": 30000,
+        "tags": [
+          [
+            "d",
+            "current-selection"
+          ]
+        ],
+        "content": "premature candidate",
+        "id": "7ccd6b85b5d5bc4a5838c0a5bfa4b88c120d33a04bc97aeb579679132485d8ff",
+        "sig": "f4273fba714d7286b5b9a82bcdef083ec2458bd19d46dbe35d161fa61dd5e3e2ded7ea04acc5e2ffc5915f13b01a60d1c604e12c15b6bf08a746fe2aca8b0a59"
+      }
+    ]
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "core-created-at-premature",
+    "selected_event_id": null,
+    "quarantined_event_ids": [
+      "7ccd6b85b5d5bc4a5838c0a5bfa4b88c120d33a04bc97aeb579679132485d8ff"
+    ]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "vector_id": "control/refresh-prohibited",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "control",
+  "spec_refs": [
+    "heterodyne:control#control-token"
+  ],
+  "invariants": [
+    "CONTROL-I-CLIENT-KEY-CONFINEMENT"
+  ],
+  "reason_codes": [
+    "control-refresh-prohibited"
+  ],
+  "description": "The current Control policy boundary rejects refresh prohibited.",
+  "direction": "consume",
+  "input": {
+    "closed_schema_valid": true,
+    "token_valid": true,
+    "refresh_requested": true
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "control-refresh-prohibited"
+  }
+}

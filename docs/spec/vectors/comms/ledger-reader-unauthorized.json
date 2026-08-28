@@ -1,0 +1,25 @@
+{
+  "vector_id": "comms/ledger-reader-unauthorized",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-authoritative-private-persona-claim-ledger"
+  ],
+  "invariants": [
+    "COMMS-I-LEDGER-CONFINEMENT"
+  ],
+  "reason_codes": [
+    "claim-ledger-reader-unauthorized"
+  ],
+  "description": "A reader presenting another device's claim record cannot cross the private ledger boundary.",
+  "direction": "consume",
+  "input": {
+    "reader_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
+    "claim_record_id": "63f1b0ef27dfb7e43d5c17624f1fb5e4cabb2e266d3aaba91392fb71cd85728e"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "claim-ledger-reader-unauthorized",
+    "state": "invalid"
+  }
+}

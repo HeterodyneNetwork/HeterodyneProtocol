@@ -1,0 +1,37 @@
+{
+  "vector_id": "comms/marmot-routing-genesis-mismatch",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-routing-generations-and-bindings"
+  ],
+  "invariants": [
+    "COMMS-I-RADICLE-ROUTING-AUTHORITY"
+  ],
+  "reason_codes": [
+    "marmot-routing-binding-invalid"
+  ],
+  "description": "A routing binding whose repository genesis digest differs from canonical Marmot routing state fails closed.",
+  "direction": "consume",
+  "input": {
+    "active_administrator": "1111111111111111111111111111111111111111111111111111111111111111",
+    "commit_author": "1111111111111111111111111111111111111111111111111111111111111111",
+    "canonical_h": "routing-generation-current",
+    "binding_h": "routing-generation-current",
+    "canonical_rid": "rad:zCurrentMarmotRoute",
+    "binding_rid": "rad:zCurrentMarmotRoute",
+    "canonical_genesis_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+    "binding_genesis_digest": "4444444444444444444444444444444444444444444444444444444444444444",
+    "binding_digests": [
+      "3333333333333333333333333333333333333333333333333333333333333333"
+    ],
+    "requested_writer_ref": "refs/xyz.heterodyne.marmot/writers/current",
+    "authorized_writer_refs": [
+      "refs/xyz.heterodyne.marmot/writers/current"
+    ]
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "marmot-routing-binding-invalid"
+  }
+}

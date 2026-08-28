@@ -1,0 +1,36 @@
+{
+  "vector_id": "comms/ledger-reader-authorized",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-authoritative-private-persona-claim-ledger"
+  ],
+  "invariants": [
+    "COMMS-I-CLAIM-REVOCATION",
+    "COMMS-I-LEDGER-CONFINEMENT"
+  ],
+  "reason_codes": [],
+  "description": "Canonical merge state exposes the private ledger only to the exact active durable NID-bearing reader.",
+  "direction": "consume",
+  "input": {
+    "reader_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
+    "checkpoint": {
+      "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+      "branch": "main",
+      "commit_oid": "27acc4ae198913277ff7c43c292ca5cd31a4c58df1054da92cce280fad33d6d8",
+      "observed_at": 1767245650
+    },
+    "record_ids": [
+      "084534f07234ffc178c74b940366ef1340ebcac0445f15509064bd96935f09de",
+      "63f1b0ef27dfb7e43d5c17624f1fb5e4cabb2e266d3aaba91392fb71cd85728e"
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "authorization": {
+      "allowed": true,
+      "state": "active",
+      "reason_code": null
+    }
+  }
+}

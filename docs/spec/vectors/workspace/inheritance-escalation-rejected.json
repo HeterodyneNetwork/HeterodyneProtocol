@@ -1,0 +1,45 @@
+{
+  "vector_id": "workspace/inheritance-escalation-rejected",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "workspace",
+  "spec_refs": [
+    "heterodyne:workspace#workspace-inheritance"
+  ],
+  "invariants": [
+    "WORKSPACE-I-INHERITANCE-NARROWS"
+  ],
+  "reason_codes": [
+    "capability_escalation"
+  ],
+  "description": "A request outside one inherited role-path ceiling is rejected even when a wider workspace ceiling contains it.",
+  "direction": "consume",
+  "input": {
+    "authenticated_current_state": true,
+    "explicit_grant": true,
+    "carrier_only_evidence": false,
+    "requested_capabilities": [
+      "write"
+    ],
+    "workspace_ceiling": [
+      "read",
+      "write"
+    ],
+    "role_path_ceilings": [
+      [
+        "read",
+        "write"
+      ],
+      [
+        "read"
+      ]
+    ],
+    "grant_capabilities": [
+      "read"
+    ],
+    "revoked_effective": false
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "capability_escalation"
+  }
+}

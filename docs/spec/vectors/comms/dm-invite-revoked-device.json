@@ -1,0 +1,24 @@
+{
+  "vector_id": "comms/dm-invite-revoked-device",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-direct-messages"
+  ],
+  "invariants": [
+    "COMMS-I-MARMOT-UPSTREAM-AUTHORITY"
+  ],
+  "reason_codes": [
+    "dm_invite_revoked_device"
+  ],
+  "description": "The current Comms policy boundary rejects dm invite revoked device.",
+  "direction": "consume",
+  "input": {
+    "delegation_present": true,
+    "delegation_revoked": true
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "dm_invite_revoked_device"
+  }
+}

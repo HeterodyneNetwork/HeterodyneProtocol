@@ -1,0 +1,70 @@
+{
+  "vector_id": "core/nip01-raw-mismatch",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "core",
+  "spec_refs": [
+    "heterodyne:core#core-verification"
+  ],
+  "invariants": [
+    "CORE-I-VERIFY-BEFORE-USE"
+  ],
+  "reason_codes": [
+    "nip01_raw_mismatch"
+  ],
+  "description": "A stored raw NIP-01 signing input must be byte-identical to the canonical event serialization.",
+  "direction": "consume",
+  "input": {
+    "event": {
+      "pubkey": "1697ffa6fd9de627c077e3d2fe541084ce13300b0bec1146f95ae57f0d0bd6a5",
+      "created_at": 1800000000,
+      "kind": 31010,
+      "tags": [
+        [
+          "d",
+          "rad:zCurrentCatalogFixture"
+        ],
+        [
+          "heterodyne",
+          "node_advert"
+        ],
+        [
+          "rid",
+          "rad:zCurrentCatalogFixture"
+        ],
+        [
+          "nid",
+          "did:key:z6MknQki4rirwWqFCptwJxPYy52XQfEC9TDopaDWRUPAT3yT"
+        ],
+        [
+          "endpoint",
+          "wss://node.example/relay"
+        ],
+        [
+          "repo_head",
+          "abababababababababababababababababababab"
+        ],
+        [
+          "expiry",
+          "1800003600"
+        ],
+        [
+          "nid_proof",
+          "cb5e28dde6ef5d46c92550d80bd8dc2b4f2749c15c4f0f27d725824e9fc67fc78a1d6ca755d4fe9a2111ed4cc7768e9d9b543cd1acbadf6f24d5411e3bc63b06"
+        ],
+        [
+          "spec_version",
+          "heterodyne/0.6.0"
+        ]
+      ],
+      "content": "",
+      "id": "c27ad0c62c88c1a6ab8c7ff326a45ed4c8a001cddd10eeff7dd51f57393428ad",
+      "sig": "73d338f8442c23ea357804f2bb3307c74c0c7cf0c3e6f030ea55d647ab940a48cab05bad4abb7f1aaa14ad86ddf9681c1286d78743e0e8ecd2a5246634e0f5f4"
+    },
+    "nip01_raw": "[]",
+    "stamp_policy": "required"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "nip01_raw_mismatch"
+  }
+}

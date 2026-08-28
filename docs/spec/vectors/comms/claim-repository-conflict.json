@@ -1,0 +1,31 @@
+{
+  "vector_id": "comms/claim-repository-conflict",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-conformance"
+  ],
+  "invariants": [
+    "COMMS-I-CLAIM-REPOSITORY-AUTHORITY"
+  ],
+  "reason_codes": [
+    "claim-repository-conflict"
+  ],
+  "description": "Concurrent non-monotonic canonical claim state grants no authority.",
+  "direction": "consume",
+  "input": {
+    "claim_id": "ad47df49d87e3390ca4653be89a5f4120f8d76c2b6fbc08be4b09c5c8ec09ea0",
+    "repository_conflicted_claim_ids": [
+      "ad47df49d87e3390ca4653be89a5f4120f8d76c2b6fbc08be4b09c5c8ec09ea0"
+    ]
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "claim-repository-conflict",
+    "evaluator_output": {
+      "allowed": false,
+      "state": "conflicted",
+      "reason_code": "claim-repository-conflict"
+    }
+  }
+}

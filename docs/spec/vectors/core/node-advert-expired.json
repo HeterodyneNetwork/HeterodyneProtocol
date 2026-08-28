@@ -1,0 +1,26 @@
+{
+  "vector_id": "core/node-advert-expired",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "core",
+  "spec_refs": [
+    "heterodyne:core#core-node-advertisement"
+  ],
+  "invariants": [
+    "CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY"
+  ],
+  "reason_codes": [
+    "node_advert_expired"
+  ],
+  "description": "The node-advertisement time boundary rejects the expired condition.",
+  "direction": "consume",
+  "input": {
+    "createdAt": 1799999990,
+    "expiry": 1800000000,
+    "now": 1800000000,
+    "clockUncertainty": 0
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "node_advert_expired"
+  }
+}

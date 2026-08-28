@@ -1,0 +1,25 @@
+{
+  "vector_id": "core/strict-mode-without-tor",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "core",
+  "spec_refs": [
+    "heterodyne:core#core-conformance"
+  ],
+  "invariants": [
+    "CORE-I-VERIFY-BEFORE-USE"
+  ],
+  "reason_codes": [
+    "strict_mode_tor_disabled"
+  ],
+  "description": "The Core operational boundary rejects strict mode without tor.",
+  "direction": "consume",
+  "input": {
+    "operation": "start-strict-mode",
+    "tor_egress": false,
+    "explicit_user_choice": false
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "strict_mode_tor_disabled"
+  }
+}

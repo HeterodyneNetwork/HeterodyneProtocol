@@ -1,0 +1,25 @@
+{
+  "vector_id": "workspace/private-topology-clean",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "workspace",
+  "spec_refs": [
+    "heterodyne:workspace#workspace-private-discovery"
+  ],
+  "invariants": [
+    "WORKSPACE-I-PRIVATE-TOPOLOGY"
+  ],
+  "reason_codes": [],
+  "description": "A public Workspace projection contains no concealed identifiers, counts, or stable encrypted placeholders.",
+  "direction": "produce",
+  "input": {
+    "private_identifiers": [],
+    "private_counts": 0,
+    "encrypted_placeholders": 0
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "disclosed_private_references": 0
+    }
+  }
+}

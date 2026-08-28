@@ -1,0 +1,129 @@
+{
+  "vector_id": "control/exact-signer-grant-reserved",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "control",
+  "spec_refs": [
+    "heterodyne:control#control-signer-grants"
+  ],
+  "invariants": [
+    "CONTROL-I-AUDIT-AT-REST",
+    "CONTROL-I-BASELINE-ACTIVE-KEY",
+    "CONTROL-I-CLIENT-KEY-CONFINEMENT",
+    "CONTROL-I-EXACT-SIGNER-GRANT",
+    "CONTROL-I-NO-SIGNER-FALLBACK",
+    "CONTROL-I-OPERATION-AT-MOST-ONCE",
+    "CONTROL-I-PERSONA-VAULT-ISOLATION"
+  ],
+  "reason_codes": [],
+  "description": "A domain-separated active-key grant resolves exactly one persona vault and signer, then durably reserves the canonical NIP-46 request before any key effect.",
+  "direction": "consume",
+  "input": {
+    "grant": {
+      "profile": "heterodyne.control.signer-grant.v1",
+      "spec_version": "heterodyne/0.6.0",
+      "grant_id": "7777777777777777777777777777777777777777777777777777777777777777",
+      "vault_id": "6666666666666666666666666666666666666666666666666666666666666666",
+      "persona_active_key": "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f",
+      "nip46_client_pubkey": "3333333333333333333333333333333333333333333333333333333333333333",
+      "signer_audience": "https://node.example/nip46/current-persona",
+      "selected_signing_pubkey": "462779ad4aad39514614751a71085f2f10e1c7a593e4e030efb5b8721ce55b0b",
+      "key_class": "agent",
+      "persona_signing_authorized": false,
+      "allowed_methods": [
+        "sign_event"
+      ],
+      "allowed_event_kinds": [
+        1
+      ],
+      "limits": {
+        "request_window_seconds": 60,
+        "request_count": 20,
+        "max_event_bytes": 4096,
+        "max_value_msats": 0
+      },
+      "oidc_authorization_id": "8888888888888888888888888888888888888888888888888888888888888888",
+      "connection_secret_sha256": "8c0cc17a04942cc4f8e0fe0b302606d3108860c126428ba2ceeb5f9ed41c2b05",
+      "issued_at": 100,
+      "expires_at": 200,
+      "predecessor": null,
+      "state": "active",
+      "revoked_at": null,
+      "authorizing_pubkey": "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f",
+      "signature": "a91af3b4290f5bce23450a835a7dbbc1d7296592e43c02eb4eecbc5c6abea67d196a5d78b78ff77faf32a6b0a27f6f665b11988a0dc823b60a0a6e6fa34cc671"
+    },
+    "usage_state": {
+      "grant_id": "7777777777777777777777777777777777777777777777777777777777777777",
+      "grant_digest": "c839dfd37c97e4add7948c4113171dde9ff747ab60fe155e0f0a87f6986e2a69",
+      "authority": {
+        "vault_id": "6666666666666666666666666666666666666666666666666666666666666666",
+        "persona_active_key": "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f",
+        "nip46_client_pubkey": "3333333333333333333333333333333333333333333333333333333333333333",
+        "signer_audience": "https://node.example/nip46/current-persona",
+        "selected_signing_pubkey": "462779ad4aad39514614751a71085f2f10e1c7a593e4e030efb5b8721ce55b0b",
+        "key_class": "agent"
+      },
+      "window_started_at": 100,
+      "consumed_request_count": 0,
+      "revision": 4,
+      "reservations": []
+    },
+    "request": {
+      "grant_id": "7777777777777777777777777777777777777777777777777777777777777777",
+      "vault_id": "6666666666666666666666666666666666666666666666666666666666666666",
+      "persona_active_key": "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f",
+      "nip46_client_pubkey": "3333333333333333333333333333333333333333333333333333333333333333",
+      "signer_audience": "https://node.example/nip46/current-persona",
+      "selected_signing_pubkey": "462779ad4aad39514614751a71085f2f10e1c7a593e4e030efb5b8721ce55b0b",
+      "key_class": "agent",
+      "rpc_request": {
+        "id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "method": "sign_event",
+        "params": [
+          "{\"content\":\"current canonical NIP-46 payload\",\"created_at\":111,\"kind\":1,\"tags\":[]}"
+        ]
+      },
+      "value_msats": 0,
+      "now": 110
+    }
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "vault_id": "6666666666666666666666666666666666666666666666666666666666666666",
+    "persona_active_key": "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f",
+    "selected_signing_pubkey": "462779ad4aad39514614751a71085f2f10e1c7a593e4e030efb5b8721ce55b0b",
+    "key_class": "agent",
+    "custody": "local",
+    "authorization_mode": "reserved",
+    "usage_transition": {
+      "operation_id": "198fed314c2ba827c0c2499f627e81f70288905010096f7de4be207590b6d81b",
+      "grant_id": "7777777777777777777777777777777777777777777777777777777777777777",
+      "grant_digest": "c839dfd37c97e4add7948c4113171dde9ff747ab60fe155e0f0a87f6986e2a69",
+      "authority": {
+        "vault_id": "6666666666666666666666666666666666666666666666666666666666666666",
+        "persona_active_key": "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f",
+        "nip46_client_pubkey": "3333333333333333333333333333333333333333333333333333333333333333",
+        "signer_audience": "https://node.example/nip46/current-persona",
+        "selected_signing_pubkey": "462779ad4aad39514614751a71085f2f10e1c7a593e4e030efb5b8721ce55b0b",
+        "key_class": "agent"
+      },
+      "request_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "request_digest": "a667892bd83c0b9dde23c0ed5da0461c24b5374901bc53efb7ec1c2cd33cc73d",
+      "rpc_request": {
+        "id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "method": "sign_event",
+        "params": [
+          "{\"content\":\"current canonical NIP-46 payload\",\"created_at\":111,\"kind\":1,\"tags\":[]}"
+        ]
+      },
+      "value_msats": 0,
+      "expected_revision": 4,
+      "next_revision": 5,
+      "prior_window_started_at": 100,
+      "window_started_at": 100,
+      "prior_consumed_request_count": 0,
+      "consumed_request_count": 1,
+      "reserved_at": 110,
+      "reservation_state": "reserved"
+    }
+  }
+}

@@ -1,0 +1,115 @@
+{
+  "vector_id": "comms/agent-workload-token-accepted",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-fail-closed-authorization-and-privacy"
+  ],
+  "invariants": [
+    "COMMS-I-AGENT-SIGNER-BINDING",
+    "COMMS-I-WORKLOAD-TOKEN-CONFINEMENT"
+  ],
+  "reason_codes": [],
+  "description": "A closed finite workload registration and exact sender-constrained token resolve one registered automated signer without exposing private claims.",
+  "direction": "consume",
+  "input": {
+    "registration": {
+      "persona_key": "1111111111111111111111111111111111111111111111111111111111111111",
+      "client_id": "current-agent-client",
+      "subject_jkt": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "subject_proof": {
+        "method": "dpop",
+        "jkt": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "agent_class": "ai",
+      "selected_signer": "3333333333333333333333333333333333333333333333333333333333333333",
+      "signer_key_class": "agent",
+      "agent_association": {
+        "kind": "key",
+        "value": "3333333333333333333333333333333333333333333333333333333333333333"
+      },
+      "audience": "https://node.example/control/agent-publication",
+      "scopes": [
+        "heterodyne:agent:publish"
+      ],
+      "allowed_kinds": [
+        1
+      ],
+      "allowed_feeds": [
+        "main"
+      ],
+      "allowed_resources": [
+        "feed:main"
+      ],
+      "max_content_bytes": 4096,
+      "rate_limit": {
+        "window_seconds": 60,
+        "count": 20,
+        "burst": 5
+      },
+      "not_before": 1000,
+      "expires_at": 1300
+    },
+    "token": {
+      "typ": "at+jwt",
+      "credential_ledger_persona": "1111111111111111111111111111111111111111111111111111111111111111",
+      "credential_ledger_generation": 0,
+      "expected_credential_ledger_persona": "1111111111111111111111111111111111111111111111111111111111111111",
+      "expected_credential_ledger_generation": 0,
+      "iss": "https://issuer.example/oidc/npub1persona",
+      "sub": "stable-pairwise-sub",
+      "aud": [
+        "https://node.example/control/agent-publication"
+      ],
+      "exp": 1250,
+      "iat": 1000,
+      "jti": "current-token-1",
+      "client_id": "current-agent-client",
+      "scope": "heterodyne:agent:publish",
+      "cnf_jkt": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "sender_proof_jkt": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "sender_proof_valid": true,
+      "signer_key": "3333333333333333333333333333333333333333333333333333333333333333",
+      "signer_key_class": "agent",
+      "agent_association": {
+        "kind": "key",
+        "value": "3333333333333333333333333333333333333333333333333333333333333333"
+      },
+      "expected_issuer": "https://issuer.example/oidc/npub1persona",
+      "expected_subject": "stable-pairwise-sub",
+      "expected_audience": "https://node.example/control/agent-publication",
+      "expected_client_id": "current-agent-client",
+      "expected_scope": "heterodyne:agent:publish",
+      "expected_signer_key": "3333333333333333333333333333333333333333333333333333333333333333",
+      "expected_signer_key_class": "agent",
+      "expected_agent_association": {
+        "kind": "key",
+        "value": "3333333333333333333333333333333333333333333333333333333333333333"
+      },
+      "now": 1100,
+      "status": "VALID",
+      "ledger_active": true,
+      "ledger_binding_valid": true,
+      "status_binding_valid": true,
+      "session_expires_at": 1300,
+      "delegation_expires_at": 1300,
+      "registration_expires_at": 1300,
+      "consent_expires_at": 1300,
+      "source_authorization_expires_at": 1300
+    }
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "identity": {
+      "issuer": "https://issuer.example/oidc/npub1persona",
+      "sub": "stable-pairwise-sub",
+      "client_id": "current-agent-client",
+      "signer": "3333333333333333333333333333333333333333333333333333333333333333",
+      "key_class": "agent",
+      "agent_association": {
+        "kind": "key",
+        "value": "3333333333333333333333333333333333333333333333333333333333333333"
+      }
+    }
+  }
+}

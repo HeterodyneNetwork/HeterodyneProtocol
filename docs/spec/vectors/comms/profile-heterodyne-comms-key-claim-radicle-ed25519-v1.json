@@ -1,0 +1,40 @@
+{
+  "vector_id": "comms/profile-heterodyne-comms-key-claim-radicle-ed25519-v1",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "profile": "heterodyne-comms-key-claim-radicle-ed25519-v1",
+  "spec_refs": [
+    "heterodyne:comms#comms-security"
+  ],
+  "invariants": [
+    "COMMS-I-CLAIM-AUTHENTICITY"
+  ],
+  "reason_codes": [],
+  "description": "The fixed heterodyne-comms-key-claim-radicle-ed25519-v1 allocation is checked separately from its live semantic boundary.",
+  "direction": "consume",
+  "input": {
+    "kind": 31013,
+    "profile_id": "heterodyne-comms-key-claim-radicle-ed25519-v1",
+    "owner": "comms",
+    "discriminator": "production-rule:claim-subject-pop;proof=radicle-ed25519-v1",
+    "stamping": false,
+    "first_version": "heterodyne/0.5.0",
+    "status": "draft",
+    "wire_probe": {
+      "content_is_heterodyne_json": false,
+      "is_dr_outer": false,
+      "production_rule": "claim-subject-pop;proof=radicle-ed25519-v1"
+    },
+    "proof_suite": "radicle-ed25519",
+    "proof_purpose": "claim-subject-pop",
+    "message": "6dcf5133dacbd52fb002e91511972f67c484d426141791772693ddda25cb75a4",
+    "public_key": "5e212c0980e4b39fc09721134aa02109374edfd260c0d3d03cb501c8d65457a9",
+    "signature": "0763ef016d85c19dc0744a8a53f608bad0e1a119c37356cac0ef533722a83ece06420fcb6c6c24b86a02d111a54de6afa88fe5f677e11ff4dafa9fe9617e6a0b"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "proof_suite": "radicle-ed25519",
+    "proof_purpose": "claim-subject-pop",
+    "authenticated_message": "6dcf5133dacbd52fb002e91511972f67c484d426141791772693ddda25cb75a4"
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "vector_id": "core/replaceable-equal-time-lowest-id",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "core",
+  "spec_refs": [
+    "heterodyne:core#core-source-neutral-selection"
+  ],
+  "invariants": [
+    "CORE-I-VERIFY-BEFORE-USE"
+  ],
+  "reason_codes": [],
+  "description": "Equal-time replaceable events select the lowest lexicographic event identifier.",
+  "direction": "consume",
+  "input": {
+    "trusted_now": 1800000000,
+    "candidates": [
+      {
+        "pubkey": "e4d24944ed947bc34ed14ea4b2e063aa27ebd8da658577a263f55a631c7f656a",
+        "created_at": 1800000000,
+        "kind": 30000,
+        "tags": [
+          [
+            "d",
+            "current-selection"
+          ]
+        ],
+        "content": "equal left",
+        "id": "2759d96f8dc4a03c8da667ba896c9eabc212b8c79df6268873aab74d6acd3046",
+        "sig": "56da712c4a4aac1d8d15caca1e8f1fd17a336c32795916e8728243f3e6188f77dda8237090e8344d4a38a67ef122eb0f1121394616bfbf6ae61d8b01c758b0d1"
+      },
+      {
+        "pubkey": "e4d24944ed947bc34ed14ea4b2e063aa27ebd8da658577a263f55a631c7f656a",
+        "created_at": 1800000000,
+        "kind": 30000,
+        "tags": [
+          [
+            "d",
+            "current-selection"
+          ]
+        ],
+        "content": "equal right",
+        "id": "9fbe68b2d5b1e7dbfd4a882a0ca5bf55ce71bebbdb149b989d5e985e13556993",
+        "sig": "a56115f06b97f58902edf69eb76eeb4370647eb0925bf5368f2853fa6f56016516a6fa039796df96cee84c6962faf54e3ac17528fbea36a848483d344595e322"
+      }
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "selected_event_id": "2759d96f8dc4a03c8da667ba896c9eabc212b8c79df6268873aab74d6acd3046"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "vector_id": "assurance/keri-wire-format-rejected",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "assurance",
+  "spec_refs": [
+    "heterodyne:assurance#assurance-keri-export"
+  ],
+  "invariants": [
+    "ASSURANCE-I-EXPORT-LOSSLESS"
+  ],
+  "reason_codes": [
+    "keri_wire_format_rejected"
+  ],
+  "description": "A derived KERI10JSON export is rejected when presented in place of the registered NIP-01 Assurance record.",
+  "direction": "consume",
+  "input": {
+    "serialized_record": "{\"v\":\"KERI10JSON000000_\"}"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "keri_wire_format_rejected"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "vector_id": "workspace/authority-freshness-boundary",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "workspace",
+  "spec_refs": [
+    "heterodyne:workspace#workspace-freshness"
+  ],
+  "invariants": [
+    "WORKSPACE-I-FRESHNESS-BOUNDED"
+  ],
+  "reason_codes": [],
+  "description": "An authority mutation is accepted at the exact 300-second policy boundary.",
+  "direction": "consume",
+  "input": {
+    "operation_class": "authority",
+    "checkpoint_age": 300,
+    "policy_max_age": 300
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "age": 300,
+      "maximum_age": 300
+    }
+  }
+}

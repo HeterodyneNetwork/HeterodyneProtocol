@@ -1,0 +1,28 @@
+{
+  "vector_id": "comms/oidc-access-token-validated",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-interoperable-jwt-projection"
+  ],
+  "invariants": [
+    "COMMS-I-JWT-TYPE-AUDIENCE",
+    "COMMS-I-STATUS-INTEGRITY"
+  ],
+  "reason_codes": [],
+  "description": "A projected access token verifies its RS256 signature, at+jwt type, exact resource audience, ledger generation, and bound status locator.",
+  "direction": "round-trip",
+  "input": {
+    "compact": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkpGeE0xN1FwU01HcDRtMm80bGtkMDNzY0hfeEFyTWVTM2pxeHFvYVdoZW8iLCJ0eXAiOiJhdCtqd3QifQ.eyJpc3MiOiJodHRwczovL25vZGUuZXhhbXBsZS9vaWRjL25wdWIxY2N6OGw5enBhNDdrNnZ6OWdwaGZ0c3J1bXB3ODByanQzbmhuZWZhdDRzeW1qaHJzbm1qczM4bW55ZCIsInN1YiI6IjVsbmJ2bEtEVG9ZM01FakMydzFYZGtWU01kY3VNUF9QUGFpVE9iRUNzQmciLCJhdWQiOlsiaHR0cHM6Ly9hcGkuZXhhbXBsZSJdLCJleHAiOjE3NjcyNDYyNjksImlhdCI6MTc2NzI0NTY2OSwianRpIjoib2lkYy1ldmlkZW5jZS1qdGktMDAwMSIsImNsaWVudF9pZCI6InJlZ2lzdGVyZWQtY2xpZW50Iiwic2NvcGUiOiJoZXRlcm9keW5lOmtleS1yZWYgb3BlbmlkIHByb2ZpbGUiLCJjcmVkZW50aWFsX2xlZGdlcl9wZXJzb25hIjoiYzYwNDdmOTQ0MWVkN2Q2ZDMwNDU0MDZlOTVjMDdjZDg1Yzc3OGU0YjhjZWYzY2E3YWJhYzA5Yjk1YzcwOWVlNSIsImNyZWRlbnRpYWxfbGVkZ2VyX2dlbmVyYXRpb24iOjAsIm5hbWUiOiJBbGljZSIsImh0dHBzOi8vaGV0ZXJvZHluZS5uZXR3b3JrL2p3dC9rZXktcmVmIjp7InR5cGUiOiJub3N0ci1zZWNwMjU2azEiLCJ2YWx1ZSI6ImM2MDQ3Zjk0NDFlZDdkNmQzMDQ1NDA2ZTk1YzA3Y2Q4NWM3NzhlNGI4Y2VmM2NhN2FiYWMwOWI5NWM3MDllZTUifSwiaHR0cHM6Ly9oZXRlcm9keW5lLm5ldHdvcmsvand0L2xlZGdlci1jaGVja3BvaW50Ijp7InJlcG9zaXRvcnlfcmlkIjoicmFkOnoyVEpvREFoSzVwVG1MenFtSzlXNEZNZHRqeXkxIiwiYnJhbmNoIjoibWFpbiIsImNvbW1pdF9vaWQiOiJhNjFkNmY3YjQ0OTkwM2EzNWZlYzdmMjg4ZTAzOTUyYzcxNmEzYWIzNTYwZDM4MzI4ZTIyNGIxMjA4YWE0MDA5Iiwib2JzZXJ2ZWRfYXQiOjE3NjcyNDU2Njh9LCJzdGF0dXMiOnsic3RhdHVzX2xpc3QiOnsidXJpIjoiaHR0cHM6Ly9ub2RlLmV4YW1wbGUvb2lkYy9ucHViMWNjejhsOXpwYTQ3azZ2ejlncGhmdHNydW1wdzgwcmp0M25obmVmYXQ0c3ltamhyc25tanMzOG1ueWQvc3RhdHVzLWxpc3RzLzIwNDU0LzllMmQ4Zjk2OTY2MmZkN2M2OGM5Y2M2OGM3YjIwNWM4LzAuand0IiwiaWR4IjowfX0sImh0dHBzOi8vaGV0ZXJvZHluZS5uZXR3b3JrL2p3dC9zdGF0dXMtbWlycm9yIjp7InJlcG9zaXRvcnlfcmlkIjoicmFkOnoyVEpvREFoSzVwVG1MenFtSzlXNEZNZHRqeXkxIiwiYnJhbmNoIjoibWFpbiIsInBhdGgiOiIud2VsbC1rbm93bi9ucHViMWNjejhsOXpwYTQ3azZ2ejlncGhmdHNydW1wdzgwcmp0M25obmVmYXQ0c3ltamhyc25tanMzOG1ueWQvc3RhdHVzLWxpc3RzLzIwNDU0LzllMmQ4Zjk2OTY2MmZkN2M2OGM5Y2M2OGM3YjIwNWM4LzAuand0Iiwic2hhMjU2IjoiMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMyJ9fQ.SktIqQLtprN8Ie9Tb_QlX5dFAcJIVtEsp7MUoJJRIl6A3U2t1kR81GUOfGCCrDcWcykpVBU5sBXNzMeWYBt2KSAW021zAzAkwOyF-sHtpKj4qiepmv3W4T6EFvYzpqL-kckNu7YSXr4rBRH9cJprgtb7E7fsw_h6OYR6N1MtBkUI5bfvqh0huQQPVciqXYoWzR5qcCAPKEEbDX-lED9F1UTdQ_VP-10eHujdGNI61TbNODyFHkqGevUJ3w1pV9WCwagbqLz4mtnDX4lOyF689_25qJ_9054TWeuPRX0eb5qrFYIH4CmM-wRFH_5PmIT190VQKyd8UgXDRZGlXj2O3Q",
+    "expected_issuer": "https://node.example/oidc/npub1ccz8l9zpa47k6vz9gphftsrumpw80rjt3nhnefat4symjhrsnmjs38mnyd",
+    "expected_audience": "https://api.example"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "authorization": {
+      "allowed": true,
+      "state": "active",
+      "reason_code": null
+    }
+  }
+}

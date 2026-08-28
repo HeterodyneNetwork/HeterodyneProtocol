@@ -1,0 +1,26 @@
+{
+  "vector_id": "core/role-delegation-address-invalid",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "core",
+  "spec_refs": [
+    "heterodyne:core#core-nid-delegation"
+  ],
+  "invariants": [
+    "CORE-I-NID-DELEGATION-DUAL-PROOF"
+  ],
+  "reason_codes": [
+    "role-delegation-address-invalid"
+  ],
+  "description": "A role-addressed delegation must use the exact registered namespace and role syntax.",
+  "direction": "consume",
+  "input": {
+    "namespace": "other.role",
+    "registered_namespace": "workspace.role",
+    "role_id": "maintainer",
+    "key_proof_valid": true
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "role-delegation-address-invalid"
+  }
+}

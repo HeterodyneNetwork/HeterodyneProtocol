@@ -1,0 +1,28 @@
+{
+  "vector_id": "assurance/retired-key-post-compromise",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "assurance",
+  "spec_refs": [
+    "heterodyne:assurance#assurance-retired-wire-profiles"
+  ],
+  "invariants": [
+    "ASSURANCE-I-COMPROMISE-CUTOFF"
+  ],
+  "reason_codes": [
+    "revoked_key_post_compromise"
+  ],
+  "description": "Retired-key material at the inclusive accepted compromise cutoff is non-authoritative.",
+  "direction": "consume",
+  "input": {
+    "signatureValid": true,
+    "createdAtInAuthorityWindow": true,
+    "compromiseSince": 1785000000,
+    "eventCreatedAt": 1785000000,
+    "repoCommitAncestorOfRetirementCheckpoint": false,
+    "trustedLocalReceiptBeforeRetirement": false
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "revoked_key_post_compromise"
+  }
+}

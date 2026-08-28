@@ -1,0 +1,40 @@
+{
+  "vector_id": "control/operation-conflict",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "control",
+  "spec_refs": [
+    "heterodyne:control#control-request-processing"
+  ],
+  "invariants": [
+    "CONTROL-I-OPERATION-AT-MOST-ONCE"
+  ],
+  "reason_codes": [
+    "control-operation-conflict"
+  ],
+  "description": "The live Control authorization boundary rejects operation conflict.",
+  "direction": "consume",
+  "input": {
+    "request": {
+      "grant_id": "7777777777777777777777777777777777777777777777777777777777777777",
+      "vault_id": "6666666666666666666666666666666666666666666666666666666666666666",
+      "persona_active_key": "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f",
+      "nip46_client_pubkey": "3333333333333333333333333333333333333333333333333333333333333333",
+      "signer_audience": "https://node.example/nip46/current-persona",
+      "selected_signing_pubkey": "462779ad4aad39514614751a71085f2f10e1c7a593e4e030efb5b8721ce55b0b",
+      "key_class": "agent",
+      "rpc_request": {
+        "id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "method": "sign_event",
+        "params": [
+          "{\"content\":\"different canonical request bytes\",\"created_at\":111,\"kind\":1,\"tags\":[[\"t\",\"heterodyne\"],[\"L\",\"network.heterodyne.agent\"],[\"l\",\"ai\",\"network.heterodyne.agent\"],[\"heterodyne_agent\",\"v1\",\"key\",\"462779ad4aad39514614751a71085f2f10e1c7a593e4e030efb5b8721ce55b0b\"],[\"agent_action\",\"publish\"]]}"
+        ]
+      },
+      "value_msats": 0,
+      "now": 110
+    }
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "control-operation-conflict"
+  }
+}

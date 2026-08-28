@@ -1,3458 +1,3516 @@
 [
   {
-    "vector_id": "acceptance-gating/authentication-before-policy",
+    "vector_id": "assurance/associated-key-expired",
+    "owner_document": "assurance",
+    "profile": "heterodyne-assurance-associated-key-v1",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-associated-keys"
+    ],
+    "invariants": [
+      "ASSURANCE-I-ASSOCIATED-KEY-BOUNDS"
+    ],
+    "reason_codes": [
+      "assurance-associated-key-expired"
+    ]
+  },
+  {
+    "vector_id": "assurance/associated-key-revoked",
+    "owner_document": "assurance",
+    "profile": "heterodyne-assurance-associated-key-v1",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-associated-keys"
+    ],
+    "invariants": [
+      "ASSURANCE-I-ASSOCIATED-KEY-BOUNDS"
+    ],
+    "reason_codes": [
+      "assurance-associated-key-revoked"
+    ]
+  },
+  {
+    "vector_id": "assurance/associated-key-subject-proof-invalid",
+    "owner_document": "assurance",
+    "profile": "heterodyne-assurance-associated-key-v1",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-associated-keys"
+    ],
+    "invariants": [
+      "ASSURANCE-I-ASSOCIATED-KEY-BOUNDS"
+    ],
+    "reason_codes": [
+      "assurance-associated-key-subject-proof-invalid"
+    ]
+  },
+  {
+    "vector_id": "assurance/associated-key-subject-proof-required",
+    "owner_document": "assurance",
+    "profile": "heterodyne-assurance-associated-key-v1",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-associated-keys"
+    ],
+    "invariants": [
+      "ASSURANCE-I-ASSOCIATED-KEY-BOUNDS"
+    ],
+    "reason_codes": [
+      "assurance-associated-key-subject-proof-required"
+    ]
+  },
+  {
+    "vector_id": "assurance/authority-at-compromise-cutoff",
+    "owner_document": "assurance",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-compromise"
+    ],
+    "invariants": [
+      "ASSURANCE-I-COMPROMISE-CUTOFF"
+    ],
+    "reason_codes": [
+      "assurance-compromise-cutoff"
+    ]
+  },
+  {
+    "vector_id": "assurance/compromise-subordinate-continuation-forbidden",
+    "owner_document": "assurance",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-compromise"
+    ],
+    "invariants": [
+      "ASSURANCE-I-COMPROMISE-CUTOFF",
+      "ASSURANCE-I-NO-IMPLICIT-CONTINUATION"
+    ],
+    "reason_codes": [
+      "assurance-subordinate-continuation-forbidden"
+    ]
+  },
+  {
+    "vector_id": "assurance/duplicity-rejected",
+    "owner_document": "assurance",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-chain-validation"
+    ],
+    "invariants": [
+      "ASSURANCE-I-SUCCESSION-NON-ALIASING"
+    ],
+    "reason_codes": [
+      "assurance-duplicity"
+    ]
+  },
+  {
+    "vector_id": "assurance/enrollment-competing-inception",
+    "owner_document": "assurance",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-enrollment-window"
+    ],
+    "invariants": [
+      "ASSURANCE-I-ENROLLMENT-WINDOWED"
+    ],
+    "reason_codes": [
+      "assurance-enrollment-contested"
+    ]
+  },
+  {
+    "vector_id": "assurance/enrollment-forged-contest-ignored",
+    "owner_document": "assurance",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-enrollment-window"
+    ],
+    "invariants": [
+      "ASSURANCE-I-CORE-OPTIONALITY",
+      "ASSURANCE-I-ENROLLMENT-WINDOWED"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "assurance/enrollment-late-warning-no-unpin",
+    "owner_document": "assurance",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-pinning"
+    ],
+    "invariants": [
+      "ASSURANCE-I-ENROLLMENT-WINDOWED",
+      "ASSURANCE-I-PIN-DOWNGRADE"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "assurance/enrollment-pending-w-minus-one",
+    "owner_document": "assurance",
+    "profile": "heterodyne-assurance-enrollment-inception-v1",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-enrollment-window"
+    ],
+    "invariants": [
+      "ASSURANCE-I-ENROLLMENT-WINDOWED"
+    ],
+    "reason_codes": [
+      "assurance-enrollment-pending-window"
+    ]
+  },
+  {
+    "vector_id": "assurance/enrollment-timely-contest",
+    "owner_document": "assurance",
+    "profile": "heterodyne-assurance-enrollment-contest-profile-v1",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-enrollment-window"
+    ],
+    "invariants": [
+      "ASSURANCE-I-ENROLLMENT-WINDOWED"
+    ],
+    "reason_codes": [
+      "assurance-enrollment-contested"
+    ]
+  },
+  {
+    "vector_id": "assurance/enrollment-verified-at-window",
+    "owner_document": "assurance",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-enrollment-window"
+    ],
+    "invariants": [
+      "ASSURANCE-I-ENROLLMENT-WINDOWED"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "assurance/export-aid-substitution",
+    "owner_document": "assurance",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-keri-export"
+    ],
+    "invariants": [
+      "ASSURANCE-I-EXPORT-LOSSLESS"
+    ],
+    "reason_codes": [
+      "export_aid_substituted_for_npub"
+    ]
+  },
+  {
+    "vector_id": "assurance/export-incomplete",
+    "owner_document": "assurance",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-keri-export"
+    ],
+    "invariants": [
+      "ASSURANCE-I-EXPORT-LOSSLESS"
+    ],
+    "reason_codes": [
+      "export_incomplete"
+    ]
+  },
+  {
+    "vector_id": "assurance/export-lossless",
+    "owner_document": "assurance",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-keri-export"
+    ],
+    "invariants": [
+      "ASSURANCE-I-EXPORT-LOSSLESS"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "assurance/export-unmappable-feature",
+    "owner_document": "assurance",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-keri-export"
+    ],
+    "invariants": [
+      "ASSURANCE-I-EXPORT-LOSSLESS"
+    ],
+    "reason_codes": [
+      "export_unmappable_feature"
+    ]
+  },
+  {
+    "vector_id": "assurance/export-unsupported-suite",
+    "owner_document": "assurance",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-keri-export"
+    ],
+    "invariants": [
+      "ASSURANCE-I-EXPORT-LOSSLESS"
+    ],
+    "reason_codes": [
+      "export_unsupported_crypto_suite"
+    ]
+  },
+  {
+    "vector_id": "assurance/keri-wire-format-rejected",
+    "owner_document": "assurance",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-keri-export"
+    ],
+    "invariants": [
+      "ASSURANCE-I-EXPORT-LOSSLESS"
+    ],
+    "reason_codes": [
+      "keri_wire_format_rejected"
+    ]
+  },
+  {
+    "vector_id": "assurance/persona-author-mismatch",
+    "owner_document": "assurance",
+    "spec_refs": [
+      "heterodyne:assurance#core-verification"
+    ],
+    "invariants": [
+      "ASSURANCE-I-CORE-OPTIONALITY"
+    ],
+    "reason_codes": [
+      "delegation_mismatch"
+    ]
+  },
+  {
+    "vector_id": "assurance/pin-conflict-rejected",
+    "owner_document": "assurance",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-pinning"
+    ],
+    "invariants": [
+      "ASSURANCE-I-PIN-DOWNGRADE"
+    ],
+    "reason_codes": [
+      "assurance-pin-conflict"
+    ]
+  },
+  {
+    "vector_id": "assurance/profile-heterodyne-assurance-active-key-acceptance-v1",
+    "owner_document": "assurance",
+    "profile": "heterodyne-assurance-active-key-acceptance-v1",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-security"
+    ],
+    "invariants": [
+      "ASSURANCE-I-RECIPROCAL-ENROLLMENT"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "assurance/profile-heterodyne-assurance-associated-key-v1",
+    "owner_document": "assurance",
+    "profile": "heterodyne-assurance-associated-key-v1",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-security"
+    ],
+    "invariants": [
+      "ASSURANCE-I-ASSOCIATED-KEY-BOUNDS"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "assurance/profile-heterodyne-assurance-enrollment-contest-profile-v1",
+    "owner_document": "assurance",
+    "profile": "heterodyne-assurance-enrollment-contest-profile-v1",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-security"
+    ],
+    "invariants": [
+      "ASSURANCE-I-ENROLLMENT-WINDOWED"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "assurance/profile-heterodyne-assurance-enrollment-inception-v1",
+    "owner_document": "assurance",
+    "profile": "heterodyne-assurance-enrollment-inception-v1",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-security"
+    ],
+    "invariants": [
+      "ASSURANCE-I-RECIPROCAL-ENROLLMENT"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "assurance/profile-heterodyne-assurance-succession-v1",
+    "owner_document": "assurance",
+    "profile": "heterodyne-assurance-succession-v1",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-security"
+    ],
+    "invariants": [
+      "ASSURANCE-I-TRANSITION-PROOF-BINDING"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "assurance/reciprocal-proof-invalid",
+    "owner_document": "assurance",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-reciprocal-enrollment"
+    ],
+    "invariants": [
+      "ASSURANCE-I-RECIPROCAL-ENROLLMENT"
+    ],
+    "reason_codes": [
+      "assurance-reciprocal-proof-invalid"
+    ]
+  },
+  {
+    "vector_id": "assurance/retired-key-post-compromise",
+    "owner_document": "assurance",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-retired-wire-profiles"
+    ],
+    "invariants": [
+      "ASSURANCE-I-COMPROMISE-CUTOFF"
+    ],
+    "reason_codes": [
+      "revoked_key_post_compromise"
+    ]
+  },
+  {
+    "vector_id": "assurance/succession-authority-invalid",
+    "owner_document": "assurance",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-succession"
+    ],
+    "invariants": [
+      "ASSURANCE-I-TRANSITION-PROOF-BINDING"
+    ],
+    "reason_codes": [
+      "assurance-authority-invalid"
+    ]
+  },
+  {
+    "vector_id": "assurance/succession-head-mismatch",
+    "owner_document": "assurance",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-chain-validation"
+    ],
+    "invariants": [
+      "ASSURANCE-I-TRANSITION-PROOF-BINDING"
+    ],
+    "reason_codes": [
+      "assurance-head-mismatch"
+    ]
+  },
+  {
+    "vector_id": "assurance/succession-new-key-acceptance-invalid",
+    "owner_document": "assurance",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-succession"
+    ],
+    "invariants": [
+      "ASSURANCE-I-TRANSITION-PROOF-BINDING"
+    ],
+    "reason_codes": [
+      "assurance-new-key-acceptance-invalid"
+    ]
+  },
+  {
+    "vector_id": "assurance/succession-predecessor-mismatch",
+    "owner_document": "assurance",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-chain-validation"
+    ],
+    "invariants": [
+      "ASSURANCE-I-TRANSITION-PROOF-BINDING"
+    ],
+    "reason_codes": [
+      "assurance-predecessor-mismatch"
+    ]
+  },
+  {
+    "vector_id": "assurance/succession-schema-invalid",
+    "owner_document": "assurance",
+    "profile": "heterodyne-assurance-succession-v1",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-record-envelope"
+    ],
+    "invariants": [
+      "ASSURANCE-I-TRANSITION-PROOF-BINDING"
+    ],
+    "reason_codes": [
+      "assurance-schema-invalid"
+    ]
+  },
+  {
+    "vector_id": "assurance/succession-valid",
+    "owner_document": "assurance",
+    "profile": "heterodyne-assurance-succession-v1",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-succession"
+    ],
+    "invariants": [
+      "ASSURANCE-I-NO-IMPLICIT-CONTINUATION",
+      "ASSURANCE-I-SUCCESSION-NON-ALIASING",
+      "ASSURANCE-I-TRANSITION-PROOF-BINDING"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "assurance/succession-witness-threshold-unsatisfied",
+    "owner_document": "assurance",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-keri-policy"
+    ],
+    "invariants": [
+      "ASSURANCE-I-TRANSITION-PROOF-BINDING"
+    ],
+    "reason_codes": [
+      "assurance-witness-threshold-unsatisfied"
+    ]
+  },
+  {
+    "vector_id": "assurance/unilateral-downgrade-rejected",
+    "owner_document": "assurance",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-downgrade-resistance"
+    ],
+    "invariants": [
+      "ASSURANCE-I-PIN-DOWNGRADE"
+    ],
+    "reason_codes": [
+      "assurance-downgrade-consent-required"
+    ]
+  },
+  {
+    "vector_id": "assurance/witness-threshold-fail",
+    "owner_document": "assurance",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-enrollment-window"
+    ],
+    "invariants": [
+      "ASSURANCE-I-ENROLLMENT-WINDOWED"
+    ],
+    "reason_codes": [
+      "assurance-enrollment-pending-window"
+    ]
+  },
+  {
+    "vector_id": "assurance/witness-threshold-pass",
+    "owner_document": "assurance",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-enrollment-window"
+    ],
+    "invariants": [
+      "ASSURANCE-I-ENROLLMENT-WINDOWED"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "comms/agent-attribution-encrypted-inner",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-acceptance-hook"
-    ]
+      "heterodyne:comms#comms-mandatory-pre-sign-attribution"
+    ],
+    "invariants": [
+      "COMMS-I-AGENT-ATTRIBUTION",
+      "COMMS-I-AGENT-SIGNER-BINDING"
+    ],
+    "reason_codes": []
   },
   {
-    "vector_id": "acceptance-gating/authentication-reject",
+    "vector_id": "comms/agent-attribution-invalid",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-acceptance-hook"
+      "heterodyne:comms#comms-agent-authorship"
+    ],
+    "invariants": [
+      "COMMS-I-AGENT-ATTRIBUTION"
+    ],
+    "reason_codes": [
+      "agent-attribution-invalid"
     ]
   },
   {
-    "vector_id": "acceptance-gating/control-capacity-reject",
+    "vector_id": "comms/agent-attribution-profile-unavailable",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-acceptance-hook"
+      "heterodyne:comms#comms-agent-authorship"
+    ],
+    "invariants": [
+      "COMMS-I-AGENT-ATTRIBUTION"
+    ],
+    "reason_codes": [
+      "agent-attribution-profile-unavailable"
     ]
   },
   {
-    "vector_id": "acceptance-gating/control-default-off-reject",
+    "vector_id": "comms/agent-persona-scope-required",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-acceptance-hook"
+      "heterodyne:comms#comms-agent-authorship"
+    ],
+    "invariants": [
+      "COMMS-I-AGENT-ATTRIBUTION"
+    ],
+    "reason_codes": [
+      "agent-persona-scope-required"
     ]
   },
   {
-    "vector_id": "acceptance-gating/control-entitled-authorized",
+    "vector_id": "comms/agent-sender-proof-invalid",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-acceptance-hook"
+      "heterodyne:comms#comms-agent-authorship"
+    ],
+    "invariants": [
+      "COMMS-I-WORKLOAD-TOKEN-CONFINEMENT"
+    ],
+    "reason_codes": [
+      "agent-sender-proof-invalid"
     ]
   },
   {
-    "vector_id": "acceptance-gating/control-entitlement-conflict-reject",
+    "vector_id": "comms/agent-signer-mismatch",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-acceptance-hook"
+      "heterodyne:comms#comms-agent-authorship"
+    ],
+    "invariants": [
+      "COMMS-I-WORKLOAD-TOKEN-CONFINEMENT"
+    ],
+    "reason_codes": [
+      "agent-signer-mismatch"
     ]
   },
   {
-    "vector_id": "acceptance-gating/control-explicit-reject-absorbing",
+    "vector_id": "comms/agent-token-invalid",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-acceptance-hook"
+      "heterodyne:comms#comms-agent-authorship"
+    ],
+    "invariants": [
+      "COMMS-I-WORKLOAD-TOKEN-CONFINEMENT"
+    ],
+    "reason_codes": [
+      "agent-token-invalid"
     ]
   },
   {
-    "vector_id": "acceptance-gating/control-permanent-enrollment-only",
+    "vector_id": "comms/agent-workload-registration-invalid",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-acceptance-hook"
+      "heterodyne:comms#comms-agent-authorship"
+    ],
+    "invariants": [
+      "COMMS-I-WORKLOAD-TOKEN-CONFINEMENT"
+    ],
+    "reason_codes": [
+      "agent-workload-registration-invalid"
     ]
   },
   {
-    "vector_id": "acceptance-gating/dm-invite-accept",
+    "vector_id": "comms/agent-workload-token-accepted",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-acceptance-hook"
-    ]
+      "heterodyne:comms#comms-fail-closed-authorization-and-privacy"
+    ],
+    "invariants": [
+      "COMMS-I-AGENT-SIGNER-BINDING",
+      "COMMS-I-WORKLOAD-TOKEN-CONFINEMENT"
+    ],
+    "reason_codes": []
   },
   {
-    "vector_id": "acceptance-gating/established-ordinary-accept",
+    "vector_id": "comms/auth-rejected-permanent",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-acceptance-hook"
+      "heterodyne:comms#comms-publishing"
+    ],
+    "invariants": [
+      "COMMS-I-MARMOT-UPSTREAM-AUTHORITY"
+    ],
+    "reason_codes": [
+      "auth_rejected_permanent"
     ]
   },
   {
-    "vector_id": "acceptance-gating/message-request-no-receipt",
+    "vector_id": "comms/authorization-view-300-boundary",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-acceptance-hook"
-    ]
+      "heterodyne:comms#comms-authorization-freshness"
+    ],
+    "invariants": [
+      "COMMS-I-MINT-FRESHNESS"
+    ],
+    "reason_codes": []
   },
   {
-    "vector_id": "acceptance-gating/new-ordinary-hold",
+    "vector_id": "comms/authorization-view-86400-boundary",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-acceptance-hook"
-    ]
+      "heterodyne:comms#comms-authorization-freshness"
+    ],
+    "invariants": [
+      "COMMS-I-MINT-FRESHNESS"
+    ],
+    "reason_codes": []
   },
   {
-    "vector_id": "acceptance-gating/ordinary-explicit-reject",
+    "vector_id": "comms/authorization-view-maximum-malformed",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-acceptance-hook"
+      "heterodyne:comms#comms-authorization-freshness"
+    ],
+    "invariants": [
+      "COMMS-I-MINT-FRESHNESS"
+    ],
+    "reason_codes": [
+      "claim-schema-invalid"
     ]
   },
   {
-    "vector_id": "acceptance-gating/social-mute-tightens",
-    "owner_document": "social",
+    "vector_id": "comms/checkpoint-exact-boundary",
+    "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:social#social-admission-policy"
-    ]
+      "heterodyne:comms#comms-authorization-freshness"
+    ],
+    "invariants": [
+      "COMMS-I-MINT-FRESHNESS"
+    ],
+    "reason_codes": []
   },
   {
-    "vector_id": "acceptance-gating/social-policy-cannot-loosen",
-    "owner_document": "social",
+    "vector_id": "comms/checkpoint-stale-independent",
+    "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:social#social-admission-policy"
+      "heterodyne:comms#comms-authorization-freshness"
+    ],
+    "invariants": [
+      "COMMS-I-MINT-FRESHNESS"
+    ],
+    "reason_codes": [
+      "oidc-checkpoint-stale"
     ]
   },
   {
-    "vector_id": "acceptance-gating/social-wot-cannot-loosen",
-    "owner_document": "social",
+    "vector_id": "comms/claim-active-authenticated",
+    "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:social#social-admission-policy"
-    ]
+      "heterodyne:comms#comms-verification-trust-proof-of-possession-and-state"
+    ],
+    "invariants": [
+      "COMMS-I-CLAIM-ATTENUATION",
+      "COMMS-I-CLAIM-AUTHENTICITY"
+    ],
+    "reason_codes": []
   },
   {
-    "vector_id": "acceptance-gating/social-wot-tightens-only",
-    "owner_document": "social",
+    "vector_id": "comms/claim-attenuation-violation",
+    "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:social#social-admission-policy"
+      "heterodyne:comms#comms-conformance"
+    ],
+    "invariants": [
+      "COMMS-I-CLAIM-ATTENUATION"
+    ],
+    "reason_codes": [
+      "claim-attenuation-violation"
     ]
   },
   {
-    "vector_id": "agent-authorship/attribution-kind-1",
+    "vector_id": "comms/claim-chain-cycle",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-conformance"
+    ],
+    "invariants": [
+      "COMMS-I-CLAIM-ATTENUATION"
+    ],
+    "reason_codes": [
+      "claim-chain-cycle"
+    ]
+  },
+  {
+    "vector_id": "comms/claim-chain-depth-exceeded",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-conformance"
+    ],
+    "invariants": [
+      "COMMS-I-CLAIM-ATTENUATION"
+    ],
+    "reason_codes": [
+      "claim-chain-depth-exceeded"
+    ]
+  },
+  {
+    "vector_id": "comms/claim-delegation-not-authorized",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-conformance"
+    ],
+    "invariants": [
+      "COMMS-I-CLAIM-ATTENUATION"
+    ],
+    "reason_codes": [
+      "claim-delegation-not-authorized"
+    ]
+  },
+  {
+    "vector_id": "comms/claim-event-signature-invalid",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-conformance"
+    ],
+    "invariants": [
+      "COMMS-I-CLAIM-AUTHENTICITY"
+    ],
+    "reason_codes": [
+      "claim-event-signature-invalid"
+    ]
+  },
+  {
+    "vector_id": "comms/claim-expired",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-conformance"
+    ],
+    "invariants": [
+      "COMMS-I-CLAIM-AUTHENTICITY"
+    ],
+    "reason_codes": [
+      "claim-expired"
+    ]
+  },
+  {
+    "vector_id": "comms/claim-id-mismatch",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-conformance"
+    ],
+    "invariants": [
+      "COMMS-I-CLAIM-AUTHENTICITY"
+    ],
+    "reason_codes": [
+      "claim-id-mismatch"
+    ]
+  },
+  {
+    "vector_id": "comms/claim-issuer-authority-invalid",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-conformance"
+    ],
+    "invariants": [
+      "COMMS-I-CLAIM-AUTHENTICITY"
+    ],
+    "reason_codes": [
+      "claim-issuer-authority-invalid"
+    ]
+  },
+  {
+    "vector_id": "comms/claim-issuer-untrusted",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-conformance"
+    ],
+    "invariants": [
+      "COMMS-I-CLAIM-AUTHENTICITY"
+    ],
+    "reason_codes": [
+      "claim-issuer-untrusted"
+    ]
+  },
+  {
+    "vector_id": "comms/claim-key-reference-invalid",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-conformance"
+    ],
+    "invariants": [
+      "COMMS-I-CLAIM-AUTHENTICITY"
+    ],
+    "reason_codes": [
+      "claim-key-reference-invalid"
+    ]
+  },
+  {
+    "vector_id": "comms/claim-ledger-rollback",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-conformance"
+    ],
+    "invariants": [
+      "COMMS-I-CLAIM-REPOSITORY-AUTHORITY"
+    ],
+    "reason_codes": [
+      "claim-ledger-rollback"
+    ]
+  },
+  {
+    "vector_id": "comms/claim-repository-conflict",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-conformance"
+    ],
+    "invariants": [
+      "COMMS-I-CLAIM-REPOSITORY-AUTHORITY"
+    ],
+    "reason_codes": [
+      "claim-repository-conflict"
+    ]
+  },
+  {
+    "vector_id": "comms/claim-repository-unconfirmed",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-authoritative-private-persona-claim-ledger"
+    ],
+    "invariants": [
+      "COMMS-I-CLAIM-REPOSITORY-AUTHORITY"
+    ],
+    "reason_codes": [
+      "claim-repository-unconfirmed"
+    ]
+  },
+  {
+    "vector_id": "comms/claim-revoked",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-conformance"
+    ],
+    "invariants": [
+      "COMMS-I-CLAIM-REVOCATION"
+    ],
+    "reason_codes": [
+      "claim-revoked"
+    ]
+  },
+  {
+    "vector_id": "comms/claim-revoker-unauthorized",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-conformance"
+    ],
+    "invariants": [
+      "COMMS-I-CLAIM-REVOCATION"
+    ],
+    "reason_codes": [
+      "claim-revoker-unauthorized"
+    ]
+  },
+  {
+    "vector_id": "comms/claim-subject-proof-invalid",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-conformance"
+    ],
+    "invariants": [
+      "COMMS-I-CLAIM-AUTHENTICITY"
+    ],
+    "reason_codes": [
+      "claim-subject-proof-invalid"
+    ]
+  },
+  {
+    "vector_id": "comms/claim-subject-proof-required",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-conformance"
+    ],
+    "invariants": [
+      "COMMS-I-CLAIM-AUTHENTICITY"
+    ],
+    "reason_codes": [
+      "claim-subject-proof-required"
+    ]
+  },
+  {
+    "vector_id": "comms/config-private-state-encrypted",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-config-repository-protection-profile"
+    ],
+    "invariants": [
+      "COMMS-I-CONFIG-AT-REST",
+      "COMMS-I-TIER2-HONESTY"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "comms/conversation-rejected",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-ordinary-conversation-admission"
+    ],
+    "invariants": [
+      "COMMS-I-MARMOT-UPSTREAM-AUTHORITY"
+    ],
+    "reason_codes": [
+      "conversation-rejected"
+    ]
+  },
+  {
+    "vector_id": "comms/dm-invite-revoked-device",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-direct-messages"
+    ],
+    "invariants": [
+      "COMMS-I-MARMOT-UPSTREAM-AUTHORITY"
+    ],
+    "reason_codes": [
+      "dm_invite_revoked_device"
+    ]
+  },
+  {
+    "vector_id": "comms/dm-invite-unbound-device",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-direct-messages"
+    ],
+    "invariants": [
+      "COMMS-I-MARMOT-UPSTREAM-AUTHORITY"
+    ],
+    "reason_codes": [
+      "dm_invite_unbound_device"
+    ]
+  },
+  {
+    "vector_id": "comms/invite-already-reserved",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-one-time-invites"
+    ],
+    "invariants": [
+      "COMMS-I-MARMOT-UPSTREAM-AUTHORITY"
+    ],
+    "reason_codes": [
+      "invite-already-reserved"
+    ]
+  },
+  {
+    "vector_id": "comms/invite-authentication-invalid",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-one-time-invites"
+    ],
+    "invariants": [
+      "COMMS-I-MARMOT-UPSTREAM-AUTHORITY"
+    ],
+    "reason_codes": [
+      "invite-authentication-invalid"
+    ]
+  },
+  {
+    "vector_id": "comms/invite-expired",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-one-time-invites"
+    ],
+    "invariants": [
+      "COMMS-I-MARMOT-UPSTREAM-AUTHORITY"
+    ],
+    "reason_codes": [
+      "invite-expired"
+    ]
+  },
+  {
+    "vector_id": "comms/invite-purpose-mismatch",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-one-time-invites"
+    ],
+    "invariants": [
+      "COMMS-I-MARMOT-UPSTREAM-AUTHORITY"
+    ],
+    "reason_codes": [
+      "invite-purpose-mismatch"
+    ]
+  },
+  {
+    "vector_id": "comms/ledger-reader-authorized",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-authoritative-private-persona-claim-ledger"
+    ],
+    "invariants": [
+      "COMMS-I-CLAIM-REVOCATION",
+      "COMMS-I-LEDGER-CONFINEMENT"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "comms/ledger-reader-unauthorized",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-authoritative-private-persona-claim-ledger"
+    ],
+    "invariants": [
+      "COMMS-I-LEDGER-CONFINEMENT"
+    ],
+    "reason_codes": [
+      "claim-ledger-reader-unauthorized"
+    ]
+  },
+  {
+    "vector_id": "comms/marmot-agent-scope-denied",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-agent-authorship"
+    ],
+    "invariants": [
+      "COMMS-I-MARMOT-UPSTREAM-AUTHORITY"
+    ],
+    "reason_codes": [
+      "marmot-agent-scope-denied"
+    ]
+  },
+  {
+    "vector_id": "comms/marmot-exact-bytes-durable",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-exact-event-and-media-bytes"
+    ],
+    "invariants": [
+      "COMMS-I-MARMOT-EXACT-BYTES"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "comms/marmot-expiration-not-erasure",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-retention-and-non-erasure"
+    ],
+    "invariants": [
+      "COMMS-I-RADICLE-NON-ERASURE"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "comms/marmot-keypackage-replayed",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-marmot-persona-inbox"
+    ],
+    "invariants": [
+      "COMMS-I-MARMOT-UPSTREAM-AUTHORITY"
+    ],
+    "reason_codes": [
+      "marmot-keypackage-replayed"
+    ]
+  },
+  {
+    "vector_id": "comms/marmot-ordinary-welcome-held",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-ordinary-conversation-hook"
+    ],
+    "invariants": [
+      "COMMS-I-MARMOT-ACCOUNT-IDENTITY",
+      "COMMS-I-MARMOT-SECRET-CONFINEMENT",
+      "COMMS-I-MARMOT-UPSTREAM-AUTHORITY"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "comms/marmot-premature-ack",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-rotation-transaction-and-durable-acknowledgement"
+    ],
+    "invariants": [
+      "COMMS-I-MARMOT-EXACT-BYTES"
+    ],
+    "reason_codes": [
+      "marmot-premature-ack"
+    ]
+  },
+  {
+    "vector_id": "comms/marmot-private-inbox-nid-required",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-marmot-persona-inbox"
+    ],
+    "invariants": [
+      "COMMS-I-MARMOT-UPSTREAM-AUTHORITY"
+    ],
+    "reason_codes": [
+      "marmot-private-inbox-nid-required"
+    ]
+  },
+  {
+    "vector_id": "comms/marmot-private-route-required",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-marmot-groups"
+    ],
+    "invariants": [
+      "COMMS-I-MARMOT-UPSTREAM-AUTHORITY"
+    ],
+    "reason_codes": [
+      "marmot-private-route-required"
+    ]
+  },
+  {
+    "vector_id": "comms/marmot-routing-binding-valid",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-routing-generations-and-bindings"
+    ],
+    "invariants": [
+      "COMMS-I-RADICLE-ROUTING-AUTHORITY"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "comms/marmot-routing-equivocation",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-marmot-host-authority"
+    ],
+    "invariants": [
+      "COMMS-I-RADICLE-ROUTING-AUTHORITY"
+    ],
+    "reason_codes": [
+      "marmot-routing-equivocation"
+    ]
+  },
+  {
+    "vector_id": "comms/marmot-routing-genesis-mismatch",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-routing-generations-and-bindings"
+    ],
+    "invariants": [
+      "COMMS-I-RADICLE-ROUTING-AUTHORITY"
+    ],
+    "reason_codes": [
+      "marmot-routing-binding-invalid"
+    ]
+  },
+  {
+    "vector_id": "comms/marmot-unauthorized-ref",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-marmot-event-repository"
+    ],
+    "invariants": [
+      "COMMS-I-RADICLE-ROUTING-AUTHORITY"
+    ],
+    "reason_codes": [
+      "marmot-unauthorized-ref"
+    ]
+  },
+  {
+    "vector_id": "comms/nip59-broadcast-rejected",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-encrypted-audience-posts"
+    ],
+    "invariants": [
+      "COMMS-I-MARMOT-UPSTREAM-AUTHORITY"
+    ],
+    "reason_codes": [
+      "nip59_broadcast_rejected"
+    ]
+  },
+  {
+    "vector_id": "comms/oidc-access-token-validated",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-interoperable-jwt-projection"
+    ],
+    "invariants": [
+      "COMMS-I-JWT-TYPE-AUDIENCE",
+      "COMMS-I-STATUS-INTEGRITY"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "comms/oidc-audience-invalid",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-interoperable-jwt-projection"
+    ],
+    "invariants": [
+      "COMMS-I-JWT-TYPE-AUDIENCE"
+    ],
+    "reason_codes": [
+      "oidc-audience-invalid"
+    ]
+  },
+  {
+    "vector_id": "comms/oidc-claim-release",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-authorization-clients-consent-and-release"
+    ],
+    "invariants": [
+      "COMMS-I-CLAIM-RELEASE",
+      "COMMS-I-ISSUER-KEY-CONFINEMENT"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "comms/oidc-claim-release-denied",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-authorization-clients-consent-and-release"
+    ],
+    "invariants": [
+      "COMMS-I-CLAIM-RELEASE"
+    ],
+    "reason_codes": [
+      "oidc-claim-release-denied"
+    ]
+  },
+  {
+    "vector_id": "comms/oidc-client-unregistered",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-authorization-clients-consent-and-release"
+    ],
+    "invariants": [
+      "COMMS-I-CLAIM-RELEASE"
+    ],
+    "reason_codes": [
+      "oidc-client-unregistered"
+    ]
+  },
+  {
+    "vector_id": "comms/oidc-consent-required",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-authorization-clients-consent-and-release"
+    ],
+    "invariants": [
+      "COMMS-I-CLAIM-RELEASE"
+    ],
+    "reason_codes": [
+      "oidc-consent-required"
+    ]
+  },
+  {
+    "vector_id": "comms/oidc-grant-prohibited",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-authorization-clients-consent-and-release"
+    ],
+    "invariants": [
+      "COMMS-I-CLAIM-RELEASE"
+    ],
+    "reason_codes": [
+      "oidc-grant-prohibited"
+    ]
+  },
+  {
+    "vector_id": "comms/oidc-issuer-authority-invalid",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-conformance"
+    ],
+    "invariants": [
+      "COMMS-I-ISSUER-KEY-CONFINEMENT"
+    ],
+    "reason_codes": [
+      "oidc-issuer-authority-invalid"
+    ]
+  },
+  {
+    "vector_id": "comms/oidc-issuer-mismatch",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-radicle-issuer-continuity"
+    ],
+    "invariants": [
+      "COMMS-I-ISSUER-CONTINUITY"
+    ],
+    "reason_codes": [
+      "oidc-issuer-mismatch"
+    ]
+  },
+  {
+    "vector_id": "comms/oidc-issuer-persona-continuity",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-radicle-issuer-continuity"
+    ],
+    "invariants": [
+      "COMMS-I-ISSUER-CONTINUITY"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "comms/oidc-signing-key-unavailable",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-conformance"
+    ],
+    "invariants": [
+      "COMMS-I-ISSUER-KEY-CONFINEMENT"
+    ],
+    "reason_codes": [
+      "oidc-signing-key-unavailable"
+    ]
+  },
+  {
+    "vector_id": "comms/oidc-status-invalid",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-conformance"
+    ],
+    "invariants": [
+      "COMMS-I-STATUS-INTEGRITY"
+    ],
+    "reason_codes": [
+      "oidc-status-invalid"
+    ]
+  },
+  {
+    "vector_id": "comms/oidc-token-type-invalid",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-interoperable-jwt-projection"
+    ],
+    "invariants": [
+      "COMMS-I-JWT-TYPE-AUDIENCE"
+    ],
+    "reason_codes": [
+      "oidc-token-type-invalid"
+    ]
+  },
+  {
+    "vector_id": "comms/profile-heterodyne-comms-agent-attribution-kind-1-v1",
     "owner_document": "comms",
     "profile": "heterodyne-comms-agent-attribution-kind-1-v1",
     "spec_refs": [
-      "heterodyne:comms#comms-agent-attribution"
-    ]
+      "heterodyne:comms#comms-security"
+    ],
+    "invariants": [
+      "COMMS-I-AGENT-ATTRIBUTION",
+      "COMMS-I-AGENT-SIGNER-BINDING"
+    ],
+    "reason_codes": []
   },
   {
-    "vector_id": "agent-authorship/attribution-kind-1063",
+    "vector_id": "comms/profile-heterodyne-comms-agent-attribution-kind-1063-v1",
     "owner_document": "comms",
     "profile": "heterodyne-comms-agent-attribution-kind-1063-v1",
     "spec_refs": [
-      "heterodyne:comms#comms-agent-attribution"
-    ]
+      "heterodyne:comms#comms-security"
+    ],
+    "invariants": [
+      "COMMS-I-AGENT-ATTRIBUTION",
+      "COMMS-I-AGENT-SIGNER-BINDING"
+    ],
+    "reason_codes": []
   },
   {
-    "vector_id": "agent-authorship/attribution-kind-16",
+    "vector_id": "comms/profile-heterodyne-comms-agent-attribution-kind-16-v1",
     "owner_document": "comms",
     "profile": "heterodyne-comms-agent-attribution-kind-16-v1",
     "spec_refs": [
-      "heterodyne:comms#comms-agent-attribution"
-    ]
+      "heterodyne:comms#comms-security"
+    ],
+    "invariants": [
+      "COMMS-I-AGENT-ATTRIBUTION",
+      "COMMS-I-AGENT-SIGNER-BINDING"
+    ],
+    "reason_codes": []
   },
   {
-    "vector_id": "agent-authorship/attribution-kind-1985",
+    "vector_id": "comms/profile-heterodyne-comms-agent-attribution-kind-1985-v1",
     "owner_document": "comms",
     "profile": "heterodyne-comms-agent-attribution-kind-1985-v1",
     "spec_refs": [
-      "heterodyne:comms#comms-agent-attribution"
-    ]
+      "heterodyne:comms#comms-security"
+    ],
+    "invariants": [
+      "COMMS-I-AGENT-ATTRIBUTION",
+      "COMMS-I-AGENT-SIGNER-BINDING"
+    ],
+    "reason_codes": []
   },
   {
-    "vector_id": "agent-authorship/attribution-kind-30023",
+    "vector_id": "comms/profile-heterodyne-comms-agent-attribution-kind-30023-v1",
     "owner_document": "comms",
     "profile": "heterodyne-comms-agent-attribution-kind-30023-v1",
     "spec_refs": [
-      "heterodyne:comms#comms-agent-attribution"
-    ]
+      "heterodyne:comms#comms-security"
+    ],
+    "invariants": [
+      "COMMS-I-AGENT-ATTRIBUTION",
+      "COMMS-I-AGENT-SIGNER-BINDING"
+    ],
+    "reason_codes": []
   },
   {
-    "vector_id": "agent-authorship/attribution-kind-4550",
+    "vector_id": "comms/profile-heterodyne-comms-agent-attribution-kind-4550-v1",
     "owner_document": "comms",
     "profile": "heterodyne-comms-agent-attribution-kind-4550-v1",
     "spec_refs": [
-      "heterodyne:comms#comms-agent-attribution"
-    ]
+      "heterodyne:comms#comms-security"
+    ],
+    "invariants": [
+      "COMMS-I-AGENT-ATTRIBUTION",
+      "COMMS-I-AGENT-SIGNER-BINDING"
+    ],
+    "reason_codes": []
   },
   {
-    "vector_id": "agent-authorship/attribution-kind-6",
+    "vector_id": "comms/profile-heterodyne-comms-agent-attribution-kind-6-v1",
     "owner_document": "comms",
     "profile": "heterodyne-comms-agent-attribution-kind-6-v1",
     "spec_refs": [
-      "heterodyne:comms#comms-agent-attribution"
-    ]
+      "heterodyne:comms#comms-security"
+    ],
+    "invariants": [
+      "COMMS-I-AGENT-ATTRIBUTION",
+      "COMMS-I-AGENT-SIGNER-BINDING"
+    ],
+    "reason_codes": []
   },
   {
-    "vector_id": "agent-authorship/attribution-kind-7",
+    "vector_id": "comms/profile-heterodyne-comms-agent-attribution-kind-7-v1",
     "owner_document": "comms",
     "profile": "heterodyne-comms-agent-attribution-kind-7-v1",
     "spec_refs": [
-      "heterodyne:comms#comms-agent-attribution"
-    ]
+      "heterodyne:comms#comms-security"
+    ],
+    "invariants": [
+      "COMMS-I-AGENT-ATTRIBUTION",
+      "COMMS-I-AGENT-SIGNER-BINDING"
+    ],
+    "reason_codes": []
   },
   {
-    "vector_id": "agent-authorship/caller-forgery-replaced",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-agent-attribution"
-    ]
-  },
-  {
-    "vector_id": "agent-authorship/cross-persona-unlinkable",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-agent-attribution"
-    ]
-  },
-  {
-    "vector_id": "agent-authorship/delegation-key-proof-invalid",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-agent-delegation"
-    ]
-  },
-  {
-    "vector_id": "agent-authorship/delegation-valid",
-    "owner_document": "comms",
-    "profile": "heterodyne-comms-agent-signing-delegation-v1",
-    "spec_refs": [
-      "heterodyne:comms#comms-agent-delegation"
-    ]
-  },
-  {
-    "vector_id": "agent-authorship/human-review-preserves-agent-label",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-agent-attribution"
-    ]
-  },
-  {
-    "vector_id": "agent-authorship/idempotent-retry-reuses-event",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-agent-attribution"
-    ]
-  },
-  {
-    "vector_id": "agent-authorship/multiple-roles-one-nid",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-agent-delegation"
-    ]
-  },
-  {
-    "vector_id": "agent-authorship/profile-unavailable-rejected",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-agent-fail-closed"
-    ]
-  },
-  {
-    "vector_id": "agent-authorship/role-key-replacement",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-agent-delegation"
-    ]
-  },
-  {
-    "vector_id": "agent-authorship/stable-identity-renewal",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-agent-workload"
-    ]
-  },
-  {
-    "vector_id": "agent-authorship/tier3-inner-only",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-agent-attribution"
-    ]
-  },
-  {
-    "vector_id": "agent-authorship/token-audience-invalid",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-agent-token"
-    ]
-  },
-  {
-    "vector_id": "agent-authorship/token-expired",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-agent-token"
-    ]
-  },
-  {
-    "vector_id": "agent-authorship/token-revoked",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-agent-token"
-    ]
-  },
-  {
-    "vector_id": "agent-authorship/token-role-mismatch",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-agent-token"
-    ]
-  },
-  {
-    "vector_id": "agent-authorship/token-sender-proof-invalid",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-agent-token"
-    ]
-  },
-  {
-    "vector_id": "agent-authorship/token-valid",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-agent-token"
-    ]
-  },
-  {
-    "vector_id": "agent-authorship/workload-registration-unbounded-rejected",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-agent-workload"
-    ]
-  },
-  {
-    "vector_id": "agent-authorship/workload-registration-valid",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-agent-workload"
-    ]
-  },
-  {
-    "vector_id": "agent-moderation/correction-list-removed",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-agent-policy-receipts"
-    ]
-  },
-  {
-    "vector_id": "agent-moderation/correction-list-retained",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-agent-policy-receipts"
-    ]
-  },
-  {
-    "vector_id": "agent-moderation/correction-valid",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-agent-policy-receipts"
-    ]
-  },
-  {
-    "vector_id": "agent-moderation/default-visible-removable",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-agent-policy-list"
-    ]
-  },
-  {
-    "vector_id": "agent-moderation/policy-binding-mismatch",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-agent-policy-list"
-    ]
-  },
-  {
-    "vector_id": "agent-moderation/policy-list-valid",
-    "owner_document": "social",
-    "profile": "heterodyne-social-agent-policy-list-v1",
-    "spec_refs": [
-      "heterodyne:social#social-agent-policy-list"
-    ]
-  },
-  {
-    "vector_id": "agent-moderation/receipt-malformed",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-agent-policy-receipts"
-    ]
-  },
-  {
-    "vector_id": "agent-moderation/receipt-private-leakage",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-agent-policy-receipts"
-    ]
-  },
-  {
-    "vector_id": "agent-moderation/receipt-valid",
-    "owner_document": "social",
-    "profile": "heterodyne-social-agent-policy-receipt-v1",
-    "spec_refs": [
-      "heterodyne:social#social-agent-policy-receipts"
-    ]
-  },
-  {
-    "vector_id": "agent-moderation/relay-only-no-effect",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-agent-policy-list"
-    ]
-  },
-  {
-    "vector_id": "agent-moderation/replacement-key-independent",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-agent-policy-list"
-    ]
-  },
-  {
-    "vector_id": "agent-moderation/subscribed-canonical-mutes",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-agent-policy-list"
-    ]
-  },
-  {
-    "vector_id": "agent-moderation/unmerged-pr-no-effect",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-agent-policy-list"
-    ]
-  },
-  {
-    "vector_id": "agent-moderation/unsubscribed-no-effect",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-agent-policy-list"
-    ]
-  },
-  {
-    "vector_id": "atproto/connection-pinning-unavailable",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-atproto-resolution"
-    ]
-  },
-  {
-    "vector_id": "atproto/pinned-public-hop",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-atproto-resolution"
-    ]
-  },
-  {
-    "vector_id": "breadcrumbs/compromise-rotation-not-produced",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-kel-rotation"
-    ]
-  },
-  {
-    "vector_id": "breadcrumbs/ordinary-consumer-no-profile-inference",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-kel-rotation"
-    ]
-  },
-  {
-    "vector_id": "breadcrumbs/repointed-nip05-rejected",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-kel-rotation"
-    ]
-  },
-  {
-    "vector_id": "breadcrumbs/unrelated-successor-rejected",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-kel-rotation"
-    ]
-  },
-  {
-    "vector_id": "claim-ledger/authority-reduction-wins",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-claim-ledger"
-    ]
-  },
-  {
-    "vector_id": "claim-ledger/checkpoint-rollback-rejected",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-claim-ledger"
-    ]
-  },
-  {
-    "vector_id": "claim-ledger/delivered-grant-provisional",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-claim-ledger"
-    ]
-  },
-  {
-    "vector_id": "claim-ledger/immediate-revocation",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-claim-ledger"
-    ]
-  },
-  {
-    "vector_id": "claim-ledger/keyed-path-metadata-private",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-claim-ledger"
-    ]
-  },
-  {
-    "vector_id": "claim-ledger/multiwriter-revocation-wins",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-claim-ledger"
-    ]
-  },
-  {
-    "vector_id": "claim-ledger/multiwriter-status-allocation",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-multiwriter-minting"
-    ]
-  },
-  {
-    "vector_id": "claim-ledger/nidless-reader-denied",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-claim-ledger"
-    ]
-  },
-  {
-    "vector_id": "claim-ledger/nonmonotonic-conflict-blocks",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-claim-ledger"
-    ]
-  },
-  {
-    "vector_id": "claim-ledger/reader-nid-authorized",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-claim-ledger"
-    ]
-  },
-  {
-    "vector_id": "claim-ledger/reader-removal-key-rotation",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-claim-ledger"
-    ]
-  },
-  {
-    "vector_id": "claim-ledger/source-claim-revokes-token",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-claim-revocation"
-    ]
-  },
-  {
-    "vector_id": "claim-ledger/stale-minter-denied",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-multiwriter-minting"
-    ]
-  },
-  {
-    "vector_id": "claims/authorization-self-revocation",
-    "owner_document": "comms",
-    "profile": "heterodyne-comms-claim-revocation-nostr-bip340-v1",
-    "spec_refs": [
-      "heterodyne:comms#comms-claim-revocation"
-    ]
-  },
-  {
-    "vector_id": "claims/canonical-jwk-thumbprint-subject",
+    "vector_id": "comms/profile-heterodyne-comms-claim-revocation-jwk-jws-v1",
     "owner_document": "comms",
     "profile": "heterodyne-comms-claim-revocation-jwk-jws-v1",
     "spec_refs": [
-      "heterodyne:comms#comms-key-claims"
-    ]
+      "heterodyne:comms#comms-security"
+    ],
+    "invariants": [
+      "COMMS-I-CLAIM-REVOCATION"
+    ],
+    "reason_codes": []
   },
   {
-    "vector_id": "claims/canonical-nostr-subject",
+    "vector_id": "comms/profile-heterodyne-comms-claim-revocation-nostr-bip340-v1",
     "owner_document": "comms",
-    "profile": "heterodyne-comms-key-claim-nostr-bip340-v1",
+    "profile": "heterodyne-comms-claim-revocation-nostr-bip340-v1",
     "spec_refs": [
-      "heterodyne:comms#comms-key-claims"
-    ]
+      "heterodyne:comms#comms-security"
+    ],
+    "invariants": [
+      "COMMS-I-CLAIM-REVOCATION"
+    ],
+    "reason_codes": []
   },
   {
-    "vector_id": "claims/canonical-radicle-nid-subject",
-    "owner_document": "comms",
-    "profile": "heterodyne-comms-key-claim-radicle-ed25519-v1",
-    "spec_refs": [
-      "heterodyne:comms#comms-key-claims"
-    ]
-  },
-  {
-    "vector_id": "claims/chain-attenuation-valid",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-claim-chain"
-    ]
-  },
-  {
-    "vector_id": "claims/chain-depth-exceeded",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-claim-chain"
-    ]
-  },
-  {
-    "vector_id": "claims/chain-widening-rejected",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-claim-chain"
-    ]
-  },
-  {
-    "vector_id": "claims/claim-id-mismatch",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-key-claims"
-    ]
-  },
-  {
-    "vector_id": "claims/copied-proof-rejected",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-claim-verification"
-    ]
-  },
-  {
-    "vector_id": "claims/delegated-issuance-active",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-claim-verification"
-    ]
-  },
-  {
-    "vector_id": "claims/descriptive-subject-rejection",
+    "vector_id": "comms/profile-heterodyne-comms-claim-revocation-radicle-ed25519-v1",
     "owner_document": "comms",
     "profile": "heterodyne-comms-claim-revocation-radicle-ed25519-v1",
     "spec_refs": [
-      "heterodyne:comms#comms-claim-revocation"
-    ]
+      "heterodyne:comms#comms-security"
+    ],
+    "invariants": [
+      "COMMS-I-CLAIM-REVOCATION"
+    ],
+    "reason_codes": []
   },
   {
-    "vector_id": "claims/local-only-no-publication",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-key-claims"
-    ]
-  },
-  {
-    "vector_id": "claims/pairwise-private-marmot-delivery",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-key-claims"
-    ]
-  },
-  {
-    "vector_id": "claims/persona-issuance-active",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-claim-verification"
-    ]
-  },
-  {
-    "vector_id": "claims/provisional-authorization-denied",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-claim-ledger"
-    ]
-  },
-  {
-    "vector_id": "claims/public-claim-publication",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-key-claims"
-    ]
-  },
-  {
-    "vector_id": "claims/repository-confirmed-active",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-claim-ledger"
-    ]
-  },
-  {
-    "vector_id": "claims/repository-private-encryption",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-key-claims"
-    ]
-  },
-  {
-    "vector_id": "claims/subject-proof-valid",
+    "vector_id": "comms/profile-heterodyne-comms-key-claim-jwk-jws-v1",
     "owner_document": "comms",
     "profile": "heterodyne-comms-key-claim-jwk-jws-v1",
     "spec_refs": [
-      "heterodyne:comms#comms-claim-verification"
-    ]
+      "heterodyne:comms#comms-security"
+    ],
+    "invariants": [
+      "COMMS-I-CLAIM-AUTHENTICITY"
+    ],
+    "reason_codes": []
   },
   {
-    "vector_id": "claims/third-party-issuer-untrusted",
+    "vector_id": "comms/profile-heterodyne-comms-key-claim-nostr-bip340-v1",
+    "owner_document": "comms",
+    "profile": "heterodyne-comms-key-claim-nostr-bip340-v1",
+    "spec_refs": [
+      "heterodyne:comms#comms-security"
+    ],
+    "invariants": [
+      "COMMS-I-CLAIM-AUTHENTICITY"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "comms/profile-heterodyne-comms-key-claim-radicle-ed25519-v1",
+    "owner_document": "comms",
+    "profile": "heterodyne-comms-key-claim-radicle-ed25519-v1",
+    "spec_refs": [
+      "heterodyne:comms#comms-security"
+    ],
+    "invariants": [
+      "COMMS-I-CLAIM-AUTHENTICITY"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "comms/profile-heterodyne-comms-tier3-wrapped-content-kind-1-v1",
+    "owner_document": "comms",
+    "profile": "heterodyne-comms-tier3-wrapped-content-kind-1-v1",
+    "spec_refs": [
+      "heterodyne:comms#comms-security"
+    ],
+    "invariants": [
+      "COMMS-I-TIER3-BLIND-CARRIER",
+      "COMMS-I-TIER3-CONFINED"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "comms/profile-heterodyne-comms-tier3-wrapped-content-kind-1063-v1",
+    "owner_document": "comms",
+    "profile": "heterodyne-comms-tier3-wrapped-content-kind-1063-v1",
+    "spec_refs": [
+      "heterodyne:comms#comms-security"
+    ],
+    "invariants": [
+      "COMMS-I-TIER3-BLIND-CARRIER",
+      "COMMS-I-TIER3-CONFINED"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "comms/profile-heterodyne-comms-tier3-wrapped-content-kind-16-v1",
+    "owner_document": "comms",
+    "profile": "heterodyne-comms-tier3-wrapped-content-kind-16-v1",
+    "spec_refs": [
+      "heterodyne:comms#comms-security"
+    ],
+    "invariants": [
+      "COMMS-I-TIER3-BLIND-CARRIER",
+      "COMMS-I-TIER3-CONFINED"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "comms/profile-heterodyne-comms-tier3-wrapped-content-kind-30023-v1",
+    "owner_document": "comms",
+    "profile": "heterodyne-comms-tier3-wrapped-content-kind-30023-v1",
+    "spec_refs": [
+      "heterodyne:comms#comms-security"
+    ],
+    "invariants": [
+      "COMMS-I-TIER3-BLIND-CARRIER",
+      "COMMS-I-TIER3-CONFINED"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "comms/profile-heterodyne-comms-tier3-wrapped-content-kind-30402-v1",
+    "owner_document": "comms",
+    "profile": "heterodyne-comms-tier3-wrapped-content-kind-30402-v1",
+    "spec_refs": [
+      "heterodyne:comms#comms-security"
+    ],
+    "invariants": [
+      "COMMS-I-TIER3-BLIND-CARRIER",
+      "COMMS-I-TIER3-CONFINED"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "comms/profile-heterodyne-comms-tier3-wrapped-content-kind-6-v1",
+    "owner_document": "comms",
+    "profile": "heterodyne-comms-tier3-wrapped-content-kind-6-v1",
+    "spec_refs": [
+      "heterodyne:comms#comms-security"
+    ],
+    "invariants": [
+      "COMMS-I-TIER3-BLIND-CARRIER",
+      "COMMS-I-TIER3-CONFINED"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "comms/public-reader-private-content",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-claim-verification"
+      "heterodyne:comms#comms-public-reader-feature"
+    ],
+    "invariants": [
+      "COMMS-I-PUBLIC-READER-TIER1-ONLY"
+    ],
+    "reason_codes": [
+      "public-reader-private-content"
     ]
   },
   {
-    "vector_id": "config-backup/config-blob-encrypt-decrypt",
+    "vector_id": "comms/public-reader-private-tier",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-config-repository"
-    ]
+      "heterodyne:comms#comms-public-reader-feature"
+    ],
+    "invariants": [
+      "COMMS-I-PUBLIC-READER-TIER1-ONLY"
+    ],
+    "reason_codes": []
   },
   {
-    "vector_id": "config-backup/config-rid-advertised-rejected",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-keys-repository"
-    ]
-  },
-  {
-    "vector_id": "config-backup/config-rid-unadvertised-clean",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-keys-repository"
-    ]
-  },
-  {
-    "vector_id": "config-backup/key-id-derivation",
+    "vector_id": "comms/public-reader-relay-hint-invalid",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-config-repository"
+      "heterodyne:comms#comms-launcher-and-content-security"
+    ],
+    "invariants": [
+      "COMMS-I-PUBLIC-READER-TIER1-ONLY"
+    ],
+    "reason_codes": [
+      "public-reader-relay-hint-invalid"
     ]
   },
   {
-    "vector_id": "config-backup/key-rotation-ref-delta",
+    "vector_id": "comms/public-reader-route-invalid",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-config-repository"
+      "heterodyne:comms#comms-universal-public-launcher"
+    ],
+    "invariants": [
+      "COMMS-I-PUBLIC-READER-TIER1-ONLY"
+    ],
+    "reason_codes": [
+      "public-reader-route-invalid"
     ]
   },
   {
-    "vector_id": "config-backup/nip49-nsec-wrap",
-    "owner_document": "core",
+    "vector_id": "comms/tier3-client-side-encryption",
+    "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:core#core-keys-repository"
+      "heterodyne:comms#comms-audience-encryption-profile-tiers-2-and-3"
+    ],
+    "invariants": [
+      "COMMS-I-CLIENT-SIDE-DELIVERY",
+      "COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY",
+      "COMMS-I-TIER3-BLIND-CARRIER"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "comms/tier3-recipient-confined",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-tier3-confinement"
+    ],
+    "invariants": [
+      "COMMS-I-TIER3-CONFINED"
+    ],
+    "reason_codes": [
+      "tier3-recipient-not-active-device"
     ]
   },
   {
-    "vector_id": "control/authorization-fresh-read",
+    "vector_id": "comms/trusted-seed-acl-ambiguous",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-trusted-seed-private-relay"
+    ],
+    "invariants": [
+      "COMMS-I-TRUSTED-SEED-CONFINEMENT"
+    ],
+    "reason_codes": [
+      "trusted-seed-acl-ambiguous"
+    ]
+  },
+  {
+    "vector_id": "comms/trusted-seed-acl-conflict",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-trusted-seed-private-relay"
+    ],
+    "invariants": [
+      "COMMS-I-TRUSTED-SEED-CONFINEMENT"
+    ],
+    "reason_codes": [
+      "trusted-seed-acl-conflict"
+    ]
+  },
+  {
+    "vector_id": "comms/trusted-seed-acl-expired",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-trusted-seed-private-relay"
+    ],
+    "invariants": [
+      "COMMS-I-TRUSTED-SEED-CONFINEMENT"
+    ],
+    "reason_codes": [
+      "trusted-seed-acl-expired"
+    ]
+  },
+  {
+    "vector_id": "comms/trusted-seed-acl-invalid",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-trusted-seed-private-relay"
+    ],
+    "invariants": [
+      "COMMS-I-TRUSTED-SEED-CONFINEMENT"
+    ],
+    "reason_codes": [
+      "trusted-seed-acl-invalid"
+    ]
+  },
+  {
+    "vector_id": "comms/trusted-seed-acl-missing",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-trusted-seed-private-relay"
+    ],
+    "invariants": [
+      "COMMS-I-TRUSTED-SEED-CONFINEMENT"
+    ],
+    "reason_codes": [
+      "trusted-seed-acl-missing"
+    ]
+  },
+  {
+    "vector_id": "comms/trusted-seed-acl-stale",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-trusted-seed-private-relay"
+    ],
+    "invariants": [
+      "COMMS-I-TRUSTED-SEED-CONFINEMENT"
+    ],
+    "reason_codes": [
+      "trusted-seed-acl-stale"
+    ]
+  },
+  {
+    "vector_id": "comms/trusted-seed-event-invalid",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-trusted-seed-private-relay"
+    ],
+    "invariants": [
+      "COMMS-I-TRUSTED-SEED-CONFINEMENT"
+    ],
+    "reason_codes": [
+      "trusted-seed-event-invalid"
+    ]
+  },
+  {
+    "vector_id": "comms/trusted-seed-exact-write",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-trusted-seed-private-relay"
+    ],
+    "invariants": [
+      "COMMS-I-MARMOT-EXACT-BYTES",
+      "COMMS-I-PRIVATE-RELAY-ACL",
+      "COMMS-I-TRUSTED-SEED-CONFINEMENT"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "comms/trusted-seed-nip42-required",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-trusted-seed-private-relay"
+    ],
+    "invariants": [
+      "COMMS-I-TRUSTED-SEED-CONFINEMENT"
+    ],
+    "reason_codes": [
+      "trusted-seed-nip42-required"
+    ]
+  },
+  {
+    "vector_id": "comms/trusted-seed-request-invalid",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-trusted-seed-private-relay"
+    ],
+    "invariants": [
+      "COMMS-I-TRUSTED-SEED-CONFINEMENT"
+    ],
+    "reason_codes": [
+      "trusted-seed-request-invalid"
+    ]
+  },
+  {
+    "vector_id": "comms/trusted-seed-request-replay",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-trusted-seed-private-relay"
+    ],
+    "invariants": [
+      "COMMS-I-TRUSTED-SEED-CONFINEMENT"
+    ],
+    "reason_codes": [
+      "trusted-seed-request-replay"
+    ]
+  },
+  {
+    "vector_id": "comms/trusted-seed-revoked",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-trusted-seed-private-relay"
+    ],
+    "invariants": [
+      "COMMS-I-TRUSTED-SEED-CONFINEMENT"
+    ],
+    "reason_codes": [
+      "trusted-seed-revoked"
+    ]
+  },
+  {
+    "vector_id": "comms/trusted-seed-route-mismatch",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-trusted-seed-private-relay"
+    ],
+    "invariants": [
+      "COMMS-I-TRUSTED-SEED-CONFINEMENT"
+    ],
+    "reason_codes": [
+      "trusted-seed-route-mismatch"
+    ]
+  },
+  {
+    "vector_id": "comms/trusted-seed-unauthorized",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-trusted-seed-private-relay"
+    ],
+    "invariants": [
+      "COMMS-I-TRUSTED-SEED-CONFINEMENT"
+    ],
+    "reason_codes": [
+      "trusted-seed-unauthorized"
+    ]
+  },
+  {
+    "vector_id": "control/activation-binding-mismatch",
     "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
+    "spec_refs": [
+      "heterodyne:control#control-oidc-activation"
+    ],
+    "invariants": [
+      "CONTROL-I-NIP46-OIDC-ACTIVATION"
+    ],
+    "reason_codes": [
+      "control-activation-binding-mismatch"
+    ]
+  },
+  {
+    "vector_id": "control/agent-attribution-bypass-prohibited",
+    "owner_document": "control",
+    "spec_refs": [
+      "heterodyne:control#control-agent-requirements"
+    ],
+    "invariants": [
+      "CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING"
+    ],
+    "reason_codes": [
+      "agent-attribution-bypass-prohibited"
+    ]
+  },
+  {
+    "vector_id": "control/agent-human-profile-prohibited",
+    "owner_document": "control",
+    "spec_refs": [
+      "heterodyne:control#control-agent-requirements"
+    ],
+    "invariants": [
+      "CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING"
+    ],
+    "reason_codes": [
+      "agent-human-profile-prohibited"
+    ]
+  },
+  {
+    "vector_id": "control/agent-intent-invalid",
+    "owner_document": "control",
+    "spec_refs": [
+      "heterodyne:control#control-agent-requirements"
+    ],
+    "invariants": [
+      "CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING"
+    ],
+    "reason_codes": [
+      "control-agent-intent-invalid"
+    ]
+  },
+  {
+    "vector_id": "control/agent-key-access-prohibited",
+    "owner_document": "control",
+    "spec_refs": [
+      "heterodyne:control#control-agent-requirements"
+    ],
+    "invariants": [
+      "CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING"
+    ],
+    "reason_codes": [
+      "agent-key-access-prohibited"
+    ]
+  },
+  {
+    "vector_id": "control/agent-method-prohibited",
+    "owner_document": "control",
+    "spec_refs": [
+      "heterodyne:control#control-agent-requirements"
+    ],
+    "invariants": [
+      "CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING"
+    ],
+    "reason_codes": [
+      "agent-method-prohibited"
+    ]
+  },
+  {
+    "vector_id": "control/agent-rate-limited",
+    "owner_document": "control",
+    "spec_refs": [
+      "heterodyne:control#control-agent-requirements"
+    ],
+    "invariants": [
+      "CONTROL-I-OPERATION-AT-MOST-ONCE"
+    ],
+    "reason_codes": [
+      "agent-rate-limited"
+    ]
+  },
+  {
+    "vector_id": "control/agent-resource-denied",
+    "owner_document": "control",
+    "spec_refs": [
+      "heterodyne:control#control-agent-requirements"
+    ],
+    "invariants": [
+      "CONTROL-I-EXACT-SIGNER-GRANT"
+    ],
+    "reason_codes": [
+      "agent-resource-denied"
+    ]
+  },
+  {
+    "vector_id": "control/agent-size-exceeded",
+    "owner_document": "control",
+    "spec_refs": [
+      "heterodyne:control#control-agent-requirements"
+    ],
+    "invariants": [
+      "CONTROL-I-EXACT-SIGNER-GRANT"
+    ],
+    "reason_codes": [
+      "agent-size-exceeded"
+    ]
+  },
+  {
+    "vector_id": "control/attribution-binding-mismatch",
+    "owner_document": "control",
+    "spec_refs": [
+      "heterodyne:control#control-agent-requirements"
+    ],
+    "invariants": [
+      "CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING"
+    ],
+    "reason_codes": [
+      "control-attribution-binding-mismatch"
+    ]
+  },
+  {
+    "vector_id": "control/attribution-required",
+    "owner_document": "control",
+    "spec_refs": [
+      "heterodyne:control#control-agent-requirements"
+    ],
+    "invariants": [
+      "CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING"
+    ],
+    "reason_codes": [
+      "control-attribution-required"
+    ]
+  },
+  {
+    "vector_id": "control/authorization-view-stale-at-effect",
+    "owner_document": "control",
     "spec_refs": [
       "heterodyne:control#control-token"
+    ],
+    "invariants": [
+      "CONTROL-I-NIP46-OIDC-ACTIVATION"
+    ],
+    "reason_codes": [
+      "control-authorization-view-stale"
     ]
   },
   {
-    "vector_id": "control/authorization-mutation-sync-failed",
+    "vector_id": "control/automation-attributed-before-signing",
     "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
+    "spec_refs": [
+      "heterodyne:control#control-agent-requirements"
+    ],
+    "invariants": [
+      "CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING",
+      "CONTROL-I-OPERATION-AT-MOST-ONCE"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "control/caller-freshness-booleans-rejected",
+    "owner_document": "control",
     "spec_refs": [
       "heterodyne:control#control-token"
+    ],
+    "invariants": [
+      "CONTROL-I-NIP46-OIDC-ACTIVATION"
+    ],
+    "reason_codes": [
+      "control-authorization-view-stale"
     ]
   },
   {
-    "vector_id": "control/authorization-stale-read",
+    "vector_id": "control/client-metadata-widening",
     "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control#control-token"
+      "heterodyne:control#control-nip46-signing"
+    ],
+    "invariants": [
+      "CONTROL-I-CLIENT-KEY-CONFINEMENT"
+    ],
+    "reason_codes": [
+      "control-client-metadata-widening"
+    ]
+  },
+  {
+    "vector_id": "control/compromise-reset-closure-required",
+    "owner_document": "control",
+    "spec_refs": [
+      "heterodyne:control#control-compromise-reset"
+    ],
+    "invariants": [
+      "CONTROL-I-COMPROMISE-RESET",
+      "CONTROL-I-MARMOT-LEAF-COMPROMISE"
+    ],
+    "reason_codes": [
+      "control-compromise-reset-incomplete"
+    ]
+  },
+  {
+    "vector_id": "control/compromise-reset-evidence-invalid",
+    "owner_document": "control",
+    "spec_refs": [
+      "heterodyne:control#control-compromise-reset"
+    ],
+    "invariants": [
+      "CONTROL-I-COMPROMISE-RESET"
+    ],
+    "reason_codes": [
+      "control-compromise-reset-evidence-invalid"
+    ]
+  },
+  {
+    "vector_id": "control/compromise-reset-inventory-mismatch",
+    "owner_document": "control",
+    "spec_refs": [
+      "heterodyne:control#control-compromise-reset"
+    ],
+    "invariants": [
+      "CONTROL-I-COMPROMISE-RESET"
+    ],
+    "reason_codes": [
+      "control-compromise-reset-inventory-mismatch"
+    ]
+  },
+  {
+    "vector_id": "control/compromise-reset-unauthenticated",
+    "owner_document": "control",
+    "spec_refs": [
+      "heterodyne:control#control-compromise-reset"
+    ],
+    "invariants": [
+      "CONTROL-I-COMPROMISE-RESET"
+    ],
+    "reason_codes": [
+      "control-compromise-reset-unauthenticated"
+    ]
+  },
+  {
+    "vector_id": "control/connection-secret-invalid",
+    "owner_document": "control",
+    "spec_refs": [
+      "heterodyne:control#control-oidc-activation"
+    ],
+    "invariants": [
+      "CONTROL-I-NIP46-OIDC-ACTIVATION"
+    ],
+    "reason_codes": [
+      "control-connection-secret-invalid"
+    ]
+  },
+  {
+    "vector_id": "control/connection-secret-reused",
+    "owner_document": "control",
+    "spec_refs": [
+      "heterodyne:control#control-oidc-activation"
+    ],
+    "invariants": [
+      "CONTROL-I-NIP46-OIDC-ACTIVATION"
+    ],
+    "reason_codes": [
+      "control-connection-secret-reused"
     ]
   },
   {
     "vector_id": "control/device-code-display-mismatch",
     "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
       "heterodyne:control#control-device-authorization"
+    ],
+    "invariants": [
+      "CONTROL-I-NIP46-OIDC-ACTIVATION"
+    ],
+    "reason_codes": [
+      "control-device-code-display-mismatch"
     ]
   },
   {
-    "vector_id": "control/device-code-exhausted",
+    "vector_id": "control/device-code-invalid",
     "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
       "heterodyne:control#control-device-authorization"
+    ],
+    "invariants": [
+      "CONTROL-I-NIP46-OIDC-ACTIVATION"
+    ],
+    "reason_codes": [
+      "control-device-code-invalid"
     ]
   },
   {
-    "vector_id": "control/device-code-hardened",
+    "vector_id": "control/device-code-rate-limited",
     "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
       "heterodyne:control#control-device-authorization"
+    ],
+    "invariants": [
+      "CONTROL-I-NIP46-OIDC-ACTIVATION"
+    ],
+    "reason_codes": [
+      "control-device-code-rate-limited"
     ]
   },
   {
-    "vector_id": "control/device-code-node-rate-limited",
+    "vector_id": "control/enrollment-rate-limited",
     "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control#control-device-authorization"
+      "heterodyne:control#control-invitation-policy"
+    ],
+    "invariants": [
+      "CONTROL-I-MARMOT-GRANT-CONFINEMENT"
+    ],
+    "reason_codes": [
+      "control-enrollment-rate-limited"
     ]
   },
   {
-    "vector_id": "control/entitlement-expansion-rejected",
+    "vector_id": "control/enrollment-required",
     "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
+    "spec_refs": [
+      "heterodyne:control#control-enrollment"
+    ],
+    "invariants": [
+      "CONTROL-I-MARMOT-GRANT-CONFINEMENT"
+    ],
+    "reason_codes": [
+      "control-enrollment-required"
+    ]
+  },
+  {
+    "vector_id": "control/enrollment-unavailable",
+    "owner_document": "control",
+    "spec_refs": [
+      "heterodyne:control#control-invitation-policy"
+    ],
+    "invariants": [
+      "CONTROL-I-MARMOT-GRANT-CONFINEMENT"
+    ],
+    "reason_codes": [
+      "control-enrollment-unavailable"
+    ]
+  },
+  {
+    "vector_id": "control/entitlement-conflict",
+    "owner_document": "control",
     "spec_refs": [
       "heterodyne:control#control-entitlement"
+    ],
+    "invariants": [
+      "CONTROL-I-MARMOT-GRANT-CONFINEMENT"
+    ],
+    "reason_codes": [
+      "control-entitlement-conflict"
     ]
   },
   {
-    "vector_id": "control/entitlement-reduction",
+    "vector_id": "control/exact-signer-grant-reserved",
     "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control#control-entitlement"
-    ]
+      "heterodyne:control#control-signer-grants"
+    ],
+    "invariants": [
+      "CONTROL-I-AUDIT-AT-REST",
+      "CONTROL-I-BASELINE-ACTIVE-KEY",
+      "CONTROL-I-CLIENT-KEY-CONFINEMENT",
+      "CONTROL-I-EXACT-SIGNER-GRANT",
+      "CONTROL-I-NO-SIGNER-FALLBACK",
+      "CONTROL-I-OPERATION-AT-MOST-ONCE",
+      "CONTROL-I-PERSONA-VAULT-ISOLATION"
+    ],
+    "reason_codes": []
   },
   {
-    "vector_id": "control/entitlement-revocation-absorbing",
+    "vector_id": "control/frame-invalid",
     "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control#control-entitlement"
+      "heterodyne:control#control-frame"
+    ],
+    "invariants": [
+      "CONTROL-I-MARMOT-GRANT-CONFINEMENT"
+    ],
+    "reason_codes": [
+      "control-frame-invalid"
     ]
   },
   {
-    "vector_id": "control/epoch-activation-mismatch",
+    "vector_id": "control/invite-preauthorization-invalid",
     "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control#control-epoch-bootstrap"
+      "heterodyne:control#control-one-time-invites"
+    ],
+    "invariants": [
+      "CONTROL-I-MARMOT-GRANT-CONFINEMENT"
+    ],
+    "reason_codes": [
+      "invite-preauthorization-invalid"
     ]
   },
   {
-    "vector_id": "control/epoch-exact-activation",
+    "vector_id": "control/keypackage-invalid",
     "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
-    "spec_refs": [
-      "heterodyne:control#control-epoch-bootstrap"
-    ]
-  },
-  {
-    "vector_id": "control/epoch-locked",
-    "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
-    "spec_refs": [
-      "heterodyne:control#control-epoch-bootstrap"
-    ]
-  },
-  {
-    "vector_id": "control/epoch-prepare-and-relock",
-    "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
-    "spec_refs": [
-      "heterodyne:control#control-epoch-bootstrap"
-    ]
-  },
-  {
-    "vector_id": "control/failover-idempotent-mutation",
-    "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
-    "spec_refs": [
-      "heterodyne:control#control-failover"
-    ]
-  },
-  {
-    "vector_id": "control/failover-indeterminate-mutation",
-    "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
-    "spec_refs": [
-      "heterodyne:control#control-failover"
-    ]
-  },
-  {
-    "vector_id": "control/failover-read",
-    "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
-    "spec_refs": [
-      "heterodyne:control#control-failover"
-    ]
-  },
-  {
-    "vector_id": "control/invitation-account-cap",
-    "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
       "heterodyne:control#control-invitation-policy"
+    ],
+    "invariants": [
+      "CONTROL-I-MARMOT-GRANT-CONFINEMENT"
+    ],
+    "reason_codes": [
+      "control-keypackage-invalid"
     ]
   },
   {
-    "vector_id": "control/invitation-disabled",
+    "vector_id": "control/keypackage-replenishment-paused",
     "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
       "heterodyne:control#control-invitation-policy"
+    ],
+    "invariants": [
+      "CONTROL-I-MARMOT-GRANT-CONFINEMENT"
+    ],
+    "reason_codes": [
+      "control-keypackage-replenishment-paused"
     ]
   },
   {
-    "vector_id": "control/invitation-enrollment-only",
+    "vector_id": "control/nip46-request-invalid",
     "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
-    "spec_refs": [
-      "heterodyne:control#control-invitation-policy"
-    ]
-  },
-  {
-    "vector_id": "control/invitation-global-cap",
-    "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
-    "spec_refs": [
-      "heterodyne:control#control-invitation-policy"
-    ]
-  },
-  {
-    "vector_id": "control/invitation-nonenrollment-rejected",
-    "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
-    "spec_refs": [
-      "heterodyne:control#control-invitation-policy"
-    ]
-  },
-  {
-    "vector_id": "control/invitation-rate-limited",
-    "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
-    "spec_refs": [
-      "heterodyne:control#control-invitation-policy"
-    ]
-  },
-  {
-    "vector_id": "control/invitation-replenishment-paused",
-    "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
-    "spec_refs": [
-      "heterodyne:control#control-invitation-policy"
-    ]
-  },
-  {
-    "vector_id": "control/invitation-reserved-slot",
-    "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
-    "spec_refs": [
-      "heterodyne:control#control-invitation-policy"
-    ]
-  },
-  {
-    "vector_id": "control/invitation-revoked",
-    "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
-    "spec_refs": [
-      "heterodyne:control#control-invitation-policy"
-    ]
-  },
-  {
-    "vector_id": "control/invite-preauthorization-keri-rejected",
-    "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
-    "spec_refs": [
-      "heterodyne:control#control-token"
-    ]
-  },
-  {
-    "vector_id": "control/invite-preauthorization-key-bound",
-    "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
-    "spec_refs": [
-      "heterodyne:control#control-token"
-    ]
-  },
-  {
-    "vector_id": "control/invite-preauthorization-unbound-higher-risk",
-    "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
-    "spec_refs": [
-      "heterodyne:control#control-token"
-    ]
-  },
-  {
-    "vector_id": "control/invite-preauthorization-unbound-rejected",
-    "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
-    "spec_refs": [
-      "heterodyne:control#control-token"
-    ]
-  },
-  {
-    "vector_id": "control/operation-conflicting-bytes",
-    "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
       "heterodyne:control#control-request-processing"
+    ],
+    "invariants": [
+      "CONTROL-I-OPERATION-AT-MOST-ONCE"
+    ],
+    "reason_codes": [
+      "control-nip46-request-invalid"
     ]
   },
   {
-    "vector_id": "control/operation-first-reservation",
+    "vector_id": "control/opaque-authorization-view-accepted",
     "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
+    "spec_refs": [
+      "heterodyne:control#control-token"
+    ],
+    "invariants": [
+      "CONTROL-I-NIP46-OIDC-ACTIVATION"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "control/operation-conflict",
+    "owner_document": "control",
     "spec_refs": [
       "heterodyne:control#control-request-processing"
+    ],
+    "invariants": [
+      "CONTROL-I-OPERATION-AT-MOST-ONCE"
+    ],
+    "reason_codes": [
+      "control-operation-conflict"
     ]
   },
   {
-    "vector_id": "control/operation-identical-join",
+    "vector_id": "control/operation-execution-fence-required",
     "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
       "heterodyne:control#control-request-processing"
+    ],
+    "invariants": [
+      "CONTROL-I-OPERATION-AT-MOST-ONCE"
+    ],
+    "reason_codes": [
+      "control-operation-execution-fence-required"
     ]
   },
   {
-    "vector_id": "control/pending-enrollment-expired",
+    "vector_id": "control/operation-indeterminate",
+    "owner_document": "control",
+    "spec_refs": [
+      "heterodyne:control#control-failover"
+    ],
+    "invariants": [
+      "CONTROL-I-OPERATION-AT-MOST-ONCE"
+    ],
+    "reason_codes": [
+      "control-operation-indeterminate"
+    ]
+  },
+  {
+    "vector_id": "control/operation-reservation-required",
+    "owner_document": "control",
+    "spec_refs": [
+      "heterodyne:control#control-request-processing"
+    ],
+    "invariants": [
+      "CONTROL-I-OPERATION-AT-MOST-ONCE"
+    ],
+    "reason_codes": [
+      "control-operation-reservation-required"
+    ]
+  },
+  {
+    "vector_id": "control/persona-authority-required",
+    "owner_document": "control",
+    "spec_refs": [
+      "heterodyne:control#control-signer-selection"
+    ],
+    "invariants": [
+      "CONTROL-I-BASELINE-ACTIVE-KEY"
+    ],
+    "reason_codes": [
+      "control-persona-authority-required"
+    ]
+  },
+  {
+    "vector_id": "control/profile-heterodyne-control-marmot-frame-v1",
     "owner_document": "control",
     "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control#control-conformance"
-    ]
+      "heterodyne:control#control-security"
+    ],
+    "invariants": [
+      "CONTROL-I-MARMOT-GRANT-CONFINEMENT"
+    ],
+    "reason_codes": []
   },
   {
-    "vector_id": "control/pending-enrollment-live",
+    "vector_id": "control/refresh-prohibited",
     "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
-    "spec_refs": [
-      "heterodyne:control#control-conformance"
-    ]
-  },
-  {
-    "vector_id": "control/recovery-grant-accepted",
-    "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
-    "spec_refs": [
-      "heterodyne:control#control-radicle-recovery"
-    ]
-  },
-  {
-    "vector_id": "control/recovery-grant-confined",
-    "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
-    "spec_refs": [
-      "heterodyne:control#control-radicle-recovery"
-    ]
-  },
-  {
-    "vector_id": "control/retention-ceiling-and-backup-exclusion",
-    "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
-    "spec_refs": [
-      "heterodyne:control#control-retention"
-    ]
-  },
-  {
-    "vector_id": "control/sftp-address-separated",
-    "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
-    "spec_refs": [
-      "heterodyne:control#control-sftp-recovery"
-    ]
-  },
-  {
-    "vector_id": "control/sftp-grant-accepted",
-    "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
-    "spec_refs": [
-      "heterodyne:control#control-sftp-recovery"
-    ]
-  },
-  {
-    "vector_id": "control/sftp-grant-expired",
-    "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
-    "spec_refs": [
-      "heterodyne:control#control-sftp-recovery"
-    ]
-  },
-  {
-    "vector_id": "control/sftp-root-confined",
-    "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
-    "spec_refs": [
-      "heterodyne:control#control-sftp-recovery"
-    ]
-  },
-  {
-    "vector_id": "control/token-default-five-minutes",
-    "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
       "heterodyne:control#control-token"
+    ],
+    "invariants": [
+      "CONTROL-I-CLIENT-KEY-CONFINEMENT"
+    ],
+    "reason_codes": [
+      "control-refresh-prohibited"
     ]
   },
   {
-    "vector_id": "control/token-explicit-sixty-minutes",
+    "vector_id": "control/request-expired",
     "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
+    "spec_refs": [
+      "heterodyne:control#control-request-processing"
+    ],
+    "invariants": [
+      "CONTROL-I-OPERATION-AT-MOST-ONCE"
+    ],
+    "reason_codes": [
+      "control-request-expired"
+    ]
+  },
+  {
+    "vector_id": "control/request-id-conflict",
+    "owner_document": "control",
+    "spec_refs": [
+      "heterodyne:control#control-request-processing"
+    ],
+    "invariants": [
+      "CONTROL-I-OPERATION-AT-MOST-ONCE"
+    ],
+    "reason_codes": [
+      "control-request-id-conflict"
+    ]
+  },
+  {
+    "vector_id": "control/signed-event-invalid",
+    "owner_document": "control",
+    "spec_refs": [
+      "heterodyne:control#control-agent-requirements"
+    ],
+    "invariants": [
+      "CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING"
+    ],
+    "reason_codes": [
+      "control-signed-event-invalid"
+    ]
+  },
+  {
+    "vector_id": "control/signer-binding-mismatch",
+    "owner_document": "control",
+    "spec_refs": [
+      "heterodyne:control#control-signer-grants"
+    ],
+    "invariants": [
+      "CONTROL-I-EXACT-SIGNER-GRANT"
+    ],
+    "reason_codes": [
+      "control-signer-binding-mismatch"
+    ]
+  },
+  {
+    "vector_id": "control/signer-effect-indeterminate",
+    "owner_document": "control",
+    "spec_refs": [
+      "heterodyne:control#control-agent-requirements"
+    ],
+    "invariants": [
+      "CONTROL-I-OPERATION-AT-MOST-ONCE"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "control/signer-unavailable",
+    "owner_document": "control",
+    "spec_refs": [
+      "heterodyne:control#control-signer-selection"
+    ],
+    "invariants": [
+      "CONTROL-I-NO-SIGNER-FALLBACK"
+    ],
+    "reason_codes": [
+      "control-signer-unavailable"
+    ]
+  },
+  {
+    "vector_id": "control/signing-grant-inactive",
+    "owner_document": "control",
+    "spec_refs": [
+      "heterodyne:control#control-signer-grants"
+    ],
+    "invariants": [
+      "CONTROL-I-EXACT-SIGNER-GRANT"
+    ],
+    "reason_codes": [
+      "control-signing-grant-inactive"
+    ]
+  },
+  {
+    "vector_id": "control/signing-grant-invalid",
+    "owner_document": "control",
+    "spec_refs": [
+      "heterodyne:control#control-signer-grants"
+    ],
+    "invariants": [
+      "CONTROL-I-EXACT-SIGNER-GRANT"
+    ],
+    "reason_codes": [
+      "control-signing-grant-invalid"
+    ]
+  },
+  {
+    "vector_id": "control/signing-grant-stale",
+    "owner_document": "control",
+    "spec_refs": [
+      "heterodyne:control#control-signer-grants"
+    ],
+    "invariants": [
+      "CONTROL-I-EXACT-SIGNER-GRANT"
+    ],
+    "reason_codes": [
+      "control-signing-grant-stale"
+    ]
+  },
+  {
+    "vector_id": "control/signing-grant-unauthenticated",
+    "owner_document": "control",
+    "spec_refs": [
+      "heterodyne:control#control-signer-grants"
+    ],
+    "invariants": [
+      "CONTROL-I-EXACT-SIGNER-GRANT"
+    ],
+    "reason_codes": [
+      "control-signing-grant-unauthenticated"
+    ]
+  },
+  {
+    "vector_id": "control/signing-rate-limited",
+    "owner_document": "control",
+    "spec_refs": [
+      "heterodyne:control#control-request-processing"
+    ],
+    "invariants": [
+      "CONTROL-I-OPERATION-AT-MOST-ONCE"
+    ],
+    "reason_codes": [
+      "control-signing-rate-limited"
+    ]
+  },
+  {
+    "vector_id": "control/subordinate-reauthorization-required",
+    "owner_document": "control",
+    "spec_refs": [
+      "heterodyne:control#control-compromise-reset"
+    ],
+    "invariants": [
+      "CONTROL-I-COMPROMISE-RESET"
+    ],
+    "reason_codes": [
+      "control-subordinate-reauthorization-required"
+    ]
+  },
+  {
+    "vector_id": "control/token-invalid",
+    "owner_document": "control",
     "spec_refs": [
       "heterodyne:control#control-token"
+    ],
+    "invariants": [
+      "CONTROL-I-CLIENT-KEY-CONFINEMENT"
+    ],
+    "reason_codes": [
+      "control-token-invalid"
     ]
   },
   {
-    "vector_id": "control/token-extension-missing-capability",
+    "vector_id": "control/usage-binding-mismatch",
     "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control#control-token"
+      "heterodyne:control#control-request-processing"
+    ],
+    "invariants": [
+      "CONTROL-I-OPERATION-AT-MOST-ONCE"
+    ],
+    "reason_codes": [
+      "control-usage-binding-mismatch"
     ]
   },
   {
-    "vector_id": "control/token-scope-rejected",
+    "vector_id": "control/vault-isolation-failed",
     "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control#control-token"
+      "heterodyne:control#control-persona-vaults"
+    ],
+    "invariants": [
+      "CONTROL-I-PERSONA-VAULT-ISOLATION"
+    ],
+    "reason_codes": [
+      "control-vault-isolation-failed"
     ]
   },
   {
-    "vector_id": "control/token-stale-authorization-view",
-    "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
-    "spec_refs": [
-      "heterodyne:control#control-token"
-    ]
-  },
-  {
-    "vector_id": "control/token-valid",
-    "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
-    "spec_refs": [
-      "heterodyne:control#control-token"
-    ]
-  },
-  {
-    "vector_id": "control/token-wrong-group",
-    "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
-    "spec_refs": [
-      "heterodyne:control#control-token"
-    ]
-  },
-  {
-    "vector_id": "control/token-wrong-node",
-    "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
-    "spec_refs": [
-      "heterodyne:control#control-token"
-    ]
-  },
-  {
-    "vector_id": "control/token-wrong-sender",
-    "owner_document": "control",
-    "profile": "heterodyne-control-marmot-frame-v1",
-    "spec_refs": [
-      "heterodyne:control#control-token"
-    ]
-  },
-  {
-    "vector_id": "core-redundancy/radicle-multihost-replication",
+    "vector_id": "core/config-rid-published",
     "owner_document": "core",
     "spec_refs": [
-      "heterodyne:core#core-multi-host-seeding"
+      "heterodyne:core#core-conformance"
+    ],
+    "invariants": [
+      "CORE-I-IDENTITY-INTEGRITY"
+    ],
+    "reason_codes": [
+      "config_rid_advertised"
     ]
   },
   {
-    "vector_id": "core-redundancy/stale-seed-does-not-remove-durability",
+    "vector_id": "core/friend-cache-unsigned",
     "owner_document": "core",
     "spec_refs": [
-      "heterodyne:core#core-multi-host-seeding"
+      "heterodyne:core#core-conformance"
+    ],
+    "invariants": [
+      "CORE-I-IDENTITY-INTEGRITY"
+    ],
+    "reason_codes": [
+      "unauthorized_cache_content"
     ]
   },
   {
-    "vector_id": "credential-continuity/candidate-exact-tip-append",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-credential-continuity"
-    ]
-  },
-  {
-    "vector_id": "credential-continuity/checkpoint-genesis",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-credential-continuity"
-    ]
-  },
-  {
-    "vector_id": "credential-continuity/cold-root-exposure-migrates",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-credential-continuity"
-    ]
-  },
-  {
-    "vector_id": "credential-continuity/config-git-raw-projection",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-credential-continuity"
-    ]
-  },
-  {
-    "vector_id": "credential-continuity/governed-obligation-equation",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-credential-continuity"
-    ]
-  },
-  {
-    "vector_id": "credential-continuity/pending-retirement-conservative",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-credential-continuity"
-    ]
-  },
-  {
-    "vector_id": "credential-continuity/retention-inventory-genesis",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-credential-continuity"
-    ]
-  },
-  {
-    "vector_id": "credential-continuity/routine-removal-complete",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-credential-continuity"
-    ]
-  },
-  {
-    "vector_id": "credential-continuity/seventeen-schemas-draft",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-credential-continuity"
-    ]
-  },
-  {
-    "vector_id": "credential-continuity/stale-generation",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-credential-continuity"
-    ]
-  },
-  {
-    "vector_id": "discussion/reaction-reply-bare-not-indexed",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-discussion-rooms"
-    ]
-  },
-  {
-    "vector_id": "identity-doc/add-before-remove",
+    "vector_id": "core/nip01-raw-mismatch",
     "owner_document": "core",
     "spec_refs": [
-      "heterodyne:core#core-identity-discovery"
+      "heterodyne:core#core-verification"
+    ],
+    "invariants": [
+      "CORE-I-VERIFY-BEFORE-USE"
+    ],
+    "reason_codes": [
+      "nip01_raw_mismatch"
     ]
   },
   {
-    "vector_id": "identity-doc/emergency-reanchor",
+    "vector_id": "core/nip49-key-material-round-trip",
     "owner_document": "core",
     "spec_refs": [
-      "heterodyne:core#core-identity-discovery"
-    ]
-  },
-  {
-    "vector_id": "identity-doc/kel-revoked-nid-rejected",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-identity-discovery"
-    ]
-  },
-  {
-    "vector_id": "identity/delegation-active",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-nid-delegation"
-    ]
-  },
-  {
-    "vector_id": "identity/delegation-expired",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-nid-delegation"
-    ]
-  },
-  {
-    "vector_id": "identity/delegation-revoked",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-nid-delegation"
-    ]
-  },
-  {
-    "vector_id": "identity/identity-room-full-state",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-identity-room"
-    ]
-  },
-  {
-    "vector_id": "identity/kind31005-race-tiebreaker-core",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-nid-delegation"
-    ]
-  },
-  {
-    "vector_id": "identity/revocation-post-window",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-nid-delegation"
-    ]
-  },
-  {
-    "vector_id": "identity/root-attestation-valid",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-root-attestation"
-    ]
-  },
-  {
-    "vector_id": "index/complete-fetch-attempt",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-feed-index"
-    ]
-  },
-  {
-    "vector_id": "index/missing-predecessor-structured-outcome",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-feed-index"
-    ]
-  },
-  {
-    "vector_id": "index/prev-page-hash",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-feed-index"
-    ]
-  },
-  {
-    "vector_id": "interop/kind31005-identity-pointer",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-identity-pointer"
-    ]
-  },
-  {
-    "vector_id": "interop/vanilla-nostr-only-follow",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-following"
-    ]
-  },
-  {
-    "vector_id": "keri-authority/accelerator-backdated-compromise",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-kel-verification"
-    ]
-  },
-  {
-    "vector_id": "keri-authority/accelerator-decision-equivalent",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-kel-verification"
-    ]
-  },
-  {
-    "vector_id": "keri-authority/delegation-conflict-repo-wins",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-kel-verification"
-    ]
-  },
-  {
-    "vector_id": "keri-authority/dependent-events-unresolved",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-kel-verification"
-    ]
-  },
-  {
-    "vector_id": "keri-authority/equivocation-flagged",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-kel-verification"
-    ]
-  },
-  {
-    "vector_id": "keri-authority/export-aid-digest-anchoring",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-keri-export"
-    ]
-  },
-  {
-    "vector_id": "keri-authority/export-aid-substituted-for-npub-rejected",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-keri-export"
-    ]
-  },
-  {
-    "vector_id": "keri-authority/export-degraded-metadata",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-keri-export"
-    ]
-  },
-  {
-    "vector_id": "keri-authority/export-incomplete",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-keri-export"
-    ]
-  },
-  {
-    "vector_id": "keri-authority/export-origin-absent-not-failure",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-keri-export"
-    ]
-  },
-  {
-    "vector_id": "keri-authority/export-unmappable-feature",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-keri-export"
-    ]
-  },
-  {
-    "vector_id": "keri-authority/export-unsupported-crypto-suite",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-keri-export"
-    ]
-  },
-  {
-    "vector_id": "keri-authority/kel-head-absent-rejected",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-kel-head"
-    ]
-  },
-  {
-    "vector_id": "keri-authority/kel-head-duplicate-rejected",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-kel-head"
-    ]
-  },
-  {
-    "vector_id": "keri-authority/kel-head-forbidden-on-inception",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-kel-head"
-    ]
-  },
-  {
-    "vector_id": "keri-authority/kel-head-forbidden-on-rotation",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-kel-head"
-    ]
-  },
-  {
-    "vector_id": "keri-authority/kel-head-malformed-rejected",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-kel-head"
-    ]
-  },
-  {
-    "vector_id": "keri-authority/kel-head-mandatory-on-delegation",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-kel-head"
-    ]
-  },
-  {
-    "vector_id": "keri-authority/kel-head-mandatory-on-root",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-kel-head"
-    ]
-  },
-  {
-    "vector_id": "keri-authority/kel-head-seq-mismatch-rejected",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-kel-head"
-    ]
-  },
-  {
-    "vector_id": "keri-authority/keri10json-cesr-wire-rejected",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-kel-verification"
-    ]
-  },
-  {
-    "vector_id": "keri-authority/materialized-atomic-rebuild",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-materialized-kel"
-    ]
-  },
-  {
-    "vector_id": "keri-authority/materialized-empty-kel-deletion",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-materialized-kel"
-    ]
-  },
-  {
-    "vector_id": "keri-authority/materialized-log-derivation",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-materialized-kel"
-    ]
-  },
-  {
-    "vector_id": "keri-authority/materialized-refs-not-authority",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-materialized-kel"
-    ]
-  },
-  {
-    "vector_id": "keri-authority/materialized-state-derivation",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-materialized-kel"
-    ]
-  },
-  {
-    "vector_id": "keri-authority/provisional-not-hardened-repo-unreachable",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-kel-verification"
-    ]
-  },
-  {
-    "vector_id": "keri-authority/refresh-failed-not-condition-d",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-kel-verification"
-    ]
-  },
-  {
-    "vector_id": "keri-authority/repo-head-regression-rejected",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-kel-verification"
-    ]
-  },
-  {
-    "vector_id": "keri-authority/withdrawal-causally-behind-no-withdraw",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-kel-verification"
-    ]
-  },
-  {
-    "vector_id": "keri-authority/withdrawal-converged-head",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-kel-verification"
-    ]
-  },
-  {
-    "vector_id": "keri/didkey-witness-no-network",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-kel-primitives"
-    ]
-  },
-  {
-    "vector_id": "keri/first-seen-ordering",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-kel-primitives"
-    ]
-  },
-  {
-    "vector_id": "keri/fork-resolution-conflicting-rotations",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-kel-primitives"
-    ]
-  },
-  {
-    "vector_id": "keri/inception-event",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-kel-primitives"
-    ]
-  },
-  {
-    "vector_id": "keri/informal-vouch-not-counted",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-kel-primitives"
-    ]
-  },
-  {
-    "vector_id": "keri/rotation-committed-strategy",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-kel-primitives"
-    ]
-  },
-  {
-    "vector_id": "keri/rotation-none-witness-threshold",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-kel-primitives"
-    ]
-  },
-  {
-    "vector_id": "key-retirement/compromise-cutoff-rejected",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-retired-key-observation"
-    ]
-  },
-  {
-    "vector_id": "key-retirement/local-receipt-pre-retirement",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-retired-key-observation"
-    ]
-  },
-  {
-    "vector_id": "key-retirement/relay-only-provisional",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-retired-key-observation"
-    ]
-  },
-  {
-    "vector_id": "key-retirement/repo-anchored-pre-retirement",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-retired-key-observation"
-    ]
-  },
-  {
-    "vector_id": "light-node/content-not-through-routing-node",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-client-responsibilities"
-    ]
-  },
-  {
-    "vector_id": "light-node/route-around-withholding-host",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-client-responsibilities"
-    ]
-  },
-  {
-    "vector_id": "light-node/verifies-signature-locally",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-client-responsibilities"
-    ]
-  },
-  {
-    "vector_id": "lists/kind-mute-set-addressing",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-lists"
-    ]
-  },
-  {
-    "vector_id": "lists/mute-list-private-items-encrypted-to-self",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-lists"
-    ]
-  },
-  {
-    "vector_id": "lists/mute-list-public-roundtrip",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-lists"
-    ]
-  },
-  {
-    "vector_id": "lists/policy-list-adoption-parsed",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-lists"
-    ]
-  },
-  {
-    "vector_id": "lists/private-items-reencrypt-on-rotation",
-    "owner_document": "social",
-    "profile": "heterodyne-social-mute-list-v1",
-    "spec_refs": [
-      "heterodyne:social#social-mute-profile"
-    ]
-  },
-  {
-    "vector_id": "lists/stale-list-rollback-rejected",
-    "owner_document": "social",
-    "profile": "heterodyne-social-mute-list-v1",
-    "spec_refs": [
-      "heterodyne:social#social-mute-profile"
-    ]
-  },
-  {
-    "vector_id": "marmot-radicle/agent-group-attribution",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-agent-authorship"
-    ]
-  },
-  {
-    "vector_id": "marmot-radicle/agent-group-scope-denied",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-agent-authorship"
-    ]
-  },
-  {
-    "vector_id": "marmot-radicle/canonical-h-equivocation",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-marmot-routing-generation"
-    ]
-  },
-  {
-    "vector_id": "marmot-radicle/concurrent-routing-marmot-wins",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-marmot-routing-generation"
-    ]
-  },
-  {
-    "vector_id": "marmot-radicle/direct-member-history-boundary",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-marmot-participation"
-    ]
-  },
-  {
-    "vector_id": "marmot-radicle/directory-sensitive-fields-encrypted",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-marmot-directory"
-    ]
-  },
-  {
-    "vector_id": "marmot-radicle/expiration-is-not-erasure",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-marmot-retention"
-    ]
-  },
-  {
-    "vector_id": "marmot-radicle/failover-delivery",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-marmot-rotation"
-    ]
-  },
-  {
-    "vector_id": "marmot-radicle/invites-individually-sealed",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-marmot-directory"
-    ]
-  },
-  {
-    "vector_id": "marmot-radicle/keypackage-replay-rejected",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-marmot-persona-inbox"
-    ]
-  },
-  {
-    "vector_id": "marmot-radicle/kind445-exact-bytes",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-marmot-exact-bytes"
-    ]
-  },
-  {
-    "vector_id": "marmot-radicle/logical-size-cap-control-open",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-marmot-event-repository"
-    ]
-  },
-  {
-    "vector_id": "marmot-radicle/media-exact-bytes",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-marmot-exact-bytes"
-    ]
-  },
-  {
-    "vector_id": "marmot-radicle/node-mediated-secret-confinement",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-marmot-participation"
-    ]
-  },
-  {
-    "vector_id": "marmot-radicle/persona-inbox-atomic-bootstrap",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-marmot-persona-inbox"
-    ]
-  },
-  {
-    "vector_id": "marmot-radicle/private-group-radicle-required",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-marmot-groups"
-    ]
-  },
-  {
-    "vector_id": "marmot-radicle/private-inbox-nid-required",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-marmot-persona-inbox"
-    ]
-  },
-  {
-    "vector_id": "marmot-radicle/public-inbox-lazy-media",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-marmot-persona-inbox"
-    ]
-  },
-  {
-    "vector_id": "marmot-radicle/radicle-durable-ack",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-marmot-rotation"
-    ]
-  },
-  {
-    "vector_id": "marmot-radicle/redundant-delivery-dedup",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-marmot-rotation"
-    ]
-  },
-  {
-    "vector_id": "marmot-radicle/relay-ack-before-durable-rejected",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-marmot-rotation"
-    ]
-  },
-  {
-    "vector_id": "marmot-radicle/relay-routes-by-h-only",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-marmot-relay"
-    ]
-  },
-  {
-    "vector_id": "marmot-radicle/removal-before-routing-rotation",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-marmot-routing-generation"
-    ]
-  },
-  {
-    "vector_id": "marmot-radicle/repeated-media-locators",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-marmot-media"
-    ]
-  },
-  {
-    "vector_id": "marmot-radicle/retained-routing-overlap",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-marmot-retention"
-    ]
-  },
-  {
-    "vector_id": "marmot-radicle/routing-binding-valid",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-marmot-routing-generation"
-    ]
-  },
-  {
-    "vector_id": "marmot-radicle/routing-genesis-mismatch",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-marmot-routing-generation"
-    ]
-  },
-  {
-    "vector_id": "marmot-radicle/standard-marmot-interop",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-marmot-groups"
-    ]
-  },
-  {
-    "vector_id": "marmot-radicle/unauthorized-ref-rejected",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-marmot-event-repository"
-    ]
-  },
-  {
-    "vector_id": "marmot-radicle/writer-ref-union-dedup",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-marmot-event-repository"
-    ]
-  },
-  {
-    "vector_id": "moderation/approvals-required-absent-default-one",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-moderation"
-    ]
-  },
-  {
-    "vector_id": "moderation/contributor-implicit-rejection-window",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-moderation"
-    ]
-  },
-  {
-    "vector_id": "moderation/kind34550-approvals-required",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-moderation"
-    ]
-  },
-  {
-    "vector_id": "moderation/moderator-rotation-through-kel",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-moderation"
-    ]
-  },
-  {
-    "vector_id": "moderation/multi-mod-requirement",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-moderation"
-    ]
-  },
-  {
-    "vector_id": "moderation/nip72-approval",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-moderation"
-    ]
-  },
-  {
-    "vector_id": "moderation/radicle-editorial-gating",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-moderation"
-    ]
-  },
-  {
-    "vector_id": "moderation/redaction-of-approved-post",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-moderation"
-    ]
-  },
-  {
-    "vector_id": "moderation/relay-only-created-at-fallback",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-moderation"
-    ]
-  },
-  {
-    "vector_id": "moderation/repo-anchor-asof-after-removal-rejected",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-moderation"
-    ]
-  },
-  {
-    "vector_id": "moderation/repo-anchor-asof-before-removal-counts",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-moderation"
-    ]
-  },
-  {
-    "vector_id": "moderation/strict-mode-bare-not-hidden",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-moderation"
-    ]
-  },
-  {
-    "vector_id": "moderation/strict-mode-invalid-event-signature",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-moderation"
-    ]
-  },
-  {
-    "vector_id": "moderation/strict-mode-kind5-deletion-30s",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-moderation"
-    ]
-  },
-  {
-    "vector_id": "moderation/strict-mode-state-downgrade-warning",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-moderation"
-    ]
-  },
-  {
-    "vector_id": "nid-binding/bidirectional-valid",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-nid-delegation"
-    ]
-  },
-  {
-    "vector_id": "nid-binding/invalid-nid-proof-rejected",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-nid-delegation"
-    ]
-  },
-  {
-    "vector_id": "nid-binding/missing-nid-proof-rejected",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-nid-delegation"
-    ]
-  },
-  {
-    "vector_id": "node-advert/excessive-lifetime",
+      "heterodyne:core#core-keys-repository"
+    ],
+    "invariants": [
+      "CORE-I-KEY-MATERIAL-AT-REST"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "core/node-advert-bad-signature",
     "owner_document": "core",
     "spec_refs": [
       "heterodyne:core#core-node-advertisement"
+    ],
+    "invariants": [
+      "CORE-I-VERIFY-BEFORE-USE"
+    ],
+    "reason_codes": [
+      "bad_signature"
     ]
   },
   {
-    "vector_id": "node-advert/expired-rejected",
+    "vector_id": "core/node-advert-clock-skew",
     "owner_document": "core",
     "spec_refs": [
       "heterodyne:core#core-node-advertisement"
+    ],
+    "invariants": [
+      "CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY"
+    ],
+    "reason_codes": [
+      "node-advert-clock-skew"
     ]
   },
   {
-    "vector_id": "node-advert/expiry-not-after-created",
+    "vector_id": "core/node-advert-clock-uncertain",
     "owner_document": "core",
     "spec_refs": [
       "heterodyne:core#core-node-advertisement"
+    ],
+    "invariants": [
+      "CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY"
+    ],
+    "reason_codes": [
+      "node-advert-clock-uncertain"
     ]
   },
   {
-    "vector_id": "node-advert/future-clock-skew",
+    "vector_id": "core/node-advert-dual-proof-valid",
     "owner_document": "core",
     "spec_refs": [
       "heterodyne:core#core-node-advertisement"
-    ]
+    ],
+    "invariants": [
+      "CORE-I-NID-DELEGATION-DUAL-PROOF",
+      "CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY"
+    ],
+    "reason_codes": []
   },
   {
-    "vector_id": "node-advert/maximum-lifetime",
+    "vector_id": "core/node-advert-expired",
     "owner_document": "core",
     "spec_refs": [
       "heterodyne:core#core-node-advertisement"
+    ],
+    "invariants": [
+      "CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY"
+    ],
+    "reason_codes": [
+      "node_advert_expired"
     ]
   },
   {
-    "vector_id": "node-advert/nid-proof-invalid-rejected",
+    "vector_id": "core/node-advert-expiry-invalid",
     "owner_document": "core",
     "spec_refs": [
       "heterodyne:core#core-node-advertisement"
+    ],
+    "invariants": [
+      "CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY"
+    ],
+    "reason_codes": [
+      "node-advert-expiry-invalid"
     ]
   },
   {
-    "vector_id": "node-advert/outer-sig-invalid-rejected",
+    "vector_id": "core/node-advert-lifetime-exceeded",
     "owner_document": "core",
     "spec_refs": [
       "heterodyne:core#core-node-advertisement"
+    ],
+    "invariants": [
+      "CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY"
+    ],
+    "reason_codes": [
+      "node-advert-lifetime-exceeded"
     ]
   },
   {
-    "vector_id": "node-advert/past-clock-skew",
+    "vector_id": "core/node-advert-nid-proof-invalid",
     "owner_document": "core",
     "spec_refs": [
       "heterodyne:core#core-node-advertisement"
+    ],
+    "invariants": [
+      "CORE-I-NID-DELEGATION-DUAL-PROOF"
+    ],
+    "reason_codes": [
+      "nid_proof_invalid"
     ]
   },
   {
-    "vector_id": "node-advert/previously-accepted-within-expiry",
+    "vector_id": "core/onion-clearnet-resolution",
     "owner_document": "core",
     "spec_refs": [
-      "heterodyne:core#core-node-advertisement"
+      "heterodyne:core#core-conformance"
+    ],
+    "invariants": [
+      "CORE-I-VERIFY-BEFORE-USE"
+    ],
+    "reason_codes": [
+      "onion_dns_leak"
     ]
   },
   {
-    "vector_id": "node-advert/provisional-observation-does-not-bypass-skew",
+    "vector_id": "core/org-member-add-unauthorized",
     "owner_document": "core",
     "spec_refs": [
-      "heterodyne:core#core-node-advertisement"
+      "heterodyne:core#core-conformance"
+    ],
+    "invariants": [
+      "CORE-I-IDENTITY-INTEGRITY"
+    ],
+    "reason_codes": [
+      "org_member_add_unauthorized"
     ]
   },
   {
-    "vector_id": "node-advert/refresh-by-twelve-hours",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-node-advertisement"
-    ]
-  },
-  {
-    "vector_id": "node-advert/uncertain-clock-rejected",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-node-advertisement"
-    ]
-  },
-  {
-    "vector_id": "node-advert/valid-dual-signed",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-node-advertisement"
-    ]
-  },
-  {
-    "vector_id": "oidc/authorization-code-pkce",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-oidc-authorization"
-    ]
-  },
-  {
-    "vector_id": "oidc/device-authorization",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-oidc-authorization"
-    ]
-  },
-  {
-    "vector_id": "oidc/discovery-exact-issuer",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-oidc-endpoints"
-    ]
-  },
-  {
-    "vector_id": "oidc/dpop-confirmation-bound",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-jwt-projection"
-    ]
-  },
-  {
-    "vector_id": "oidc/id-token-valid",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-jwt-projection"
-    ]
-  },
-  {
-    "vector_id": "oidc/issuer-mismatch-rejected",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-oidc-endpoints"
-    ]
-  },
-  {
-    "vector_id": "oidc/mtls-confirmation-bound",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-jwt-projection"
-    ]
-  },
-  {
-    "vector_id": "oidc/pairwise-subject",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-oidc-authorization"
-    ]
-  },
-  {
-    "vector_id": "oidc/prohibited-grants",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-oidc-authorization"
-    ]
-  },
-  {
-    "vector_id": "oidc/registered-jwt-assertion",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-jwt-projection"
-    ]
-  },
-  {
-    "vector_id": "oidc/rfc9068-access-token-valid",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-jwt-projection"
-    ]
-  },
-  {
-    "vector_id": "oidc/stable-key-consent-gated",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-oidc-authorization"
-    ]
-  },
-  {
-    "vector_id": "oidc/token-type-confusion-rejected",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-jwt-projection"
-    ]
-  },
-  {
-    "vector_id": "one-time-invite/descriptor-and-fragment",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-one-time-invites"
-    ]
-  },
-  {
-    "vector_id": "one-time-invite/expired",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-one-time-invites"
-    ]
-  },
-  {
-    "vector_id": "one-time-invite/first-valid-reservation",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-one-time-invites"
-    ]
-  },
-  {
-    "vector_id": "one-time-invite/invalid-keypackage-no-reservation",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-one-time-invites"
-    ]
-  },
-  {
-    "vector_id": "one-time-invite/purpose-mismatch",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-one-time-invites"
-    ]
-  },
-  {
-    "vector_id": "one-time-invite/reservation-race-rejected",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-one-time-invites"
-    ]
-  },
-  {
-    "vector_id": "one-time-invite/reserved-responder-retry",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-one-time-invites"
-    ]
-  },
-  {
-    "vector_id": "one-time-invite/response-proof",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-one-time-invites"
-    ]
-  },
-  {
-    "vector_id": "org/canonical-branch-reachability",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-org-authorization"
-    ]
-  },
-  {
-    "vector_id": "org/member-add-dual-authorized",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-threshold-authority"
-    ]
-  },
-  {
-    "vector_id": "org/member-add-single-authorization-insufficient",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-threshold-authority"
-    ]
-  },
-  {
-    "vector_id": "org/threshold-delegate-governance",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-threshold-authority"
-    ]
-  },
-  {
-    "vector_id": "outbox/cross-backend-reply-dedup",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-interactions"
-    ]
-  },
-  {
-    "vector_id": "outbox/cross-persona-attestation-invalid",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-interactions"
-    ]
-  },
-  {
-    "vector_id": "outbox/cross-persona-attestation-valid",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-interactions"
-    ]
-  },
-  {
-    "vector_id": "outbox/full-public-outbox",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-retrieval"
-    ]
-  },
-  {
-    "vector_id": "outbox/scoped-outbox",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-retrieval"
-    ]
-  },
-  {
-    "vector_id": "outbox/transitive-discovery-walk",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-retrieval"
-    ]
-  },
-  {
-    "vector_id": "persona-profile/designated-publisher-valid",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-persona-profile"
-    ]
-  },
-  {
-    "vector_id": "persona-profile/exact-author-set-discovery",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-persona-profile"
-    ]
-  },
-  {
-    "vector_id": "persona-profile/nip05-mismatch-rejected",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-persona-profile"
-    ]
-  },
-  {
-    "vector_id": "persona-profile/relay-only-replacement-rejected",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-persona-profile"
-    ]
-  },
-  {
-    "vector_id": "persona-profile/successor-address-republished",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-persona-profile"
-    ]
-  },
-  {
-    "vector_id": "privacy-tiers/all-active-devices",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-privacy-tiers"
-    ]
-  },
-  {
-    "vector_id": "privacy-tiers/audience-key-rotation-on-removal",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-privacy-tiers"
-    ]
-  },
-  {
-    "vector_id": "privacy-tiers/cold-root-recipient-rejected",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-privacy-tiers"
-    ]
-  },
-  {
-    "vector_id": "privacy-tiers/complete-fetch-attempt",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-privacy-tiers"
-    ]
-  },
-  {
-    "vector_id": "privacy-tiers/device-removal-rotates-generation",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-privacy-tiers"
-    ]
-  },
-  {
-    "vector_id": "privacy-tiers/epoch-recipient-rejected",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-privacy-tiers"
-    ]
-  },
-  {
-    "vector_id": "privacy-tiers/light-device-decryption",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-privacy-tiers"
-    ]
-  },
-  {
-    "vector_id": "privacy-tiers/non-circular-bootstrap",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-privacy-tiers"
-    ]
-  },
-  {
-    "vector_id": "privacy-tiers/revoked-device-rejected",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-privacy-tiers"
-    ]
-  },
-  {
-    "vector_id": "privacy-tiers/selected-device-narrowing",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-privacy-tiers"
-    ]
-  },
-  {
-    "vector_id": "privacy-tiers/tier1-public-plaintext-both-backends",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-privacy-tiers"
-    ]
-  },
-  {
-    "vector_id": "privacy-tiers/tier2-private-repo-not-encrypted",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-privacy-tiers"
-    ]
-  },
-  {
-    "vector_id": "privacy-tiers/tier3-index-key-derivation-and-encryption",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-privacy-tiers"
-    ]
-  },
-  {
-    "vector_id": "privacy-tiers/tier3-kind31011-audience-key-wrap",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-privacy-tiers"
-    ]
-  },
-  {
-    "vector_id": "privacy-tiers/tier3-kind31012-audience-roster",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-privacy-tiers"
-    ]
-  },
-  {
-    "vector_id": "privacy-tiers/tier3-membership-metadata-disclosed",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-privacy-tiers"
-    ]
-  },
-  {
-    "vector_id": "privacy-tiers/tier3-prev-page-hash-mismatch",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-privacy-tiers"
-    ]
-  },
-  {
-    "vector_id": "privacy-tiers/tier3-prev-page-hash-valid",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-privacy-tiers"
-    ]
-  },
-  {
-    "vector_id": "profiles/core-breadcrumb-kind0",
-    "owner_document": "core",
-    "profile": "heterodyne-core-rotation-breadcrumb-profile-v1",
-    "spec_refs": [
-      "heterodyne:core#core-kel-rotation"
-    ]
-  },
-  {
-    "vector_id": "profiles/core-breadcrumb-kind1",
+    "vector_id": "core/profile-heterodyne-core-rotation-breadcrumb-note-v1",
     "owner_document": "core",
     "profile": "heterodyne-core-rotation-breadcrumb-note-v1",
     "spec_refs": [
-      "heterodyne:core#core-kel-rotation"
-    ]
+      "heterodyne:core#core-security"
+    ],
+    "invariants": [
+      "CORE-I-IDENTITY-INTEGRITY"
+    ],
+    "reason_codes": []
   },
   {
-    "vector_id": "profiles/social-org-feed-kind31007",
-    "owner_document": "social",
-    "profile": "heterodyne-social-org-feed-v1",
-    "spec_refs": [
-      "heterodyne:social#social-org-feed-profile"
-    ]
-  },
-  {
-    "vector_id": "profiles/tier3-kind-1",
-    "owner_document": "comms",
-    "profile": "heterodyne-comms-tier3-wrapped-content-kind-1-v1",
-    "spec_refs": [
-      "heterodyne:comms#comms-tier-three-profile"
-    ]
-  },
-  {
-    "vector_id": "profiles/tier3-kind-1063",
-    "owner_document": "comms",
-    "profile": "heterodyne-comms-tier3-wrapped-content-kind-1063-v1",
-    "spec_refs": [
-      "heterodyne:comms#comms-tier-three-profile"
-    ]
-  },
-  {
-    "vector_id": "profiles/tier3-kind-16",
-    "owner_document": "comms",
-    "profile": "heterodyne-comms-tier3-wrapped-content-kind-16-v1",
-    "spec_refs": [
-      "heterodyne:comms#comms-tier-three-profile"
-    ]
-  },
-  {
-    "vector_id": "profiles/tier3-kind-30023",
-    "owner_document": "comms",
-    "profile": "heterodyne-comms-tier3-wrapped-content-kind-30023-v1",
-    "spec_refs": [
-      "heterodyne:comms#comms-tier-three-profile"
-    ]
-  },
-  {
-    "vector_id": "profiles/tier3-kind-30402",
-    "owner_document": "comms",
-    "profile": "heterodyne-comms-tier3-wrapped-content-kind-30402-v1",
-    "spec_refs": [
-      "heterodyne:comms#comms-tier-three-profile"
-    ]
-  },
-  {
-    "vector_id": "profiles/tier3-kind-6",
-    "owner_document": "comms",
-    "profile": "heterodyne-comms-tier3-wrapped-content-kind-6-v1",
-    "spec_refs": [
-      "heterodyne:comms#comms-tier-three-profile"
-    ]
-  },
-  {
-    "vector_id": "public-reader/credential-relay-hint-rejected",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-public-launcher"
-    ]
-  },
-  {
-    "vector_id": "public-reader/external-media-disclosure",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-public-reader-security"
-    ]
-  },
-  {
-    "vector_id": "public-reader/failed-revocation-expiry",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-public-transition"
-    ]
-  },
-  {
-    "vector_id": "public-reader/launcher-address-roundtrip",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-public-launcher"
-    ]
-  },
-  {
-    "vector_id": "public-reader/launcher-event-roundtrip",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-public-launcher"
-    ]
-  },
-  {
-    "vector_id": "public-reader/launcher-persona-roundtrip",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-public-launcher"
-    ]
-  },
-  {
-    "vector_id": "public-reader/localhost-relay-hint-rejected",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-public-launcher"
-    ]
-  },
-  {
-    "vector_id": "public-reader/logout-cleanup",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-public-transition"
-    ]
-  },
-  {
-    "vector_id": "public-reader/malformed-entity-no-network",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-public-resolution"
-    ]
-  },
-  {
-    "vector_id": "public-reader/nip65-refresh-replaces-stale-hint",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-public-resolution"
-    ]
-  },
-  {
-    "vector_id": "public-reader/onion-hint-tor-required",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-public-launcher"
-    ]
-  },
-  {
-    "vector_id": "public-reader/oversized-fragment-no-network",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-public-resolution"
-    ]
-  },
-  {
-    "vector_id": "public-reader/private-resolved-relay-hint-rejected",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-public-launcher"
-    ]
-  },
-  {
-    "vector_id": "public-reader/resolution-canonical",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-public-resolution"
-    ]
-  },
-  {
-    "vector_id": "public-reader/resolution-conflicted",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-public-resolution"
-    ]
-  },
-  {
-    "vector_id": "public-reader/resolution-private",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-public-resolution"
-    ]
-  },
-  {
-    "vector_id": "public-reader/resolution-provisional-canonical",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-public-resolution"
-    ]
-  },
-  {
-    "vector_id": "public-reader/resolution-unavailable",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-public-resolution"
-    ]
-  },
-  {
-    "vector_id": "public-reader/resolution-unindexed-signed-event",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-public-resolution"
-    ]
-  },
-  {
-    "vector_id": "public-reader/target-absent-from-http-path",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-public-launcher"
-    ]
-  },
-  {
-    "vector_id": "public-reader/tier3-refused",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-public-resolution"
-    ]
-  },
-  {
-    "vector_id": "public-reader/transition-without-reload",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-public-transition"
-    ]
-  },
-  {
-    "vector_id": "public-reader/unknown-version-no-network",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-public-resolution"
-    ]
-  },
-  {
-    "vector_id": "registry/control-strict-profile-flattened",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-registry"
-    ]
-  },
-  {
-    "vector_id": "registry/downref-nonfrozen-rejected",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-registry"
-    ]
-  },
-  {
-    "vector_id": "registry/feature-dependency-exact",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-registry"
-    ]
-  },
-  {
-    "vector_id": "registry/feature-dependency-unprovided-rejected",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-registry"
-    ]
-  },
-  {
-    "vector_id": "registry/frozen-entry-immutable",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-registry"
-    ]
-  },
-  {
-    "vector_id": "relay-interop/auth-rejection-permanent",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-publishing"
-    ]
-  },
-  {
-    "vector_id": "relay-interop/keri-rotation-auth-new-key",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-publishing"
-    ]
-  },
-  {
-    "vector_id": "relay-interop/nip42-auth-current-epoch-key",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-publishing"
-    ]
-  },
-  {
-    "vector_id": "relay-profile/kel-aware-reputation-continuity",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-nostr-relay-interop"
-    ]
-  },
-  {
-    "vector_id": "relay-profile/nip11-capability-advert",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-nostr-relay-interop"
-    ]
-  },
-  {
-    "vector_id": "relay-profile/passive-witness-store-signs-nothing",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-nostr-relay-interop"
-    ]
-  },
-  {
-    "vector_id": "relay-profile/vanilla-nip01-unaffected",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-nostr-relay-interop"
-    ]
-  },
-  {
-    "vector_id": "repo-relay/invalid-signature-rejected",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-repo-relay"
-    ]
-  },
-  {
-    "vector_id": "repo-relay/light-node-submit-write-path",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-repo-relay"
-    ]
-  },
-  {
-    "vector_id": "repo-relay/nip01-read-write-roundtrip",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-repo-relay"
-    ]
-  },
-  {
-    "vector_id": "role-capabilities/browser-shared-relay-required",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-node-roles"
-    ]
-  },
-  {
-    "vector_id": "role-capabilities/full-node-feature-set-required",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-node-roles"
-    ]
-  },
-  {
-    "vector_id": "role-capabilities/full-node-onion-advertised",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-node-roles"
-    ]
-  },
-  {
-    "vector_id": "role-capabilities/full-node-tor-default",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-node-roles"
-    ]
-  },
-  {
-    "vector_id": "role-capabilities/public-reader-reduced-assurance",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-node-roles"
-    ]
-  },
-  {
-    "vector_id": "role-capabilities/role-address-invalid",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-role-delegation"
-    ]
-  },
-  {
-    "vector_id": "role-capabilities/role-address-valid",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-role-delegation"
-    ]
-  },
-  {
-    "vector_id": "role-capabilities/strict-missing-tor-rejected",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-node-roles"
-    ]
-  },
-  {
-    "vector_id": "routing-node/expired-advert-discarded",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-node-roles"
-    ]
-  },
-  {
-    "vector_id": "routing-node/repo-location-from-ads-only",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-node-roles"
-    ]
-  },
-  {
-    "vector_id": "routing-node/unverifiable-advert-discarded",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-node-roles"
-    ]
-  },
-  {
-    "vector_id": "social-recovery/cache-sourced-marked-stale",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-recovery"
-    ]
-  },
-  {
-    "vector_id": "social-recovery/cold-root-reanchor-authoritative",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-recovery"
-    ]
-  },
-  {
-    "vector_id": "social-recovery/retention-30-days",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-recovery-binding"
-    ]
-  },
-  {
-    "vector_id": "social-recovery/three-tier-caching",
-    "owner_document": "social",
-    "spec_refs": [
-      "heterodyne:social#social-recovery-binding"
-    ]
-  },
-  {
-    "vector_id": "stamping/heterodyne-empty-content-tag-owner",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-version-stamps"
-    ]
-  },
-  {
-    "vector_id": "stamping/heterodyne-json-content-owner",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-version-stamps"
-    ]
-  },
-  {
-    "vector_id": "stamping/non-stamping-profile-unchanged",
+    "vector_id": "core/profile-heterodyne-core-rotation-breadcrumb-profile-v1",
     "owner_document": "core",
     "profile": "heterodyne-core-rotation-breadcrumb-profile-v1",
     "spec_refs": [
-      "heterodyne:core#core-version-stamps"
-    ]
+      "heterodyne:core#core-security"
+    ],
+    "invariants": [
+      "CORE-I-IDENTITY-INTEGRITY"
+    ],
+    "reason_codes": []
   },
   {
-    "vector_id": "stamping/tier3-profile-owner",
-    "owner_document": "core",
-    "profile": "heterodyne-comms-tier3-wrapped-content-kind-1-v1",
-    "spec_refs": [
-      "heterodyne:core#core-version-stamps"
-    ]
-  },
-  {
-    "vector_id": "stamping/upstream-profile-owner",
-    "owner_document": "core",
-    "profile": "heterodyne-social-mute-list-v1",
-    "spec_refs": [
-      "heterodyne:core#core-version-stamps"
-    ]
-  },
-  {
-    "vector_id": "stamping/upstream-unstamped",
+    "vector_id": "core/profile-nip05-key-mismatch",
     "owner_document": "core",
     "spec_refs": [
-      "heterodyne:core#core-version-stamps"
+      "heterodyne:core#core-persona-profile"
+    ],
+    "invariants": [
+      "CORE-I-IDENTITY-INTEGRITY"
+    ],
+    "reason_codes": [
+      "profile-nip05-key-mismatch"
     ]
   },
   {
-    "vector_id": "token-status/https-outage-radicle-fallback",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-issuer-continuity"
-    ]
-  },
-  {
-    "vector_id": "token-status/https-radicle-byte-identity",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-token-status"
-    ]
-  },
-  {
-    "vector_id": "token-status/invalidated-token",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-token-status"
-    ]
-  },
-  {
-    "vector_id": "token-status/issuer-successor",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-issuer-continuity"
-    ]
-  },
-  {
-    "vector_id": "token-status/radicle-digest-mismatch",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-token-status"
-    ]
-  },
-  {
-    "vector_id": "token-status/signing-key-compromise",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-token-status"
-    ]
-  },
-  {
-    "vector_id": "token-status/stale-status-list-rejected",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-token-status"
-    ]
-  },
-  {
-    "vector_id": "token-status/valid-status-list",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-token-status"
-    ]
-  },
-  {
-    "vector_id": "token-status/writer-index-collision-rejected",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-token-status"
-    ]
-  },
-  {
-    "vector_id": "transport/egress-tor-off-default-indicator",
+    "vector_id": "core/profile-publisher-delegation-invalid",
     "owner_document": "core",
     "spec_refs": [
-      "heterodyne:core#core-tor-reachability"
+      "heterodyne:core#core-persona-profile"
+    ],
+    "invariants": [
+      "CORE-I-IDENTITY-INTEGRITY"
+    ],
+    "reason_codes": [
+      "profile-publisher-delegation-invalid"
     ]
   },
   {
-    "vector_id": "transport/onion-no-clearnet-dns-leak",
+    "vector_id": "core/profile-repository-selection-required",
     "owner_document": "core",
     "spec_refs": [
-      "heterodyne:core#core-tor-reachability"
+      "heterodyne:core#core-persona-profile"
+    ],
+    "invariants": [
+      "CORE-I-IDENTITY-INTEGRITY"
+    ],
+    "reason_codes": [
+      "profile-repository-selection-required"
     ]
   },
   {
-    "vector_id": "transport/onion-reachable-via-tor",
+    "vector_id": "core/relay-profile-mutated",
     "owner_document": "core",
     "spec_refs": [
-      "heterodyne:core#core-tor-reachability"
+      "heterodyne:core#core-conformance"
+    ],
+    "invariants": [
+      "CORE-I-IDENTITY-INTEGRITY"
+    ],
+    "reason_codes": [
+      "relay_profile_mutation"
     ]
   },
   {
-    "vector_id": "transport/strict-mode-egress-tor-default-on",
+    "vector_id": "core/replaceable-advisory-nip03-ignored",
     "owner_document": "core",
     "spec_refs": [
-      "heterodyne:core#core-tor-reachability"
-    ]
+      "heterodyne:core#core-nip03-advisory"
+    ],
+    "invariants": [
+      "CORE-I-VERIFY-BEFORE-USE"
+    ],
+    "reason_codes": []
   },
   {
-    "vector_id": "transport/wasm-bridge-no-bridge-indicator",
+    "vector_id": "core/replaceable-at-premature-boundary",
     "owner_document": "core",
     "spec_refs": [
-      "heterodyne:core#core-tor-reachability"
+      "heterodyne:core#core-created-at-bound"
+    ],
+    "invariants": [
+      "CORE-I-VERIFY-BEFORE-USE"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "core/replaceable-equal-time-lowest-id",
+    "owner_document": "core",
+    "spec_refs": [
+      "heterodyne:core#core-source-neutral-selection"
+    ],
+    "invariants": [
+      "CORE-I-VERIFY-BEFORE-USE"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "core/replaceable-future-quarantined",
+    "owner_document": "core",
+    "spec_refs": [
+      "heterodyne:core#core-created-at-bound"
+    ],
+    "invariants": [
+      "CORE-I-VERIFY-BEFORE-USE"
+    ],
+    "reason_codes": [
+      "core-created-at-premature"
     ]
   },
   {
-    "vector_id": "verification/backdated-event-suspicion-window",
+    "vector_id": "core/retired-key-authority-window-invalid",
+    "owner_document": "core",
+    "spec_refs": [
+      "heterodyne:core#core-retired-key-observation"
+    ],
+    "invariants": [
+      "CORE-I-IDENTITY-INTEGRITY"
+    ],
+    "reason_codes": [
+      "retired-key-authority-window-invalid"
+    ]
+  },
+  {
+    "vector_id": "core/role-delegation-address-invalid",
+    "owner_document": "core",
+    "spec_refs": [
+      "heterodyne:core#core-nid-delegation"
+    ],
+    "invariants": [
+      "CORE-I-NID-DELEGATION-DUAL-PROOF"
+    ],
+    "reason_codes": [
+      "role-delegation-address-invalid"
+    ]
+  },
+  {
+    "vector_id": "core/role-delegation-key-proof-invalid",
+    "owner_document": "core",
+    "spec_refs": [
+      "heterodyne:core#core-nid-delegation"
+    ],
+    "invariants": [
+      "CORE-I-NID-DELEGATION-DUAL-PROOF"
+    ],
+    "reason_codes": [
+      "role-delegation-key-proof-invalid"
+    ]
+  },
+  {
+    "vector_id": "core/strict-mode-without-tor",
+    "owner_document": "core",
+    "spec_refs": [
+      "heterodyne:core#core-conformance"
+    ],
+    "invariants": [
+      "CORE-I-VERIFY-BEFORE-USE"
+    ],
+    "reason_codes": [
+      "strict_mode_tor_disabled"
+    ]
+  },
+  {
+    "vector_id": "core/version-future-major",
+    "owner_document": "core",
+    "spec_refs": [
+      "heterodyne:core#core-conformance"
+    ],
+    "invariants": [
+      "CORE-I-VERIFY-BEFORE-USE"
+    ],
+    "reason_codes": [
+      "unknown_major_version"
+    ]
+  },
+  {
+    "vector_id": "core/version-stamp-missing",
     "owner_document": "core",
     "spec_refs": [
       "heterodyne:core#core-verification"
+    ],
+    "invariants": [
+      "CORE-I-VERIFY-BEFORE-USE"
+    ],
+    "reason_codes": [
+      "version_stamp_invalid"
     ]
   },
   {
-    "vector_id": "verification/bad-signature-rejects",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-verification"
-    ]
-  },
-  {
-    "vector_id": "verification/delegation-mismatch-rejects",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-verification"
-    ]
-  },
-  {
-    "vector_id": "verification/revoked-key-rejects",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-verification"
-    ]
-  },
-  {
-    "vector_id": "versioning/capabilities-roundtrip",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-versioning"
-    ]
-  },
-  {
-    "vector_id": "versioning/core-capability-bootstrap",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-versioning"
-    ]
-  },
-  {
-    "vector_id": "versioning/older-receiver-newer-sender",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-versioning"
-    ]
-  },
-  {
-    "vector_id": "versioning/per-document-negotiation",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-versioning"
-    ]
-  },
-  {
-    "vector_id": "versioning/qualified-version-unqualified-rejected",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-versioning"
-    ]
-  },
-  {
-    "vector_id": "versioning/qualified-version-valid",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-versioning"
-    ]
-  },
-  {
-    "vector_id": "versioning/unknown-asynchronous-stamp-rejected",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-versioning"
-    ]
-  },
-  {
-    "vector_id": "versioning/unknown-major-placeholder",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-versioning"
-    ]
-  },
-  {
-    "vector_id": "versioning/unknown-room-kind-tolerance",
+    "vector_id": "social/agent-attribution-falsified",
     "owner_document": "social",
     "spec_refs": [
-      "heterodyne:social#social-discussion-rooms"
+      "heterodyne:social#social-agent-policy"
+    ],
+    "invariants": [
+      "SOCIAL-I-AGENT-AUTHORSHIP-EXACT"
+    ],
+    "reason_codes": [
+      "agent-attribution-falsified"
     ]
   },
   {
-    "vector_id": "workspace-device/independent-leaf-removal",
+    "vector_id": "social/agent-attribution-missing",
+    "owner_document": "social",
+    "spec_refs": [
+      "heterodyne:social#social-agent-policy"
+    ],
+    "invariants": [
+      "SOCIAL-I-AGENT-AUTHORSHIP-EXACT"
+    ],
+    "reason_codes": [
+      "agent-attribution-missing"
+    ]
+  },
+  {
+    "vector_id": "social/agent-policy-binding-invalid",
+    "owner_document": "social",
+    "spec_refs": [
+      "heterodyne:social#social-agent-policy"
+    ],
+    "invariants": [
+      "SOCIAL-I-AGENT-POLICY-LOCAL"
+    ],
+    "reason_codes": [
+      "agent-policy-binding-invalid"
+    ]
+  },
+  {
+    "vector_id": "social/agent-policy-receipt-invalid",
+    "owner_document": "social",
+    "spec_refs": [
+      "heterodyne:social#social-agent-policy"
+    ],
+    "invariants": [
+      "SOCIAL-I-AGENT-POLICY-LOCAL"
+    ],
+    "reason_codes": [
+      "agent-policy-receipt-invalid"
+    ]
+  },
+  {
+    "vector_id": "social/agent-publication-bypass",
+    "owner_document": "social",
+    "spec_refs": [
+      "heterodyne:social#social-agent-policy"
+    ],
+    "invariants": [
+      "SOCIAL-I-AGENT-AUTHORSHIP-EXACT"
+    ],
+    "reason_codes": [
+      "agent-publication-bypass"
+    ]
+  },
+  {
+    "vector_id": "social/author-binding-invalid",
+    "owner_document": "social",
+    "spec_refs": [
+      "heterodyne:social#social-interactions"
+    ],
+    "invariants": [
+      "SOCIAL-I-NIP01-AUTHORSHIP"
+    ],
+    "reason_codes": [
+      "social-author-binding-invalid"
+    ]
+  },
+  {
+    "vector_id": "social/event-invalid",
+    "owner_document": "social",
+    "spec_refs": [
+      "heterodyne:social#social-interactions"
+    ],
+    "invariants": [
+      "SOCIAL-I-NIP01-AUTHORSHIP"
+    ],
+    "reason_codes": [
+      "social-event-invalid"
+    ]
+  },
+  {
+    "vector_id": "social/moderator-not-in-asof-declaration",
+    "owner_document": "social",
+    "spec_refs": [
+      "heterodyne:social#social-moderation"
+    ],
+    "invariants": [
+      "SOCIAL-I-AGENT-POLICY-LOCAL"
+    ],
+    "reason_codes": [
+      "moderator_not_in_asof_declaration"
+    ]
+  },
+  {
+    "vector_id": "social/profile-heterodyne-social-agent-policy-list-v1",
+    "owner_document": "social",
+    "profile": "heterodyne-social-agent-policy-list-v1",
+    "spec_refs": [
+      "heterodyne:social#social-security"
+    ],
+    "invariants": [
+      "SOCIAL-I-AGENT-AUTHORSHIP-EXACT",
+      "SOCIAL-I-AGENT-POLICY-LOCAL"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "social/profile-heterodyne-social-agent-policy-receipt-v1",
+    "owner_document": "social",
+    "profile": "heterodyne-social-agent-policy-receipt-v1",
+    "spec_refs": [
+      "heterodyne:social#social-security"
+    ],
+    "invariants": [
+      "SOCIAL-I-AGENT-AUTHORSHIP-EXACT",
+      "SOCIAL-I-AGENT-POLICY-LOCAL"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "social/profile-heterodyne-social-mute-list-v1",
+    "owner_document": "social",
+    "profile": "heterodyne-social-mute-list-v1",
+    "spec_refs": [
+      "heterodyne:social#social-security"
+    ],
+    "invariants": [
+      "SOCIAL-I-PRIVATE-STATE-AT-REST"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "social/replaceable-coordinate-mismatch",
+    "owner_document": "social",
+    "spec_refs": [
+      "heterodyne:social#social-interactions"
+    ],
+    "invariants": [
+      "SOCIAL-I-SOURCE-NEUTRAL-SELECTION"
+    ],
+    "reason_codes": [
+      "social-replaceable-coordinate-mismatch"
+    ]
+  },
+  {
+    "vector_id": "social/source-neutral-core-quarantine",
+    "owner_document": "social",
+    "spec_refs": [
+      "heterodyne:social#social-scope"
+    ],
+    "invariants": [
+      "SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH",
+      "SOCIAL-I-SOURCE-NEUTRAL-SELECTION"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "social/source-neutral-vanilla-authorship",
+    "owner_document": "social",
+    "spec_refs": [
+      "heterodyne:social#social-interactions"
+    ],
+    "invariants": [
+      "SOCIAL-I-NIP01-AUTHORSHIP"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "workspace/affiliation-stale",
+    "owner_document": "workspace",
+    "spec_refs": [
+      "heterodyne:workspace#workspace-relationships"
+    ],
+    "invariants": [
+      "WORKSPACE-I-FRESHNESS-BOUNDED"
+    ],
+    "reason_codes": [
+      "affiliation_stale"
+    ]
+  },
+  {
+    "vector_id": "workspace/assurance-dual-removal",
+    "owner_document": "workspace",
+    "spec_refs": [
+      "heterodyne:workspace#workspace-optional-assurance"
+    ],
+    "invariants": [
+      "WORKSPACE-I-OPTIONAL-ASSURANCE"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "workspace/assurance-history-mutation-revalidated",
+    "owner_document": "workspace",
+    "spec_refs": [
+      "heterodyne:workspace#workspace-optional-assurance"
+    ],
+    "invariants": [
+      "WORKSPACE-I-OPTIONAL-ASSURANCE"
+    ],
+    "reason_codes": [
+      "workspace-assurance-state-required"
+    ]
+  },
+  {
+    "vector_id": "workspace/assurance-pending-activation",
+    "owner_document": "workspace",
+    "spec_refs": [
+      "heterodyne:workspace#workspace-optional-assurance"
+    ],
+    "invariants": [
+      "WORKSPACE-I-OPTIONAL-ASSURANCE"
+    ],
+    "reason_codes": [
+      "workspace-assurance-state-required"
+    ]
+  },
+  {
+    "vector_id": "workspace/assurance-unilateral-removal",
+    "owner_document": "workspace",
+    "spec_refs": [
+      "heterodyne:workspace#workspace-optional-assurance"
+    ],
+    "invariants": [
+      "WORKSPACE-I-OPTIONAL-ASSURANCE"
+    ],
+    "reason_codes": [
+      "workspace-assurance-state-required"
+    ]
+  },
+  {
+    "vector_id": "workspace/assurance-verified-activation",
+    "owner_document": "workspace",
+    "spec_refs": [
+      "heterodyne:workspace#workspace-optional-assurance"
+    ],
+    "invariants": [
+      "WORKSPACE-I-OPTIONAL-ASSURANCE"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "workspace/authority-checkpoint-stale",
+    "owner_document": "workspace",
+    "spec_refs": [
+      "heterodyne:workspace#workspace-freshness"
+    ],
+    "invariants": [
+      "WORKSPACE-I-AUTHENTICATED-CURRENT-STATE",
+      "WORKSPACE-I-FRESHNESS-BOUNDED"
+    ],
+    "reason_codes": [
+      "checkpoint_stale"
+    ]
+  },
+  {
+    "vector_id": "workspace/authority-conflict",
+    "owner_document": "workspace",
+    "spec_refs": [
+      "heterodyne:workspace#workspace-role-repositories"
+    ],
+    "invariants": [
+      "WORKSPACE-I-AUTHENTICATED-CURRENT-STATE"
+    ],
+    "reason_codes": [
+      "authority_conflict"
+    ]
+  },
+  {
+    "vector_id": "workspace/authority-freshness-boundary",
+    "owner_document": "workspace",
+    "spec_refs": [
+      "heterodyne:workspace#workspace-freshness"
+    ],
+    "invariants": [
+      "WORKSPACE-I-FRESHNESS-BOUNDED"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "workspace/bare-key-baseline",
+    "owner_document": "workspace",
+    "spec_refs": [
+      "heterodyne:workspace#workspace-optional-assurance"
+    ],
+    "invariants": [
+      "WORKSPACE-I-OPTIONAL-ASSURANCE"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "workspace/carrier-not-ambient-authority",
+    "owner_document": "workspace",
+    "spec_refs": [
+      "heterodyne:workspace#workspace-authorization"
+    ],
+    "invariants": [
+      "WORKSPACE-I-CARRIER-NOT-AUTHORITY",
+      "WORKSPACE-I-NO-AMBIENT-AUTHORITY"
+    ],
+    "reason_codes": [
+      "policy_denied"
+    ]
+  },
+  {
+    "vector_id": "workspace/current-capability-intersection",
+    "owner_document": "workspace",
+    "spec_refs": [
+      "heterodyne:workspace#workspace-authorization"
+    ],
+    "invariants": [
+      "WORKSPACE-I-AUTHENTICATED-CURRENT-STATE",
+      "WORKSPACE-I-INHERITANCE-NARROWS",
+      "WORKSPACE-I-NO-AMBIENT-AUTHORITY"
+    ],
+    "reason_codes": []
+  },
+  {
+    "vector_id": "workspace/device-revoked",
     "owner_document": "workspace",
     "spec_refs": [
       "heterodyne:workspace#workspace-role-control"
+    ],
+    "invariants": [
+      "WORKSPACE-I-DEVICE-LEAF-SEPARATION"
+    ],
+    "reason_codes": [
+      "device_revoked"
     ]
   },
   {
-    "vector_id": "workspace-device/persona-removes-all-leaves",
+    "vector_id": "workspace/history-denied",
     "owner_document": "workspace",
     "spec_refs": [
-      "heterodyne:workspace#workspace-role-control"
+      "heterodyne:workspace#workspace-key-delivery"
+    ],
+    "invariants": [
+      "WORKSPACE-I-REVOCATION-FUTURE-ONLY"
+    ],
+    "reason_codes": [
+      "history_denied"
     ]
   },
   {
-    "vector_id": "workspace-events/exact-bytes",
+    "vector_id": "workspace/host-unauthorized",
     "owner_document": "workspace",
     "spec_refs": [
-      "heterodyne:workspace#workspace-role-repositories"
+      "heterodyne:workspace#workspace-key-delivery"
+    ],
+    "invariants": [
+      "WORKSPACE-I-HOST-AUTHORITY-SEPARATION"
+    ],
+    "reason_codes": [
+      "host_unauthorized"
     ]
   },
   {
-    "vector_id": "workspace-events/mls-epoch-rotation",
+    "vector_id": "workspace/independent-device-leaf-removal",
     "owner_document": "workspace",
     "spec_refs": [
-      "heterodyne:workspace#workspace-role-repositories"
-    ]
+      "heterodyne:workspace#workspace-device-leaves"
+    ],
+    "invariants": [
+      "WORKSPACE-I-DEVICE-LEAF-SEPARATION",
+      "WORKSPACE-I-REVOCATION-FUTURE-ONLY"
+    ],
+    "reason_codes": []
   },
   {
-    "vector_id": "workspace-events/mutated-bytes-rejected",
+    "vector_id": "workspace/independent-resource-content-keys",
     "owner_document": "workspace",
     "spec_refs": [
-      "heterodyne:workspace#workspace-role-repositories"
-    ]
+      "heterodyne:workspace#workspace-resource-key-delivery"
+    ],
+    "invariants": [
+      "WORKSPACE-I-INDEPENDENT-RESOURCE-KEYS"
+    ],
+    "reason_codes": []
   },
   {
-    "vector_id": "workspace-events/nostr-radicle-equivalent",
+    "vector_id": "workspace/inheritance-escalation-rejected",
     "owner_document": "workspace",
     "spec_refs": [
-      "heterodyne:workspace#workspace-role-repositories"
+      "heterodyne:workspace#workspace-inheritance"
+    ],
+    "invariants": [
+      "WORKSPACE-I-INHERITANCE-NARROWS"
+    ],
+    "reason_codes": [
+      "capability_escalation"
     ]
   },
   {
-    "vector_id": "workspace-events/size-rotation",
-    "owner_document": "workspace",
-    "spec_refs": [
-      "heterodyne:workspace#workspace-role-repositories"
-    ]
-  },
-  {
-    "vector_id": "workspace-freshness/authority-boundary",
-    "owner_document": "workspace",
-    "spec_refs": [
-      "heterodyne:workspace#workspace-freshness"
-    ]
-  },
-  {
-    "vector_id": "workspace-freshness/authority-stale",
-    "owner_document": "workspace",
-    "spec_refs": [
-      "heterodyne:workspace#workspace-freshness"
-    ]
-  },
-  {
-    "vector_id": "workspace-freshness/ordinary-boundary",
-    "owner_document": "workspace",
-    "spec_refs": [
-      "heterodyne:workspace#workspace-freshness"
-    ]
-  },
-  {
-    "vector_id": "workspace-freshness/ordinary-stale",
-    "owner_document": "workspace",
-    "spec_refs": [
-      "heterodyne:workspace#workspace-freshness"
-    ]
-  },
-  {
-    "vector_id": "workspace-grant/admin-no-governance",
+    "vector_id": "workspace/invitation-replay",
     "owner_document": "workspace",
     "spec_refs": [
       "heterodyne:workspace#workspace-grants"
+    ],
+    "invariants": [
+      "WORKSPACE-I-NO-AMBIENT-AUTHORITY"
+    ],
+    "reason_codes": [
+      "workspace_replay"
     ]
   },
   {
-    "vector_id": "workspace-grant/invite-replay-rejected",
+    "vector_id": "workspace/private-topology-clean",
     "owner_document": "workspace",
     "spec_refs": [
-      "heterodyne:workspace#workspace-grants"
-    ]
+      "heterodyne:workspace#workspace-private-discovery"
+    ],
+    "invariants": [
+      "WORKSPACE-I-PRIVATE-TOPOLOGY"
+    ],
+    "reason_codes": []
   },
   {
-    "vector_id": "workspace-grant/multi-approval-insufficient",
+    "vector_id": "workspace/private-topology-disclosed",
     "owner_document": "workspace",
     "spec_refs": [
-      "heterodyne:workspace#workspace-grants"
+      "heterodyne:workspace#workspace-private-discovery"
+    ],
+    "invariants": [
+      "WORKSPACE-I-PRIVATE-TOPOLOGY"
+    ],
+    "reason_codes": [
+      "private_topology_disclosed"
     ]
   },
   {
-    "vector_id": "workspace-grant/single-actor-active",
+    "vector_id": "workspace/radicle-backed-hosts",
     "owner_document": "workspace",
     "spec_refs": [
-      "heterodyne:workspace#workspace-grants"
-    ]
+      "heterodyne:workspace#workspace-hosting"
+    ],
+    "invariants": [
+      "WORKSPACE-I-HOST-AUTHORITY-SEPARATION",
+      "WORKSPACE-I-RADICLE-BACKSTOP"
+    ],
+    "reason_codes": []
   },
   {
-    "vector_id": "workspace-host/inherited-failover",
+    "vector_id": "workspace/repository-invalid",
     "owner_document": "workspace",
     "spec_refs": [
-      "heterodyne:workspace#workspace-advertisements"
+      "heterodyne:workspace#workspace-role-repositories"
+    ],
+    "invariants": [
+      "WORKSPACE-I-AUTHENTICATED-CURRENT-STATE"
+    ],
+    "reason_codes": [
+      "workspace_repository_invalid"
     ]
   },
   {
-    "vector_id": "workspace-host/no-backstop-rejected",
-    "owner_document": "workspace",
-    "spec_refs": [
-      "heterodyne:workspace#workspace-advertisements"
-    ]
-  },
-  {
-    "vector_id": "workspace-host/replace-retains-backstop",
-    "owner_document": "workspace",
-    "spec_refs": [
-      "heterodyne:workspace#workspace-advertisements"
-    ]
-  },
-  {
-    "vector_id": "workspace-joint/host-not-authority",
-    "owner_document": "workspace",
-    "spec_refs": [
-      "heterodyne:workspace#workspace-relationships"
-    ]
-  },
-  {
-    "vector_id": "workspace-joint/threshold-valid",
-    "owner_document": "workspace",
-    "spec_refs": [
-      "heterodyne:workspace#workspace-relationships"
-    ]
-  },
-  {
-    "vector_id": "workspace-key/from-admission-denied",
-    "owner_document": "workspace",
-    "spec_refs": [
-      "heterodyne:workspace#workspace-key-delivery"
-    ]
-  },
-  {
-    "vector_id": "workspace-key/full-history",
+    "vector_id": "workspace/resource-unknown",
     "owner_document": "workspace",
     "spec_refs": [
       "heterodyne:workspace#workspace-key-delivery"
+    ],
+    "invariants": [
+      "WORKSPACE-I-INDEPENDENT-RESOURCE-KEYS"
+    ],
+    "reason_codes": [
+      "resource_unknown"
     ]
   },
   {
-    "vector_id": "workspace-key/keypackage-readmission",
+    "vector_id": "workspace/revocation-blocks-future-effect",
     "owner_document": "workspace",
     "spec_refs": [
-      "heterodyne:workspace#workspace-key-delivery"
+      "heterodyne:workspace#workspace-revocation"
+    ],
+    "invariants": [
+      "WORKSPACE-I-REVOCATION-FUTURE-ONLY"
+    ],
+    "reason_codes": [
+      "policy_denied"
     ]
   },
   {
-    "vector_id": "workspace-key/revoked-device",
-    "owner_document": "workspace",
-    "spec_refs": [
-      "heterodyne:workspace#workspace-key-delivery"
-    ]
-  },
-  {
-    "vector_id": "workspace-key/selected-snapshot",
-    "owner_document": "workspace",
-    "spec_refs": [
-      "heterodyne:workspace#workspace-key-delivery"
-    ]
-  },
-  {
-    "vector_id": "workspace-key/unauthorized-host",
-    "owner_document": "workspace",
-    "spec_refs": [
-      "heterodyne:workspace#workspace-key-delivery"
-    ]
-  },
-  {
-    "vector_id": "workspace-object/canonical-valid",
+    "vector_id": "workspace/schema-invalid",
     "owner_document": "workspace",
     "spec_refs": [
       "heterodyne:workspace#workspace-object-types"
+    ],
+    "invariants": [
+      "WORKSPACE-I-AUTHENTICATED-CURRENT-STATE"
+    ],
+    "reason_codes": [
+      "workspace_schema_invalid"
     ]
   },
   {
-    "vector_id": "workspace-object/signature-invalid",
+    "vector_id": "workspace/signature-invalid",
     "owner_document": "workspace",
     "spec_refs": [
       "heterodyne:workspace#workspace-object-types"
-    ]
-  },
-  {
-    "vector_id": "workspace-object/unknown-member-rejected",
-    "owner_document": "workspace",
-    "spec_refs": [
-      "heterodyne:workspace#workspace-object-types"
-    ]
-  },
-  {
-    "vector_id": "workspace-policy/conflict-rejected",
-    "owner_document": "workspace",
-    "spec_refs": [
-      "heterodyne:workspace#workspace-role-policy"
-    ]
-  },
-  {
-    "vector_id": "workspace-policy/denial-wins",
-    "owner_document": "workspace",
-    "spec_refs": [
-      "heterodyne:workspace#workspace-role-policy"
-    ]
-  },
-  {
-    "vector_id": "workspace-policy/escalation-rejected",
-    "owner_document": "workspace",
-    "spec_refs": [
-      "heterodyne:workspace#workspace-role-policy"
-    ]
-  },
-  {
-    "vector_id": "workspace-policy/intersection-valid",
-    "owner_document": "workspace",
-    "spec_refs": [
-      "heterodyne:workspace#workspace-role-policy"
-    ]
-  },
-  {
-    "vector_id": "workspace-privacy/concealed-correlation-rejected",
-    "owner_document": "workspace",
-    "spec_refs": [
-      "heterodyne:workspace#workspace-privacy"
-    ]
-  },
-  {
-    "vector_id": "workspace-privacy/public-clean",
-    "owner_document": "workspace",
-    "spec_refs": [
-      "heterodyne:workspace#workspace-privacy"
-    ]
-  },
-  {
-    "vector_id": "workspace-relationship/bilateral-valid",
-    "owner_document": "workspace",
-    "spec_refs": [
-      "heterodyne:workspace#workspace-relationships"
-    ]
-  },
-  {
-    "vector_id": "workspace-relationship/grace-boundary",
-    "owner_document": "workspace",
-    "spec_refs": [
-      "heterodyne:workspace#workspace-relationships"
-    ]
-  },
-  {
-    "vector_id": "workspace-relationship/mismatched-signatures",
-    "owner_document": "workspace",
-    "spec_refs": [
-      "heterodyne:workspace#workspace-relationships"
-    ]
-  },
-  {
-    "vector_id": "workspace-relationship/stale-rejected",
-    "owner_document": "workspace",
-    "spec_refs": [
-      "heterodyne:workspace#workspace-relationships"
+    ],
+    "invariants": [
+      "WORKSPACE-I-AUTHENTICATED-CURRENT-STATE"
+    ],
+    "reason_codes": [
+      "workspace_signature_invalid"
     ]
   }
 ]

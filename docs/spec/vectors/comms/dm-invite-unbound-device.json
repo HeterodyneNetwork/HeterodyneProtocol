@@ -1,0 +1,24 @@
+{
+  "vector_id": "comms/dm-invite-unbound-device",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-direct-messages"
+  ],
+  "invariants": [
+    "COMMS-I-MARMOT-UPSTREAM-AUTHORITY"
+  ],
+  "reason_codes": [
+    "dm_invite_unbound_device"
+  ],
+  "description": "The current Comms policy boundary rejects dm invite unbound device.",
+  "direction": "consume",
+  "input": {
+    "delegation_present": false,
+    "delegation_revoked": false
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "dm_invite_unbound_device"
+  }
+}

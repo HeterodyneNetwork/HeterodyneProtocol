@@ -1,0 +1,45 @@
+{
+  "vector_id": "workspace/revocation-blocks-future-effect",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "workspace",
+  "spec_refs": [
+    "heterodyne:workspace#workspace-revocation"
+  ],
+  "invariants": [
+    "WORKSPACE-I-REVOCATION-FUTURE-ONLY"
+  ],
+  "reason_codes": [
+    "policy_denied"
+  ],
+  "description": "An effective current revocation blocks the next authority effect without asserting deletion of previously delivered material.",
+  "direction": "consume",
+  "input": {
+    "authenticated_current_state": true,
+    "explicit_grant": true,
+    "carrier_only_evidence": false,
+    "requested_capabilities": [
+      "read"
+    ],
+    "workspace_ceiling": [
+      "read",
+      "write"
+    ],
+    "role_path_ceilings": [
+      [
+        "read",
+        "write"
+      ],
+      [
+        "read"
+      ]
+    ],
+    "grant_capabilities": [
+      "read"
+    ],
+    "revoked_effective": true
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "policy_denied"
+  }
+}

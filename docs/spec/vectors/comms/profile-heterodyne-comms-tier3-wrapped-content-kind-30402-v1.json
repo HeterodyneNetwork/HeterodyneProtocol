@@ -1,0 +1,73 @@
+{
+  "vector_id": "comms/profile-heterodyne-comms-tier3-wrapped-content-kind-30402-v1",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "profile": "heterodyne-comms-tier3-wrapped-content-kind-30402-v1",
+  "spec_refs": [
+    "heterodyne:comms#comms-security"
+  ],
+  "invariants": [
+    "COMMS-I-TIER3-BLIND-CARRIER",
+    "COMMS-I-TIER3-CONFINED"
+  ],
+  "reason_codes": [],
+  "description": "The fixed heterodyne-comms-tier3-wrapped-content-kind-30402-v1 allocation is checked separately from its live semantic boundary.",
+  "direction": "consume",
+  "input": {
+    "kind": 30402,
+    "profile_id": "heterodyne-comms-tier3-wrapped-content-kind-30402-v1",
+    "owner": "comms",
+    "discriminator": "tag:heterodyne_wrap=room_key.v2",
+    "stamping": true,
+    "first_version": "heterodyne/0.5.0",
+    "status": "draft",
+    "wire_probe": {
+      "content_is_heterodyne_json": false,
+      "is_dr_outer": false,
+      "tags": [
+        [
+          "heterodyne_wrap",
+          "room_key.v2"
+        ]
+      ]
+    },
+    "audience_key": "4040404040404040404040404040404040404040404040404040404040404040",
+    "key_id": "current-profile-tier3-kind-30402",
+    "plaintext": "{\"kind\":30402,\"audience\":\"fixed-current-profile\"}",
+    "memberPersonas": [
+      "1111111111111111111111111111111111111111111111111111111111111111"
+    ],
+    "devices": [
+      {
+        "persona": "1111111111111111111111111111111111111111111111111111111111111111",
+        "pubkey": "2222222222222222222222222222222222222222222222222222222222222222",
+        "active": true,
+        "role": "human-device"
+      }
+    ],
+    "selected": [
+      "2222222222222222222222222222222222222222222222222222222222222222"
+    ],
+    "requested_repository_rid": "rad:z3CurrentPrivateRepository",
+    "requested_interface_id": "radicle-native-private",
+    "requested_route": "rad:z3CurrentPrivateRepository"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "crypto": {
+      "derived_key": "938d8a750bda0161e418cd53c3edc1a784ab78a9f10c95e65246e73248f4ff2c",
+      "ciphertext": "AmFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYgnkV9mKDINClysDe/eU1UFVFv0lTu4n2iKj4CTr3Xb6qioJHPXT954URhkd5sfRpXGmXTvkA4NqOUJRfTI/A8A8H60w4ipzCWXwtz/W0sGwzxz/xr621dmxg1d8zSdk6Uo=",
+      "recovered_plaintext": "{\"kind\":30402,\"audience\":\"fixed-current-profile\"}",
+      "authenticated_round_trip": true
+    },
+    "recipients": {
+      "verdict": "accept",
+      "recipients": [
+        "2222222222222222222222222222222222222222222222222222222222222222"
+      ]
+    },
+    "route": {
+      "verdict": "accept"
+    }
+  }
+}

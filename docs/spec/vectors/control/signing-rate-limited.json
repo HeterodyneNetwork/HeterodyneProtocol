@@ -1,0 +1,24 @@
+{
+  "vector_id": "control/signing-rate-limited",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "control",
+  "spec_refs": [
+    "heterodyne:control#control-request-processing"
+  ],
+  "invariants": [
+    "CONTROL-I-OPERATION-AT-MOST-ONCE"
+  ],
+  "reason_codes": [
+    "control-signing-rate-limited"
+  ],
+  "description": "The live Control authorization boundary rejects signing rate limited.",
+  "direction": "consume",
+  "input": {
+    "request_count": 1,
+    "consumed_request_count": 1
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "control-signing-rate-limited"
+  }
+}

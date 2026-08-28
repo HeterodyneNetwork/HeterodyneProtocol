@@ -1,0 +1,29 @@
+{
+  "vector_id": "comms/claim-expired",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-conformance"
+  ],
+  "invariants": [
+    "COMMS-I-CLAIM-AUTHENTICITY"
+  ],
+  "reason_codes": [
+    "claim-expired"
+  ],
+  "description": "A claim expires at its exact exclusive expiry boundary.",
+  "direction": "consume",
+  "input": {
+    "claim_id": "ad47df49d87e3390ca4653be89a5f4120f8d76c2b6fbc08be4b09c5c8ec09ea0",
+    "now": 1767249200
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "claim-expired",
+    "evaluator_output": {
+      "allowed": false,
+      "state": "expired",
+      "reason_code": "claim-expired"
+    }
+  }
+}

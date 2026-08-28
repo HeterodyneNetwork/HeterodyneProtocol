@@ -1,0 +1,24 @@
+{
+  "vector_id": "core/org-member-add-unauthorized",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "core",
+  "spec_refs": [
+    "heterodyne:core#core-conformance"
+  ],
+  "invariants": [
+    "CORE-I-IDENTITY-INTEGRITY"
+  ],
+  "reason_codes": [
+    "org_member_add_unauthorized"
+  ],
+  "description": "One member-KEL approval cannot substitute for the independent organization-admin threshold.",
+  "direction": "consume",
+  "input": {
+    "member_kel_authorized": true,
+    "org_admin_threshold_authorized": false
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "org_member_add_unauthorized"
+  }
+}

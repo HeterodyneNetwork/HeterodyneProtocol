@@ -1,0 +1,56 @@
+{
+  "vector_id": "comms/authorization-view-maximum-malformed",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-authorization-freshness"
+  ],
+  "invariants": [
+    "COMMS-I-MINT-FRESHNESS"
+  ],
+  "reason_codes": [
+    "claim-schema-invalid"
+  ],
+  "description": "An authorization-view maximum above 86400 seconds fails the registered manifest schema.",
+  "direction": "consume",
+  "input": {
+    "manifest": {
+      "profile": "heterodyne-oidc-continuity-v1",
+      "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+      "branch": "main",
+      "persona_npub": "npub1ccz8l9zpa47k6vz9gphftsrumpw80rjt3nhnefat4symjhrsnmjs38mnyd",
+      "persona_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "issuer": "https://node.example/oidc/npub1ccz8l9zpa47k6vz9gphftsrumpw80rjt3nhnefat4symjhrsnmjs38mnyd",
+      "sequence": 0,
+      "predecessor_digest": null,
+      "max_checkpoint_age_seconds": 300,
+      "authorization_view_max_age": 86401,
+      "current_jwks_sha256": "5a69cabd9001b9f2f4cc7292b0cb938b16fa6eec7e2f1063ad4d83f76e40c4c9",
+      "current_signing_key_id": "JFxM17QpSMGp4m2o4lkd03scH_xArMeS3jqxqoaWheo",
+      "current_signing_jwk_sha256": "51c299ebc8acd74bfeae66dddbfc05adf0e8d2abd2a162c2e29d77865a7a3f3b",
+      "retiring_signing_key_ids": [],
+      "retiring_jwks_sha256": [],
+      "status_lists": [],
+      "successor": null,
+      "authority": {
+        "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
+        "issued_at": 1767245666,
+        "checkpoint": {
+          "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+          "branch": "main",
+          "commit_oid": "62641b2c5c4ff998ffc3e0ea974681e4e84f494f3587cff2fb5020295a435f6b",
+          "observed_at": 1767245666
+        }
+      },
+      "authority_proof": {
+        "type": "radicle-ed25519",
+        "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
+        "signature": "ff8463dea6ea6481f0ec9f2214b878f2fe621e8992d86b6cad5a9bd0b9a6612d913221dfc034c705199c60faf64b9f7fd91e300edb9b60560ad0145803b97909"
+      }
+    }
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "claim-schema-invalid"
+  }
+}

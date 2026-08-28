@@ -1,0 +1,181 @@
+{
+  "vector_id": "control/automation-attributed-before-signing",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "control",
+  "spec_refs": [
+    "heterodyne:control#control-agent-requirements"
+  ],
+  "invariants": [
+    "CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING",
+    "CONTROL-I-OPERATION-AT-MOST-ONCE"
+  ],
+  "reason_codes": [],
+  "description": "A reserved automated intent is exact-grant bound, receives canonical Comms attribution, and advances to a durable claim transition before signer execution.",
+  "direction": "produce",
+  "input": {
+    "publication": {
+      "profile": "heterodyne.control.agent-publish-intent.v1",
+      "spec_version": "heterodyne/0.6.0",
+      "grant_id": "7777777777777777777777777777777777777777777777777777777777777777",
+      "vault_id": "6666666666666666666666666666666666666666666666666666666666666666",
+      "persona_active_key": "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f",
+      "nip46_client_pubkey": "3333333333333333333333333333333333333333333333333333333333333333",
+      "signer_audience": "https://node.example/nip46/current-persona",
+      "selected_signing_pubkey": "462779ad4aad39514614751a71085f2f10e1c7a593e4e030efb5b8721ce55b0b",
+      "key_class": "agent",
+      "created_at": 111,
+      "kind": 1,
+      "tags": [
+        [
+          "t",
+          "heterodyne"
+        ]
+      ],
+      "content": "current bounded automated publication",
+      "value_msats": 0,
+      "agent_class": "ai",
+      "agent_association": {
+        "kind": "key",
+        "value": "462779ad4aad39514614751a71085f2f10e1c7a593e4e030efb5b8721ce55b0b"
+      },
+      "tier": 1
+    },
+    "grant": {
+      "profile": "heterodyne.control.signer-grant.v1",
+      "spec_version": "heterodyne/0.6.0",
+      "grant_id": "7777777777777777777777777777777777777777777777777777777777777777",
+      "vault_id": "6666666666666666666666666666666666666666666666666666666666666666",
+      "persona_active_key": "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f",
+      "nip46_client_pubkey": "3333333333333333333333333333333333333333333333333333333333333333",
+      "signer_audience": "https://node.example/nip46/current-persona",
+      "selected_signing_pubkey": "462779ad4aad39514614751a71085f2f10e1c7a593e4e030efb5b8721ce55b0b",
+      "key_class": "agent",
+      "persona_signing_authorized": false,
+      "allowed_methods": [
+        "sign_event"
+      ],
+      "allowed_event_kinds": [
+        1
+      ],
+      "limits": {
+        "request_window_seconds": 60,
+        "request_count": 20,
+        "max_event_bytes": 4096,
+        "max_value_msats": 0
+      },
+      "oidc_authorization_id": "8888888888888888888888888888888888888888888888888888888888888888",
+      "connection_secret_sha256": "8c0cc17a04942cc4f8e0fe0b302606d3108860c126428ba2ceeb5f9ed41c2b05",
+      "issued_at": 100,
+      "expires_at": 200,
+      "predecessor": null,
+      "state": "active",
+      "revoked_at": null,
+      "authorizing_pubkey": "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f",
+      "automation_policy": {
+        "workload_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "agent_class": "ai",
+        "agent_association": {
+          "kind": "key",
+          "value": "462779ad4aad39514614751a71085f2f10e1c7a593e4e030efb5b8721ce55b0b"
+        },
+        "tier": 1,
+        "oidc_scopes": []
+      },
+      "signature": "730ba649bf8898b752a0764ad4cb42a887cb9f0ac65e8b351001a21c48297f6ee5c1afe8975135b80340c689488ff3a96cf4517fd95ee1b392da6b7e05160ae9"
+    },
+    "usage_state": {
+      "grant_id": "7777777777777777777777777777777777777777777777777777777777777777",
+      "grant_digest": "141e19bf61f53e945fcfa5e1ce9f57de350cee3f57cbd816420129e00aaeac42",
+      "authority": {
+        "vault_id": "6666666666666666666666666666666666666666666666666666666666666666",
+        "persona_active_key": "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f",
+        "nip46_client_pubkey": "3333333333333333333333333333333333333333333333333333333333333333",
+        "signer_audience": "https://node.example/nip46/current-persona",
+        "selected_signing_pubkey": "462779ad4aad39514614751a71085f2f10e1c7a593e4e030efb5b8721ce55b0b",
+        "key_class": "agent"
+      },
+      "window_started_at": 100,
+      "consumed_request_count": 1,
+      "revision": 5,
+      "reservations": [
+        {
+          "operation_id": "3848f902803cba3995b09d4e3e82f80f39c9556b67ce30f74b025e6a2ce032b5",
+          "request_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "request_digest": "f5f6c2bdd2c358d05ef52f1f67e7ad0df4eafd256409b6d32bd7a199e2d7f9ca",
+          "rpc_request": {
+            "id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "method": "sign_event",
+            "params": [
+              "{\"content\":\"current bounded automated publication\",\"created_at\":111,\"kind\":1,\"tags\":[[\"t\",\"heterodyne\"],[\"L\",\"network.heterodyne.agent\"],[\"l\",\"ai\",\"network.heterodyne.agent\"],[\"heterodyne_agent\",\"v1\",\"key\",\"462779ad4aad39514614751a71085f2f10e1c7a593e4e030efb5b8721ce55b0b\"],[\"agent_action\",\"publish\"]]}"
+            ]
+          },
+          "value_msats": 0,
+          "window_started_at": 100,
+          "reserved_at": 110,
+          "claimed_at": null,
+          "executing_at": null,
+          "completed_at": null,
+          "state": "reserved",
+          "execution_token": null,
+          "result_event_id": null,
+          "failure_digest": null
+        }
+      ]
+    }
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "authorization_mode": "claim-required",
+    "unsigned_event": {
+      "pubkey": "462779ad4aad39514614751a71085f2f10e1c7a593e4e030efb5b8721ce55b0b",
+      "created_at": 111,
+      "kind": 1,
+      "tags": [
+        [
+          "t",
+          "heterodyne"
+        ],
+        [
+          "L",
+          "network.heterodyne.agent"
+        ],
+        [
+          "l",
+          "ai",
+          "network.heterodyne.agent"
+        ],
+        [
+          "heterodyne_agent",
+          "v1",
+          "key",
+          "462779ad4aad39514614751a71085f2f10e1c7a593e4e030efb5b8721ce55b0b"
+        ],
+        [
+          "agent_action",
+          "publish"
+        ]
+      ],
+      "content": "current bounded automated publication"
+    },
+    "claim_transition": {
+      "operation_id": "3848f902803cba3995b09d4e3e82f80f39c9556b67ce30f74b025e6a2ce032b5",
+      "grant_id": "7777777777777777777777777777777777777777777777777777777777777777",
+      "grant_digest": "141e19bf61f53e945fcfa5e1ce9f57de350cee3f57cbd816420129e00aaeac42",
+      "authority": {
+        "vault_id": "6666666666666666666666666666666666666666666666666666666666666666",
+        "persona_active_key": "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f",
+        "nip46_client_pubkey": "3333333333333333333333333333333333333333333333333333333333333333",
+        "signer_audience": "https://node.example/nip46/current-persona",
+        "selected_signing_pubkey": "462779ad4aad39514614751a71085f2f10e1c7a593e4e030efb5b8721ce55b0b",
+        "key_class": "agent"
+      },
+      "request_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "request_digest": "f5f6c2bdd2c358d05ef52f1f67e7ad0df4eafd256409b6d32bd7a199e2d7f9ca",
+      "expected_revision": 5,
+      "next_revision": 6,
+      "prior_reservation_state": "reserved",
+      "reservation_state": "claimed",
+      "claimed_at": 110
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "vector_id": "workspace/invitation-replay",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "workspace",
+  "spec_refs": [
+    "heterodyne:workspace#workspace-grants"
+  ],
+  "invariants": [
+    "WORKSPACE-I-NO-AMBIENT-AUTHORITY"
+  ],
+  "reason_codes": [
+    "workspace_replay"
+  ],
+  "description": "The current Workspace semantic boundary rejects invitation replay.",
+  "direction": "consume",
+  "input": {
+    "prior_head": "policy-head-a",
+    "asserted_predecessor": "policy-head-a",
+    "device_active": true,
+    "invitation_nonce_unused": false
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "workspace_replay"
+  }
+}

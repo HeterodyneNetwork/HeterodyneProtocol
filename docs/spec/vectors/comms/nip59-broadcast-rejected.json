@@ -1,0 +1,24 @@
+{
+  "vector_id": "comms/nip59-broadcast-rejected",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-encrypted-audience-posts"
+  ],
+  "invariants": [
+    "COMMS-I-MARMOT-UPSTREAM-AUTHORITY"
+  ],
+  "reason_codes": [
+    "nip59_broadcast_rejected"
+  ],
+  "description": "The current Comms policy boundary rejects nip59 broadcast rejected.",
+  "direction": "consume",
+  "input": {
+    "transport": "nip59",
+    "wrap_profile": "room_key.v1"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "nip59_broadcast_rejected"
+  }
+}

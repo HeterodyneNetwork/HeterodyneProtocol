@@ -1,0 +1,24 @@
+{
+  "vector_id": "comms/marmot-expiration-not-erasure",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-retention-and-non-erasure"
+  ],
+  "invariants": [
+    "COMMS-I-RADICLE-NON-ERASURE"
+  ],
+  "reason_codes": [],
+  "description": "Retention expiry stops conforming advertisement and replication without claiming deletion of independently retained Git objects.",
+  "direction": "consume",
+  "input": {
+    "retention_expired": true,
+    "independent_git_objects_possible": true
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "stop_advertising": true,
+    "stop_replication": true,
+    "erasure_guarantee": false
+  }
+}

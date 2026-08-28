@@ -1,0 +1,23 @@
+{
+  "vector_id": "control/usage-binding-mismatch",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "control",
+  "spec_refs": [
+    "heterodyne:control#control-request-processing"
+  ],
+  "invariants": [
+    "CONTROL-I-OPERATION-AT-MOST-ONCE"
+  ],
+  "reason_codes": [
+    "control-usage-binding-mismatch"
+  ],
+  "description": "The live Control authorization boundary rejects usage binding mismatch.",
+  "direction": "consume",
+  "input": {
+    "grant_digest": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "control-usage-binding-mismatch"
+  }
+}

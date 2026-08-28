@@ -1,0 +1,59 @@
+{
+  "vector_id": "control/caller-freshness-booleans-rejected",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "control",
+  "spec_refs": [
+    "heterodyne:control#control-token"
+  ],
+  "invariants": [
+    "CONTROL-I-NIP46-OIDC-ACTIVATION"
+  ],
+  "reason_codes": [
+    "control-authorization-view-stale"
+  ],
+  "description": "Caller-authored freshness booleans cannot substitute for an opaque authorization view.",
+  "direction": "consume",
+  "input": {
+    "manifest": {
+      "profile": "heterodyne-oidc-continuity-v1",
+      "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+      "branch": "main",
+      "persona_npub": "npub1ccz8l9zpa47k6vz9gphftsrumpw80rjt3nhnefat4symjhrsnmjs38mnyd",
+      "persona_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "issuer": "https://node.example/oidc/npub1ccz8l9zpa47k6vz9gphftsrumpw80rjt3nhnefat4symjhrsnmjs38mnyd",
+      "sequence": 0,
+      "predecessor_digest": null,
+      "max_checkpoint_age_seconds": 300,
+      "authorization_view_max_age": 300,
+      "current_jwks_sha256": "5a69cabd9001b9f2f4cc7292b0cb938b16fa6eec7e2f1063ad4d83f76e40c4c9",
+      "current_signing_key_id": "JFxM17QpSMGp4m2o4lkd03scH_xArMeS3jqxqoaWheo",
+      "current_signing_jwk_sha256": "51c299ebc8acd74bfeae66dddbfc05adf0e8d2abd2a162c2e29d77865a7a3f3b",
+      "retiring_signing_key_ids": [],
+      "retiring_jwks_sha256": [],
+      "status_lists": [],
+      "successor": null,
+      "authority": {
+        "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
+        "issued_at": 1767245666,
+        "checkpoint": {
+          "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+          "branch": "main",
+          "commit_oid": "62641b2c5c4ff998ffc3e0ea974681e4e84f494f3587cff2fb5020295a435f6b",
+          "observed_at": 1767245666
+        }
+      },
+      "authority_proof": {
+        "type": "radicle-ed25519",
+        "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
+        "signature": "5e1ebd0e8639d901c06ca5bf2e9c1c61c175dbc2950db760dbc94f4a8c966c835d0a8a3e7d8f57d14f245b56d67aa8d2a68bcac2d68c7ccfa0dcd78edf0aa60f"
+      }
+    },
+    "now": 1767245966,
+    "checkpoint_fresh": true,
+    "authorization_view_authenticated": true
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "control-authorization-view-stale"
+  }
+}

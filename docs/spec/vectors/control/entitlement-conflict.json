@@ -1,0 +1,32 @@
+{
+  "vector_id": "control/entitlement-conflict",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "control",
+  "spec_refs": [
+    "heterodyne:control#control-entitlement"
+  ],
+  "invariants": [
+    "CONTROL-I-MARMOT-GRANT-CONFINEMENT"
+  ],
+  "reason_codes": [
+    "control-entitlement-conflict"
+  ],
+  "description": "The current Control policy boundary rejects entitlement conflict.",
+  "direction": "consume",
+  "input": {
+    "keypackage_valid": true,
+    "member_count": 2,
+    "node_account_matches": true,
+    "entitlement_state": "revoked",
+    "resource_available": true,
+    "welcome_rate_remaining": 1,
+    "replenishment_requested": false,
+    "replenishment_rate_remaining": 1,
+    "pending_at_cap": false,
+    "method": "control.enrollment.start"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "control-entitlement-conflict"
+  }
+}

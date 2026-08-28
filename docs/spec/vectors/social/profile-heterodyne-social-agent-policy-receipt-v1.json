@@ -1,0 +1,86 @@
+{
+  "vector_id": "social/profile-heterodyne-social-agent-policy-receipt-v1",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "social",
+  "profile": "heterodyne-social-agent-policy-receipt-v1",
+  "spec_refs": [
+    "heterodyne:social#social-security"
+  ],
+  "invariants": [
+    "SOCIAL-I-AGENT-AUTHORSHIP-EXACT",
+    "SOCIAL-I-AGENT-POLICY-LOCAL"
+  ],
+  "reason_codes": [],
+  "description": "The fixed heterodyne-social-agent-policy-receipt-v1 allocation is checked separately from its live semantic boundary.",
+  "direction": "consume",
+  "input": {
+    "kind": 1985,
+    "profile_id": "heterodyne-social-agent-policy-receipt-v1",
+    "owner": "social",
+    "discriminator": "tags:L=network.heterodyne.agent-policy,l=<reason>@network.heterodyne.agent-policy",
+    "stamping": true,
+    "first_version": "heterodyne/0.5.0",
+    "status": "draft",
+    "wire_probe": {
+      "content_is_heterodyne_json": false,
+      "is_dr_outer": false,
+      "tags": [
+        [
+          "L",
+          "network.heterodyne.agent-policy"
+        ],
+        [
+          "l",
+          "agent-attribution-missing@network.heterodyne.agent-policy"
+        ]
+      ]
+    },
+    "publication": {
+      "kind": 1,
+      "tags": [
+        [
+          "client",
+          "heterodyne-current-profile"
+        ]
+      ],
+      "agent_class": "ai",
+      "persona": "1111111111111111111111111111111111111111111111111111111111111111",
+      "issuer": "https://issuer.example/current-profile",
+      "subject": "current-profile-agent",
+      "client_id": "current-profile-client",
+      "signer": "2222222222222222222222222222222222222222222222222222222222222222",
+      "expected_signer": "2222222222222222222222222222222222222222222222222222222222222222",
+      "signer_key_class": "agent",
+      "oidc_scopes": [
+        "heterodyne:agent:publish"
+      ],
+      "agent_association": {
+        "kind": "key",
+        "value": "2222222222222222222222222222222222222222222222222222222222222222"
+      },
+      "expected_agent_association": {
+        "kind": "key",
+        "value": "2222222222222222222222222222222222222222222222222222222222222222"
+      },
+      "tier": 1
+    },
+    "policy": {
+      "subscribed": true,
+      "policy_persona": "1111111111111111111111111111111111111111111111111111111111111111",
+      "policy_event_selected": true,
+      "event_author": "2222222222222222222222222222222222222222222222222222222222222222",
+      "muted_event_authors": [
+        "2222222222222222222222222222222222222222222222222222222222222222"
+      ],
+      "default_subscription": false,
+      "default_visible": true,
+      "can_disable_default": true
+    }
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "author": "2222222222222222222222222222222222222222222222222222222222222222",
+    "profile_matches": true,
+    "local_policy_applied": true
+  }
+}

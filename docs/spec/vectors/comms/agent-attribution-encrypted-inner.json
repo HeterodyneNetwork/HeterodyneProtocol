@@ -1,0 +1,75 @@
+{
+  "vector_id": "comms/agent-attribution-encrypted-inner",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-mandatory-pre-sign-attribution"
+  ],
+  "invariants": [
+    "COMMS-I-AGENT-ATTRIBUTION",
+    "COMMS-I-AGENT-SIGNER-BINDING"
+  ],
+  "reason_codes": [],
+  "description": "Tier-3 automation attribution is canonicalized before signing and remains only inside the encrypted logical event.",
+  "direction": "produce",
+  "input": {
+    "kind": 1,
+    "tags": [
+      [
+        "client",
+        "heterodyne"
+      ]
+    ],
+    "agent_class": "ai",
+    "persona": "1111111111111111111111111111111111111111111111111111111111111111",
+    "issuer": "https://issuer.example/oidc/npub1persona",
+    "subject": "stable-pairwise-sub",
+    "client_id": "current-agent-client",
+    "signer": "3333333333333333333333333333333333333333333333333333333333333333",
+    "expected_signer": "3333333333333333333333333333333333333333333333333333333333333333",
+    "signer_key_class": "agent",
+    "oidc_scopes": [
+      "heterodyne:agent:publish"
+    ],
+    "agent_association": {
+      "kind": "key",
+      "value": "3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    "expected_agent_association": {
+      "kind": "key",
+      "value": "3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    "tier": 3
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "tags": [
+      [
+        "client",
+        "heterodyne"
+      ],
+      [
+        "L",
+        "network.heterodyne.agent"
+      ],
+      [
+        "l",
+        "ai",
+        "network.heterodyne.agent"
+      ],
+      [
+        "heterodyne_agent",
+        "v1",
+        "key",
+        "3333333333333333333333333333333333333333333333333333333333333333"
+      ],
+      [
+        "agent_action",
+        "publish"
+      ]
+    ],
+    "placement": "encrypted-inner",
+    "author": "3333333333333333333333333333333333333333333333333333333333333333",
+    "clear_outer_tags": []
+  }
+}

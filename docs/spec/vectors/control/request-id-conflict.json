@@ -1,0 +1,26 @@
+{
+  "vector_id": "control/request-id-conflict",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "control",
+  "spec_refs": [
+    "heterodyne:control#control-request-processing"
+  ],
+  "invariants": [
+    "CONTROL-I-OPERATION-AT-MOST-ONCE"
+  ],
+  "reason_codes": [
+    "control-request-id-conflict"
+  ],
+  "description": "The current Control policy boundary rejects request id conflict.",
+  "direction": "consume",
+  "input": {
+    "now": 100,
+    "expires_at": 101,
+    "request_id_reused": true,
+    "request_digest_matches": false
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "control-request-id-conflict"
+  }
+}

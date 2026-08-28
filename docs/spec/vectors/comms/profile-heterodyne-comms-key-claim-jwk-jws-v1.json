@@ -1,0 +1,45 @@
+{
+  "vector_id": "comms/profile-heterodyne-comms-key-claim-jwk-jws-v1",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "profile": "heterodyne-comms-key-claim-jwk-jws-v1",
+  "spec_refs": [
+    "heterodyne:comms#comms-security"
+  ],
+  "invariants": [
+    "COMMS-I-CLAIM-AUTHENTICITY"
+  ],
+  "reason_codes": [],
+  "description": "The fixed heterodyne-comms-key-claim-jwk-jws-v1 allocation is checked separately from its live semantic boundary.",
+  "direction": "consume",
+  "input": {
+    "kind": 31013,
+    "profile_id": "heterodyne-comms-key-claim-jwk-jws-v1",
+    "owner": "comms",
+    "discriminator": "production-rule:claim-subject-pop;proof=jwk-jws-v1",
+    "stamping": false,
+    "first_version": "heterodyne/0.5.0",
+    "status": "draft",
+    "wire_probe": {
+      "content_is_heterodyne_json": false,
+      "is_dr_outer": false,
+      "production_rule": "claim-subject-pop;proof=jwk-jws-v1"
+    },
+    "proof_suite": "jwk-jws",
+    "proof_purpose": "claim-subject-pop",
+    "message": "6dcf5133dacbd52fb002e91511972f67c484d426141791772693ddda25cb75a4",
+    "public_jwk": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "XiEsCYDks5_AlyETSqAhCTdO39JgwNPQPLUByNZUV6k"
+    },
+    "protected": "eyJhbGciOiJFZERTQSJ9",
+    "signature": "6cstzmt2DIGJvdSZ8EJZIQAOAtrQNazF82EhVQNsnAUMf2S3-syldKIuIAB-PUUkfcqnF6Qmv2CX4pE8SVikBg"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "proof_suite": "jwk-jws",
+    "proof_purpose": "claim-subject-pop",
+    "authenticated_message": "6dcf5133dacbd52fb002e91511972f67c484d426141791772693ddda25cb75a4"
+  }
+}

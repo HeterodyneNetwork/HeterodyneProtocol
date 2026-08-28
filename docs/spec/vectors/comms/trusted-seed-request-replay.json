@@ -1,0 +1,23 @@
+{
+  "vector_id": "comms/trusted-seed-request-replay",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-trusted-seed-private-relay"
+  ],
+  "invariants": [
+    "COMMS-I-TRUSTED-SEED-CONFINEMENT"
+  ],
+  "reason_codes": [
+    "trusted-seed-request-replay"
+  ],
+  "description": "The trusted-seed authority rejects trusted seed request replay from authenticated current state.",
+  "direction": "consume",
+  "input": {
+    "capability_used": true
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "trusted-seed-request-replay"
+  }
+}

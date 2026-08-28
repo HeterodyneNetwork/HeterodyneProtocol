@@ -1,0 +1,55 @@
+{
+  "vector_id": "social/agent-attribution-falsified",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "social",
+  "spec_refs": [
+    "heterodyne:social#social-agent-policy"
+  ],
+  "invariants": [
+    "SOCIAL-I-AGENT-AUTHORSHIP-EXACT"
+  ],
+  "reason_codes": [
+    "agent-attribution-falsified"
+  ],
+  "description": "The current Social semantic boundary rejects agent attribution falsified.",
+  "direction": "consume",
+  "input": {
+    "event": {
+      "pubkey": "5c4e0dec7215e26833938730e5e505aa62504da85ba57106a46b5a2404fc9d8e",
+      "created_at": 1800100000,
+      "kind": 1,
+      "tags": [
+        [
+          "L",
+          "network.heterodyne.agent"
+        ],
+        [
+          "l",
+          "ai",
+          "network.heterodyne.agent"
+        ],
+        [
+          "heterodyne_agent",
+          "v1",
+          "key",
+          "5c4e0dec7215e26833938730e5e505aa62504da85ba57106a46b5a2404fc9d8e"
+        ],
+        [
+          "agent_action",
+          "publish"
+        ]
+      ],
+      "content": "bounded automated publication",
+      "id": "1b2e73019725d1de595ad0a4b506370ba4e647e54baf93fe8ddb54a57b3a2d26",
+      "sig": "c006becc8202b76379d78f1b45de98e94cbaa9403f0e4172bd5f26aed66fa5273bbb338158e8582a0890dcfd0eb5118ea36243fbf3ea02c39c7a13933ba1de7b"
+    },
+    "expected_agent_association": {
+      "kind": "key",
+      "value": "5be5e9478209674a96e60f1f037f6176540fd001fa1d64694770c56a7709c42c"
+    }
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "agent-attribution-falsified"
+  }
+}

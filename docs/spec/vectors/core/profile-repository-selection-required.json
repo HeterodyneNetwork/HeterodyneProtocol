@@ -1,0 +1,26 @@
+{
+  "vector_id": "core/profile-repository-selection-required",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "core",
+  "spec_refs": [
+    "heterodyne:core#core-persona-profile"
+  ],
+  "invariants": [
+    "CORE-I-IDENTITY-INTEGRITY"
+  ],
+  "reason_codes": [
+    "profile-repository-selection-required"
+  ],
+  "description": "Relay profile state cannot become canonical without selecting the verified profile repository.",
+  "direction": "consume",
+  "input": {
+    "canonicalRepoSelected": false,
+    "publisher": "1697ffa6fd9de627c077e3d2fe541084ce13300b0bec1146f95ae57f0d0bd6a5",
+    "delegatedPublisher": "1697ffa6fd9de627c077e3d2fe541084ce13300b0bec1146f95ae57f0d0bd6a5",
+    "nip05Present": false
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "profile-repository-selection-required"
+  }
+}

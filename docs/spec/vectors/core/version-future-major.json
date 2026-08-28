@@ -1,0 +1,38 @@
+{
+  "vector_id": "core/version-future-major",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "core",
+  "spec_refs": [
+    "heterodyne:core#core-conformance"
+  ],
+  "invariants": [
+    "CORE-I-VERIFY-BEFORE-USE"
+  ],
+  "reason_codes": [
+    "unknown_major_version"
+  ],
+  "description": "A valid event carrying a strictly newer unsupported family major is rejected as incompatible.",
+  "direction": "consume",
+  "input": {
+    "event": {
+      "pubkey": "e4d24944ed947bc34ed14ea4b2e063aa27ebd8da658577a263f55a631c7f656a",
+      "created_at": 1800000000,
+      "kind": 1,
+      "tags": [
+        [
+          "spec_version",
+          "heterodyne/1.0.0"
+        ]
+      ],
+      "content": "future-major current Core fixture",
+      "id": "f7240674815862dbd7822d0f488c39df031fc7a048dc5345683e568cd45de5b6",
+      "sig": "7f7b2e062f3a71582ca0abb4c82e880e35950542c6f11f69d97d669e79ef5c14155b684a0cc2eb62d1b4fc41b79bccfb00067636b12e33e47a0e468cb05b7d29"
+    },
+    "nip01_raw": "[0,\"e4d24944ed947bc34ed14ea4b2e063aa27ebd8da658577a263f55a631c7f656a\",1800000000,1,[[\"spec_version\",\"heterodyne/1.0.0\"]],\"future-major current Core fixture\"]",
+    "stamp_policy": "required"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "unknown_major_version"
+  }
+}

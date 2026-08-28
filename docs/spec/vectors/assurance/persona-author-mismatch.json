@@ -1,0 +1,43 @@
+{
+  "vector_id": "assurance/persona-author-mismatch",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "assurance",
+  "spec_refs": [
+    "heterodyne:assurance#core-verification"
+  ],
+  "invariants": [
+    "ASSURANCE-I-CORE-OPTIONALITY"
+  ],
+  "reason_codes": [
+    "delegation_mismatch"
+  ],
+  "description": "A valid NIP-01 event from a non-active persona key is rejected before optional Assurance can affect the Core verdict.",
+  "direction": "consume",
+  "input": {
+    "event": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1785000001,
+      "kind": 31000,
+      "tags": [
+        [
+          "d",
+          "assurance-head"
+        ],
+        [
+          "profile",
+          "heterodyne.assurance.active-key-acceptance.v1"
+        ]
+      ],
+      "content": "{\"active_key\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",\"assurance_head\":\"619aac8e3a4f2771819f16c1f27512f4dccc7e881de6b5c5399fce6b0041f3f9\",\"cold_root\":\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",\"cold_root_signature\":\"3d9c8a39fbddba60213a4876914a196b2f64a5b38302c9809e986aeca20bf8113ede674eed791bd188328d768f7609e7290b87996c4cd706f3ab56bdca48ba20\",\"created_at\":1785000001,\"inception_event_id\":\"619aac8e3a4f2771819f16c1f27512f4dccc7e881de6b5c5399fce6b0041f3f9\",\"predecessor\":\"619aac8e3a4f2771819f16c1f27512f4dccc7e881de6b5c5399fce6b0041f3f9\",\"profile\":\"heterodyne.assurance.active-key-acceptance.v1\",\"spec_version\":\"heterodyne/0.6.0\",\"state\":\"assured\"}",
+      "id": "5e42684ee4f5c3c754487dff44d8b5ffec5b601d5893e34bb726a6ec3b846e66",
+      "sig": "b0eddc1eee27f8d80f036d8b4bcf6f0906c6ee7a3f599fc6a47ed1535e92e16ac7b82fd171ab0ec12d741407dae410c6a6e846387dd5bd437bd9c23ce8f1e3e5"
+    },
+    "nip01_raw": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1785000001,31000,[[\"d\",\"assurance-head\"],[\"profile\",\"heterodyne.assurance.active-key-acceptance.v1\"]],\"{\\\"active_key\\\":\\\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\\\",\\\"assurance_head\\\":\\\"619aac8e3a4f2771819f16c1f27512f4dccc7e881de6b5c5399fce6b0041f3f9\\\",\\\"cold_root\\\":\\\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\\\",\\\"cold_root_signature\\\":\\\"3d9c8a39fbddba60213a4876914a196b2f64a5b38302c9809e986aeca20bf8113ede674eed791bd188328d768f7609e7290b87996c4cd706f3ab56bdca48ba20\\\",\\\"created_at\\\":1785000001,\\\"inception_event_id\\\":\\\"619aac8e3a4f2771819f16c1f27512f4dccc7e881de6b5c5399fce6b0041f3f9\\\",\\\"predecessor\\\":\\\"619aac8e3a4f2771819f16c1f27512f4dccc7e881de6b5c5399fce6b0041f3f9\\\",\\\"profile\\\":\\\"heterodyne.assurance.active-key-acceptance.v1\\\",\\\"spec_version\\\":\\\"heterodyne/0.6.0\\\",\\\"state\\\":\\\"assured\\\"}\"]",
+    "stamp_policy": "optional",
+    "active_persona_key": "acd484e2f0c7f65309ad178a9f559abde09796974c57e714c35f110dfc27ccbe"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "delegation_mismatch"
+  }
+}

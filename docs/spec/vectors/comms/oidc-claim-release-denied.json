@@ -1,0 +1,28 @@
+{
+  "vector_id": "comms/oidc-claim-release-denied",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-authorization-clients-consent-and-release"
+  ],
+  "invariants": [
+    "COMMS-I-CLAIM-RELEASE"
+  ],
+  "reason_codes": [
+    "oidc-claim-release-denied"
+  ],
+  "description": "The live OIDC boundary rejects oidc claim release denied.",
+  "direction": "consume",
+  "input": {
+    "nonce": ""
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "oidc-claim-release-denied",
+    "evaluator_output": {
+      "allowed": false,
+      "state": "invalid",
+      "reason_code": "oidc-claim-release-denied"
+    }
+  }
+}

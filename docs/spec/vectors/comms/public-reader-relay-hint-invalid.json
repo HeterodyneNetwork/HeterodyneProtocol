@@ -1,0 +1,23 @@
+{
+  "vector_id": "comms/public-reader-relay-hint-invalid",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-launcher-and-content-security"
+  ],
+  "invariants": [
+    "COMMS-I-PUBLIC-READER-TIER1-ONLY"
+  ],
+  "reason_codes": [
+    "public-reader-relay-hint-invalid"
+  ],
+  "description": "A cleartext loopback relay hint is rejected by the normalized bootstrap boundary.",
+  "direction": "consume",
+  "input": {
+    "relay_hint": "ws://127.0.0.1/private"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "public-reader-relay-hint-invalid"
+  }
+}

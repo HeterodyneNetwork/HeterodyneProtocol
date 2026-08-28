@@ -1,0 +1,27 @@
+{
+  "vector_id": "comms/claim-revoker-unauthorized",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-conformance"
+  ],
+  "invariants": [
+    "COMMS-I-CLAIM-REVOCATION"
+  ],
+  "reason_codes": [
+    "claim-revoker-unauthorized"
+  ],
+  "description": "A revocation ledger record without claim-bound revoker authority evidence cannot reduce authority.",
+  "direction": "consume",
+  "input": {
+    "record_id": "8946fa1cef795b73e1f549e5b23f660edad0ebe981980bf450f0214f9d65c39b",
+    "evidence": {
+      "record_id": "8946fa1cef795b73e1f549e5b23f660edad0ebe981980bf450f0214f9d65c39b",
+      "payload_digest": "17814dcecd2688458cef6342496334b26d1b8a91d83503482c7701093a537ca6"
+    }
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "claim-revoker-unauthorized"
+  }
+}

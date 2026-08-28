@@ -1,0 +1,26 @@
+{
+  "vector_id": "control/signing-grant-stale",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "control",
+  "spec_refs": [
+    "heterodyne:control#control-signer-grants"
+  ],
+  "invariants": [
+    "CONTROL-I-EXACT-SIGNER-GRANT"
+  ],
+  "reason_codes": [
+    "control-signing-grant-stale"
+  ],
+  "description": "The live Control authorization boundary rejects signing grant stale.",
+  "direction": "consume",
+  "input": {
+    "grant_ids": [
+      "7777777777777777777777777777777777777777777777777777777777777777",
+      "7777777777777777777777777777777777777777777777777777777777777777"
+    ]
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "control-signing-grant-stale"
+  }
+}

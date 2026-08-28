@@ -1,0 +1,180 @@
+{
+  "vector_id": "assurance/profile-heterodyne-assurance-succession-v1",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "assurance",
+  "profile": "heterodyne-assurance-succession-v1",
+  "spec_refs": [
+    "heterodyne:assurance#assurance-security"
+  ],
+  "invariants": [
+    "ASSURANCE-I-TRANSITION-PROOF-BINDING"
+  ],
+  "reason_codes": [],
+  "description": "The fixed heterodyne-assurance-succession-v1 allocation is checked separately from its live semantic boundary.",
+  "direction": "consume",
+  "input": {
+    "kind": 31003,
+    "profile_id": "heterodyne-assurance-succession-v1",
+    "owner": "assurance",
+    "discriminator": "content.profile=heterodyne.assurance.succession.v1",
+    "stamping": false,
+    "first_version": "heterodyne/0.5.0",
+    "status": "draft",
+    "wire_probe": {
+      "content_is_heterodyne_json": true,
+      "is_dr_outer": false,
+      "content_profile": "heterodyne.assurance.succession.v1"
+    },
+    "current": {
+      "active_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "head": "5e42684ee4f5c3c754487dff44d8b5ffec5b601d5893e34bb726a6ec3b846e66",
+      "head_created_at": 1785000001,
+      "inception_event_id": "619aac8e3a4f2771819f16c1f27512f4dccc7e881de6b5c5399fce6b0041f3f9",
+      "inception_signature": "3d9c8a39fbddba60213a4876914a196b2f64a5b38302c9809e986aeca20bf8113ede674eed791bd188328d768f7609e7290b87996c4cd706f3ab56bdca48ba20",
+      "cold_root": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "succession_authority": "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9",
+      "epoch_policy": {
+        "current_keys": [
+          "e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13"
+        ],
+        "mode": "pre-rotation",
+        "next_key_commitments": [
+          "cd9177582b93ca2144ee27a0ecf19741ebab70464aafe6686843d8c4f08d9c8f"
+        ]
+      },
+      "witnesses": [
+        {
+          "key": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+          "weight": 1
+        }
+      ],
+      "thresholds": {
+        "epoch": 1,
+        "witness": 1
+      },
+      "associated_key_policy": {
+        "active_key": [
+          {
+            "role": "agent",
+            "scope": [
+              "nostr:kind:1"
+            ]
+          }
+        ],
+        "epoch_threshold": [
+          {
+            "role": "client",
+            "scope": [
+              "repository:read"
+            ]
+          }
+        ]
+      },
+      "compromise_cutoff": null
+    },
+    "event": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1785000011,
+      "kind": 31003,
+      "tags": [
+        [
+          "d",
+          "assurance-succession:5e42684ee4f5c3c754487dff44d8b5ffec5b601d5893e34bb726a6ec3b846e66"
+        ],
+        [
+          "profile",
+          "heterodyne.assurance.succession.v1"
+        ],
+        [
+          "p",
+          "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+        ],
+        [
+          "p",
+          "fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556"
+        ]
+      ],
+      "content": "{\"active_key\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",\"authorizing_evidence\":{\"authority_class\":\"succession\",\"authority_proofs\":[{\"authority_key\":\"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\",\"signature\":\"caedef875f01242826d7a1d57ed98c7fe73f714a7be286bdba6e1d4ab2f086b40917083a7d81311ed5f1869b82c7f1c8e2ed6ad683534f211db9c002ad1e97d1\"}],\"witness_receipts\":[{\"signature\":\"af7a8847faf5282eb1eda69afe3962d665e8223f0cb466f38167c4da1c501e73cf1a7d76c0d4aba714ce7963d673d61314e220a12de08a98b7c7872ffe3ccf1c\",\"witness_key\":\"2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4\"}]},\"class\":\"routine\",\"created_at\":1785000011,\"new_active_key\":\"fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556\",\"new_key_acceptance\":{\"key\":\"fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556\",\"signature\":\"2b654620f98e8adde5c09f960d7093a63ba47dfb702904d2c4161803c7ce7656de3840871b4365dfb0561dae8a90daf82e1d86741fc046ffe8e164b2a91948cf\"},\"next_associated_key_policy\":{\"active_key\":[{\"role\":\"agent\",\"scope\":[\"nostr:kind:1\"]}],\"epoch_threshold\":[{\"role\":\"client\",\"scope\":[\"repository:read\"]}]},\"next_epoch_policy\":{\"current_keys\":[\"5cbdf0646e5db4eaa398f365f2ea7a0e3d419b7e0330e39ce92bddedcac4f9bc\"],\"mode\":\"pre-rotation\",\"next_key_commitments\":[\"41030f76141fc2c57575f0bf350d0aa1b14974e6b7042e46a470935e229c2484\"]},\"next_succession_authority\":\"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\",\"predecessor\":\"5e42684ee4f5c3c754487dff44d8b5ffec5b601d5893e34bb726a6ec3b846e66\",\"previous_active_key\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",\"previous_head\":\"5e42684ee4f5c3c754487dff44d8b5ffec5b601d5893e34bb726a6ec3b846e66\",\"profile\":\"heterodyne.assurance.succession.v1\",\"spec_version\":\"heterodyne/0.6.0\",\"subordinate_reauthorizations\":[],\"thresholds\":{\"epoch\":1,\"witness\":1},\"witnesses\":[{\"key\":\"2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4\",\"weight\":1}]}",
+      "id": "b921fb814aa43ad91e78bf3a911a5c0770b19015503d53efa1934c4236915703",
+      "sig": "5108eb73198265a159074a6e85987bcec84806b69617092058064f4e88ac6af6585e7881761277eea9eb99a6a362d061851593340bb04977210e194bf289bfb9"
+    }
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "succession_event_id": "b921fb814aa43ad91e78bf3a911a5c0770b19015503d53efa1934c4236915703",
+      "transition_digest": "ae57e32bada4fd6846597f7cc5301ca89e7278623c168178771e64b162c42370",
+      "new_active_key": "fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556",
+      "compromise_cutoff": null,
+      "record": {
+        "active_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+        "authorizing_evidence": {
+          "authority_class": "succession",
+          "authority_proofs": [
+            {
+              "authority_key": "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9",
+              "signature": "caedef875f01242826d7a1d57ed98c7fe73f714a7be286bdba6e1d4ab2f086b40917083a7d81311ed5f1869b82c7f1c8e2ed6ad683534f211db9c002ad1e97d1"
+            }
+          ],
+          "witness_receipts": [
+            {
+              "signature": "af7a8847faf5282eb1eda69afe3962d665e8223f0cb466f38167c4da1c501e73cf1a7d76c0d4aba714ce7963d673d61314e220a12de08a98b7c7872ffe3ccf1c",
+              "witness_key": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4"
+            }
+          ]
+        },
+        "class": "routine",
+        "created_at": 1785000011,
+        "new_active_key": "fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556",
+        "new_key_acceptance": {
+          "key": "fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556",
+          "signature": "2b654620f98e8adde5c09f960d7093a63ba47dfb702904d2c4161803c7ce7656de3840871b4365dfb0561dae8a90daf82e1d86741fc046ffe8e164b2a91948cf"
+        },
+        "next_associated_key_policy": {
+          "active_key": [
+            {
+              "role": "agent",
+              "scope": [
+                "nostr:kind:1"
+              ]
+            }
+          ],
+          "epoch_threshold": [
+            {
+              "role": "client",
+              "scope": [
+                "repository:read"
+              ]
+            }
+          ]
+        },
+        "next_epoch_policy": {
+          "current_keys": [
+            "5cbdf0646e5db4eaa398f365f2ea7a0e3d419b7e0330e39ce92bddedcac4f9bc"
+          ],
+          "mode": "pre-rotation",
+          "next_key_commitments": [
+            "41030f76141fc2c57575f0bf350d0aa1b14974e6b7042e46a470935e229c2484"
+          ]
+        },
+        "next_succession_authority": "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9",
+        "predecessor": "5e42684ee4f5c3c754487dff44d8b5ffec5b601d5893e34bb726a6ec3b846e66",
+        "previous_active_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+        "previous_head": "5e42684ee4f5c3c754487dff44d8b5ffec5b601d5893e34bb726a6ec3b846e66",
+        "profile": "heterodyne.assurance.succession.v1",
+        "spec_version": "heterodyne/0.6.0",
+        "subordinate_reauthorizations": [],
+        "thresholds": {
+          "epoch": 1,
+          "witness": 1
+        },
+        "witnesses": [
+          {
+            "key": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+            "weight": 1
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "vector_id": "workspace/bare-key-baseline",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "workspace",
+  "spec_refs": [
+    "heterodyne:workspace#workspace-optional-assurance"
+  ],
+  "invariants": [
+    "WORKSPACE-I-OPTIONAL-ASSURANCE"
+  ],
+  "reason_codes": [],
+  "description": "The baseline Workspace remains valid under a bare active key without Assurance.",
+  "direction": "consume",
+  "input": {
+    "transition": {
+      "workspace_key": "1111111111111111111111111111111111111111111111111111111111111111",
+      "previous_policy_head": "3333333333333333333333333333333333333333333333333333333333333333",
+      "next_policy_head": "4444444444444444444444444444444444444444444444444444444444444444",
+      "previous_assurance": null,
+      "next_assurance": null
+    },
+    "assurance_authority": null
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "authorization": null
+  }
+}

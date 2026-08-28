@@ -1,0 +1,26 @@
+{
+  "vector_id": "comms/config-private-state-encrypted",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-config-repository-protection-profile"
+  ],
+  "invariants": [
+    "COMMS-I-CONFIG-AT-REST",
+    "COMMS-I-TIER2-HONESTY"
+  ],
+  "reason_codes": [],
+  "description": "A Comms configuration post is encrypted under the derived repository key and round-trips only at the client boundary.",
+  "direction": "round-trip",
+  "input": {
+    "config_audience_key": "4242424242424242424242424242424242424242424242424242424242424242",
+    "key_id": "current-config-key",
+    "plaintext": "{\"blob\":\"synthetic-private-config\"}"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "derived_key": "cf11bc1c159100a083987e48ef6b0b458bb2dfdb34b9e1aae53145b6dbc7033a",
+    "ciphertext": "AmBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgd0yzYFhT768/v/HU+N3oSrD//xr0waGtKZ8tBrVzCMugKdMP4mckJzLf3HRg3aoPRlqdIEMe/hybBIrgkoE6ipcPRMGtynrV7imAeM8JPX9GVrTZ9JRXuTfTU+dK1DApYeE=",
+    "recovered_plaintext": "{\"blob\":\"synthetic-private-config\"}"
+  }
+}

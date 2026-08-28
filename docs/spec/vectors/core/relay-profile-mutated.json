@@ -1,0 +1,24 @@
+{
+  "vector_id": "core/relay-profile-mutated",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "core",
+  "spec_refs": [
+    "heterodyne:core#core-conformance"
+  ],
+  "invariants": [
+    "CORE-I-IDENTITY-INTEGRITY"
+  ],
+  "reason_codes": [
+    "relay_profile_mutation"
+  ],
+  "description": "The Core operational boundary rejects relay profile mutated.",
+  "direction": "consume",
+  "input": {
+    "operation": "relay-profile",
+    "vanilla_nip01_unchanged": false
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "relay_profile_mutation"
+  }
+}

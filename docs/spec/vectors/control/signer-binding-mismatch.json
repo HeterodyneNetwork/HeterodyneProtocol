@@ -1,0 +1,23 @@
+{
+  "vector_id": "control/signer-binding-mismatch",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "control",
+  "spec_refs": [
+    "heterodyne:control#control-signer-grants"
+  ],
+  "invariants": [
+    "CONTROL-I-EXACT-SIGNER-GRANT"
+  ],
+  "reason_codes": [
+    "control-signer-binding-mismatch"
+  ],
+  "description": "The live Control authorization boundary rejects signer binding mismatch.",
+  "direction": "consume",
+  "input": {
+    "selected_signing_pubkey": "5555555555555555555555555555555555555555555555555555555555555555"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "control-signer-binding-mismatch"
+  }
+}

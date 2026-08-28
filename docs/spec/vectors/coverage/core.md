@@ -2,143 +2,35 @@
 
 Generated from [manifest.json](manifest.json); do not edit by hand.
 
-| Vector | Owner | Profile | Spec references |
-|---|---|---|---|
-| `breadcrumbs/compromise-rotation-not-produced` | core | — | `heterodyne:core#core-kel-rotation` |
-| `breadcrumbs/ordinary-consumer-no-profile-inference` | core | — | `heterodyne:core#core-kel-rotation` |
-| `breadcrumbs/repointed-nip05-rejected` | core | — | `heterodyne:core#core-kel-rotation` |
-| `breadcrumbs/unrelated-successor-rejected` | core | — | `heterodyne:core#core-kel-rotation` |
-| `config-backup/config-rid-advertised-rejected` | core | — | `heterodyne:core#core-keys-repository` |
-| `config-backup/config-rid-unadvertised-clean` | core | — | `heterodyne:core#core-keys-repository` |
-| `config-backup/nip49-nsec-wrap` | core | — | `heterodyne:core#core-keys-repository` |
-| `core-redundancy/radicle-multihost-replication` | core | — | `heterodyne:core#core-multi-host-seeding` |
-| `core-redundancy/stale-seed-does-not-remove-durability` | core | — | `heterodyne:core#core-multi-host-seeding` |
-| `identity-doc/add-before-remove` | core | — | `heterodyne:core#core-identity-discovery` |
-| `identity-doc/emergency-reanchor` | core | — | `heterodyne:core#core-identity-discovery` |
-| `identity-doc/kel-revoked-nid-rejected` | core | — | `heterodyne:core#core-identity-discovery` |
-| `identity/delegation-active` | core | — | `heterodyne:core#core-nid-delegation` |
-| `identity/delegation-expired` | core | — | `heterodyne:core#core-nid-delegation` |
-| `identity/delegation-revoked` | core | — | `heterodyne:core#core-nid-delegation` |
-| `identity/kind31005-race-tiebreaker-core` | core | — | `heterodyne:core#core-nid-delegation` |
-| `identity/revocation-post-window` | core | — | `heterodyne:core#core-nid-delegation` |
-| `identity/root-attestation-valid` | core | — | `heterodyne:core#core-root-attestation` |
-| `interop/kind31005-identity-pointer` | core | — | `heterodyne:core#core-identity-pointer` |
-| `keri-authority/accelerator-backdated-compromise` | core | — | `heterodyne:core#core-kel-verification` |
-| `keri-authority/accelerator-decision-equivalent` | core | — | `heterodyne:core#core-kel-verification` |
-| `keri-authority/delegation-conflict-repo-wins` | core | — | `heterodyne:core#core-kel-verification` |
-| `keri-authority/dependent-events-unresolved` | core | — | `heterodyne:core#core-kel-verification` |
-| `keri-authority/equivocation-flagged` | core | — | `heterodyne:core#core-kel-verification` |
-| `keri-authority/export-aid-digest-anchoring` | core | — | `heterodyne:core#core-keri-export` |
-| `keri-authority/export-aid-substituted-for-npub-rejected` | core | — | `heterodyne:core#core-keri-export` |
-| `keri-authority/export-degraded-metadata` | core | — | `heterodyne:core#core-keri-export` |
-| `keri-authority/export-incomplete` | core | — | `heterodyne:core#core-keri-export` |
-| `keri-authority/export-origin-absent-not-failure` | core | — | `heterodyne:core#core-keri-export` |
-| `keri-authority/export-unmappable-feature` | core | — | `heterodyne:core#core-keri-export` |
-| `keri-authority/export-unsupported-crypto-suite` | core | — | `heterodyne:core#core-keri-export` |
-| `keri-authority/kel-head-absent-rejected` | core | — | `heterodyne:core#core-kel-head` |
-| `keri-authority/kel-head-duplicate-rejected` | core | — | `heterodyne:core#core-kel-head` |
-| `keri-authority/kel-head-forbidden-on-inception` | core | — | `heterodyne:core#core-kel-head` |
-| `keri-authority/kel-head-forbidden-on-rotation` | core | — | `heterodyne:core#core-kel-head` |
-| `keri-authority/kel-head-malformed-rejected` | core | — | `heterodyne:core#core-kel-head` |
-| `keri-authority/kel-head-mandatory-on-delegation` | core | — | `heterodyne:core#core-kel-head` |
-| `keri-authority/kel-head-mandatory-on-root` | core | — | `heterodyne:core#core-kel-head` |
-| `keri-authority/kel-head-seq-mismatch-rejected` | core | — | `heterodyne:core#core-kel-head` |
-| `keri-authority/keri10json-cesr-wire-rejected` | core | — | `heterodyne:core#core-kel-verification` |
-| `keri-authority/materialized-atomic-rebuild` | core | — | `heterodyne:core#core-materialized-kel` |
-| `keri-authority/materialized-empty-kel-deletion` | core | — | `heterodyne:core#core-materialized-kel` |
-| `keri-authority/materialized-log-derivation` | core | — | `heterodyne:core#core-materialized-kel` |
-| `keri-authority/materialized-refs-not-authority` | core | — | `heterodyne:core#core-materialized-kel` |
-| `keri-authority/materialized-state-derivation` | core | — | `heterodyne:core#core-materialized-kel` |
-| `keri-authority/provisional-not-hardened-repo-unreachable` | core | — | `heterodyne:core#core-kel-verification` |
-| `keri-authority/refresh-failed-not-condition-d` | core | — | `heterodyne:core#core-kel-verification` |
-| `keri-authority/repo-head-regression-rejected` | core | — | `heterodyne:core#core-kel-verification` |
-| `keri-authority/withdrawal-causally-behind-no-withdraw` | core | — | `heterodyne:core#core-kel-verification` |
-| `keri-authority/withdrawal-converged-head` | core | — | `heterodyne:core#core-kel-verification` |
-| `keri/didkey-witness-no-network` | core | — | `heterodyne:core#core-kel-primitives` |
-| `keri/first-seen-ordering` | core | — | `heterodyne:core#core-kel-primitives` |
-| `keri/fork-resolution-conflicting-rotations` | core | — | `heterodyne:core#core-kel-primitives` |
-| `keri/inception-event` | core | — | `heterodyne:core#core-kel-primitives` |
-| `keri/informal-vouch-not-counted` | core | — | `heterodyne:core#core-kel-primitives` |
-| `keri/rotation-committed-strategy` | core | — | `heterodyne:core#core-kel-primitives` |
-| `keri/rotation-none-witness-threshold` | core | — | `heterodyne:core#core-kel-primitives` |
-| `key-retirement/compromise-cutoff-rejected` | core | — | `heterodyne:core#core-retired-key-observation` |
-| `key-retirement/local-receipt-pre-retirement` | core | — | `heterodyne:core#core-retired-key-observation` |
-| `key-retirement/relay-only-provisional` | core | — | `heterodyne:core#core-retired-key-observation` |
-| `key-retirement/repo-anchored-pre-retirement` | core | — | `heterodyne:core#core-retired-key-observation` |
-| `light-node/content-not-through-routing-node` | core | — | `heterodyne:core#core-client-responsibilities` |
-| `light-node/route-around-withholding-host` | core | — | `heterodyne:core#core-client-responsibilities` |
-| `light-node/verifies-signature-locally` | core | — | `heterodyne:core#core-client-responsibilities` |
-| `nid-binding/bidirectional-valid` | core | — | `heterodyne:core#core-nid-delegation` |
-| `nid-binding/invalid-nid-proof-rejected` | core | — | `heterodyne:core#core-nid-delegation` |
-| `nid-binding/missing-nid-proof-rejected` | core | — | `heterodyne:core#core-nid-delegation` |
-| `node-advert/excessive-lifetime` | core | — | `heterodyne:core#core-node-advertisement` |
-| `node-advert/expired-rejected` | core | — | `heterodyne:core#core-node-advertisement` |
-| `node-advert/expiry-not-after-created` | core | — | `heterodyne:core#core-node-advertisement` |
-| `node-advert/future-clock-skew` | core | — | `heterodyne:core#core-node-advertisement` |
-| `node-advert/maximum-lifetime` | core | — | `heterodyne:core#core-node-advertisement` |
-| `node-advert/nid-proof-invalid-rejected` | core | — | `heterodyne:core#core-node-advertisement` |
-| `node-advert/outer-sig-invalid-rejected` | core | — | `heterodyne:core#core-node-advertisement` |
-| `node-advert/past-clock-skew` | core | — | `heterodyne:core#core-node-advertisement` |
-| `node-advert/previously-accepted-within-expiry` | core | — | `heterodyne:core#core-node-advertisement` |
-| `node-advert/provisional-observation-does-not-bypass-skew` | core | — | `heterodyne:core#core-node-advertisement` |
-| `node-advert/refresh-by-twelve-hours` | core | — | `heterodyne:core#core-node-advertisement` |
-| `node-advert/uncertain-clock-rejected` | core | — | `heterodyne:core#core-node-advertisement` |
-| `node-advert/valid-dual-signed` | core | — | `heterodyne:core#core-node-advertisement` |
-| `org/member-add-dual-authorized` | core | — | `heterodyne:core#core-threshold-authority` |
-| `org/member-add-single-authorization-insufficient` | core | — | `heterodyne:core#core-threshold-authority` |
-| `org/threshold-delegate-governance` | core | — | `heterodyne:core#core-threshold-authority` |
-| `persona-profile/designated-publisher-valid` | core | — | `heterodyne:core#core-persona-profile` |
-| `persona-profile/exact-author-set-discovery` | core | — | `heterodyne:core#core-persona-profile` |
-| `persona-profile/nip05-mismatch-rejected` | core | — | `heterodyne:core#core-persona-profile` |
-| `persona-profile/relay-only-replacement-rejected` | core | — | `heterodyne:core#core-persona-profile` |
-| `persona-profile/successor-address-republished` | core | — | `heterodyne:core#core-persona-profile` |
-| `profiles/core-breadcrumb-kind0` | core | `heterodyne-core-rotation-breadcrumb-profile-v1` | `heterodyne:core#core-kel-rotation` |
-| `profiles/core-breadcrumb-kind1` | core | `heterodyne-core-rotation-breadcrumb-note-v1` | `heterodyne:core#core-kel-rotation` |
-| `registry/control-strict-profile-flattened` | core | — | `heterodyne:core#core-registry` |
-| `registry/downref-nonfrozen-rejected` | core | — | `heterodyne:core#core-registry` |
-| `registry/feature-dependency-exact` | core | — | `heterodyne:core#core-registry` |
-| `registry/feature-dependency-unprovided-rejected` | core | — | `heterodyne:core#core-registry` |
-| `registry/frozen-entry-immutable` | core | — | `heterodyne:core#core-registry` |
-| `relay-profile/kel-aware-reputation-continuity` | core | — | `heterodyne:core#core-nostr-relay-interop` |
-| `relay-profile/nip11-capability-advert` | core | — | `heterodyne:core#core-nostr-relay-interop` |
-| `relay-profile/passive-witness-store-signs-nothing` | core | — | `heterodyne:core#core-nostr-relay-interop` |
-| `relay-profile/vanilla-nip01-unaffected` | core | — | `heterodyne:core#core-nostr-relay-interop` |
-| `repo-relay/invalid-signature-rejected` | core | — | `heterodyne:core#core-repo-relay` |
-| `repo-relay/light-node-submit-write-path` | core | — | `heterodyne:core#core-repo-relay` |
-| `repo-relay/nip01-read-write-roundtrip` | core | — | `heterodyne:core#core-repo-relay` |
-| `role-capabilities/browser-shared-relay-required` | core | — | `heterodyne:core#core-node-roles` |
-| `role-capabilities/full-node-feature-set-required` | core | — | `heterodyne:core#core-node-roles` |
-| `role-capabilities/full-node-onion-advertised` | core | — | `heterodyne:core#core-node-roles` |
-| `role-capabilities/full-node-tor-default` | core | — | `heterodyne:core#core-node-roles` |
-| `role-capabilities/public-reader-reduced-assurance` | core | — | `heterodyne:core#core-node-roles` |
-| `role-capabilities/role-address-invalid` | core | — | `heterodyne:core#core-role-delegation` |
-| `role-capabilities/role-address-valid` | core | — | `heterodyne:core#core-role-delegation` |
-| `role-capabilities/strict-missing-tor-rejected` | core | — | `heterodyne:core#core-node-roles` |
-| `routing-node/expired-advert-discarded` | core | — | `heterodyne:core#core-node-roles` |
-| `routing-node/repo-location-from-ads-only` | core | — | `heterodyne:core#core-node-roles` |
-| `routing-node/unverifiable-advert-discarded` | core | — | `heterodyne:core#core-node-roles` |
-| `social-recovery/cache-sourced-marked-stale` | core | — | `heterodyne:core#core-recovery` |
-| `social-recovery/cold-root-reanchor-authoritative` | core | — | `heterodyne:core#core-recovery` |
-| `stamping/heterodyne-empty-content-tag-owner` | core | — | `heterodyne:core#core-version-stamps` |
-| `stamping/heterodyne-json-content-owner` | core | — | `heterodyne:core#core-version-stamps` |
-| `stamping/non-stamping-profile-unchanged` | core | `heterodyne-core-rotation-breadcrumb-profile-v1` | `heterodyne:core#core-version-stamps` |
-| `stamping/tier3-profile-owner` | core | `heterodyne-comms-tier3-wrapped-content-kind-1-v1` | `heterodyne:core#core-version-stamps` |
-| `stamping/upstream-profile-owner` | core | `heterodyne-social-mute-list-v1` | `heterodyne:core#core-version-stamps` |
-| `stamping/upstream-unstamped` | core | — | `heterodyne:core#core-version-stamps` |
-| `transport/egress-tor-off-default-indicator` | core | — | `heterodyne:core#core-tor-reachability` |
-| `transport/onion-no-clearnet-dns-leak` | core | — | `heterodyne:core#core-tor-reachability` |
-| `transport/onion-reachable-via-tor` | core | — | `heterodyne:core#core-tor-reachability` |
-| `transport/strict-mode-egress-tor-default-on` | core | — | `heterodyne:core#core-tor-reachability` |
-| `transport/wasm-bridge-no-bridge-indicator` | core | — | `heterodyne:core#core-tor-reachability` |
-| `verification/backdated-event-suspicion-window` | core | — | `heterodyne:core#core-verification` |
-| `verification/bad-signature-rejects` | core | — | `heterodyne:core#core-verification` |
-| `verification/delegation-mismatch-rejects` | core | — | `heterodyne:core#core-verification` |
-| `verification/revoked-key-rejects` | core | — | `heterodyne:core#core-verification` |
-| `versioning/capabilities-roundtrip` | core | — | `heterodyne:core#core-versioning` |
-| `versioning/core-capability-bootstrap` | core | — | `heterodyne:core#core-versioning` |
-| `versioning/older-receiver-newer-sender` | core | — | `heterodyne:core#core-versioning` |
-| `versioning/per-document-negotiation` | core | — | `heterodyne:core#core-versioning` |
-| `versioning/qualified-version-unqualified-rejected` | core | — | `heterodyne:core#core-versioning` |
-| `versioning/qualified-version-valid` | core | — | `heterodyne:core#core-versioning` |
-| `versioning/unknown-asynchronous-stamp-rejected` | core | — | `heterodyne:core#core-versioning` |
-| `versioning/unknown-major-placeholder` | core | — | `heterodyne:core#core-versioning` |
+| Vector | Owner | Profile | Invariants | Reason codes | Spec references |
+|---|---|---|---|---|---|
+| `core/config-rid-published` | core | — | `CORE-I-IDENTITY-INTEGRITY` | `config_rid_advertised` | `heterodyne:core#core-conformance` |
+| `core/friend-cache-unsigned` | core | — | `CORE-I-IDENTITY-INTEGRITY` | `unauthorized_cache_content` | `heterodyne:core#core-conformance` |
+| `core/nip01-raw-mismatch` | core | — | `CORE-I-VERIFY-BEFORE-USE` | `nip01_raw_mismatch` | `heterodyne:core#core-verification` |
+| `core/nip49-key-material-round-trip` | core | — | `CORE-I-KEY-MATERIAL-AT-REST` | — | `heterodyne:core#core-keys-repository` |
+| `core/node-advert-bad-signature` | core | — | `CORE-I-VERIFY-BEFORE-USE` | `bad_signature` | `heterodyne:core#core-node-advertisement` |
+| `core/node-advert-clock-skew` | core | — | `CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY` | `node-advert-clock-skew` | `heterodyne:core#core-node-advertisement` |
+| `core/node-advert-clock-uncertain` | core | — | `CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY` | `node-advert-clock-uncertain` | `heterodyne:core#core-node-advertisement` |
+| `core/node-advert-dual-proof-valid` | core | — | `CORE-I-NID-DELEGATION-DUAL-PROOF`<br>`CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY` | — | `heterodyne:core#core-node-advertisement` |
+| `core/node-advert-expired` | core | — | `CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY` | `node_advert_expired` | `heterodyne:core#core-node-advertisement` |
+| `core/node-advert-expiry-invalid` | core | — | `CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY` | `node-advert-expiry-invalid` | `heterodyne:core#core-node-advertisement` |
+| `core/node-advert-lifetime-exceeded` | core | — | `CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY` | `node-advert-lifetime-exceeded` | `heterodyne:core#core-node-advertisement` |
+| `core/node-advert-nid-proof-invalid` | core | — | `CORE-I-NID-DELEGATION-DUAL-PROOF` | `nid_proof_invalid` | `heterodyne:core#core-node-advertisement` |
+| `core/onion-clearnet-resolution` | core | — | `CORE-I-VERIFY-BEFORE-USE` | `onion_dns_leak` | `heterodyne:core#core-conformance` |
+| `core/org-member-add-unauthorized` | core | — | `CORE-I-IDENTITY-INTEGRITY` | `org_member_add_unauthorized` | `heterodyne:core#core-conformance` |
+| `core/profile-heterodyne-core-rotation-breadcrumb-note-v1` | core | `heterodyne-core-rotation-breadcrumb-note-v1` | `CORE-I-IDENTITY-INTEGRITY` | — | `heterodyne:core#core-security` |
+| `core/profile-heterodyne-core-rotation-breadcrumb-profile-v1` | core | `heterodyne-core-rotation-breadcrumb-profile-v1` | `CORE-I-IDENTITY-INTEGRITY` | — | `heterodyne:core#core-security` |
+| `core/profile-nip05-key-mismatch` | core | — | `CORE-I-IDENTITY-INTEGRITY` | `profile-nip05-key-mismatch` | `heterodyne:core#core-persona-profile` |
+| `core/profile-publisher-delegation-invalid` | core | — | `CORE-I-IDENTITY-INTEGRITY` | `profile-publisher-delegation-invalid` | `heterodyne:core#core-persona-profile` |
+| `core/profile-repository-selection-required` | core | — | `CORE-I-IDENTITY-INTEGRITY` | `profile-repository-selection-required` | `heterodyne:core#core-persona-profile` |
+| `core/relay-profile-mutated` | core | — | `CORE-I-IDENTITY-INTEGRITY` | `relay_profile_mutation` | `heterodyne:core#core-conformance` |
+| `core/replaceable-advisory-nip03-ignored` | core | — | `CORE-I-VERIFY-BEFORE-USE` | — | `heterodyne:core#core-nip03-advisory` |
+| `core/replaceable-at-premature-boundary` | core | — | `CORE-I-VERIFY-BEFORE-USE` | — | `heterodyne:core#core-created-at-bound` |
+| `core/replaceable-equal-time-lowest-id` | core | — | `CORE-I-VERIFY-BEFORE-USE` | — | `heterodyne:core#core-source-neutral-selection` |
+| `core/replaceable-future-quarantined` | core | — | `CORE-I-VERIFY-BEFORE-USE` | `core-created-at-premature` | `heterodyne:core#core-created-at-bound` |
+| `core/retired-key-authority-window-invalid` | core | — | `CORE-I-IDENTITY-INTEGRITY` | `retired-key-authority-window-invalid` | `heterodyne:core#core-retired-key-observation` |
+| `core/role-delegation-address-invalid` | core | — | `CORE-I-NID-DELEGATION-DUAL-PROOF` | `role-delegation-address-invalid` | `heterodyne:core#core-nid-delegation` |
+| `core/role-delegation-key-proof-invalid` | core | — | `CORE-I-NID-DELEGATION-DUAL-PROOF` | `role-delegation-key-proof-invalid` | `heterodyne:core#core-nid-delegation` |
+| `core/strict-mode-without-tor` | core | — | `CORE-I-VERIFY-BEFORE-USE` | `strict_mode_tor_disabled` | `heterodyne:core#core-conformance` |
+| `core/version-future-major` | core | — | `CORE-I-VERIFY-BEFORE-USE` | `unknown_major_version` | `heterodyne:core#core-conformance` |
+| `core/version-stamp-missing` | core | — | `CORE-I-VERIFY-BEFORE-USE` | `version_stamp_invalid` | `heterodyne:core#core-verification` |

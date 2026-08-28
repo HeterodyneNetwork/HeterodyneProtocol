@@ -1,0 +1,23 @@
+{
+  "vector_id": "control/signer-effect-indeterminate",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "control",
+  "spec_refs": [
+    "heterodyne:control#control-agent-requirements"
+  ],
+  "invariants": [
+    "CONTROL-I-OPERATION-AT-MOST-ONCE"
+  ],
+  "reason_codes": [],
+  "description": "The current Control policy boundary rejects signer effect indeterminate.",
+  "direction": "consume",
+  "input": {
+    "canonical_event_valid": true,
+    "fields_exact": true,
+    "effect_certain": false
+  },
+  "expected_output": {
+    "verdict": "indeterminate",
+    "reason_code": "control-signer-effect-indeterminate"
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "vector_id": "comms/trusted-seed-acl-invalid",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-trusted-seed-private-relay"
+  ],
+  "invariants": [
+    "COMMS-I-TRUSTED-SEED-CONFINEMENT"
+  ],
+  "reason_codes": [
+    "trusted-seed-acl-invalid"
+  ],
+  "description": "The trusted-seed authority rejects trusted seed acl invalid from authenticated current state.",
+  "direction": "consume",
+  "input": {
+    "acl_candidates": [
+      {
+        "profile": "heterodyne.trusted-seed-acl.v1",
+        "spec_version": "heterodyne/0.6.0",
+        "administrator_account": "6360e856310ce5d294e8be33fc807077dc56ac80d95d9cd4ddbd21325eff73f7",
+        "accounts": [
+          {
+            "account_key": "1111111111111111111111111111111111111111111111111111111111111111",
+            "roles": [
+              "read",
+              "write"
+            ]
+          }
+        ],
+        "h": "routing-generation-current",
+        "private_rid": "rad:zCurrentMarmotRoute",
+        "seed_grants": [
+          {
+            "seed_nid": "did:key:z6MkwQp8f8Y11L3WJYJ4hXa1",
+            "relay_endpoint": "wss://seed.example/group",
+            "radicle_endpoint": "rad:zCurrentMarmotRoute",
+            "writer_ref": "refs/xyz.heterodyne.marmot/relays/current-seed",
+            "roles": [
+              "read",
+              "write"
+            ],
+            "state": "active"
+          }
+        ],
+        "sequence": 0,
+        "predecessor": null,
+        "group_transition": {
+          "generation": 7,
+          "marmot_routing_event_id": "4545454545454545454545454545454545454545454545454545454545454545",
+          "routing_binding_sha256": "4646464646464646464646464646464646464646464646464646464646464646"
+        },
+        "issued_at": 1799999900,
+        "expires_at": 1800001000,
+        "signature": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+      }
+    ]
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "trusted-seed-acl-invalid"
+  }
+}

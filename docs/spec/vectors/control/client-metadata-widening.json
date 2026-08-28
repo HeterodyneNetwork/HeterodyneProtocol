@@ -1,0 +1,26 @@
+{
+  "vector_id": "control/client-metadata-widening",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "control",
+  "spec_refs": [
+    "heterodyne:control#control-nip46-signing"
+  ],
+  "invariants": [
+    "CONTROL-I-CLIENT-KEY-CONFINEMENT"
+  ],
+  "reason_codes": [
+    "control-client-metadata-widening"
+  ],
+  "description": "The live Control authorization boundary rejects client metadata widening.",
+  "direction": "consume",
+  "input": {
+    "requested_methods": [
+      "sign_event",
+      "get_public_key"
+    ]
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "control-client-metadata-widening"
+  }
+}

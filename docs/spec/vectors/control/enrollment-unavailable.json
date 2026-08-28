@@ -1,0 +1,32 @@
+{
+  "vector_id": "control/enrollment-unavailable",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "control",
+  "spec_refs": [
+    "heterodyne:control#control-invitation-policy"
+  ],
+  "invariants": [
+    "CONTROL-I-MARMOT-GRANT-CONFINEMENT"
+  ],
+  "reason_codes": [
+    "control-enrollment-unavailable"
+  ],
+  "description": "The current Control policy boundary rejects enrollment unavailable.",
+  "direction": "consume",
+  "input": {
+    "keypackage_valid": true,
+    "member_count": 2,
+    "node_account_matches": true,
+    "entitlement_state": "none",
+    "resource_available": false,
+    "welcome_rate_remaining": 1,
+    "replenishment_requested": false,
+    "replenishment_rate_remaining": 1,
+    "pending_at_cap": false,
+    "method": "control.enrollment.start"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "control-enrollment-unavailable"
+  }
+}

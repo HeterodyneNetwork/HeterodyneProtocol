@@ -1,0 +1,26 @@
+{
+  "vector_id": "workspace/affiliation-stale",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "workspace",
+  "spec_refs": [
+    "heterodyne:workspace#workspace-relationships"
+  ],
+  "invariants": [
+    "WORKSPACE-I-FRESHNESS-BOUNDED"
+  ],
+  "reason_codes": [
+    "affiliation_stale"
+  ],
+  "description": "The current Workspace semantic boundary rejects affiliation stale.",
+  "direction": "consume",
+  "input": {
+    "now": 1000,
+    "observed_at": 699,
+    "expires_at": 1100,
+    "maximum_age": 300
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "affiliation_stale"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "vector_id": "workspace/repository-invalid",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "workspace",
+  "spec_refs": [
+    "heterodyne:workspace#workspace-role-repositories"
+  ],
+  "invariants": [
+    "WORKSPACE-I-AUTHENTICATED-CURRENT-STATE"
+  ],
+  "reason_codes": [
+    "workspace_repository_invalid"
+  ],
+  "description": "The current Workspace semantic boundary rejects repository invalid.",
+  "direction": "consume",
+  "input": {
+    "evidence": {},
+    "objects": []
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "workspace_repository_invalid"
+  }
+}

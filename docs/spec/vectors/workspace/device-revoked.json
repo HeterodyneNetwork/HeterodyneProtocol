@@ -1,0 +1,29 @@
+{
+  "vector_id": "workspace/device-revoked",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "workspace",
+  "spec_refs": [
+    "heterodyne:workspace#workspace-role-control"
+  ],
+  "invariants": [
+    "WORKSPACE-I-DEVICE-LEAF-SEPARATION"
+  ],
+  "reason_codes": [
+    "device_revoked"
+  ],
+  "description": "The current Workspace semantic boundary rejects device revoked.",
+  "direction": "consume",
+  "input": {
+    "account_removed": false,
+    "removed_device": "9999999999999999999999999999999999999999999999999999999999999999",
+    "active_devices": [
+      "1111111111111111111111111111111111111111111111111111111111111111",
+      "2222222222222222222222222222222222222222222222222222222222222222"
+    ],
+    "current_epoch": 7
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "device_revoked"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "vector_id": "comms/trusted-seed-revoked",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-trusted-seed-private-relay"
+  ],
+  "invariants": [
+    "COMMS-I-TRUSTED-SEED-CONFINEMENT"
+  ],
+  "reason_codes": [
+    "trusted-seed-revoked"
+  ],
+  "description": "The trusted-seed authority rejects trusted seed revoked from authenticated current state.",
+  "direction": "consume",
+  "input": {
+    "seed_nid": "did:key:z6MkwQp8f8Y11L3WJYJ4hXa1",
+    "state": "revoked"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "trusted-seed-revoked"
+  }
+}

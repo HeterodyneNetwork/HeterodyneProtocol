@@ -1,0 +1,23 @@
+{
+  "vector_id": "control/vault-isolation-failed",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "control",
+  "spec_refs": [
+    "heterodyne:control#control-persona-vaults"
+  ],
+  "invariants": [
+    "CONTROL-I-PERSONA-VAULT-ISOLATION"
+  ],
+  "reason_codes": [
+    "control-vault-isolation-failed"
+  ],
+  "description": "The live Control authorization boundary rejects vault isolation failed.",
+  "direction": "consume",
+  "input": {
+    "vaults": []
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "control-vault-isolation-failed"
+  }
+}

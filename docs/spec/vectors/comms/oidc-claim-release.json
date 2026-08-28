@@ -1,0 +1,52 @@
+{
+  "vector_id": "comms/oidc-claim-release",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-authorization-clients-consent-and-release"
+  ],
+  "invariants": [
+    "COMMS-I-CLAIM-RELEASE",
+    "COMMS-I-ISSUER-KEY-CONFINEMENT"
+  ],
+  "reason_codes": [],
+  "description": "The live OIDC release boundary intersects registered client, consent, scope, audience, and canonical source-claim state.",
+  "direction": "produce",
+  "input": {
+    "client_id": "registered-client",
+    "requested_scopes": [
+      "openid",
+      "profile",
+      "heterodyne:key-ref"
+    ],
+    "requested_audiences": [
+      "https://api.example"
+    ],
+    "requested_claims": [
+      "name",
+      "https://heterodyne.network/jwt/key-ref"
+    ],
+    "checkpoint": {
+      "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+      "branch": "main",
+      "commit_oid": "a61d6f7b449903a35fec7f288e03952c716a3ab3560d38328e224b1208aa4009",
+      "observed_at": 1767245668
+    }
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "released_claims": {
+      "name": "Alice",
+      "https://heterodyne.network/jwt/key-ref": {
+        "type": "nostr-secp256k1",
+        "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+      }
+    },
+    "source_claim_ids": [
+      "07840c2963d7f85d69ef582490ab8147cf902b02bc169f52b8150e3c153dd1b7",
+      "5d35c73692fbf8168d3431e7ed7acc20e86d91d21e512202046968724d6d42e5",
+      "6cdf557d8ee4b2f6b5d0300cd512f63cfd9614643aa8fbdfa528934f4d062ead",
+      "ff1cbea4896d77c3f7469bf47377119d043e3ae7dc473d84a49f33f6921bff08"
+    ]
+  }
+}

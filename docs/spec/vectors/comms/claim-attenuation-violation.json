@@ -1,0 +1,29 @@
+{
+  "vector_id": "comms/claim-attenuation-violation",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-conformance"
+  ],
+  "invariants": [
+    "COMMS-I-CLAIM-ATTENUATION"
+  ],
+  "reason_codes": [
+    "claim-attenuation-violation"
+  ],
+  "description": "A requested namespace outside the exact claim scope is rejected as widening.",
+  "direction": "consume",
+  "input": {
+    "claim_id": "ad47df49d87e3390ca4653be89a5f4120f8d76c2b6fbc08be4b09c5c8ec09ea0",
+    "requested_namespace": "other.namespace"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "claim-attenuation-violation",
+    "evaluator_output": {
+      "allowed": false,
+      "state": "invalid",
+      "reason_code": "claim-attenuation-violation"
+    }
+  }
+}

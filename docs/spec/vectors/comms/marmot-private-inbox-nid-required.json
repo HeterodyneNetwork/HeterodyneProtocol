@@ -1,0 +1,25 @@
+{
+  "vector_id": "comms/marmot-private-inbox-nid-required",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-marmot-persona-inbox"
+  ],
+  "invariants": [
+    "COMMS-I-MARMOT-UPSTREAM-AUTHORITY"
+  ],
+  "reason_codes": [
+    "marmot-private-inbox-nid-required"
+  ],
+  "description": "The current Comms policy boundary rejects marmot private inbox nid required.",
+  "direction": "consume",
+  "input": {
+    "sender_nid_authorized": false,
+    "keypackage_already_consumed": false,
+    "automated_scope_valid": true
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "marmot-private-inbox-nid-required"
+  }
+}

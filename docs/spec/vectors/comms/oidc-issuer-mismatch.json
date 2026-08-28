@@ -1,0 +1,28 @@
+{
+  "vector_id": "comms/oidc-issuer-mismatch",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-radicle-issuer-continuity"
+  ],
+  "invariants": [
+    "COMMS-I-ISSUER-CONTINUITY"
+  ],
+  "reason_codes": [
+    "oidc-issuer-mismatch"
+  ],
+  "description": "The live OIDC boundary rejects oidc issuer mismatch.",
+  "direction": "consume",
+  "input": {
+    "expected_issuer": "https://other.example/oidc/npub1other"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "oidc-issuer-mismatch",
+    "evaluator_output": {
+      "allowed": false,
+      "state": "invalid",
+      "reason_code": "oidc-issuer-mismatch"
+    }
+  }
+}

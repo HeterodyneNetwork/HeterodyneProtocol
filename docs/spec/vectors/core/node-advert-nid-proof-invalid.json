@@ -1,0 +1,72 @@
+{
+  "vector_id": "core/node-advert-nid-proof-invalid",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "core",
+  "spec_refs": [
+    "heterodyne:core#core-node-advertisement"
+  ],
+  "invariants": [
+    "CORE-I-NID-DELEGATION-DUAL-PROOF"
+  ],
+  "reason_codes": [
+    "nid_proof_invalid"
+  ],
+  "description": "A valid outer event cannot authorize a substituted repository head when the NID proof binds different exact bytes.",
+  "direction": "consume",
+  "input": {
+    "event": {
+      "pubkey": "1697ffa6fd9de627c077e3d2fe541084ce13300b0bec1146f95ae57f0d0bd6a5",
+      "created_at": 1800000000,
+      "kind": 31010,
+      "tags": [
+        [
+          "d",
+          "rad:zCurrentCatalogFixture"
+        ],
+        [
+          "heterodyne",
+          "node_advert"
+        ],
+        [
+          "rid",
+          "rad:zCurrentCatalogFixture"
+        ],
+        [
+          "nid",
+          "did:key:z6MknQki4rirwWqFCptwJxPYy52XQfEC9TDopaDWRUPAT3yT"
+        ],
+        [
+          "endpoint",
+          "wss://node.example/relay"
+        ],
+        [
+          "repo_head",
+          "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
+        ],
+        [
+          "expiry",
+          "1800003600"
+        ],
+        [
+          "nid_proof",
+          "cb5e28dde6ef5d46c92550d80bd8dc2b4f2749c15c4f0f27d725824e9fc67fc78a1d6ca755d4fe9a2111ed4cc7768e9d9b543cd1acbadf6f24d5411e3bc63b06"
+        ],
+        [
+          "spec_version",
+          "heterodyne/0.6.0"
+        ]
+      ],
+      "content": "",
+      "id": "f6871658d337249f35577114974fecf446d6402e024c84ca0f49b9076522a5d3",
+      "sig": "b511e28dc45040d46cb94cd13963074ff0e0179154bf853e8cb8eb57377cf0075527603df1d70199b5b2fdd64e822202b79bcdc82062492bb920b2527003cf37"
+    },
+    "trusted_now": 1800000000,
+    "reachable_oids": [
+      "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
+    ]
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "nid_proof_invalid"
+  }
+}

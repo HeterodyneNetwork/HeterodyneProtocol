@@ -1,0 +1,65 @@
+{
+  "vector_id": "core/replaceable-advisory-nip03-ignored",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "core",
+  "spec_refs": [
+    "heterodyne:core#core-nip03-advisory"
+  ],
+  "invariants": [
+    "CORE-I-VERIFY-BEFORE-USE"
+  ],
+  "reason_codes": [],
+  "description": "Advisory kind-1040 evidence has no authority over NIP-01 replacement selection.",
+  "direction": "consume",
+  "input": {
+    "trusted_now": 1800000000,
+    "candidates": [
+      {
+        "pubkey": "e4d24944ed947bc34ed14ea4b2e063aa27ebd8da658577a263f55a631c7f656a",
+        "created_at": 1799999998,
+        "kind": 30000,
+        "tags": [
+          [
+            "d",
+            "current-selection"
+          ]
+        ],
+        "content": "older",
+        "id": "2dc60871aa0be4c820a2ee618c67ee906a96f3d62c63ec0166503d8c7e966497",
+        "sig": "49f1b82d336231263be64452b9c57f748c39a59f6a7e46756f1cbc6a790d821d39279ffe65aa01e67d2abace5c09f06c27918cff51331a9a7a8f75e3d8d681e8"
+      },
+      {
+        "pubkey": "e4d24944ed947bc34ed14ea4b2e063aa27ebd8da658577a263f55a631c7f656a",
+        "created_at": 1800000000,
+        "kind": 1040,
+        "tags": [
+          [
+            "e",
+            "2dc60871aa0be4c820a2ee618c67ee906a96f3d62c63ec0166503d8c7e966497"
+          ]
+        ],
+        "content": "synthetic advisory timestamp evidence",
+        "id": "5d2408efb0c3b7cbd4ffcbf3f4cd4834d6d80ca0fc1c39a1d4b18edbf527c56a",
+        "sig": "3ff04a981b5b00f64806e15d91538772f5b6b27e72bd42a3e69521439a4eac20d86e0e116962b67001f24a4c125cbf1a0782c83ea592019385cd536b4860e346"
+      },
+      {
+        "pubkey": "e4d24944ed947bc34ed14ea4b2e063aa27ebd8da658577a263f55a631c7f656a",
+        "created_at": 1799999999,
+        "kind": 30000,
+        "tags": [
+          [
+            "d",
+            "current-selection"
+          ]
+        ],
+        "content": "newer",
+        "id": "56999734f9f0084cad55c594f630515428fa09fa912218941f2cffb3392e6f3c",
+        "sig": "c09d6211ec9de746480b6a217dc56208e49a3cffee078a3553f6e0408d889b186c95a4afa434f79f6adb61ca62f0041bf771fd7a9352a8b0a6e600ea0791bbfc"
+      }
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "selected_event_id": "56999734f9f0084cad55c594f630515428fa09fa912218941f2cffb3392e6f3c"
+  }
+}

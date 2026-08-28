@@ -1,0 +1,34 @@
+{
+  "vector_id": "comms/invite-purpose-mismatch",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-one-time-invites"
+  ],
+  "invariants": [
+    "COMMS-I-MARMOT-UPSTREAM-AUTHORITY"
+  ],
+  "reason_codes": [
+    "invite-purpose-mismatch"
+  ],
+  "description": "The current Comms policy boundary rejects invite purpose mismatch.",
+  "direction": "consume",
+  "input": {
+    "now": 100,
+    "expires_at": 200,
+    "signed_purpose": "dm",
+    "requested_purpose": "control-enrollment",
+    "descriptor_signature_valid": true,
+    "responder_binding_valid": true,
+    "secret_proof_valid": true,
+    "capability_binding_valid": true,
+    "reserved_account": null,
+    "responder_account": "1111111111111111111111111111111111111111111111111111111111111111",
+    "reserved_response_digest": null,
+    "response_digest": "2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "invite-purpose-mismatch"
+  }
+}

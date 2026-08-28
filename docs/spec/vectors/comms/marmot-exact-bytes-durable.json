@@ -1,0 +1,26 @@
+{
+  "vector_id": "comms/marmot-exact-bytes-durable",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-exact-event-and-media-bytes"
+  ],
+  "invariants": [
+    "COMMS-I-MARMOT-EXACT-BYTES"
+  ],
+  "reason_codes": [],
+  "description": "A publisher acknowledges only after exact signed-event and encrypted-media bytes are durable locally and on a configured host.",
+  "direction": "round-trip",
+  "input": {
+    "signed_event_bytes_preserved": true,
+    "encrypted_media_bytes_preserved": true,
+    "durable_local": true,
+    "configured_host_acceptances": 1,
+    "acknowledgement_requested": true
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "durable_ack": true,
+    "exact_bytes": true
+  }
+}

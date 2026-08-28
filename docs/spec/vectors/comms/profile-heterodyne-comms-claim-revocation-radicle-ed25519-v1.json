@@ -1,0 +1,73 @@
+{
+  "vector_id": "comms/profile-heterodyne-comms-claim-revocation-radicle-ed25519-v1",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "profile": "heterodyne-comms-claim-revocation-radicle-ed25519-v1",
+  "spec_refs": [
+    "heterodyne:comms#comms-security"
+  ],
+  "invariants": [
+    "COMMS-I-CLAIM-REVOCATION"
+  ],
+  "reason_codes": [],
+  "description": "The fixed heterodyne-comms-claim-revocation-radicle-ed25519-v1 allocation is checked separately from its live semantic boundary.",
+  "direction": "consume",
+  "input": {
+    "kind": 31014,
+    "profile_id": "heterodyne-comms-claim-revocation-radicle-ed25519-v1",
+    "owner": "comms",
+    "discriminator": "production-rule:claim-revoker;proof=radicle-ed25519-v1",
+    "stamping": false,
+    "first_version": "heterodyne/0.5.0",
+    "status": "draft",
+    "wire_probe": {
+      "content_is_heterodyne_json": false,
+      "is_dr_outer": false,
+      "production_rule": "claim-revoker;proof=radicle-ed25519-v1"
+    },
+    "revocation_artifact": {
+      "event": {
+        "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+        "created_at": 1767245630,
+        "kind": 31014,
+        "tags": [
+          [
+            "d",
+            "ad47df49d87e3390ca4653be89a5f4120f8d76c2b6fbc08be4b09c5c8ec09ea0"
+          ]
+        ],
+        "content": "{\"claim_id\":\"ad47df49d87e3390ca4653be89a5f4120f8d76c2b6fbc08be4b09c5c8ec09ea0\",\"profile_revision\":2,\"proof\":{\"public_key\":\"a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff\",\"signature\":\"d1a44e49b3c7b55aa79790b0173f88cc2873bcfecc6be020d32dcd9ccf440c8931ff1c8babea3e027aa7bb2550c3cb39b12e35a7e6c116b2c1efb624e7aad201\",\"type\":\"radicle-ed25519\"},\"reason_code\":\"claim-revoked\",\"revoked_at\":1767245630,\"revoker\":{\"type\":\"radicle-ed25519-nid\",\"value\":\"did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC\"},\"spec_version\":\"heterodyne/0.6.0\"}",
+        "id": "5653abc13e9e5e350809c6648ac0efcae2e5af47828d5f4f45f798aab143e7e9",
+        "sig": "007dba94aa79bd2768d410bc0de134da7e14dbc9e2113d154ab1692cd016b718997a93834394c679ef666a7dd1a1b85c537401bb3f0073d026feb950a8a5b8c9"
+      },
+      "semantic": {
+        "spec_version": "heterodyne/0.6.0",
+        "profile_revision": 2,
+        "claim_id": "ad47df49d87e3390ca4653be89a5f4120f8d76c2b6fbc08be4b09c5c8ec09ea0",
+        "revoked_at": 1767245630,
+        "reason_code": "claim-revoked",
+        "revoker": {
+          "type": "radicle-ed25519-nid",
+          "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
+        },
+        "proof": {
+          "type": "radicle-ed25519",
+          "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
+          "signature": "d1a44e49b3c7b55aa79790b0173f88cc2873bcfecc6be020d32dcd9ccf440c8931ff1c8babea3e027aa7bb2550c3cb39b12e35a7e6c116b2c1efb624e7aad201"
+        }
+      }
+    }
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "proof_suite": "radicle-ed25519",
+    "proof_purpose": "claim-revoker",
+    "revocation_event_id": "5653abc13e9e5e350809c6648ac0efcae2e5af47828d5f4f45f798aab143e7e9",
+    "irreversible_effect": "reader-denied",
+    "effect_result": {
+      "allowed": false,
+      "state": "revoked",
+      "reason_code": "claim-revoked"
+    }
+  }
+}

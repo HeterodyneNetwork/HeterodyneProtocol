@@ -1,0 +1,26 @@
+{
+  "vector_id": "control/compromise-reset-inventory-mismatch",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "control",
+  "spec_refs": [
+    "heterodyne:control#control-compromise-reset"
+  ],
+  "invariants": [
+    "CONTROL-I-COMPROMISE-RESET"
+  ],
+  "reason_codes": [
+    "control-compromise-reset-inventory-mismatch"
+  ],
+  "description": "The current Control policy boundary rejects compromise reset inventory mismatch.",
+  "direction": "consume",
+  "input": {
+    "authority_signature_valid": true,
+    "inventory_digest_matches": false,
+    "transition_evidence_valid": true,
+    "subordinate_reauthorized": true
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "control-compromise-reset-inventory-mismatch"
+  }
+}

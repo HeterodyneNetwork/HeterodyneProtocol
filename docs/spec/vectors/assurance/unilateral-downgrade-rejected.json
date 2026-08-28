@@ -1,0 +1,33 @@
+{
+  "vector_id": "assurance/unilateral-downgrade-rejected",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "assurance",
+  "spec_refs": [
+    "heterodyne:assurance#assurance-downgrade-resistance"
+  ],
+  "invariants": [
+    "ASSURANCE-I-PIN-DOWNGRADE"
+  ],
+  "reason_codes": [
+    "assurance-downgrade-consent-required"
+  ],
+  "description": "Active-key consent without the current recovery-authority proof cannot downgrade a retained pin.",
+  "direction": "consume",
+  "input": {
+    "retained_pin": {
+      "active_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "assurance_head": "5e42684ee4f5c3c754487dff44d8b5ffec5b601d5893e34bb726a6ec3b846e66",
+      "recovery_authority": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+    },
+    "presented_head": "5e42684ee4f5c3c754487dff44d8b5ffec5b601d5893e34bb726a6ec3b846e66",
+    "downgrade": {
+      "active_key_consent": true,
+      "recovery_authority_proof": false
+    },
+    "authorized_successors": []
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "assurance-downgrade-consent-required"
+  }
+}

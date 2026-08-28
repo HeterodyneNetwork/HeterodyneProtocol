@@ -1,0 +1,26 @@
+{
+  "vector_id": "control/device-code-rate-limited",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "control",
+  "spec_refs": [
+    "heterodyne:control#control-device-authorization"
+  ],
+  "invariants": [
+    "CONTROL-I-NIP46-OIDC-ACTIVATION"
+  ],
+  "reason_codes": [
+    "control-device-code-rate-limited"
+  ],
+  "description": "The current Control policy boundary rejects device code rate limited.",
+  "direction": "consume",
+  "input": {
+    "entropy_valid": true,
+    "failed_guesses": 0,
+    "rate_allowed": false,
+    "display_binding_matches": true
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "control-device-code-rate-limited"
+  }
+}

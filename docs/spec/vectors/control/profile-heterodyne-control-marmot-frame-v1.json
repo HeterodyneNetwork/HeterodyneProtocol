@@ -1,0 +1,72 @@
+{
+  "vector_id": "control/profile-heterodyne-control-marmot-frame-v1",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "control",
+  "profile": "heterodyne-control-marmot-frame-v1",
+  "spec_refs": [
+    "heterodyne:control#control-security"
+  ],
+  "invariants": [
+    "CONTROL-I-MARMOT-GRANT-CONFINEMENT"
+  ],
+  "reason_codes": [],
+  "description": "The fixed heterodyne-control-marmot-frame-v1 allocation is checked separately from its live semantic boundary.",
+  "direction": "consume",
+  "input": {
+    "kind": 31017,
+    "profile_id": "heterodyne-control-marmot-frame-v1",
+    "owner": "control",
+    "discriminator": "marmot-inner-only;content=control-frame-v1",
+    "stamping": false,
+    "first_version": "heterodyne/0.5.0",
+    "status": "draft",
+    "wire_probe": {
+      "content_is_heterodyne_json": true,
+      "is_dr_outer": false,
+      "transport": "marmot-inner",
+      "content_profile_id": "control-frame-v1"
+    },
+    "transport": "marmot-inner",
+    "frame": {
+      "version": "heterodyne/0.6.0",
+      "profile": "human-jsonrpc",
+      "frame_type": "request",
+      "request_id": "current-profile-request",
+      "expires_at": 1800000060,
+      "access_token": "current-profile-token",
+      "payload": {
+        "method": "status"
+      }
+    },
+    "active_account": "1111111111111111111111111111111111111111111111111111111111111111",
+    "authenticated_account": "1111111111111111111111111111111111111111111111111111111111111111",
+    "grant_account": "1111111111111111111111111111111111111111111111111111111111111111",
+    "requested_device": "device-one",
+    "grant_device": "device-one",
+    "requested_leaf": "leaf-one",
+    "grant_leaf": "leaf-one",
+    "requested_group": "group-one",
+    "grant_group": "group-one",
+    "requested_grant": "grant-one",
+    "grant_id": "grant-one",
+    "requested_content_ids": [
+      "content-one"
+    ],
+    "granted_content_ids": [
+      "content-one"
+    ],
+    "requested_secret_classes": []
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "transport": "marmot-inner",
+    "frame_type": "request",
+    "active_account": "1111111111111111111111111111111111111111111111111111111111111111",
+    "device_leaf": "leaf-one",
+    "grant_id": "grant-one",
+    "content_ids": [
+      "content-one"
+    ],
+    "released_secrets": []
+  }
+}

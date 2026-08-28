@@ -1,0 +1,26 @@
+{
+  "vector_id": "comms/trusted-seed-unauthorized",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-trusted-seed-private-relay"
+  ],
+  "invariants": [
+    "COMMS-I-TRUSTED-SEED-CONFINEMENT"
+  ],
+  "reason_codes": [
+    "trusted-seed-unauthorized"
+  ],
+  "description": "The trusted-seed authority rejects trusted seed unauthorized from authenticated current state.",
+  "direction": "consume",
+  "input": {
+    "authenticated_account": "1111111111111111111111111111111111111111111111111111111111111111",
+    "authorized_accounts": [
+      "9999999999999999999999999999999999999999999999999999999999999999"
+    ]
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "trusted-seed-unauthorized"
+  }
+}

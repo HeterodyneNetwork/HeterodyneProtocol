@@ -1,0 +1,34 @@
+{
+  "vector_id": "comms/oidc-signing-key-unavailable",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-conformance"
+  ],
+  "invariants": [
+    "COMMS-I-ISSUER-KEY-CONFINEMENT"
+  ],
+  "reason_codes": [
+    "oidc-signing-key-unavailable"
+  ],
+  "description": "The live OIDC boundary rejects oidc signing key unavailable.",
+  "direction": "consume",
+  "input": {
+    "issuer_authority_state": "active",
+    "signing_key_available": false
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "oidc-signing-key-unavailable",
+    "evaluator_output": {
+      "allowed": false,
+      "reason_code": "oidc-signing-key-unavailable",
+      "checkpoint": {
+        "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+        "branch": "main",
+        "commit_oid": "27acc4ae198913277ff7c43c292ca5cd31a4c58df1054da92cce280fad33d6d8",
+        "observed_at": 1767245650
+      }
+    }
+  }
+}

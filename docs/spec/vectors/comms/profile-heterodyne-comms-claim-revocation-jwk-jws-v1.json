@@ -1,0 +1,78 @@
+{
+  "vector_id": "comms/profile-heterodyne-comms-claim-revocation-jwk-jws-v1",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "profile": "heterodyne-comms-claim-revocation-jwk-jws-v1",
+  "spec_refs": [
+    "heterodyne:comms#comms-security"
+  ],
+  "invariants": [
+    "COMMS-I-CLAIM-REVOCATION"
+  ],
+  "reason_codes": [],
+  "description": "The fixed heterodyne-comms-claim-revocation-jwk-jws-v1 allocation is checked separately from its live semantic boundary.",
+  "direction": "consume",
+  "input": {
+    "kind": 31014,
+    "profile_id": "heterodyne-comms-claim-revocation-jwk-jws-v1",
+    "owner": "comms",
+    "discriminator": "production-rule:claim-revoker;proof=jwk-jws-v1",
+    "stamping": false,
+    "first_version": "heterodyne/0.5.0",
+    "status": "draft",
+    "wire_probe": {
+      "content_is_heterodyne_json": false,
+      "is_dr_outer": false,
+      "production_rule": "claim-revoker;proof=jwk-jws-v1"
+    },
+    "revocation_artifact": {
+      "event": {
+        "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+        "created_at": 1767245630,
+        "kind": 31014,
+        "tags": [
+          [
+            "d",
+            "210c1f961b764d79417a29d23f6d44e915d4027fc0aa33f1e25eb877ef514ae4"
+          ]
+        ],
+        "content": "{\"claim_id\":\"210c1f961b764d79417a29d23f6d44e915d4027fc0aa33f1e25eb877ef514ae4\",\"profile_revision\":2,\"proof\":{\"jwk\":{\"crv\":\"Ed25519\",\"kty\":\"OKP\",\"x\":\"pRPjDH9lJ1sO-7BE11EnlXVgFOOsre6FNIMaixk1Q_8\"},\"protected\":\"eyJhbGciOiJFZERTQSJ9\",\"signature\":\"lfXB3qey3zNCHEYMqMc531zHow1iQbJbkA0womp2Eyj26pum8JhVeC0KJscjmTnfloPrj3EFAGPlbdTzKYYhCg\",\"type\":\"jwk-jws\"},\"reason_code\":\"claim-revoked\",\"revoked_at\":1767245630,\"revoker\":{\"type\":\"jwk-thumbprint\",\"value\":\"eHOP2Ot9IyZ2K7LLGlapamv1skano2PmDNXghHMMk6Y\"},\"spec_version\":\"heterodyne/0.6.0\"}",
+        "id": "a33e9c6c9fa7a837601b8a5017be1c71f5b7e7a42317f64ab3dc17599e6d00ed",
+        "sig": "8e4d237e72dc62728524ca6eca8c9dbf517bb96bd6566ad11d82d111e86826ce3608542ba94ad94b7d834feb86ef9ea6fdd0bbd2eaf98fda238051a9dc35cb2c"
+      },
+      "semantic": {
+        "spec_version": "heterodyne/0.6.0",
+        "profile_revision": 2,
+        "claim_id": "210c1f961b764d79417a29d23f6d44e915d4027fc0aa33f1e25eb877ef514ae4",
+        "revoked_at": 1767245630,
+        "reason_code": "claim-revoked",
+        "revoker": {
+          "type": "jwk-thumbprint",
+          "value": "eHOP2Ot9IyZ2K7LLGlapamv1skano2PmDNXghHMMk6Y"
+        },
+        "proof": {
+          "type": "jwk-jws",
+          "jwk": {
+            "crv": "Ed25519",
+            "kty": "OKP",
+            "x": "pRPjDH9lJ1sO-7BE11EnlXVgFOOsre6FNIMaixk1Q_8"
+          },
+          "protected": "eyJhbGciOiJFZERTQSJ9",
+          "signature": "lfXB3qey3zNCHEYMqMc531zHow1iQbJbkA0womp2Eyj26pum8JhVeC0KJscjmTnfloPrj3EFAGPlbdTzKYYhCg"
+        }
+      }
+    }
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "proof_suite": "jwk-jws",
+    "proof_purpose": "claim-revoker",
+    "revocation_event_id": "a33e9c6c9fa7a837601b8a5017be1c71f5b7e7a42317f64ab3dc17599e6d00ed",
+    "irreversible_effect": "descriptive-claim-revoked",
+    "effect_result": {
+      "allowed": false,
+      "state": "revoked",
+      "reason_code": "claim-revoked"
+    }
+  }
+}

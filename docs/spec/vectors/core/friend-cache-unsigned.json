@@ -1,0 +1,25 @@
+{
+  "vector_id": "core/friend-cache-unsigned",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "core",
+  "spec_refs": [
+    "heterodyne:core#core-conformance"
+  ],
+  "invariants": [
+    "CORE-I-IDENTITY-INTEGRITY"
+  ],
+  "reason_codes": [
+    "unauthorized_cache_content"
+  ],
+  "description": "The Core operational boundary rejects friend cache unsigned.",
+  "direction": "consume",
+  "input": {
+    "operation": "read-friend-cache",
+    "owner_signed": false,
+    "content_class": "nostr"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "unauthorized_cache_content"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "vector_id": "workspace/signature-invalid",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "workspace",
+  "spec_refs": [
+    "heterodyne:workspace#workspace-object-types"
+  ],
+  "invariants": [
+    "WORKSPACE-I-AUTHENTICATED-CURRENT-STATE"
+  ],
+  "reason_codes": [
+    "workspace_signature_invalid"
+  ],
+  "description": "The current Workspace semantic boundary rejects signature invalid.",
+  "direction": "consume",
+  "input": {
+    "events": [
+      "signed-event-a",
+      "signed-event-b"
+    ]
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "workspace_signature_invalid"
+  }
+}

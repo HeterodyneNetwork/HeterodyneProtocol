@@ -1,0 +1,51 @@
+{
+  "vector_id": "workspace/assurance-dual-removal",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "workspace",
+  "spec_refs": [
+    "heterodyne:workspace#workspace-optional-assurance"
+  ],
+  "invariants": [
+    "WORKSPACE-I-OPTIONAL-ASSURANCE"
+  ],
+  "reason_codes": [],
+  "description": "Matching active-key and Assurance authorization permits a profile removal and records its signed receipt.",
+  "direction": "round-trip",
+  "input": {
+    "transition": {
+      "workspace_key": "1111111111111111111111111111111111111111111111111111111111111111",
+      "previous_policy_head": "3333333333333333333333333333333333333333333333333333333333333333",
+      "next_policy_head": "4444444444444444444444444444444444444444444444444444444444444444",
+      "previous_assurance": {
+        "profile": "heterodyne.workspace.assurance.v1",
+        "inception_event_id": "2222222222222222222222222222222222222222222222222222222222222222",
+        "required_state": "verified"
+      },
+      "next_assurance": null
+    },
+    "assurance_removal_receipt": {
+      "authorized": true,
+      "evaluated_at": 1720000400
+    }
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "authorization": {
+      "profile": "heterodyne.workspace.assurance-authorization.v1",
+      "suite": "bip340",
+      "verification_key": "9ac20335eb38768d2052be1dbbc3c8f6178407458e51e6b4ad22f1d91758895b",
+      "workspace_key": "1111111111111111111111111111111111111111111111111111111111111111",
+      "previous_policy_head": "3333333333333333333333333333333333333333333333333333333333333333",
+      "next_policy_head": "4444444444444444444444444444444444444444444444444444444444444444",
+      "previous_assurance": {
+        "profile": "heterodyne.workspace.assurance.v1",
+        "inception_event_id": "2222222222222222222222222222222222222222222222222222222222222222",
+        "required_state": "verified"
+      },
+      "next_assurance": null,
+      "transition_digest": "2255058e3826813a633e316c6ffdf5d3d8b0970e042a54a2686ed0792dba1367",
+      "evaluated_at": 1720000400,
+      "signature": "ef02275fe80bed346dd40d92c145d2f4bac446ff71e3fc453b34bca0cdd89d2525aeefb18058f226749c0744025019b71bba5c833e1b31b5f9bf359231f46754"
+    }
+  }
+}

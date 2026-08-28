@@ -1,0 +1,48 @@
+{
+  "vector_id": "workspace/radicle-backed-hosts",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "workspace",
+  "spec_refs": [
+    "heterodyne:workspace#workspace-hosting"
+  ],
+  "invariants": [
+    "WORKSPACE-I-HOST-AUTHORITY-SEPARATION",
+    "WORKSPACE-I-RADICLE-BACKSTOP"
+  ],
+  "reason_codes": [],
+  "description": "Deterministic host failover retains an eligible Radicle-backed relay while projecting no governance authority from host status.",
+  "direction": "consume",
+  "input": {
+    "inherited": [
+      {
+        "host_id": "1111111111111111111111111111111111111111111111111111111111111111",
+        "priority": 20,
+        "radicle_locators": [
+          "rad:zWorkspaceHostA"
+        ],
+        "radicle_backed_relay": true
+      },
+      {
+        "host_id": "2222222222222222222222222222222222222222222222222222222222222222",
+        "priority": 10,
+        "radicle_locators": [
+          "rad:zWorkspaceHostB"
+        ],
+        "radicle_backed_relay": true
+      }
+    ],
+    "mode": "default",
+    "configured": [],
+    "last_responsive": "1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "host_ids": [
+        "1111111111111111111111111111111111111111111111111111111111111111",
+        "2222222222222222222222222222222222222222222222222222222222222222"
+      ],
+      "radicle_backstop": true
+    }
+  }
+}

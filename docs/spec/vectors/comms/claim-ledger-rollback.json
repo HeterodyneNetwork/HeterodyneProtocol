@@ -1,0 +1,28 @@
+{
+  "vector_id": "comms/claim-ledger-rollback",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-conformance"
+  ],
+  "invariants": [
+    "COMMS-I-CLAIM-REPOSITORY-AUTHORITY"
+  ],
+  "reason_codes": [
+    "claim-ledger-rollback"
+  ],
+  "description": "A checkpoint outside canonical main cannot replace finalized claim-ledger history.",
+  "direction": "consume",
+  "input": {
+    "checkpoint": {
+      "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+      "branch": "dev",
+      "commit_oid": "27acc4ae198913277ff7c43c292ca5cd31a4c58df1054da92cce280fad33d6d8",
+      "observed_at": 1767245650
+    }
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "claim-ledger-rollback"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "vector_id": "assurance/associated-key-subject-proof-required",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "assurance",
+  "profile": "heterodyne-assurance-associated-key-v1",
+  "spec_refs": [
+    "heterodyne:assurance#assurance-associated-keys"
+  ],
+  "invariants": [
+    "ASSURANCE-I-ASSOCIATED-KEY-BOUNDS"
+  ],
+  "reason_codes": [
+    "assurance-associated-key-subject-proof-required"
+  ],
+  "description": "A public agent grant requires the subject key's proof of possession and consent.",
+  "direction": "consume",
+  "input": {
+    "state": "active",
+    "role": "agent",
+    "visibility": "public",
+    "subject_proof_present": false,
+    "subject_proof_valid": false,
+    "associated_key_event": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1785000003,
+      "kind": 31001,
+      "tags": [
+        [
+          "d",
+          "assurance-associated:c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5:agent:a0434d9e47f3c86235477c7b1ae6ae5d3442d49b1943c2b752a68e2a47e247c7"
+        ],
+        [
+          "profile",
+          "heterodyne.assurance.associated-key.v1"
+        ],
+        [
+          "p",
+          "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+        ]
+      ],
+      "content": "{\"active_key\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",\"assurance_head\":\"5e42684ee4f5c3c754487dff44d8b5ffec5b601d5893e34bb726a6ec3b846e66\",\"created_at\":1785000003,\"expires_at\":1785000101,\"issuer\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",\"issuer_authority\":{\"authority_proofs\":[],\"class\":\"active-key\"},\"predecessor\":\"5e42684ee4f5c3c754487dff44d8b5ffec5b601d5893e34bb726a6ec3b846e66\",\"profile\":\"heterodyne.assurance.associated-key.v1\",\"role\":\"agent\",\"scope\":[\"nostr:kind:1\"],\"spec_version\":\"heterodyne/0.6.0\",\"state\":\"active\",\"subject_key\":\"a0434d9e47f3c86235477c7b1ae6ae5d3442d49b1943c2b752a68e2a47e247c7\",\"visibility\":\"public\"}",
+      "id": "98484a503103f7520ed6aa15ae9082f027a7c5c7b148fb98d0e1260bb3a0dc14",
+      "sig": "44acf12b79cba4827dbb4fe9a9b9180482b3c9e3d45d87cc56cc2fcba83f796edb369e68880797b41d130bda43248305ef62b8d25fa38c7a6cf532a12ca0c5e8"
+    }
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "assurance-associated-key-subject-proof-required"
+  }
+}

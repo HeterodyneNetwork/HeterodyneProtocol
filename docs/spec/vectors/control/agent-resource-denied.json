@@ -1,0 +1,30 @@
+{
+  "vector_id": "control/agent-resource-denied",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "control",
+  "spec_refs": [
+    "heterodyne:control#control-agent-requirements"
+  ],
+  "invariants": [
+    "CONTROL-I-EXACT-SIGNER-GRANT"
+  ],
+  "reason_codes": [
+    "agent-resource-denied"
+  ],
+  "description": "The current Control policy boundary rejects agent resource denied.",
+  "direction": "consume",
+  "input": {
+    "method_allowed": true,
+    "private_key_requested": false,
+    "human_key_profile_selected": false,
+    "attribution_canonical": true,
+    "resource_allowed": false,
+    "event_bytes": 100,
+    "max_event_bytes": 200,
+    "rate_remaining": 1
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "agent-resource-denied"
+  }
+}

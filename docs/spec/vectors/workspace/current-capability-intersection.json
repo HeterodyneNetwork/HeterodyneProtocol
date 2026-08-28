@@ -1,0 +1,49 @@
+{
+  "vector_id": "workspace/current-capability-intersection",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "workspace",
+  "spec_refs": [
+    "heterodyne:workspace#workspace-authorization"
+  ],
+  "invariants": [
+    "WORKSPACE-I-AUTHENTICATED-CURRENT-STATE",
+    "WORKSPACE-I-INHERITANCE-NARROWS",
+    "WORKSPACE-I-NO-AMBIENT-AUTHORITY"
+  ],
+  "reason_codes": [],
+  "description": "Authenticated current Workspace state and one explicit grant intersect the workspace, every role path, and grant ceiling before authorizing read.",
+  "direction": "consume",
+  "input": {
+    "authenticated_current_state": true,
+    "explicit_grant": true,
+    "carrier_only_evidence": false,
+    "requested_capabilities": [
+      "read"
+    ],
+    "workspace_ceiling": [
+      "read",
+      "write"
+    ],
+    "role_path_ceilings": [
+      [
+        "read",
+        "write"
+      ],
+      [
+        "read"
+      ]
+    ],
+    "grant_capabilities": [
+      "read"
+    ],
+    "revoked_effective": false
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "effective_capabilities": [
+        "read"
+      ]
+    }
+  }
+}

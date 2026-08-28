@@ -1,0 +1,23 @@
+{
+  "vector_id": "control/signer-unavailable",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "control",
+  "spec_refs": [
+    "heterodyne:control#control-signer-selection"
+  ],
+  "invariants": [
+    "CONTROL-I-NO-SIGNER-FALLBACK"
+  ],
+  "reason_codes": [
+    "control-signer-unavailable"
+  ],
+  "description": "The live Control authorization boundary rejects signer unavailable.",
+  "direction": "consume",
+  "input": {
+    "signers": []
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "control-signer-unavailable"
+  }
+}

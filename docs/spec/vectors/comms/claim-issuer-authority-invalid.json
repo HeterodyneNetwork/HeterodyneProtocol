@@ -1,0 +1,29 @@
+{
+  "vector_id": "comms/claim-issuer-authority-invalid",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-conformance"
+  ],
+  "invariants": [
+    "COMMS-I-CLAIM-AUTHENTICITY"
+  ],
+  "reason_codes": [
+    "claim-issuer-authority-invalid"
+  ],
+  "description": "A claim without current claim-bound issuer authority evidence cannot authorize.",
+  "direction": "consume",
+  "input": {
+    "claim_id": "ad47df49d87e3390ca4653be89a5f4120f8d76c2b6fbc08be4b09c5c8ec09ea0",
+    "authority_evidence": []
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "claim-issuer-authority-invalid",
+    "evaluator_output": {
+      "allowed": false,
+      "state": "invalid",
+      "reason_code": "claim-issuer-authority-invalid"
+    }
+  }
+}
