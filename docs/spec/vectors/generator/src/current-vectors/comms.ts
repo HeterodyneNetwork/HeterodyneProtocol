@@ -6,7 +6,7 @@ import { evaluateAuthorizationFreshness } from "../authorization-freshness.js";
 import { canMint, evaluateReaderAccess, ledgerErrorReason, mergeClaimLedger, validateLedgerRecordOrThrow, } from "../claim-ledger.js";
 import { buildClaimLedgerScenario } from "../claim-ledger-test-support.js";
 import { authorizeWithClaim, validateClaimEnvelope, validateClaimId, validateClaimRevocationEnvelope, validateKeyRef, } from "../claims.js";
-import { classifyRelayWriteFailure, evaluateMarmotInboxBootstrap, evaluateOneTimeInvite, evaluatePrivateMarmotRoute, validateDmInviteDevice, validatePrivateBroadcast, validatePublicReaderRendering, } from "../comms-policy.js";
+import { classifyRelayWriteFailure, evaluateMarmotInboxBootstrap, evaluateOneTimeInvite, validateDmInviteDevice, validatePrivateBroadcast, validatePublicReaderRendering, } from "../comms-policy.js";
 import { QUALIFIED_VERSION } from "../family.js";
 import { buildFixtures } from "../fixtures.js";
 import { resolveTier3Recipients } from "../follow-up-hardening.js";
@@ -391,7 +391,11 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
     const inviteAuthInput = { ...inviteBase, secret_proof_valid: false };
     const inviteReservedInput = { ...inviteBase, reserved_account: "33".repeat(32) };
     const privateReaderInput = { tier: 2 as const, render_as_public: true };
-    const privateRouteInput = { private_group: true, requested_route: "rad:zAbsent", authorized_routes: [] as string[] };
+    const privateRouteInput = {
+        requested_repository_rid: "rad:z3CurrentPrivateRepository",
+        requested_interface_id: "radicle-native-private",
+        requested_route: "rad:zAbsent",
+    };
     const inboxNidInput = { sender_nid_authorized: false, keypackage_already_consumed: false, automated_scope_valid: true };
     const inboxReplayInput = { sender_nid_authorized: true, keypackage_already_consumed: true, automated_scope_valid: true };
     const marmotScopeInput = { sender_nid_authorized: true, keypackage_already_consumed: false, automated_scope_valid: false };

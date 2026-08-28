@@ -1145,7 +1145,7 @@ const CURRENT_CASE_CONTRACTS = {
     ]
   },
   "comms/marmot-private-route-required": {
-    "boundary_id": "comms-policy.evaluatePrivateMarmotRoute",
+    "boundary_id": "current-private-route.evaluateCurrentTier3PrivateRoute",
     "owner_document": "comms",
     "spec_refs": [
       "heterodyne:0.6.0#comms-marmot-groups"

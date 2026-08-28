@@ -13,6 +13,10 @@ export type CurrentProfileOracle = Readonly<{
   semantic_boundary: string;
   exercised_invariants: readonly string[];
   semantic_input: Readonly<Record<string, unknown>>;
+  claim_proof_expectation?: Readonly<{
+    suite: "nostr-bip340" | "radicle-ed25519" | "jwk-jws";
+    purpose: "claim-subject-pop" | "claim-revoker";
+  }>;
 }>;
 
 const PROFILE_VERSION = "heterodyne/0.5.0";
@@ -20,7 +24,9 @@ const CURRENT_PROFILE_VERSION = "heterodyne/0.6.0";
 const KEY = "11".repeat(32);
 const OTHER_KEY = "22".repeat(32);
 const CORE_BREADCRUMB_SECRET = "33".repeat(32);
-const TIER3_PRIVATE_ROUTE = "rad:z3CurrentPrivateRepository";
+const TIER3_PRIVATE_REPOSITORY_RID = "rad:z3CurrentPrivateRepository";
+const TIER3_PRIVATE_INTERFACE_ID = "radicle-native-private";
+const TIER3_PRIVATE_ROUTE = TIER3_PRIVATE_REPOSITORY_RID;
 
 function fixedTuple(
   kind: number,
@@ -103,6 +109,7 @@ function oracle(
   semantic_boundary: string,
   exercised_invariants: readonly string[],
   semantic_input: Readonly<Record<string, unknown>>,
+  claimProofExpectation?: CurrentProfileOracle["claim_proof_expectation"],
 ): CurrentProfileOracle {
   return {
     vector_id: `${tuple.owner}/profile-${tuple.profile_id}`,
@@ -111,6 +118,9 @@ function oracle(
     semantic_boundary,
     exercised_invariants,
     semantic_input,
+    ...(claimProofExpectation === undefined
+      ? {}
+      : { claim_proof_expectation: claimProofExpectation }),
   };
 }
 
@@ -244,7 +254,7 @@ for (const kind of [1, 6, 16, 1063, 30023, 30402] as const) {
       "tag:heterodyne_wrap=room_key.v2",
       true,
     ),
-    "privacy-crypto.deriveTier3IndexKey+nostr-tools.nip44+follow-up-hardening.resolveTier3Recipients+comms-policy.evaluatePrivateMarmotRoute",
+    "privacy-crypto.deriveTier3IndexKey+nostr-tools.nip44+follow-up-hardening.resolveTier3Recipients+current-private-route.evaluateCurrentTier3PrivateRoute",
     ["COMMS-I-TIER3-BLIND-CARRIER", "COMMS-I-TIER3-CONFINED"],
     {
       audience_key: "40".repeat(32),
@@ -255,9 +265,9 @@ for (const kind of [1, 6, 16, 1063, 30023, 30402] as const) {
         { persona: KEY, pubkey: OTHER_KEY, active: true, role: "human-device" },
       ],
       selected: [OTHER_KEY],
-      private_group: true,
+      requested_repository_rid: TIER3_PRIVATE_REPOSITORY_RID,
+      requested_interface_id: TIER3_PRIVATE_INTERFACE_ID,
       requested_route: TIER3_PRIVATE_ROUTE,
-      authorized_routes: [TIER3_PRIVATE_ROUTE],
     },
   ));
 }
@@ -354,10 +364,11 @@ for (const [kind, purpose, profileStem, invariant] of [
         false,
       ),
       purpose === "claim-revoker"
-        ? "profile-negotiation.verifyCurrentClaimProofProfile+claim-ledger.mergeClaimLedger+evaluateReaderAccess"
+        ? "current-revocation.evaluateCurrentRevocationProfile"
         : "profile-negotiation.verifyCurrentClaimProofProfile",
       [invariant],
-      proofInput(suite, purpose),
+      purpose === "claim-revoker" ? {} : proofInput(suite, purpose),
+      { suite, purpose },
     ));
   }
 }

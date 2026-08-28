@@ -33,6 +33,9 @@ import { nip44 } from "nostr-tools";
 import { bytesToHex, hexToBytes } from "../hex.js";
 import type { CurrentCaseFixture } from "./types.js";
 import { currentProfileOracleForVector } from "./profile-oracles.js";
+import { evaluateCurrentTier3PrivateRoute } from "./private-route-authority.js";
+import { evaluateCurrentRevocationProfile } from "./revocation-profile-boundary.js";
+import type { CurrentRevocationExecutionFixture } from "./revocation-profile-fixtures.js";
 import { resolve } from "node:path";
 
 const REPOSITORY_ROOT = resolve(import.meta.dirname, "../../../../../..");
@@ -106,6 +109,24 @@ async function executeCurrentBoundary(
       fixture.input,
     );
     return { raw_result: raw, projected_output: raw };
+  }
+  if (boundaryId === "current-private-route.evaluateCurrentTier3PrivateRoute") {
+    const route = evaluateCurrentTier3PrivateRoute(fixture.vector_id, fixture.input);
+    return {
+      raw_result: Object.freeze({
+        ...route.decision,
+        route_evidence: route.evidence,
+      }),
+      projected_output: route.decision,
+    };
+  }
+  if (boundaryId === "current-revocation.evaluateCurrentRevocationProfile") {
+    const [execution] = fixture.boundary_args ?? [];
+    return evaluateCurrentRevocationProfile(
+      fixture.vector_id,
+      fixture.input,
+      execution as CurrentRevocationExecutionFixture,
+    );
   }
   if (
     boundaryId
@@ -308,7 +329,7 @@ async function executeCurrentBoundary(
   }
   if (
     boundaryId
-    === "privacy-crypto.deriveTier3IndexKey+nostr-tools.nip44+follow-up-hardening.resolveTier3Recipients+comms-policy.evaluatePrivateMarmotRoute"
+    === "privacy-crypto.deriveTier3IndexKey+nostr-tools.nip44+follow-up-hardening.resolveTier3Recipients+current-private-route.evaluateCurrentTier3PrivateRoute"
   ) {
     const input = fixture.input as {
       audience_key: string;
@@ -322,9 +343,9 @@ async function executeCurrentBoundary(
         role: "human-device" | "full-node" | "agent";
       }[];
       selected: readonly string[];
-      private_group: boolean;
+      requested_repository_rid: string;
+      requested_interface_id: string;
       requested_route: string;
-      authorized_routes: readonly string[];
     };
     const key = privacyCrypto.deriveTier3IndexKey(input.audience_key, input.key_id);
     const ciphertext = nip44.v2.encrypt(
@@ -345,16 +366,11 @@ async function executeCurrentBoundary(
       devices: input.devices,
       selected: input.selected,
     });
-    const route = input.private_group === true
-      ? commsPolicy.evaluatePrivateMarmotRoute({
-          private_group: true,
-          requested_route: input.requested_route,
-          authorized_routes: input.authorized_routes,
-        })
-      : {
-          verdict: "reject" as const,
-          reason_code: "marmot-private-route-required" as const,
-        };
+    const routeEvaluation = evaluateCurrentTier3PrivateRoute(
+      fixture.vector_id,
+      input,
+    );
+    const route = routeEvaluation.decision;
     const rejection = recipients.verdict === "reject"
       ? recipients
       : route.verdict === "reject"
@@ -365,50 +381,10 @@ async function executeCurrentBoundary(
     const raw = rejection === null
       ? { verdict: "accept" as const, crypto, recipients, route }
       : { ...rejection, crypto, recipients, route };
-    return { raw_result: raw, projected_output: raw };
-  }
-  if (
-    boundaryId
-    === "profile-negotiation.verifyCurrentClaimProofProfile+claim-ledger.mergeClaimLedger+evaluateReaderAccess"
-  ) {
-    const [proofInput, left, right, checkpoint, context, readerNid, request] =
-      fixture.boundary_args ?? [];
-    const proof = profileNegotiation.verifyCurrentClaimProofProfile(proofInput);
-    if (proof.verdict === "reject") {
-      const raw = { ...proof, proof };
-      return { raw_result: raw, projected_output: raw };
-    }
-    try {
-      const state = claimLedger.mergeClaimLedger(
-        left as Parameters<typeof claimLedger.mergeClaimLedger>[0],
-        right as Parameters<typeof claimLedger.mergeClaimLedger>[1],
-        checkpoint as Parameters<typeof claimLedger.mergeClaimLedger>[2],
-        context as Parameters<typeof claimLedger.mergeClaimLedger>[3],
-      );
-      const authorization = claimLedger.evaluateReaderAccess(
-        readerNid as Parameters<typeof claimLedger.evaluateReaderAccess>[0],
-        state,
-        request as Parameters<typeof claimLedger.evaluateReaderAccess>[2],
-      );
-      const revocationEnforced = authorization.allowed === false
-        && authorization.state === "revoked"
-        && authorization.reason_code === "claim-revoked"
-        && (state.authenticated_revocations?.length ?? 0) > 0;
-      const raw = {
-        verdict: revocationEnforced ? "accept" as const : "reject" as const,
-        proof,
-        state,
-        authorization,
-      };
-      return { raw_result: raw, projected_output: raw };
-    } catch (error) {
-      const raw = {
-        verdict: "reject" as const,
-        reason_code: claimLedger.ledgerErrorReason(error),
-        proof,
-      };
-      return { raw_result: raw, projected_output: raw };
-    }
+    return {
+      raw_result: { ...raw, route_evidence: routeEvaluation.evidence },
+      projected_output: raw,
+    };
   }
   if (boundaryId === "claims.validateClaimRevocationEnvelope+authorizeWithClaim") {
     const [event, leaf, chain, suppliedContext] = fixture.boundary_args ?? [];

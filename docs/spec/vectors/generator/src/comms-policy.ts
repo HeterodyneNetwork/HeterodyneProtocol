@@ -83,16 +83,6 @@ export function validatePublicReaderRendering(input: {
     : { verdict: "accept" };
 }
 
-export function evaluatePrivateMarmotRoute(input: {
-  private_group: boolean;
-  requested_route: string;
-  authorized_routes: readonly string[];
-}): { verdict: "accept" } | { verdict: "reject"; reason_code: "marmot-private-route-required" } {
-  return input.private_group && !input.authorized_routes.includes(input.requested_route)
-    ? { verdict: "reject", reason_code: "marmot-private-route-required" }
-    : { verdict: "accept" };
-}
-
 export function evaluateMarmotInboxBootstrap(input: {
   sender_nid_authorized: boolean;
   keypackage_already_consumed: boolean;

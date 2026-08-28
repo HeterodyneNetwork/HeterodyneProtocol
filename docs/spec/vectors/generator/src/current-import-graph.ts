@@ -8,9 +8,22 @@ const NODE_BUILTINS = new Set(
   builtinModules.map((specifier) => specifier.replace(/^node:/u, "")),
 );
 const RUNTIME_LOADER_CAPABILITIES = new Set([
+  "AsyncFunction",
+  "AsyncGeneratorFunction",
+  "Function",
+  "GeneratorFunction",
+  "constructor",
   "createRequire",
+  "eval",
   "getBuiltinModule",
+  "globalThis",
   "require",
+]);
+const RUNTIME_CODE_MODULES = new Set([
+  "module",
+  "node:module",
+  "node:vm",
+  "vm",
 ]);
 export const CURRENT_TSCONFIG_PATH = resolve(SOURCE_ROOT, "../tsconfig.current.json");
 
@@ -85,7 +98,15 @@ function validateStaticOnly(
     if (
       ts.isImportEqualsDeclaration(node)
       && ts.isExternalModuleReference(node.moduleReference)
-    ) return;
+    ) {
+      const expression = node.moduleReference.expression;
+      if (
+        expression !== undefined
+        && ts.isStringLiteralLike(expression)
+        && RUNTIME_CODE_MODULES.has(expression.text)
+      ) rejectRuntimeLoader(path, source, node);
+      return;
+    }
 
     if (
       ts.isCallExpression(node)
@@ -93,17 +114,11 @@ function validateStaticOnly(
     ) rejectRuntimeLoader(path, source, node);
 
     if (
-      ts.isImportDeclaration(node)
+      (ts.isImportDeclaration(node) || ts.isExportDeclaration(node))
+      && node.moduleSpecifier !== undefined
       && ts.isStringLiteralLike(node.moduleSpecifier)
-      && ["module", "node:module"].includes(node.moduleSpecifier.text)
-    ) {
-      const clause = node.importClause;
-      if (
-        clause?.name !== undefined
-        || (clause?.namedBindings !== undefined
-          && ts.isNamespaceImport(clause.namedBindings))
-      ) rejectRuntimeLoader(path, source, node);
-    }
+      && RUNTIME_CODE_MODULES.has(node.moduleSpecifier.text)
+    ) rejectRuntimeLoader(path, source, node);
 
     if (
       ts.isIdentifier(node)
@@ -123,6 +138,11 @@ function validateStaticOnly(
       && node.argumentExpression !== undefined
       && ts.isStringLiteralLike(node.argumentExpression)
       && RUNTIME_LOADER_CAPABILITIES.has(node.argumentExpression.text)
+    ) rejectRuntimeLoader(path, source, node);
+
+    if (
+      ts.isPropertyAccessExpression(node)
+      && RUNTIME_LOADER_CAPABILITIES.has(node.name.text)
     ) rejectRuntimeLoader(path, source, node);
 
     ts.forEachChild(node, visit);

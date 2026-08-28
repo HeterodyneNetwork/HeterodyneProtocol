@@ -8,6 +8,9 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
+import { ed25519 } from "@noble/curves/ed25519";
+import { schnorr } from "@noble/curves/secp256k1";
+import { sha256 } from "@noble/hashes/sha2";
 import { afterEach, describe, expect, it } from "vitest";
 import { evaluateAssuranceCompromiseContinuation } from "./assurance-policy.js";
 import { evaluateSuccession } from "./assurance.js";
@@ -25,9 +28,13 @@ import {
   currentProfileOracleForVector,
 } from "./current-vectors/profile-oracles.js";
 import { buildFixtures } from "./fixtures.js";
+import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
+import { jcsCanonicalize } from "./jcs.js";
+import { signEvent } from "./nostr.js";
 import { validateCurrentKindProfileNegotiation } from "./profile-negotiation.js";
 import { loadRegistry } from "./registry.js";
 import { validateVectorOrThrow } from "./schema.js";
+import { AUX_RAND } from "./vector-helpers.js";
 import {
   currentCompilerConfigPath as compilerConfigPath,
   currentModuleDependencies as moduleDependencies,
@@ -99,6 +106,81 @@ describe("current vector catalog import boundary", () => {
         ].join("\n"),
       ],
     ]);
+    for (const [file, source] of fixtures) {
+      const path = resolve(root, file);
+      writeFileSync(path, source);
+      expect(() => moduleDependencies(path), file)
+        .toThrow(/runtime-loader syntax prohibited in current vector graph/u);
+    }
+  });
+
+  it("rejects concealed runtime code construction and loader namespace access", () => {
+    const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-concealed-code-"));
+    temporaryRoots.push(root);
+    const fixtures = new Map<string, string>([
+      [
+        "computed-module.ts",
+        [
+          'import { Module } from "node:module";',
+          "const factory = Module['create' + 'Require'];",
+          "void factory(import.meta.url);",
+        ].join("\n"),
+      ],
+      [
+        "optional-aliased-module.ts",
+        [
+          'import { Module as NodeModule } from "node:module";',
+          "const loaderNamespace = NodeModule;",
+          "void loaderNamespace?.['create' + 'Require'];",
+        ].join("\n"),
+      ],
+      [
+        "function-import.ts",
+        "Function('return import(\"./topics-function.js\")')();",
+      ],
+      [
+        "global-function.ts",
+        "globalThis.Function('return import(\"./topics-global-function.js\")')();",
+      ],
+      [
+        "computed-global.ts",
+        [
+          "const constructorName = 'Fun' + 'ction';",
+          "globalThis[constructorName]('return import(\"./topics-computed-global.js\")')();",
+        ].join("\n"),
+      ],
+      [
+        "direct-eval.ts",
+        "eval('import(\"./topics-direct-eval.js\")');",
+      ],
+      [
+        "indirect-eval.ts",
+        "(0, eval)('import(\"./topics-indirect-eval.js\")');",
+      ],
+      [
+        "async-function.ts",
+        [
+          "const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;",
+          "AsyncFunction('return import(\"./topics-async-function.js\")')();",
+        ].join("\n"),
+      ],
+      [
+        "generator-function.ts",
+        [
+          "const GeneratorFunction = Object.getPrototypeOf(function* () {}).constructor;",
+          "GeneratorFunction('yield import(\"./topics-generator-function.js\")')();",
+        ].join("\n"),
+      ],
+      [
+        "async-generator-function.ts",
+        [
+          "const AsyncGeneratorFunction = Object.getPrototypeOf(async function* () {}).constructor;",
+          "AsyncGeneratorFunction('yield import(\"./topics-async-generator-function.js\")')();",
+        ].join("\n"),
+      ],
+      ["vm.ts", 'import vm from "node:vm"; void vm;'],
+    ]);
+
     for (const [file, source] of fixtures) {
       const path = resolve(root, file);
       writeFileSync(path, source);
@@ -481,13 +563,25 @@ describe("current 0.6 vector catalog", () => {
         (input: Record<string, unknown>) => Object.assign(input, {
           private_group: true,
           requested_route: "wss://public-relay.example",
-          authorized_routes: ["rad:z3CurrentPrivateRepository"],
+          authorized_routes: ["wss://public-relay.example"],
         }),
         "marmot-private-route-required",
       ],
       [
         (input: Record<string, unknown>) => {
-          input.private_group = false;
+          input.requested_repository_rid = "rad:zDifferentPrivateRepository";
+        },
+        "marmot-private-route-required",
+      ],
+      [
+        (input: Record<string, unknown>) => {
+          input.requested_interface_id = "ordinary-nostr-relay";
+        },
+        "marmot-private-route-required",
+      ],
+      [
+        (input: Record<string, unknown>) => {
+          input.requested_route = "rad:zDifferentPrivateRepository";
         },
         "marmot-private-route-required",
       ],
@@ -504,52 +598,345 @@ describe("current 0.6 vector catalog", () => {
       await expect(invokeCurrentBoundary(oracle.semantic_boundary, fixture))
         .resolves.toMatchObject({
           projected_output: { verdict: "reject", reason_code: expectedReason },
-        });
+      });
     }
   });
 
+  it("derives Tier-3 authority from the fixed private-repository oracle and binds its evidence to one row", async () => {
+    const profiles = await buildProfileCases();
+    const first = profiles.find(({ vector_id }) =>
+      vector_id === "comms/profile-heterodyne-comms-tier3-wrapped-content-kind-1-v1"
+    )!;
+    const second = profiles.find(({ vector_id }) =>
+      vector_id === "comms/profile-heterodyne-comms-tier3-wrapped-content-kind-6-v1"
+    )!;
+    expect(first.input).toMatchObject({
+      requested_repository_rid: "rad:z3CurrentPrivateRepository",
+      requested_interface_id: "radicle-native-private",
+      requested_route: "rad:z3CurrentPrivateRepository",
+    });
+    for (const callerAuthorityField of [
+      "authorized_routes",
+      "private_group",
+      "interface_class",
+      "repository_visibility",
+    ]) expect(first.input).not.toHaveProperty(callerAuthorityField);
+
+    const firstOracle = currentProfileOracleForVector(first.vector_id)!;
+    const secondOracle = currentProfileOracleForVector(second.vector_id)!;
+    const firstExecution = await invokeCurrentBoundary(firstOracle.semantic_boundary, first);
+    const secondExecution = await invokeCurrentBoundary(secondOracle.semantic_boundary, second);
+    const firstSemantic = (firstExecution.raw_result as {
+      semantic_result: {
+        route_evidence: {
+          vector_id: string;
+          request_digest: string;
+          repository_rid: string;
+          interface_id: string;
+          route: string;
+        };
+      };
+    }).semantic_result;
+    const secondSemantic = (secondExecution.raw_result as typeof firstExecution.raw_result & {
+      semantic_result: typeof firstSemantic;
+    }).semantic_result;
+
+    expect(firstExecution.projected_output).toMatchObject({
+      verdict: "accept",
+      route: { verdict: "accept" },
+    });
+    expect(firstExecution.projected_output).not.toHaveProperty("route_evidence");
+    expect(firstSemantic.route_evidence).toMatchObject({
+      vector_id: first.vector_id,
+      repository_rid: "rad:z3CurrentPrivateRepository",
+      interface_id: "radicle-native-private",
+      route: "rad:z3CurrentPrivateRepository",
+    });
+    expect(firstSemantic.route_evidence.request_digest).toMatch(/^[0-9a-f]{64}$/u);
+    expect(secondSemantic.route_evidence.vector_id).toBe(second.vector_id);
+    expect(secondSemantic.route_evidence.request_digest)
+      .not.toBe(firstSemantic.route_evidence.request_digest);
+  });
+
+  it("mints a fresh request-bound Tier-3 authority for each build and rejects replayed evidence", async () => {
+    const original = (await buildProfileCases()).find(({ vector_id }) =>
+      vector_id === "comms/profile-heterodyne-comms-tier3-wrapped-content-kind-1-v1"
+    )!;
+    const oracle = currentProfileOracleForVector(original.vector_id)!;
+    const first = await invokeCurrentBoundary(oracle.semantic_boundary, original);
+    const firstEvidence = (first.raw_result as {
+      semantic_result: {
+        route_evidence: { authority_identity: object; request_digest: string };
+      };
+    }).semantic_result.route_evidence;
+
+    const replay = structuredClone(original);
+    (replay.input as Record<string, unknown>).route_evidence = firstEvidence;
+    await expect(invokeCurrentBoundary(oracle.semantic_boundary, replay))
+      .resolves.toMatchObject({
+        projected_output: {
+          verdict: "reject",
+          reason_code: "marmot-private-route-required",
+        },
+      });
+
+    const second = await invokeCurrentBoundary(oracle.semantic_boundary, original);
+    const secondEvidence = (second.raw_result as {
+      semantic_result: { route_evidence: typeof firstEvidence };
+    }).semantic_result.route_evidence;
+    expect(secondEvidence.request_digest).toBe(firstEvidence.request_digest);
+    expect(secondEvidence.authority_identity).not.toBe(firstEvidence.authority_identity);
+    expect((await buildCurrentCases()).length).toBe(275);
+    expect((await buildCurrentCases()).length).toBe(275);
+  }, 30_000);
+
   it("rejects a revocation profile when the signed revocation is mutated before merge", async () => {
-    const profile = (await buildProfileCases()).find(({ vector_id }) =>
+    const original = (await buildProfileCases()).find(({ vector_id }) =>
       vector_id === "comms/profile-heterodyne-comms-claim-revocation-nostr-bip340-v1"
     )!;
-    const ledger = await buildClaimLedgerScenario(buildFixtures());
-    const records = [
-      ledger.claimRecordOne,
-      ledger.claimRecordTwo,
-      ledger.grantOne,
-      ledger.revocationRecord,
-    ];
-    const repository = buildLedgerRepositoryEvidence({
-      repository_rid: ledger.rid,
-      confirmed_records: records,
-      observed_at: ledger.now + 60,
-      prior: ledger.baseRepository.repository,
-    });
-    const request = ledger.requestFor(ledger.claimRecordOne, ledger.claimOne);
-    request.verification_context.now = repository.checkpoint.observed_at;
-    const mutatedRevocation = structuredClone(ledger.revocationRecord);
-    const artifact = (mutatedRevocation.payload as {
-      revocation_artifact: { event: { sig: string } };
-    }).revocation_artifact;
-    artifact.event.sig = "00".repeat(64);
-    const fixture = {
-      ...profile,
-      boundary_args: [
-        profile.input,
-        [ledger.claimRecordOne, ledger.claimRecordTwo, ledger.grantOne],
-        [ledger.claimRecordOne, ledger.claimRecordTwo, mutatedRevocation],
-        repository.checkpoint,
-        ledger.makeContext(repository.repository),
-        ledger.writerOne.did_key,
-        request,
-      ],
+    const fixture = structuredClone(original);
+    const execution = fixture.boundary_args?.[0] as {
+      right: Array<{
+        record_type: string;
+        payload: { revocation_artifact?: { event: { sig: string } } };
+      }>;
     };
+    const artifact = execution.right.find(({ record_type }) =>
+      record_type === "revocation"
+    )!.payload.revocation_artifact!;
+    expect(fixture.input.revocation_artifact).toBe(artifact);
+    artifact.event.sig = "00".repeat(64);
     const oracle = currentProfileOracleForVector(fixture.vector_id)!;
 
     await expect(invokeCurrentBoundary(oracle.semantic_boundary, fixture))
       .resolves.toMatchObject({
         projected_output: { verdict: "reject" },
       });
+  });
+
+  it("rejects caller-supplied purpose cross-labels for every revocation proof suite", async () => {
+    const profiles = (await buildProfileCases()).filter(({ vector_id }) =>
+      vector_id.includes("/profile-heterodyne-comms-claim-revocation-")
+    );
+    expect(profiles).toHaveLength(3);
+    for (const original of profiles) {
+      const fixture = structuredClone(original);
+      (fixture.input as Record<string, unknown>).proof_purpose = "claim-subject-pop";
+      const oracle = currentProfileOracleForVector(fixture.vector_id)!;
+      await expect(invokeCurrentBoundary(oracle.semantic_boundary, fixture))
+        .resolves.toMatchObject({
+          projected_output: {
+            verdict: "reject",
+            reason_code: "claim-subject-proof-invalid",
+          },
+        });
+    }
+  });
+
+  it("verifies and merges the exact row-fixed revocation artifact before applying its irreversible effect", async () => {
+    const expectedRows = new Map([
+      [
+        "comms/profile-heterodyne-comms-claim-revocation-nostr-bip340-v1",
+        { suite: "nostr-bip340", effect: "reader-denied" },
+      ],
+      [
+        "comms/profile-heterodyne-comms-claim-revocation-radicle-ed25519-v1",
+        { suite: "radicle-ed25519", effect: "reader-denied" },
+      ],
+      [
+        "comms/profile-heterodyne-comms-claim-revocation-jwk-jws-v1",
+        { suite: "jwk-jws", effect: "descriptive-claim-revoked" },
+      ],
+    ] as const);
+    const profiles = await buildProfileCases();
+
+    for (const [vectorId, expected] of expectedRows) {
+      const fixture = profiles.find(({ vector_id }) => vector_id === vectorId)!;
+      expect(fixture.input, vectorId).toHaveProperty("revocation_artifact");
+      for (const callerLabel of ["proof_purpose", "proof_suite", "message"]) {
+        expect(fixture.input, `${vectorId}: ${callerLabel}`)
+          .not.toHaveProperty(callerLabel);
+      }
+      const executionArgs = fixture.boundary_args?.[0] as {
+        right: Array<{
+          record_id: string;
+          record_type: string;
+          payload: { revocation_artifact?: unknown };
+        }>;
+      };
+      const revocationRecord = executionArgs.right.find(({ record_type }) =>
+        record_type === "revocation"
+      )!;
+      expect(fixture.input.revocation_artifact).toBe(
+        revocationRecord.payload.revocation_artifact,
+      );
+
+      const oracle = currentProfileOracleForVector(fixture.vector_id)!;
+      const result = await invokeCurrentBoundary(oracle.semantic_boundary, fixture);
+      const semantic = (result.raw_result as {
+        semantic_result: {
+          revocation_evidence: {
+            expected_suite: string;
+            expected_purpose: string;
+            artifact_object_identity: boolean;
+            merged_record_object_identity: boolean;
+            merged_artifact_object_identity: boolean;
+            artifact_digest: string;
+            artifact_digest_after_merge: string;
+            merged_record_id: string;
+            irreversible_effect: string;
+          };
+        };
+      }).semantic_result;
+      expect(result.projected_output).toMatchObject({ verdict: "accept" });
+      expect(result.projected_output).not.toHaveProperty("revocation_evidence");
+      expect(semantic.revocation_evidence).toMatchObject({
+        expected_suite: expected.suite,
+        expected_purpose: "claim-revoker",
+        artifact_object_identity: true,
+        merged_record_object_identity: true,
+        merged_artifact_object_identity: true,
+        merged_record_id: revocationRecord.record_id,
+        irreversible_effect: expected.effect,
+      });
+      expect(semantic.revocation_evidence.artifact_digest)
+        .toMatch(/^[0-9a-f]{64}$/u);
+      expect(semantic.revocation_evidence.artifact_digest_after_merge)
+        .toBe(semantic.revocation_evidence.artifact_digest);
+      expect(Object.isFrozen(revocationRecord.payload.revocation_artifact)).toBe(true);
+    }
+  });
+
+  it("rejects cross-suite, mutated, grafted, and unrelated revocation proofs for every fixed row", async () => {
+    type Artifact = {
+      event: {
+        id: string;
+        pubkey: string;
+        created_at: number;
+        kind: number;
+        tags: string[][];
+        content: string;
+        sig: string;
+      };
+      semantic: Record<string, unknown>;
+    };
+    type ExecutionArgs = {
+      right: Array<{
+        record_type: string;
+        payload: { revocation_artifact?: Artifact };
+      }>;
+    };
+    const suiteRows = [
+      ["nostr-bip340", "comms/profile-heterodyne-comms-claim-revocation-nostr-bip340-v1"],
+      ["radicle-ed25519", "comms/profile-heterodyne-comms-claim-revocation-radicle-ed25519-v1"],
+      ["jwk-jws", "comms/profile-heterodyne-comms-claim-revocation-jwk-jws-v1"],
+    ] as const;
+    const epoch = buildFixtures().personas.alice.epoch_keys.epoch_1;
+    const proofSigner = buildFixtures().ed25519_nids.alice_device_1;
+    const unrelated = sha256(utf8Bytes("unrelated-current-revocation-proof"));
+    const artifactOf = (fixture: Awaited<ReturnType<typeof buildProfileCases>>[number]) => {
+      expect(fixture.input).toHaveProperty("revocation_artifact");
+      const execution = fixture.boundary_args?.[0] as ExecutionArgs;
+      const record = execution.right.find(({ record_type }) => record_type === "revocation")!;
+      const artifact = record.payload.revocation_artifact!;
+      (fixture.input as Record<string, unknown>).revocation_artifact = artifact;
+      return artifact;
+    };
+    const expectRejected = async (
+      fixture: Awaited<ReturnType<typeof buildProfileCases>>[number],
+      label: string,
+    ) => {
+      const oracle = currentProfileOracleForVector(fixture.vector_id)!;
+      const result = await invokeCurrentBoundary(oracle.semantic_boundary, fixture);
+      expect(result.projected_output, `${fixture.vector_id}: ${label}`)
+        .toMatchObject({ verdict: "reject" });
+    };
+
+    const suiteFixtures = new Map((await buildProfileCases())
+      .filter(({ vector_id }) => vector_id.includes("/profile-heterodyne-comms-claim-revocation-"))
+      .map((fixture) => [fixture.vector_id, fixture]));
+    for (let index = 0; index < suiteRows.length; index += 1) {
+      const [suite, vectorId] = suiteRows[index];
+      const sourceId = suiteRows[(index + 1) % suiteRows.length][1];
+      const target = structuredClone(suiteFixtures.get(vectorId)!);
+      const source = structuredClone(suiteFixtures.get(sourceId)!);
+      const targetArtifact = artifactOf(target);
+      const sourceArtifact = artifactOf(source);
+      const targetRecord = (target.boundary_args?.[0] as ExecutionArgs).right
+        .find(({ record_type }) => record_type === "revocation")!;
+      targetRecord.payload.revocation_artifact = sourceArtifact;
+      (target.input as Record<string, unknown>).revocation_artifact = sourceArtifact;
+      await expectRejected(target, "cross-suite artifact");
+
+      const mutated = structuredClone(suiteFixtures.get(vectorId)!);
+      artifactOf(mutated).event.sig = "00".repeat(64);
+      await expectRejected(mutated, "signed artifact mutation");
+
+      const grafted = structuredClone(suiteFixtures.get(vectorId)!);
+      const graftedArtifact = artifactOf(grafted);
+      const graftedSemantic = {
+        ...graftedArtifact.semantic,
+        revoked_at: Number(graftedArtifact.semantic.revoked_at) + 1,
+      };
+      if (suite === "nostr-bip340") {
+        graftedArtifact.semantic = graftedSemantic;
+        graftedArtifact.event = {
+          ...graftedArtifact.event,
+          created_at: Number(graftedSemantic.revoked_at),
+          content: jcsCanonicalize(graftedSemantic),
+        };
+      } else {
+        graftedArtifact.semantic = graftedSemantic;
+        graftedArtifact.event = await signEvent({
+          secretKey: epoch.private_key,
+          auxRand: AUX_RAND,
+          created_at: Number(graftedSemantic.revoked_at),
+          kind: 31014,
+          tags: [["d", String(graftedArtifact.semantic.claim_id)]],
+          content: jcsCanonicalize(graftedSemantic),
+        });
+      }
+      await expectRejected(grafted, "proof grafted to another revocation");
+
+      const unrelatedProof = structuredClone(suiteFixtures.get(vectorId)!);
+      const unrelatedArtifact = artifactOf(unrelatedProof);
+      if (suite === "nostr-bip340") {
+        unrelatedArtifact.event.sig = bytesToHex(schnorr.sign(
+          unrelated,
+          hexToBytes(epoch.private_key),
+          hexToBytes(AUX_RAND),
+        ));
+      } else {
+        const semantic = unrelatedArtifact.semantic as {
+          proof: Record<string, unknown>;
+        };
+        if (suite === "radicle-ed25519") {
+          semantic.proof.signature = bytesToHex(ed25519.sign(
+            unrelated,
+            hexToBytes(proofSigner.private_key),
+          ));
+        } else {
+          const protectedHeader = String(semantic.proof.protected);
+          const signingInput = utf8Bytes(
+            `${protectedHeader}.${Buffer.from(unrelated).toString("base64url")}`,
+          );
+          semantic.proof.signature = Buffer.from(ed25519.sign(
+            signingInput,
+            hexToBytes(proofSigner.private_key),
+          )).toString("base64url");
+        }
+        unrelatedArtifact.event = await signEvent({
+          secretKey: epoch.private_key,
+          auxRand: AUX_RAND,
+          created_at: unrelatedArtifact.event.created_at,
+          kind: 31014,
+          tags: unrelatedArtifact.event.tags,
+          content: jcsCanonicalize(semantic),
+        });
+      }
+      await expectRejected(unrelatedProof, "unrelated signed digest");
+      expect(targetArtifact).not.toBe(sourceArtifact);
+    }
   });
 
   it("rejects a Control profile when account, leaf, grant, content, or secret confinement is crossed", async () => {
@@ -691,7 +1078,7 @@ describe("current 0.6 vector catalog", () => {
     for (const vector of vectors) {
       const serialized = JSON.stringify(vector);
       expect(serialized).not.toMatch(
-        /boundary_args|raw_result|semantic_reason_codes|evidence_brand/u,
+        /artifact_object_identity|authority_identity|boundary_args|evidence_brand|raw_result|revocation_evidence|route_evidence|semantic_reason_codes/u,
       );
     }
   }, 60_000);

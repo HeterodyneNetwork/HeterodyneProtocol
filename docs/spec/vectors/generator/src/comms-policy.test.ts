@@ -3,7 +3,6 @@ import {
   classifyRelayWriteFailure,
   evaluateMarmotInboxBootstrap,
   evaluateOneTimeInvite,
-  evaluatePrivateMarmotRoute,
   validateDmInviteDevice,
   validatePrivateBroadcast,
   validatePublicReaderRendering,
@@ -49,8 +48,6 @@ describe("current Comms semantic policy boundaries", () => {
   it("confines public rendering, private routes, inboxes, and automation", () => {
     expect(validatePublicReaderRendering({ tier: 2, render_as_public: true }))
       .toEqual({ verdict: "reject", reason_code: "public-reader-private-content" });
-    expect(evaluatePrivateMarmotRoute({ private_group: true, requested_route: "rad:zAbsent", authorized_routes: [] }))
-      .toEqual({ verdict: "reject", reason_code: "marmot-private-route-required" });
     expect(evaluateMarmotInboxBootstrap({ sender_nid_authorized: false, keypackage_already_consumed: false, automated_scope_valid: true }))
       .toEqual({ verdict: "reject", reason_code: "marmot-private-inbox-nid-required" });
     expect(evaluateMarmotInboxBootstrap({ sender_nid_authorized: true, keypackage_already_consumed: true, automated_scope_valid: true }))
