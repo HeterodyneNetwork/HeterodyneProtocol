@@ -49,7 +49,7 @@ Every signed object contains `spec_version:"heterodyne/0.6.0"`, its exact
 `workspace_key` is the workspace's current active Nostr public key and the
 exact BIP-340 verification key for `signature`.
 
-<a id="workspace-governance-assurance"></a>
+<a id="workspace-optional-assurance"></a>
 A Workspace MAY be created and operated with its active Nostr persona key and
 no Assurance claim. A Workspace policy MAY activate the closed
 `heterodyne.workspace.assurance.v1` profile after the active key has a
@@ -61,6 +61,67 @@ exactly `profile:"heterodyne.workspace.assurance.v1"`, a lowercase
 64-character-hex `inception_event_id`, and `required_state:"verified"`. It
 does not replace the Workspace active key, governance approvals, or explicit
 authorization objects.
+
+Activation requires both the ordinary valid Workspace policy transition and
+an embedding-supplied verification authority whose current, atomically
+snapshotted result is exactly:
+
+```json
+{
+  "state": "verified",
+  "active_key": "<workspace_key>",
+  "inception_event_id": "<policy assurance inception_event_id>",
+  "evaluated_at": 1720000400
+}
+```
+
+The illustrative `evaluated_at` value above is a nonnegative JSON integer,
+not a string. The verification authority and its trusted clock are local
+embedding inputs, not Workspace request members or wire objects. Their
+identities MUST be fixed when the resolver is configured, each result MUST be
+captured atomically as a closed value, and lazy, substituted, or additional
+members MUST be rejected. A request-provided cold root, state label, proof
+boolean, or evaluation time has no authority and violates a closed request
+shape when present.
+
+Once the profile is active, a consumer MUST revalidate that exact binding
+when accepting each current Workspace state and immediately before every
+security-sensitive authority effect: grant activation, invitation acceptance,
+policy change, successor reauthorization, resource-key issuance or delivery,
+publicization, federation change, joint or root governance, and archive. A
+missing verification authority or a pending, stale, unavailable, mismatched,
+or non-closed result rejects the state or effect with
+`workspace-assurance-state-required`. A policy without the profile skips this
+optional verification boundary and MUST NOT require that authority.
+
+Ordinary active-key governance alone MUST NOT weaken, replace, or remove an
+active profile. Replacement additionally requires verified activation of the
+new profile. Replacement or removal additionally requires the current
+profile's embedding-supplied authority to return exactly
+`{"authorized":true,"transition_digest":"<digest>","evaluated_at":1720000400}`.
+The `transition_digest` is lowercase-hex SHA-256 of the JCS encoding of this
+exact closed object, where each assurance value is its exact closed policy
+object or JSON `null`:
+
+```json
+{
+  "profile": "heterodyne.workspace.assurance-transition.v1",
+  "workspace_key": "<workspace_key>",
+  "previous_policy_head": "<transition predecessor or null>",
+  "next_policy_head": "<next policy_head>",
+  "previous_assurance": "<previous assurance object or null>",
+  "next_assurance": "<next assurance object or null>"
+}
+```
+
+The illustrative assurance values above stand for JSON object or `null`
+values, not strings. `previous_policy_head` is exactly the transition's
+nullable `predecessor`, `next_policy_head` is exactly its `policy_head`, and
+the assurance values are the profiles in those two policy states. The
+ordinary Workspace governance decision and the
+optional authority therefore authorize the same complete canonical policy
+transition; a digest, time, or authorization result for any other transition
+MUST be rejected with `workspace-assurance-state-required`.
 
 The signature covers the
 [`heterodyne:0.6.0#core-proof-bytes`](heterodyne-core.md#core-proof-bytes) bytes for domain
@@ -709,8 +770,9 @@ global deletion.
 <a id="workspace-freshness"></a>
 ## 13. Freshness, offline work, and conflicts
 
-Authority mutations - grants, invitations, policy changes, key issuance,
-publicization, federation, and governance - use the authorization-view window
+Authority mutations - grants, invitations, policy changes, successor
+reauthorization, resource-key issuance and delivery, publicization,
+federation, governance, and archive - use the authorization-view window
 defined by [`heterodyne:0.6.0#comms-authorization-freshness`](heterodyne-comms.md#comms-authorization-freshness). Workspace adds one
 relaxed window for ordinary code, content, and discussion writes: 86,400
 seconds.
@@ -720,9 +782,9 @@ and MUST NOT lengthen it. At every effect, the effective maximum age is the
 minimum of the locally configured resolver maximum and the signed
 `ordinary_write_max_age` for ordinary writes or
 `authority_mutation_max_age` for activation, invitations, successor
-reauthorization, joint governance, and other authority effects. Bilateral
-allowance evaluation and resource-key delivery use the ordinary-operation
-bound while still rechecking current signed authority. The operation must
+reauthorization, resource-key delivery, joint governance, and other authority
+effects. Bilateral allowance evaluation uses the ordinary-operation bound
+while still rechecking current signed authority. The operation must
 reach a conforming validator while its referenced signed checkpoint is within
 the effective window. A
 self-declared event time does not extend freshness. A resource-specific
@@ -792,6 +854,7 @@ governs.
 | `host_unauthorized` | The responder is not an authorized custodian for the resource/checkpoint. |
 | `private_topology_disclosed` | A public projection correlates concealed topology. |
 | `workspace_replay` | A nonce, approval, relationship, grant, or envelope was replayed. |
+| `workspace-assurance-state-required` | The optional active Workspace Assurance profile is missing a current exact verified binding or matching dual-authority transition authorization. |
 
 <a id="workspace-security"></a>
 ## 16. Security invariants

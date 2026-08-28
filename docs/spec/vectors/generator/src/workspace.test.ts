@@ -5,6 +5,7 @@ import { bytesToHex, utf8Bytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
 import { signEvent } from "./nostr.js";
 import { proofBytes } from "./proof-bytes.js";
+import { createWorkspaceAssuranceAuthority } from "./workspace-assurance.js";
 import {
   createTrustedSeedAdmissionAuthority,
   trustedSeedAclProofBytes,
@@ -59,6 +60,12 @@ const RESOLVER_KEY = bytesToHex(schnorr.getPublicKey(RESOLVER_SECRET));
 const RESOURCE_ID = "aa".repeat(32);
 const ACTOR_GRANT_ID = "bb".repeat(32);
 const REVOCATION_ID = "cc".repeat(32);
+const ASSURANCE_INCEPTION_EVENT_ID = "ef".repeat(32);
+const WORKSPACE_ASSURANCE = Object.freeze({
+  profile: "heterodyne.workspace.assurance.v1" as const,
+  inception_event_id: ASSURANCE_INCEPTION_EVENT_ID,
+  required_state: "verified" as const,
+});
 
 const currentState = (workspaceKey = WORKSPACE_KEY) => ({
   workspace_key: workspaceKey,
@@ -526,7 +533,9 @@ const jointAuthorityObjects = (threshold = 2): Record<string, unknown>[] => {
   return base;
 };
 
-const currentAuthorityObjects = (): Record<string, unknown>[] => {
+const currentAuthorityObjects = (
+  assurance: typeof WORKSPACE_ASSURANCE | null = null,
+): Record<string, unknown>[] => {
   const common = {
     spec_version: "heterodyne/0.5.0",
     workspace_key: WORKSPACE_KEY,
@@ -553,6 +562,7 @@ const currentAuthorityObjects = (): Record<string, unknown>[] => {
     default_host_ids: ["dd".repeat(32)],
     ordinary_write_max_age: 86_400,
     authority_mutation_max_age: 300,
+    ...(assurance === null ? {} : { assurance }),
   }, WORKSPACE_SECRET);
   const role = signWorkspaceObject({
     ...common,
@@ -1031,6 +1041,209 @@ describe("Workspace configured repository resolver", () => {
       evidence: repositoryViewEvidence(invalidObjects),
       objects: invalidObjects,
     })).toEqual({ verdict: "reject", reason_code: "workspace_repository_invalid" });
+  });
+});
+
+describe("Workspace optional Assurance composition", () => {
+  const resolverConfig = (
+    assuranceAuthority?: ReturnType<typeof createWorkspaceAssuranceAuthority>,
+  ) => ({
+    trust_anchors: [{ suite: "bip340" as const, public_key: RESOLVER_KEY }],
+    allowed_policies: ["radicle-verified-complete-v1"],
+    minimum_version: "1.0.0",
+    max_ttl: 600,
+    max_view_age: 300,
+    repositories: [{
+      workspace_key: WORKSPACE_KEY,
+      repository_rid: "rad:zWorkspace",
+      pinned_head: H40,
+    }],
+    trusted_now: () => 1_720_000_400,
+    ...(assuranceAuthority === undefined ? {} : { assurance_authority: assuranceAuthority }),
+  });
+
+  const assuranceAuthority = (
+    state: () => "verified" | "pending",
+    authorizeRemoval: (input: Readonly<{
+      workspace_key: string;
+      inception_event_id: string;
+      transition_digest: string;
+      evaluated_at: number;
+    }>) => unknown = () => undefined,
+  ) => createWorkspaceAssuranceAuthority({
+    trusted_now: () => 1_720_000_400,
+    resolve_verified_enrollment: ({ workspace_key, inception_event_id, evaluated_at }: Readonly<{
+      workspace_key: string;
+      inception_event_id: string;
+      evaluated_at: number;
+    }>) => ({
+      state: state(),
+      active_key: workspace_key,
+      inception_event_id,
+      evaluated_at,
+    }),
+    authorize_removal: authorizeRemoval,
+  });
+
+  it("keeps bare-key policy resolution independent of an Assurance authority", async () => {
+    const api = await import("./workspace.js");
+    const objects = currentAuthorityObjects();
+    const authority = api.createWorkspaceRepositoryResolverAuthority(resolverConfig());
+    expect(api.authenticateWorkspaceRepositoryView({
+      authority,
+      evidence: repositoryViewEvidence(objects),
+      objects,
+    })).toMatchObject({ verdict: "accept", state: expect.any(Object) });
+  });
+
+  it("requires verified activation and rejects public caller-supplied state", async () => {
+    const api = await import("./workspace.js");
+    const objects = currentAuthorityObjects(WORKSPACE_ASSURANCE);
+    const pendingAuthority = api.createWorkspaceRepositoryResolverAuthority(
+      resolverConfig(assuranceAuthority(() => "pending")),
+    );
+    expect(api.authenticateWorkspaceRepositoryView({
+      authority: pendingAuthority,
+      evidence: repositoryViewEvidence(objects),
+      objects,
+    })).toEqual({
+      verdict: "reject",
+      reason_code: "workspace-assurance-state-required",
+    });
+
+    const verifiedAuthority = api.createWorkspaceRepositoryResolverAuthority(
+      resolverConfig(assuranceAuthority(() => "verified")),
+    );
+    expect(api.authenticateWorkspaceRepositoryView({
+      authority: verifiedAuthority,
+      evidence: repositoryViewEvidence(objects),
+      objects,
+      state: "verified",
+    })).toEqual({ verdict: "reject", reason_code: "workspace_schema_invalid" });
+    expect(api.authenticateWorkspaceRepositoryView({
+      authority: verifiedAuthority,
+      evidence: repositoryViewEvidence(objects),
+      objects,
+    })).toMatchObject({ verdict: "accept", state: expect.any(Object) });
+  });
+
+  it("revalidates continued profiles at state resolution and key-issuance effect", async () => {
+    const api = await import("./workspace.js");
+    let enrollmentState: "verified" | "pending" = "verified";
+    const authority = api.createWorkspaceRepositoryResolverAuthority(
+      resolverConfig(assuranceAuthority(() => enrollmentState)),
+    );
+    const objects = currentAuthorityObjects(WORKSPACE_ASSURANCE);
+    const authenticated = api.authenticateWorkspaceRepositoryView({
+      authority,
+      evidence: repositoryViewEvidence(objects),
+      objects,
+    });
+    expect(authenticated.verdict).toBe("accept");
+    if (authenticated.verdict !== "accept") throw new Error("assured fixture rejected");
+
+    const keyRequest = {
+      resource_id: RESOURCE_ID,
+      custody_host_id: "dd".repeat(32),
+      requested_epoch: 1,
+      requested_snapshot_id: null,
+      target_account: OTHER_KEY,
+      authenticated_account: OTHER_KEY,
+      target_device: H64,
+      recipient: { type: "marmot-mls-leaf", value: LEAF },
+    };
+    const resolved = api.resolveWorkspaceEffectiveAuthorization({
+      authority,
+      current_state: authenticated.state,
+      actor_account: OTHER_KEY,
+      actor_device: H64,
+      actor_leaf: LEAF,
+      operation_digest: keyRequestDigest(keyRequest),
+      requested_capabilities: ["read"],
+      requested_resources: [RESOURCE_ID],
+      requested_delegable: false,
+    });
+    expect(resolved.verdict).toBe("accept");
+    if (resolved.verdict !== "accept") throw new Error("authorization fixture rejected");
+
+    enrollmentState = "pending";
+    expect(api.evaluateKeyRequest({
+      authority,
+      current_state: authenticated.state,
+      authorization: resolved.authorization,
+      successor_reauthorization: null,
+      ...keyRequest,
+    })).toEqual({
+      verdict: "reject",
+      reason_code: "workspace-assurance-state-required",
+    });
+    expect(api.authenticateWorkspaceRepositoryView({
+      authority,
+      evidence: repositoryViewEvidence(objects, {
+        observed_at: 1_720_000_200,
+        expires_at: 1_720_000_750,
+      }),
+      objects,
+    })).toEqual({
+      verdict: "reject",
+      reason_code: "workspace-assurance-state-required",
+    });
+  });
+
+  it("requires matching Assurance authorization to remove an active profile", async () => {
+    const api = await import("./workspace.js");
+    const assuredObjects = currentAuthorityObjects(WORKSPACE_ASSURANCE);
+    const bareObjects = currentAuthorityObjects();
+    const nextEvidence = repositoryViewEvidence(bareObjects, {
+      observed_at: 1_720_000_200,
+      expires_at: 1_720_000_750,
+    });
+
+    const unilateral = api.createWorkspaceRepositoryResolverAuthority(
+      resolverConfig(assuranceAuthority(() => "verified")),
+    );
+    expect(api.authenticateWorkspaceRepositoryView({
+      authority: unilateral,
+      evidence: repositoryViewEvidence(assuredObjects),
+      objects: assuredObjects,
+    })).toMatchObject({ verdict: "accept" });
+    expect(api.authenticateWorkspaceRepositoryView({
+      authority: unilateral,
+      evidence: nextEvidence,
+      objects: bareObjects,
+    })).toEqual({
+      verdict: "reject",
+      reason_code: "workspace-assurance-state-required",
+    });
+
+    let removalInput: unknown;
+    const dual = api.createWorkspaceRepositoryResolverAuthority(resolverConfig(assuranceAuthority(
+      () => "verified",
+      (input) => {
+        removalInput = input;
+        return {
+          authorized: true,
+          transition_digest: input.transition_digest,
+          evaluated_at: input.evaluated_at,
+        };
+      },
+    )));
+    expect(api.authenticateWorkspaceRepositoryView({
+      authority: dual,
+      evidence: repositoryViewEvidence(assuredObjects),
+      objects: assuredObjects,
+    })).toMatchObject({ verdict: "accept" });
+    expect(api.authenticateWorkspaceRepositoryView({
+      authority: dual,
+      evidence: nextEvidence,
+      objects: bareObjects,
+    })).toMatchObject({ verdict: "accept", state: expect.any(Object) });
+    expect(removalInput).toMatchObject({
+      workspace_key: WORKSPACE_KEY,
+      inception_event_id: ASSURANCE_INCEPTION_EVENT_ID,
+      transition_digest: expect.stringMatching(/^[0-9a-f]{64}$/u),
+      evaluated_at: 1_720_000_400,
+    });
   });
 });
 

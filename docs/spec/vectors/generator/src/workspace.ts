@@ -77,6 +77,7 @@ type WorkspaceResolverConfig = Readonly<{
   }>[];
   trusted_now: () => number;
   invitation_store: object | null;
+  assurance_authority: WorkspaceAssuranceAuthority | null;
   accepted_views: Map<string, Readonly<{
     head: string;
     observed_at: number;
@@ -101,6 +102,7 @@ type WorkspaceCurrentStateRecord = Readonly<{
   evidence: Readonly<Record<string, unknown>>;
   objects: readonly Readonly<Record<string, unknown>>[];
   policy: Readonly<Record<string, unknown>>;
+  assurance: WorkspaceAssuranceProfile | null;
   role: Readonly<Record<string, unknown>>;
   roles: readonly Readonly<Record<string, unknown>>[];
   grants: readonly Readonly<Record<string, unknown>>[];
@@ -311,10 +313,11 @@ export function createWorkspaceRepositoryResolverAuthority(
     "max_ttl",
     "max_view_age",
     "repositories",
-  ], ["invitation_store"]);
+  ], ["invitation_store", "assurance_authority"]);
   const input = captured?.data;
   const trustedNow = captured?.opaque.trusted_now;
   const invitationStore = captured?.opaque.invitation_store;
+  const assuranceAuthority = captured?.opaque.assurance_authority;
   const minimumVersion = parseWorkspaceSemver(input?.minimum_version);
   if (input === undefined
     || typeof trustedNow !== "function"
@@ -346,7 +349,9 @@ export function createWorkspaceRepositoryResolverAuthority(
     })).size !== input.repositories.length
     || (invitationStore !== undefined
       && (invitationStore === null || typeof invitationStore !== "object"
-        || !WORKSPACE_INVITATION_STORES.has(invitationStore)))) {
+        || !WORKSPACE_INVITATION_STORES.has(invitationStore)))
+    || (assuranceAuthority !== undefined
+      && (assuranceAuthority === null || typeof assuranceAuthority !== "object"))) {
     throw new Error("workspace_repository_invalid");
   }
   const authority = Object.freeze({}) as WorkspaceRepositoryResolverAuthority;
@@ -359,6 +364,9 @@ export function createWorkspaceRepositoryResolverAuthority(
     repositories: input.repositories as WorkspaceResolverConfig["repositories"],
     trusted_now: trustedNow as () => number,
     invitation_store: invitationStore === undefined ? null : invitationStore as object,
+    assurance_authority: assuranceAuthority === undefined
+      ? null
+      : assuranceAuthority as WorkspaceAssuranceAuthority,
     accepted_views: new Map(),
   });
   return authority;
@@ -619,6 +627,26 @@ export function authenticateWorkspaceRepositoryView(value: unknown):
     evidence.observed_at,
   );
   if (!complete.ok) return { verdict: "reject", reason_code: complete.reason_code };
+  const assurance = captureWorkspaceAssuranceProfile(complete.value.policy.assurance);
+  if (assurance === undefined) {
+    return { verdict: "reject", reason_code: "workspace_repository_invalid" };
+  }
+  const previousRecord = previous === undefined
+    ? undefined
+    : WORKSPACE_CURRENT_STATES.get(previous.state);
+  if (previous !== undefined && previousRecord === undefined) {
+    return { verdict: "reject", reason_code: "workspace_repository_invalid" };
+  }
+  if (assurance !== null || (previousRecord !== undefined && previousRecord.assurance !== null)) {
+    const assuranceDecision = evaluateWorkspaceAssuranceTransition(config.assurance_authority, {
+      workspace_key: currentState.workspace_key,
+      previous_policy_head: currentState.predecessor,
+      next_policy_head: currentState.policy_head,
+      previous_assurance: previousRecord?.assurance ?? null,
+      next_assurance: assurance,
+    });
+    if (assuranceDecision.verdict !== "accept") return assuranceDecision;
+  }
   const priorEnvelopeIdentities = new Map((previous?.envelope_identity_history ?? [])
     .map((entry) => [entry.envelope_id, entry.object_id]));
   for (const envelope of complete.value.envelopes) {
@@ -646,6 +674,7 @@ export function authenticateWorkspaceRepositoryView(value: unknown):
     view_key: viewKey,
     evidence,
     objects: validatedObjects,
+    assurance,
     envelope_identity_history: envelopeIdentityHistory,
     ...complete.value,
   }));
@@ -1075,9 +1104,24 @@ function requireFreshCurrentView(
     return { ok: false, reason_code: "workspace_repository_invalid" };
   }
   const age = trustedNow - latest.value.observed_at;
-  return isSafeNonNegativeInteger(age) && age <= maximumAge
-    ? latest
-    : { ok: false, reason_code: "checkpoint_stale" };
+  if (!isSafeNonNegativeInteger(age) || age > maximumAge) {
+    return { ok: false, reason_code: "checkpoint_stale" };
+  }
+  if (effectClass === "authority" && latest.value.assurance !== null) {
+    const config = WORKSPACE_RESOLVER_AUTHORITIES.get(authority);
+    if (config === undefined) return { ok: false, reason_code: "workspace_repository_invalid" };
+    const assuranceDecision = evaluateWorkspaceAssuranceTransition(config.assurance_authority, {
+      workspace_key: latest.value.state.workspace_key,
+      previous_policy_head: latest.value.state.policy_head,
+      next_policy_head: latest.value.state.policy_head,
+      previous_assurance: latest.value.assurance,
+      next_assurance: latest.value.assurance,
+    });
+    if (assuranceDecision.verdict !== "accept") {
+      return { ok: false, reason_code: assuranceDecision.reason_code };
+    }
+  }
+  return latest;
 }
 
 export function resolveWorkspaceEffectiveAuthorization(value: unknown):
@@ -2857,7 +2901,7 @@ export function evaluateKeyRequest(value: unknown): WorkspaceVerdict {
     currentState as WorkspaceCurrentState,
     authorizationValue as WorkspaceEffectiveAuthorization,
     trusted.value.now,
-    "ordinary",
+    "authority",
   );
   if (!effective.ok) return rejected(effective.reason_code);
   const { current, authorization, grant, role_path: rolePath } = effective.value;
@@ -3210,6 +3254,22 @@ function hasExactMembers(value: Record<string, unknown>, members: readonly strin
   const keys = Object.keys(value);
   return keys.length === members.length && members.every((member) => Object.hasOwn(value, member));
 }
+
+function captureWorkspaceAssuranceProfile(
+  value: unknown,
+): WorkspaceAssuranceProfile | null | undefined {
+  if (value === undefined) return null;
+  const snapshot = snapshotJsonRecord(value);
+  if (snapshot === null || !hasExactMembers(snapshot, [
+    "profile",
+    "inception_event_id",
+    "required_state",
+  ])
+    || snapshot.profile !== "heterodyne.workspace.assurance.v1"
+    || !isH64(snapshot.inception_event_id)
+    || snapshot.required_state !== "verified") return undefined;
+  return snapshot as WorkspaceAssuranceProfile;
+}
 function hasExactShape(
   value: Record<string, unknown>,
   required: readonly string[],
@@ -3300,3 +3360,8 @@ import {
   type TrustedSeedAdmissionAuthority,
 } from "./trusted-seed.js";
 import { WORKSPACE_SCHEMAS } from "./workspace-schemas.js";
+import {
+  evaluateWorkspaceAssuranceTransition,
+  type WorkspaceAssuranceAuthority,
+  type WorkspaceAssuranceProfile,
+} from "./workspace-assurance.js";
