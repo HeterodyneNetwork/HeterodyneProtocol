@@ -6,6 +6,8 @@ import {
   evaluateAssurancePinPolicy,
   validateAssuranceWireFormat,
 } from "./assurance-policy.js";
+import { jcsCanonicalize } from "./jcs.js";
+import { canonicalNip01, signEvent } from "./nostr.js";
 
 const pin = {
   active_key: "11".repeat(32),
@@ -14,11 +16,56 @@ const pin = {
 };
 
 describe("current Assurance pin and export policy", () => {
-  it("rejects KERI export bytes when presented as an Assurance wire record", () => {
+  it("classifies KERI and CESR from exact bytes despite crossed or absent labels", () => {
+    const keri = "{\"v\":\"KERI10JSON000000_\"}";
     expect(validateAssuranceWireFormat({
-      format: "keri10json",
-      serialized_record: "{\"v\":\"KERI10JSON000000_\"}",
-    })).toEqual({ verdict: "reject", reason_code: "keri_wire_format_rejected" });
+      format: "nip01",
+      serialized_record: keri,
+    } as never)).toEqual({
+      verdict: "reject",
+      reason_code: "keri_wire_format_rejected",
+    });
+    expect(validateAssuranceWireFormat({ serialized_record: keri })).toEqual({
+      verdict: "reject",
+      reason_code: "keri_wire_format_rejected",
+    });
+    expect(validateAssuranceWireFormat({ serialized_record: "-FABB0KERICesrFixture" }))
+      .toEqual({ verdict: "reject", reason_code: "keri_wire_format_rejected" });
+  });
+
+  it("accepts only an exact canonical closed NIP-01 envelope", async () => {
+    const event = await signEvent({
+      secretKey: "41".repeat(32),
+      created_at: 1800000000,
+      kind: 31002,
+      tags: [["d", "assurance-wire-profile"]],
+      content: jcsCanonicalize({
+        profile: "heterodyne.assurance.enrollment-inception.v1",
+        spec_version: "heterodyne/0.6.0",
+      }),
+      auxRand: "00".repeat(32),
+    });
+    const serialized_record = jcsCanonicalize({
+      event,
+      nip01_raw: canonicalNip01(event),
+    });
+
+    expect(validateAssuranceWireFormat({ serialized_record })).toEqual({
+      verdict: "accept",
+      format: "nip01",
+      event_id: event.id,
+      event_kind: event.kind,
+    });
+    for (const malformed of [
+      ` ${serialized_record}`,
+      `{\"event\":${JSON.stringify(event)},\"event\":${JSON.stringify(event)},\"nip01_raw\":${JSON.stringify(canonicalNip01(event))}}`,
+      jcsCanonicalize({ event, nip01_raw: canonicalNip01(event), v: "KERI10JSON000000_" }),
+      "{\"event\":null,\"nip01_raw\":\"[]\"}",
+      "{\"event\":{},\"nip01_raw\":\"[]\",\"__proto__\":{}}",
+    ]) {
+      expect(validateAssuranceWireFormat({ serialized_record: malformed }), malformed)
+        .toEqual({ verdict: "reject", reason_code: "assurance-schema-invalid" });
+    }
   });
 
   it("rejects conflicting pins, unilateral downgrade, and duplicity", () => {

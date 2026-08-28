@@ -1,5 +1,4 @@
 import {
-  existsSync,
   mkdtempSync,
   mkdirSync,
   readFileSync,
@@ -8,8 +7,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
-import ts from "typescript";
+import { resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { evaluateAssuranceCompromiseContinuation } from "./assurance-policy.js";
 import { evaluateSuccession } from "./assurance.js";
@@ -17,9 +15,15 @@ import { validateControlSignedEffect } from "./control-policy.js";
 import { buildCurrentCases, buildCurrentVectors } from "./current-vectors/index.js";
 import { assertProjectionPreservesVerdict } from "./current-vectors/boundary-runners.js";
 import { buildProfileCases } from "./current-vectors/profiles.js";
+import { CURRENT_PROFILE_ORACLES } from "./current-vectors/profile-oracles.js";
 import { validateCurrentKindProfileNegotiation } from "./profile-negotiation.js";
 import { loadRegistry } from "./registry.js";
 import { validateVectorOrThrow } from "./schema.js";
+import {
+  currentCompilerConfigPath as compilerConfigPath,
+  currentModuleDependencies as moduleDependencies,
+  currentNamedImports as importedNames,
+} from "./current-import-graph.js";
 
 const sourceRoot = resolve(import.meta.dirname);
 const catalogEntry = resolve(sourceRoot, "current-vectors/index.ts");
@@ -41,240 +45,13 @@ afterEach(() => {
   }
 });
 
-function commonJsLoader(
-  expression: ts.Expression,
-  aliases: ReadonlySet<string> = new Set(["require"]),
-): boolean {
-  if (ts.isIdentifier(expression)) return aliases.has(expression.text);
-  if (ts.isPropertyAccessExpression(expression)) {
-    return (
-      expression.name.text === "require"
-      && ts.isIdentifier(expression.expression)
-      && expression.expression.text === "module"
-    )
-      || (
-        expression.name.text === "resolve"
-        && ts.isIdentifier(expression.expression)
-        && aliases.has(expression.expression.text)
-      );
-  }
-  if (
-    ts.isElementAccessExpression(expression)
-    && expression.argumentExpression !== undefined
-    && ts.isStringLiteralLike(expression.argumentExpression)
-  ) {
-    return expression.argumentExpression.text === "require"
-      || (
-        expression.argumentExpression.text === "resolve"
-        && ts.isIdentifier(expression.expression)
-        && aliases.has(expression.expression.text)
-      );
-  }
-  return false;
-}
-
-function moduleSpecifiers(path: string): string[] {
-  const source = ts.createSourceFile(
-    path,
-    readFileSync(path, "utf8"),
-    ts.ScriptTarget.Latest,
-    true,
-    ts.ScriptKind.TS,
-  );
-  const specifiers: string[] = [];
-  const requireAliases = new Set(["require"]);
-  const createRequireFactories = new Set<string>();
-  const moduleNamespaces = new Set<string>();
-  for (const statement of source.statements) {
-    if (
-      ts.isImportDeclaration(statement)
-      && ts.isStringLiteralLike(statement.moduleSpecifier)
-      && statement.moduleSpecifier.text === "node:module"
-    ) {
-      const bindings = statement.importClause?.namedBindings;
-      if (bindings !== undefined && ts.isNamedImports(bindings)) {
-        for (const element of bindings.elements) {
-          if ((element.propertyName?.text ?? element.name.text) === "createRequire") {
-            createRequireFactories.add(element.name.text);
-          }
-        }
-      } else if (bindings !== undefined && ts.isNamespaceImport(bindings)) {
-        moduleNamespaces.add(bindings.name.text);
-      }
-    }
-  }
-  const createsRequire = (expression: ts.Expression): boolean =>
-    ts.isIdentifier(expression)
-      ? createRequireFactories.has(expression.text)
-      : ts.isPropertyAccessExpression(expression)
-        && expression.name.text === "createRequire"
-        && ts.isIdentifier(expression.expression)
-        && moduleNamespaces.has(expression.expression.text);
-  let changed = true;
-  while (changed) {
-    changed = false;
-    const collectAliases = (node: ts.Node): void => {
-      if (
-        ts.isVariableDeclaration(node)
-        && ts.isIdentifier(node.name)
-        && node.initializer !== undefined
-      ) {
-        const initializer = node.initializer;
-        if (
-          commonJsLoader(initializer, requireAliases)
-          || (ts.isIdentifier(initializer) && requireAliases.has(initializer.text))
-          || (ts.isCallExpression(initializer) && createsRequire(initializer.expression))
-        ) {
-          if (!requireAliases.has(node.name.text)) {
-            requireAliases.add(node.name.text);
-            changed = true;
-          }
-        } else if (
-          (ts.isIdentifier(initializer) && createRequireFactories.has(initializer.text))
-          || createsRequire(initializer)
-        ) {
-          if (!createRequireFactories.has(node.name.text)) {
-            createRequireFactories.add(node.name.text);
-            changed = true;
-          }
-        }
-      }
-      ts.forEachChild(node, collectAliases);
-    };
-    collectAliases(source);
-  }
-  const add = (expression: ts.Expression | undefined, kind: string): void => {
-    if (expression === undefined || !ts.isStringLiteralLike(expression)) {
-      throw new Error(`nonliteral ${kind} in current vector graph: ${path}`);
-    }
-    specifiers.push(expression.text);
-  };
-  const visit = (node: ts.Node): void => {
-    if (
-      (ts.isImportDeclaration(node) || ts.isExportDeclaration(node))
-      && node.moduleSpecifier !== undefined
-    ) {
-      add(node.moduleSpecifier, ts.isExportDeclaration(node) ? "export" : "import");
-    } else if (
-      ts.isImportEqualsDeclaration(node)
-      && ts.isExternalModuleReference(node.moduleReference)
-    ) {
-      add(node.moduleReference.expression, "import-equals");
-    } else if (ts.isCallExpression(node)) {
-      if (node.expression.kind === ts.SyntaxKind.ImportKeyword) {
-        add(node.arguments[0], "dynamic import");
-      } else if (
-        !createsRequire(node.expression)
-        && commonJsLoader(node.expression, requireAliases)
-      ) {
-        add(node.arguments[0], "CommonJS require");
-      }
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(source);
-  return specifiers;
-}
-
-function compilerConfigPath(entry: string): string | undefined {
-  const relativeToCurrentSource = relative(sourceRoot, realpathSync(entry));
-  const inCurrentSource = relativeToCurrentSource !== ".."
-    && !relativeToCurrentSource.startsWith(`..${sep}`)
-    && !isAbsolute(relativeToCurrentSource);
-  return inCurrentSource
-    ? currentConfigPath
-    : ts.findConfigFile(dirname(entry), ts.sys.fileExists);
-}
-
-function compilerOptions(entry: string): ts.CompilerOptions {
-  const configPath = compilerConfigPath(entry);
-  if (configPath === undefined) {
-    return {
-      module: ts.ModuleKind.NodeNext,
-      moduleResolution: ts.ModuleResolutionKind.NodeNext,
-    };
-  }
-  const loaded = ts.readConfigFile(configPath, ts.sys.readFile);
-  if (loaded.error !== undefined) {
-    throw new Error(`invalid current vector tsconfig: ${configPath}`);
-  }
-  const parsed = ts.parseJsonConfigFileContent(
-    loaded.config,
-    ts.sys,
-    dirname(configPath),
-    undefined,
-    configPath,
-  );
-  if (parsed.errors.length > 0) {
-    throw new Error(`invalid current vector tsconfig: ${configPath}`);
-  }
-  return parsed.options;
-}
-
-function resolveModule(
-  importer: string,
-  specifier: string,
-  options: ts.CompilerOptions,
-): string | null {
-  if (specifier.startsWith("node:")) return null;
-  const resolution = ts.resolveModuleName(
-    specifier,
-    importer,
-    options,
-    ts.sys,
-  ).resolvedModule;
-  if (resolution === undefined) {
-    throw new Error(`unresolved current vector import: ${importer} -> ${specifier}`);
-  }
-  if (
-    resolution.isExternalLibraryImport
-    || resolution.resolvedFileName.split(/[\\/]/u).includes("node_modules")
-  ) return null;
-  if (!existsSync(resolution.resolvedFileName)) {
-    throw new Error(`unresolved current vector import: ${importer} -> ${specifier}`);
-  }
-  return realpathSync(resolution.resolvedFileName);
-}
-
-function moduleDependencies(entry: string): string[] {
-  const visited = new Set<string>();
-  const options = compilerOptions(entry);
-  const visit = (candidate: string): void => {
-    const path = realpathSync(candidate);
-    if (visited.has(path)) return;
-    visited.add(path);
-    for (const specifier of moduleSpecifiers(path)) {
-      const dependency = resolveModule(path, specifier, options);
-      if (dependency !== null) visit(dependency);
-    }
-  };
-  visit(entry);
-  return [...visited].sort();
-}
-
-function importedNames(path: string): Set<string> {
-  const source = ts.createSourceFile(
-    path,
-    readFileSync(path, "utf8"),
-    ts.ScriptTarget.Latest,
-    true,
-  );
-  return new Set(source.statements.flatMap((statement) => {
-    if (!ts.isImportDeclaration(statement)) return [];
-    const bindings = statement.importClause?.namedBindings;
-    return bindings !== undefined && ts.isNamedImports(bindings)
-      ? bindings.elements.map(({ name }) => name.text)
-      : [];
-  }));
-}
-
 describe("current vector catalog import boundary", () => {
   it("keeps the complete catalog graph free of historical authoring modules", () => {
     expect(compilerConfigPath(catalogEntry)).toBe(currentConfigPath);
     const graph = moduleDependencies(catalogEntry);
     expect(graph.filter((path) => forbidden.some((pattern) => pattern.test(path))))
       .toEqual([]);
-  });
+  }, 60_000);
 
   it("cannot hide forbidden modules behind re-exports or executable import forms", () => {
     const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-imports-"));
@@ -360,6 +137,107 @@ describe("current vector catalog import boundary", () => {
       .toThrow(/nonliteral CommonJS require/u);
   });
 
+  it("follows loader aliases introduced by assignment and destructuring", () => {
+    const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-bindings-"));
+    temporaryRoots.push(root);
+    writeFileSync(
+      resolve(root, "index.ts"),
+      [
+        "let assigned;",
+        "assigned = require;",
+        'assigned("./topics-assigned.js");',
+        "const { require: objectLoader } = module;",
+        'objectLoader("./snapshot-object.js");',
+        "const [arrayLoader] = [require];",
+        'arrayLoader("./legacy-array.js");',
+      ].join("\n"),
+    );
+    for (const file of [
+      "topics-assigned.ts",
+      "snapshot-object.ts",
+      "legacy-array.ts",
+    ]) writeFileSync(resolve(root, file), "export const value = true;\n");
+
+    expect(moduleDependencies(resolve(root, "index.ts")).filter((path) =>
+      forbidden.some((pattern) => pattern.test(path))
+    )).toEqual([
+      realpathSync(resolve(root, "legacy-array.ts")),
+      realpathSync(resolve(root, "snapshot-object.ts")),
+      realpathSync(resolve(root, "topics-assigned.ts")),
+    ].sort());
+  });
+
+  it("follows later-assigned and destructured createRequire factories", () => {
+    const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-create-require-bindings-"));
+    temporaryRoots.push(root);
+    writeFileSync(
+      resolve(root, "index.ts"),
+      [
+        'import * as nodeModule from "node:module";',
+        "let factory;",
+        "factory = nodeModule.createRequire;",
+        "let assignedLoader;",
+        "assignedLoader = factory(import.meta.url);",
+        'assignedLoader("./topics-created-assigned.js");',
+        "const { createRequire: objectFactory } = nodeModule;",
+        "const objectLoader = objectFactory(import.meta.url);",
+        'objectLoader("./snapshot-created-object.js");',
+      ].join("\n"),
+    );
+    writeFileSync(resolve(root, "topics-created-assigned.ts"), "export const value = true;\n");
+    writeFileSync(resolve(root, "snapshot-created-object.ts"), "export const value = true;\n");
+
+    expect(moduleDependencies(resolve(root, "index.ts")).filter((path) =>
+      forbidden.some((pattern) => pattern.test(path))
+    )).toEqual([
+      realpathSync(resolve(root, "snapshot-created-object.ts")),
+      realpathSync(resolve(root, "topics-created-assigned.ts")),
+    ].sort());
+  });
+
+  it("invalidates reassigned aliases and respects lexical shadowing", () => {
+    const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-shadowing-"));
+    temporaryRoots.push(root);
+    writeFileSync(
+      resolve(root, "index.ts"),
+      [
+        "let stale = require;",
+        "stale = (_specifier) => ({ local: true });",
+        'stale("./topics-reassigned.js");',
+        "const outer = require;",
+        "function locallyShadowed(outer) {",
+        '  outer("./snapshot-shadowed.js");',
+        "}",
+        "void locallyShadowed;",
+      ].join("\n"),
+    );
+    writeFileSync(resolve(root, "topics-reassigned.ts"), "export const value = true;\n");
+    writeFileSync(resolve(root, "snapshot-shadowed.ts"), "export const value = true;\n");
+
+    expect(moduleDependencies(resolve(root, "index.ts")).filter((path) =>
+      forbidden.some((pattern) => pattern.test(path))
+    )).toEqual([]);
+  });
+
+  it("fails closed when a possibly-live loader alias has ambiguous provenance", () => {
+    const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-ambiguous-"));
+    temporaryRoots.push(root);
+    writeFileSync(
+      resolve(root, "index.ts"),
+      [
+        "let maybeLoad;",
+        "if (Date.now() > 0) maybeLoad = require;",
+        "else maybeLoad = (_specifier) => null;",
+        'const target = "./topics-ambiguous.js";',
+        "maybeLoad(target);",
+      ].join("\n"),
+    );
+    writeFileSync(resolve(root, "topics-ambiguous.ts"), "export const value = true;\n");
+
+    expect(() => moduleDependencies(resolve(root, "index.ts")))
+      .toThrow(/ambiguous CommonJS loader/u);
+  });
+
   it("resolves configured local aliases through TypeScript and rejects missing ones", () => {
     const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-paths-"));
     temporaryRoots.push(root);
@@ -380,6 +258,18 @@ describe("current vector catalog import boundary", () => {
 
     writeFileSync(resolve(root, "missing.ts"), 'void import("@local/missing.js");\n');
     expect(() => moduleDependencies(resolve(root, "missing.ts")))
+      .toThrow(/unresolved current vector import/u);
+  });
+
+  it("terminates only verified external package leaves", () => {
+    const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-external-"));
+    temporaryRoots.push(root);
+    writeFileSync(
+      resolve(root, "index.ts"),
+      'void import("@heterodyne-test/missing-current-vector-leaf");\n',
+    );
+
+    expect(() => moduleDependencies(resolve(root, "index.ts")))
       .toThrow(/unresolved current vector import/u);
   });
 
@@ -450,9 +340,10 @@ describe("current 0.6 vector catalog", () => {
     )).not.toThrow();
   });
 
-  it("validates profile wire semantics instead of accepting a registry echo", () => {
+  it("validates profile wire semantics instead of accepting a registry echo", async () => {
     const registry = loadRegistry(resolve(sourceRoot, "../../../../../"));
-    const profileCase = buildProfileCases(registry).find(({ vector_id }) =>
+    const profileCases = await buildProfileCases();
+    const profileCase = profileCases.find(({ vector_id }) =>
       vector_id === "comms/profile-heterodyne-comms-tier3-wrapped-content-kind-1-v1"
     )!;
     expect(validateCurrentKindProfileNegotiation(registry, profileCase.input))
@@ -467,17 +358,71 @@ describe("current 0.6 vector catalog", () => {
       reason: "profile-wire-discriminator-mismatch",
     });
 
-    const activeKey = buildProfileCases(registry).find(({ vector_id }) =>
+    const activeKey = profileCases.find(({ vector_id }) =>
       vector_id === "assurance/profile-heterodyne-assurance-active-key-acceptance-v1"
     )!;
     expect(validateCurrentKindProfileNegotiation(registry, activeKey.input))
       .toMatchObject({ verdict: "accept", stamp_owner: "assurance" });
-    const coreBreadcrumb = buildProfileCases(registry).find(({ vector_id }) =>
+    const coreBreadcrumb = profileCases.find(({ vector_id }) =>
       vector_id === "core/profile-heterodyne-core-rotation-breadcrumb-profile-v1"
     )!;
     expect(validateCurrentKindProfileNegotiation(registry, coreBreadcrumb.input))
       .toMatchObject({ verdict: "accept", stamp_owner: null });
   });
+
+  it("keeps the fixed profile oracle independent from a mutated live registry", async () => {
+    const registry = loadRegistry(resolve(sourceRoot, "../../../../../"));
+    const mutated = structuredClone(registry);
+    const tier3 = mutated.kinds
+      .flatMap(({ profiles }) => profiles)
+      .find(({ profile_id }) =>
+        profile_id === "heterodyne-comms-tier3-wrapped-content-kind-1-v1"
+      )!;
+    tier3.discriminator = "tag:heterodyne_wrap=bogus-tier3-v99";
+
+    const expected = (await buildProfileCases()).find(({ vector_id }) =>
+      vector_id === "comms/profile-heterodyne-comms-tier3-wrapped-content-kind-1-v1"
+    )!;
+    const underMutation = (await buildProfileCases()).find(({ vector_id }) =>
+      vector_id === expected.vector_id
+    )!;
+
+    expect(underMutation.input).toEqual(expected.input);
+    expect(validateCurrentKindProfileNegotiation(mutated, underMutation.input))
+      .toEqual({ verdict: "reject", reason: "profile-metadata-mismatch" });
+  });
+
+  it("binds all 31 fixed profile rows to their exercised live boundary", async () => {
+    const profileCases = (await buildCurrentCases()).filter(({ profile, vector_id }) =>
+      profile !== undefined && vector_id.includes("/profile-heterodyne-")
+    );
+    expect(CURRENT_PROFILE_ORACLES).toHaveLength(31);
+    expect(profileCases).toHaveLength(31);
+    for (const oracle of CURRENT_PROFILE_ORACLES) {
+      expect(profileCases.find(({ vector_id }) => vector_id === oracle.vector_id))
+        .toMatchObject({
+          semantic_boundary: oracle.semantic_boundary,
+          owner_document: oracle.tuple.owner,
+          profile: oracle.tuple.profile_id,
+          invariants: oracle.exercised_invariants,
+        });
+    }
+  }, 60_000);
+
+  it("backs private Social state at rest with authenticated encryption", async () => {
+    const mute = (await buildCurrentCases()).find(({ vector_id }) =>
+      vector_id === "social/profile-heterodyne-social-mute-list-v1"
+    )!;
+
+    expect(mute.semantic_boundary).toBe(
+      "privacy-crypto.deriveConfigPostKey+nostr-tools.nip44",
+    );
+    expect(mute.expected_output).toMatchObject({
+      verdict: "accept",
+      recovered_plaintext: mute.input.plaintext,
+    });
+    expect(mute.expected_output.ciphertext).not.toBe(mute.input.plaintext);
+  }, 60_000);
 
   it("preserves exact evaluator results including Control indeterminate", async () => {
     const cases = await buildCurrentCases();

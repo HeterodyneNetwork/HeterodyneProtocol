@@ -32,6 +32,7 @@ import * as nip49 from "nostr-tools/nip49";
 import { nip44 } from "nostr-tools";
 import { bytesToHex, hexToBytes } from "../hex.js";
 import type { CurrentCaseFixture } from "./types.js";
+import { currentProfileOracleForVector } from "./profile-oracles.js";
 import { resolve } from "node:path";
 
 const REPOSITORY_ROOT = resolve(import.meta.dirname, "../../../../../..");
@@ -105,6 +106,60 @@ async function executeCurrentBoundary(
       fixture.input,
     );
     return { raw_result: raw, projected_output: raw };
+  }
+  if (
+    boundaryId
+    === "agent-authorship.injectAgentAttribution+matchesAgentAttributionProfile"
+  ) {
+    const injection = agentAuthorship.injectAgentAttribution(
+      fixture.input as Parameters<typeof agentAuthorship.injectAgentAttribution>[0],
+    );
+    const profileMatches = injection.verdict === "accept"
+      && agentAuthorship.matchesAgentAttributionProfile(injection.tags);
+    const raw = { injection, profile_matches: profileMatches };
+    return {
+      raw_result: raw,
+      projected_output: injection.verdict === "accept" && profileMatches
+        ? {
+            verdict: "accept",
+            author: injection.author,
+            placement: injection.placement,
+            profile_matches: true,
+          }
+        : injection.verdict === "reject"
+          ? injection
+          : { verdict: "reject", reason_code: "agent-attribution-invalid" },
+    };
+  }
+  if (
+    boundaryId
+    === "agent-authorship.injectAgentAttribution+agent-moderation.applySubscribedAgentPolicy"
+  ) {
+    const input = fixture.input as Readonly<{
+      publication: Parameters<typeof agentAuthorship.injectAgentAttribution>[0];
+      policy: Parameters<typeof agentModeration.applySubscribedAgentPolicy>[0];
+    }>;
+    const injection = agentAuthorship.injectAgentAttribution(input.publication);
+    const profileMatches = injection.verdict === "accept"
+      && agentAuthorship.matchesAgentAttributionProfile(injection.tags);
+    const policy = agentModeration.applySubscribedAgentPolicy(input.policy);
+    const raw = { injection, profile_matches: profileMatches, policy };
+    return {
+      raw_result: raw,
+      projected_output: injection.verdict === "accept"
+        && profileMatches
+        && policy.visible === false
+        && policy.muted
+        ? {
+            verdict: "accept",
+            author: injection.author,
+            profile_matches: true,
+            local_policy_applied: true,
+          }
+        : injection.verdict === "reject"
+          ? injection
+          : { verdict: "reject", reason_code: "agent-policy-binding-invalid" },
+    };
   }
   if (boundaryId === "replaceable-selection.selectCurrentReplaceableEvent") {
     const input = fixture.input as {
@@ -239,10 +294,12 @@ async function executeCurrentBoundary(
     const ciphertext = nip44.v2.encrypt(input.plaintext, key, hexToBytes(nonce));
     const recovered = nip44.v2.decrypt(ciphertext, key);
     const raw = { key, ciphertext, recovered };
+    const authenticatedRoundTrip = recovered === input.plaintext
+      && ciphertext !== input.plaintext;
     return {
       raw_result: raw,
       projected_output: {
-        verdict: recovered === input.plaintext ? "accept" : "mismatch",
+        verdict: authenticatedRoundTrip ? "accept" : "mismatch",
         derived_key: bytesToHex(key),
         ciphertext,
         recovered_plaintext: recovered,
@@ -557,7 +614,40 @@ function rawSemanticVerdict(
     || boundaryId === "privacy-crypto.deriveTier3IndexKey+nostr-tools.nip44"
   ) {
     const result = raw as { recovered?: unknown };
-    return result.recovered === fixture.input.plaintext ? "accept" : "reject";
+    const ciphertext = (raw as { ciphertext?: unknown }).ciphertext;
+    return result.recovered === fixture.input.plaintext
+      && typeof ciphertext === "string"
+      && ciphertext !== fixture.input.plaintext
+      ? "accept"
+      : "reject";
+  }
+  if (
+    boundaryId
+    === "agent-authorship.injectAgentAttribution+matchesAgentAttributionProfile"
+  ) {
+    const result = raw as Readonly<{
+      injection?: { verdict?: unknown };
+      profile_matches?: unknown;
+    }>;
+    return result.injection?.verdict === "accept" && result.profile_matches === true
+      ? "accept"
+      : "reject";
+  }
+  if (
+    boundaryId
+    === "agent-authorship.injectAgentAttribution+agent-moderation.applySubscribedAgentPolicy"
+  ) {
+    const result = raw as Readonly<{
+      injection?: { verdict?: unknown };
+      profile_matches?: unknown;
+      policy?: { visible?: unknown; muted?: unknown };
+    }>;
+    return result.injection?.verdict === "accept"
+      && result.profile_matches === true
+      && result.policy?.visible === false
+      && result.policy.muted === true
+      ? "accept"
+      : "reject";
   }
   if (boundaryId === "public-reader.resolvePublicAsset") {
     return typeof raw === "string" ? "accept" : "reject";
@@ -614,6 +704,24 @@ export async function invokeCurrentBoundary(
   boundaryId: string,
   fixture: CurrentCaseFixture,
 ): Promise<Readonly<{ raw_result: unknown; projected_output: unknown }>> {
+  const profileOracle = currentProfileOracleForVector(fixture.vector_id);
+  let registryComparison: ReturnType<
+    typeof profileNegotiation.validateCurrentKindProfileNegotiation
+  > | undefined;
+  if (profileOracle !== undefined) {
+    if (boundaryId !== profileOracle.semantic_boundary) {
+      throw new Error(`current profile boundary/oracle mismatch: ${fixture.vector_id}`);
+    }
+    registryComparison = profileNegotiation.validateCurrentKindProfileNegotiation(
+      registry.loadRegistry(REPOSITORY_ROOT),
+      fixture.input,
+    );
+    if (registryComparison.verdict !== "accept") {
+      throw new Error(
+        `current profile registry prerequisite failed: ${fixture.vector_id} -> ${registryComparison.reason}`,
+      );
+    }
+  }
   const execution = await executeCurrentBoundary(boundaryId, fixture);
   const rawVerdict = rawSemanticVerdict(boundaryId, fixture, execution.raw_result);
   assertProjectionPreservesVerdict(
@@ -621,5 +729,14 @@ export async function invokeCurrentBoundary(
     execution.projected_output,
     rawSemanticReason(boundaryId, fixture, execution.raw_result),
   );
-  return execution;
+  return registryComparison === undefined
+    ? execution
+    : {
+        raw_result: Object.freeze({
+          registry_comparison: registryComparison,
+          semantic_boundary: profileOracle!.semantic_boundary,
+          semantic_result: execution.raw_result,
+        }),
+        projected_output: execution.projected_output,
+      };
 }

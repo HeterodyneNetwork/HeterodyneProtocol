@@ -1,3 +1,7 @@
+import { captureExactDataObject, snapshotClosedDataTree } from "./closed-data.js";
+import { validateCoreWireEnvelope } from "./core-policy.js";
+import { jcsCanonicalize } from "./jcs.js";
+
 type AssurancePin = Readonly<{
   active_key: string;
   assurance_head: string;
@@ -116,13 +120,86 @@ export function evaluateAssuranceCompromiseContinuation(input: Readonly<{
 
 /** Enforces NIP-01 as the only Assurance wire and storage representation. */
 export function validateAssuranceWireFormat(input: Readonly<{
-  format: "nip01" | "keri10json" | "cesr";
   serialized_record: string;
 }>):
-  | { verdict: "accept"; format: "nip01" }
-  | { verdict: "reject"; reason_code: "keri_wire_format_rejected" } {
-  if (input.format !== "nip01") {
+  | {
+      verdict: "accept";
+      format: "nip01";
+      event_id: string;
+      event_kind: number;
+    }
+  | {
+      verdict: "reject";
+      reason_code: "keri_wire_format_rejected" | "assurance-schema-invalid";
+    } {
+  const serialized = input.serialized_record;
+  if (typeof serialized !== "string" || serialized.length === 0 || serialized.length > 1_048_576) {
+    return { verdict: "reject", reason_code: "assurance-schema-invalid" };
+  }
+  if (/^(?:-F[A-Za-z0-9_-]*|KERI\d)/u.test(serialized)) {
     return { verdict: "reject", reason_code: "keri_wire_format_rejected" };
   }
-  return { verdict: "accept", format: "nip01" };
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(serialized) as unknown;
+    if (jcsCanonicalize(parsed) !== serialized) {
+      return { verdict: "reject", reason_code: "assurance-schema-invalid" };
+    }
+  } catch {
+    return { verdict: "reject", reason_code: "assurance-schema-invalid" };
+  }
+
+  let snapshot: Readonly<Record<string, unknown>>;
+  try {
+    const closed = snapshotClosedDataTree(parsed, "Assurance serialized record");
+    if (
+      closed !== null
+      && typeof closed === "object"
+      && !Array.isArray(closed)
+      && !Object.hasOwn(closed, "event")
+      && !Object.hasOwn(closed, "nip01_raw")
+      && typeof (closed as Readonly<Record<string, unknown>>).v === "string"
+      && /^KERI\d/u.test((closed as Readonly<Record<string, string>>).v)
+    ) {
+      return { verdict: "reject", reason_code: "keri_wire_format_rejected" };
+    }
+    snapshot = captureExactDataObject(
+      closed,
+      [["event", "nip01_raw"]],
+      "Assurance NIP-01 envelope",
+    );
+  } catch {
+    return { verdict: "reject", reason_code: "assurance-schema-invalid" };
+  }
+  if (typeof snapshot.nip01_raw !== "string") {
+    return { verdict: "reject", reason_code: "assurance-schema-invalid" };
+  }
+
+  let verified: ReturnType<typeof validateCoreWireEnvelope>;
+  try {
+    verified = validateCoreWireEnvelope({
+      event: snapshot.event as Parameters<typeof validateCoreWireEnvelope>[0]["event"],
+      nip01_raw: snapshot.nip01_raw,
+      stamp_policy: "optional",
+    });
+  } catch {
+    return { verdict: "reject", reason_code: "assurance-schema-invalid" };
+  }
+  if (verified.verdict === "reject") {
+    return { verdict: "reject", reason_code: "assurance-schema-invalid" };
+  }
+  const eventKind = (snapshot.event as Readonly<{ kind?: unknown }>).kind;
+  if (
+    typeof eventKind !== "number"
+    || ![31000, 31001, 31002, 31003, 31006].includes(eventKind)
+  ) {
+    return { verdict: "reject", reason_code: "assurance-schema-invalid" };
+  }
+  return {
+    verdict: "accept",
+    format: "nip01",
+    event_id: verified.event_id,
+    event_kind: eventKind,
+  };
 }

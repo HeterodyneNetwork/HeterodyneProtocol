@@ -4,6 +4,11 @@ import {
   type RegisteredKindProfile,
 } from "./registry.js";
 import { stampOwner } from "./stamping.js";
+import { ed25519 } from "@noble/curves/ed25519";
+import { schnorr } from "@noble/curves/secp256k1";
+import { hexToBytes } from "./hex.js";
+import { validateControlFrameSchemaOrThrow } from "./schema.js";
+import { validateControlFrameBoundary } from "./control-policy.js";
 
 export type CurrentProfileWireProbe = Readonly<{
   content_is_heterodyne_json: boolean;
@@ -137,4 +142,122 @@ export function validateCurrentKindProfileNegotiation(
     stamp_owner: stamp,
     wire_binding: registered.normalized.discriminator,
   };
+}
+
+type CurrentClaimProofProbe = Readonly<{
+  proof_suite: "nostr-bip340" | "radicle-ed25519" | "jwk-jws";
+  proof_purpose: "claim-subject-pop" | "claim-revoker";
+  message: string;
+  public_key?: string;
+  public_jwk?: Readonly<{ kty: string; crv: string; x: string }>;
+  protected?: string;
+  signature: string;
+}>;
+
+/** Verifies the native proof suite named by one fixed claim profile probe. */
+export function verifyCurrentClaimProofProfile(value: unknown):
+  | Readonly<{
+      verdict: "accept";
+      proof_suite: CurrentClaimProofProbe["proof_suite"];
+      proof_purpose: CurrentClaimProofProbe["proof_purpose"];
+      authenticated_message: string;
+    }>
+  | Readonly<{ verdict: "reject"; reason_code: "claim-subject-proof-invalid" }> {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return { verdict: "reject", reason_code: "claim-subject-proof-invalid" };
+  }
+  const probe = value as CurrentClaimProofProbe;
+  if (
+    !["claim-subject-pop", "claim-revoker"].includes(probe.proof_purpose)
+    || !/^[0-9a-f]{64}$/u.test(probe.message)
+  ) {
+    return { verdict: "reject", reason_code: "claim-subject-proof-invalid" };
+  }
+  const message = hexToBytes(probe.message);
+  let verified = false;
+  try {
+    if (
+      probe.proof_suite === "nostr-bip340"
+      && typeof probe.public_key === "string"
+      && /^[0-9a-f]{64}$/u.test(probe.public_key)
+      && /^[0-9a-f]{128}$/u.test(probe.signature)
+    ) {
+      verified = schnorr.verify(
+        hexToBytes(probe.signature),
+        message,
+        hexToBytes(probe.public_key),
+      );
+    } else if (
+      probe.proof_suite === "radicle-ed25519"
+      && typeof probe.public_key === "string"
+      && /^[0-9a-f]{64}$/u.test(probe.public_key)
+      && /^[0-9a-f]{128}$/u.test(probe.signature)
+    ) {
+      verified = ed25519.verify(
+        hexToBytes(probe.signature),
+        message,
+        hexToBytes(probe.public_key),
+      );
+    } else if (
+      probe.proof_suite === "jwk-jws"
+      && probe.public_jwk?.kty === "OKP"
+      && probe.public_jwk.crv === "Ed25519"
+      && probe.protected === Buffer.from('{"alg":"EdDSA"}', "utf8").toString("base64url")
+    ) {
+      const publicKey = Buffer.from(probe.public_jwk.x, "base64url");
+      const signature = Buffer.from(probe.signature, "base64url");
+      const encodedPayload = Buffer.from(message).toString("base64url");
+      const signingInput = new TextEncoder().encode(
+        `${probe.protected}.${encodedPayload}`,
+      );
+      verified = publicKey.length === 32
+        && signature.length === 64
+        && ed25519.verify(signature, signingInput, publicKey);
+    }
+  } catch {
+    verified = false;
+  }
+  return verified
+    ? {
+        verdict: "accept",
+        proof_suite: probe.proof_suite,
+        proof_purpose: probe.proof_purpose,
+        authenticated_message: probe.message,
+      }
+    : { verdict: "reject", reason_code: "claim-subject-proof-invalid" };
+}
+
+/** Applies both the closed Control schema and live frame-policy boundary. */
+export function validateCurrentControlFrameProfile(value: unknown):
+  | Readonly<{ verdict: "accept"; transport: "marmot-inner"; frame_type: string }>
+  | Readonly<{
+      verdict: "reject";
+      reason_code:
+        | "control-frame-invalid"
+        | "control-token-invalid"
+        | "control-refresh-prohibited";
+    }> {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return { verdict: "reject", reason_code: "control-frame-invalid" };
+  }
+  const input = value as Readonly<{
+    transport?: unknown;
+    frame?: unknown;
+  }>;
+  if (input.transport !== "marmot-inner") {
+    return { verdict: "reject", reason_code: "control-frame-invalid" };
+  }
+  try {
+    validateControlFrameSchemaOrThrow(input.frame);
+  } catch {
+    return { verdict: "reject", reason_code: "control-frame-invalid" };
+  }
+  const policy = validateControlFrameBoundary({
+    closed_schema_valid: true,
+    token_valid: true,
+    refresh_requested: false,
+  });
+  if (policy.verdict === "reject") return policy;
+  const frameType = (input.frame as Readonly<{ frame_type: string }>).frame_type;
+  return { verdict: "accept", transport: "marmot-inner", frame_type: frameType };
 }

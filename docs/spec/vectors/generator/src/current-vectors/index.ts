@@ -1,5 +1,3 @@
-import { resolve } from "node:path";
-import { loadRegistry } from "../registry.js";
 import type { AuthoredVector } from "../types.js";
 import { buildAssuranceCases } from "./assurance.js";
 import { buildCommsCases } from "./comms.js";
@@ -19,8 +17,7 @@ import {
   currentCaseIds,
   type CurrentCaseContract,
 } from "./case-contracts.js";
-
-const REPOSITORY_ROOT = resolve(import.meta.dirname, "../../../../../..");
+import { currentProfileOracleForVector } from "./profile-oracles.js";
 
 type CurrentCaseEvidence = Readonly<{
   contract: CurrentCaseContract;
@@ -67,6 +64,28 @@ async function bindExecutedCase(raw: CurrentCaseFixture): Promise<CurrentVectorC
     );
   }
   const rawResult = deepFreeze(execution.raw_result);
+  const profileOracle = currentProfileOracleForVector(raw.vector_id);
+  if (profileOracle !== undefined) {
+    if (
+      rawResult === null
+      || typeof rawResult !== "object"
+      || Array.isArray(rawResult)
+    ) {
+      throw new Error(`current profile evidence is not a closed execution record: ${raw.vector_id}`);
+    }
+    const profileEvidence = rawResult as Readonly<Record<string, unknown>>;
+    const registryComparison = profileEvidence.registry_comparison;
+    if (
+      profileEvidence.semantic_boundary !== profileOracle.semantic_boundary
+      || registryComparison === null
+      || typeof registryComparison !== "object"
+      || Array.isArray(registryComparison)
+      || (registryComparison as Readonly<Record<string, unknown>>).verdict !== "accept"
+      || !Object.hasOwn(profileEvidence, "semantic_result")
+    ) {
+      throw new Error(`current profile evidence/oracle mismatch: ${raw.vector_id}`);
+    }
+  }
   const projected = deepFreeze(requireRecordResult(raw.vector_id, execution.projected_output));
   const expectedReason = projected.verdict === "reject"
     ? projected.reason_code
@@ -147,7 +166,7 @@ export async function buildCurrentCases(): Promise<CurrentVectorCase[]> {
     ...await buildControlCases(),
     ...await buildSocialCases(),
     ...buildWorkspaceCases(),
-    ...buildProfileCases(loadRegistry(REPOSITORY_ROOT)),
+    ...await buildProfileCases(),
   ];
   const cases: CurrentVectorCase[] = [];
   for (const raw of rawCases) cases.push(await bindExecutedCase(raw));

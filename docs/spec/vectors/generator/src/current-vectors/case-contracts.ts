@@ -1,4 +1,5 @@
 import type { DocumentId } from "../types.js";
+import { currentProfileOracleForVector } from "./profile-oracles.js";
 
 export type CurrentCaseContract = Readonly<{
   boundary_id: string;
@@ -3554,6 +3555,17 @@ export function currentCaseContract(vectorId: string): CurrentCaseContract {
   const contract = CURRENT_CASE_CONTRACTS[vectorId as keyof typeof CURRENT_CASE_CONTRACTS];
   if (contract === undefined) {
     throw new Error(`unregistered current vector case: ${vectorId}`);
+  }
+  const profileOracle = currentProfileOracleForVector(vectorId);
+  if (profileOracle !== undefined) {
+    return Object.freeze({
+      ...contract,
+      boundary_id: profileOracle.semantic_boundary,
+      owner_document: profileOracle.tuple.owner,
+      profile: profileOracle.tuple.profile_id,
+      invariants: profileOracle.exercised_invariants,
+      reason_codes: Object.freeze([]),
+    });
   }
   return contract;
 }

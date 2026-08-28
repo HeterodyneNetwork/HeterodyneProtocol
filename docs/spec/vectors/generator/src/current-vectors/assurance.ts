@@ -259,6 +259,49 @@ function signAssociatedSubject(body: AssociatedKeyRecord): AssociatedKeyRecord {
 async function associatedEvent(body: AssociatedKeyRecord): Promise<NostrSignedEvent> {
     return assuranceEvent(ACTIVE_SECRET, 31001, `assurance-associated:${body.active_key}:${body.role}:${body.subject_key}`, body.profile, body, [body.active_key]);
 }
+
+/**
+ * Deterministic boundary-specific inputs used by the fixed profile oracle.
+ * No registry data or semantic trace label participates in their construction.
+ */
+export async function buildAssuranceProfileBoundaryFixtures(): Promise<Readonly<{
+    reciprocal: Readonly<Record<string, unknown>>;
+    contest: Readonly<Record<string, unknown>>;
+    succession: Readonly<Record<string, unknown>>;
+    associated: Readonly<Record<string, unknown>>;
+}>> {
+    const pair = await enrolledPersona();
+    const current = acceptedHead(pair);
+    const succession = signSuccession(successionRecord(current));
+    const associated = signAssociatedSubject(associatedRecord(current));
+    const firstObserved = OBSERVATION_NOW - WINDOW;
+    const forgedContest = await enrollmentContest(pair, WRONG_SECRET);
+    return {
+        reciprocal: {
+            inception: pair.inception,
+            acceptance: pair.acceptance,
+        },
+        contest: {
+            inception: pair.inception,
+            acceptance: pair.acceptance,
+            trusted_now: OBSERVATION_NOW,
+            evidence: baseEvidence({
+                local_first_observed_at: firstObserved,
+                contests: [{ observed_at: firstObserved + 1, event: forgedContest }],
+            }),
+        },
+        succession: {
+            current,
+            event: await successionEvent(succession),
+        },
+        associated: {
+            current,
+            event: await associatedEvent(associated),
+            now: associated.created_at,
+            previous: null,
+        },
+    };
+}
 export async function buildAssuranceCases(): Promise<CurrentCaseFixture[]> {
     const pair = await enrolledPersona();
     const firstObserved = OBSERVATION_NOW - WINDOW;
@@ -641,7 +684,6 @@ export async function buildAssuranceCases(): Promise<CurrentCaseFixture[]> {
         active_persona_key: WRONG_KEY,
     };
     const keriWireInput = {
-        format: "keri10json" as const,
         serialized_record: "{\"v\":\"KERI10JSON000000_\"}",
     };
     return [
