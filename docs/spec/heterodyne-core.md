@@ -57,9 +57,9 @@ or `workspace-`. Generated heading IDs are not stable protocol references.
 
 **Layering.** Core depends on nothing. Assurance and Comms depend on Core.
 Control and Social depend on Core and Comms. Workspace depends on Core and
-Comms and may optionally compose Control and Social. Comms, Control, Social,
-and Workspace MAY optionally compose Assurance but MUST NOT require Assurance
-for their baseline behavior. The graph MUST remain acyclic.
+Comms and may optionally compose Control and Social. Assurance is an optional
+Core extension; the active key remains sufficient for baseline behavior. The
+graph MUST remain acyclic.
 
 <a id="core-terminology"></a>
 ## 2. Shared terminology

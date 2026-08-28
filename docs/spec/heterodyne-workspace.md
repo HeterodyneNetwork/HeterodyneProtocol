@@ -50,23 +50,17 @@ Every signed object contains `spec_version:"heterodyne/0.6.0"`, its exact
 exact BIP-340 verification key for `signature`.
 
 <a id="workspace-governance-assurance"></a>
-Unlike other personas, a workspace persona MUST have a window-complete,
-`verified` Assurance enrollment under
-[`heterodyne:0.6.0#assurance-enrollment-window`](heterodyne-assurance.md#assurance-enrollment-window);
-workspace inception binds the exact `inception_event_id` into the genesis
-policy object. Every authority mutation — grants, invitations, policy changes,
-key issuance, publicization, federation, governance, and archive —
-additionally requires the workspace's Assurance evaluation to be `verified` at
-effect time, rejected otherwise with
-`workspace-governance-assurance-required`. An Assurance evaluation of
-`pending`, `stalled`, `unavailable`, or `downgraded` fails closed for
-authority mutations only: ordinary code, content, and discussion writes keep
-the 86,400-second window and continue. For a workspace persona the
-`active-account` compromise-reset class is forbidden; `assurance-recovery` is
-the only reset path. Workspaces existing before `heterodyne/0.6.0` have one
-release cycle to enroll; new workspaces require a window-complete enrollment
-at inception, which in practice means enrolling the cold root at least seven
-days before incorporation.
+A Workspace MAY be created and operated with its active Nostr persona key and
+no Assurance claim. A Workspace policy MAY activate the closed
+`heterodyne.workspace.assurance.v1` profile after the active key has a
+window-complete verified enrollment. Absence of that profile is baseline, not
+an error.
+
+When present, `workspace-policy-v1.assurance` is a closed object containing
+exactly `profile:"heterodyne.workspace.assurance.v1"`, a lowercase
+64-character-hex `inception_event_id`, and `required_state:"verified"`. It
+does not replace the Workspace active key, governance approvals, or explicit
+authorization objects.
 
 The signature covers the
 [`heterodyne:0.6.0#core-proof-bytes`](heterodyne-core.md#core-proof-bytes) bytes for domain
@@ -176,9 +170,8 @@ signature by `workspace_key`; private requester identity remains in protected
 audit state unless policy requires disclosure. A signer MUST NOT use
 cross-account fallback, a broader grant, or stale policy state.
 
-Assurance — mandatory for the workspace persona itself under
-[`heterodyne:0.6.0#workspace-governance-assurance`](#workspace-governance-assurance) —
-may prove continuity to a successor active key, but it
+An optional Assurance profile may prove continuity to a successor active key,
+but it
 does not alias the old and new workspaces. Succession transfers no role,
 relationship, resource, repository, seed, host, custody, delegate, or
 group-administrator authority automatically. Every surviving subordinate
@@ -755,7 +748,7 @@ object types have these responsibilities:
 | Object type | Stable purpose |
 |---|---|
 | `workspace-manifest-v1` | Active workspace-key binding, root-policy locator, visibility, and intentional public role locators. |
-| `workspace-policy-v1` | Governance thresholds, ceilings, creation/federation rules, default hosts, and freshness maxima. |
+| `workspace-policy-v1` | Governance thresholds, ceilings, creation/federation rules, default hosts, freshness maxima, and an optional closed Assurance profile. |
 | `role-manifest-v1` | Opaque role ID, parent, visibility, allowed capabilities, history mode, MLS binding, and event repositories. |
 | `role-grant-v1` | Active-account grant, approvals, delegation, scope, activation, expiry, device/leaf-bound invitation, and evidence. |
 | `role-revocation-v1` | Targeted revocation, effective time, authority evidence, and reason. |
@@ -819,7 +812,6 @@ The list below is descriptive:
 - **WORKSPACE-I-HOST-AUTHORITY-SEPARATION:** Hosting or trusted-seed availability does not grant governance authority, while key-custody hosts remain explicit confidentiality trust boundaries.
 - **WORKSPACE-I-RADICLE-BACKSTOP:** Every effective role retains an authorized Radicle locator and eligible Radicle-backed relay host independent of optional Nostr relays.
 - **WORKSPACE-I-DEVICE-LEAF-SEPARATION:** Each active-account device has an independently revocable Marmot leaf and receives only envelopes bound to that exact account, device, and leaf.
-- **WORKSPACE-I-GOVERNANCE-ASSURED:** Workspace authority mutations execute only under a window-complete verified Assurance enrollment bound at inception, compromise reset for a workspace uses only the assurance-recovery class, and ordinary writes continue under their own window when governance fails closed.
 
 Implementations MUST bound private invitation and KeyPackage processing,
 repository and relay storage, history requests, key-envelope work, and failed

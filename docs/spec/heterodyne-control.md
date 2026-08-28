@@ -677,10 +677,7 @@ authority.
 
 The baseline authorization class is `active-account`. Optional Assurance may
 authorize or reinforce succession and reset, including when the old key is
-unavailable, through `assurance-recovery`. A workspace persona MUST NOT use
-the `active-account` class;
-[`heterodyne:0.6.0#workspace-governance-assurance`](heterodyne-workspace.md#workspace-governance-assurance)
-requires `assurance-recovery` for workspaces. Assurance evidence does not alias
+unavailable, through `assurance-recovery`. Assurance evidence does not alias
 the successor npub, rewrite old events, preserve old Marmot membership, or
 replace the baseline rule that the active Nostr account is the persona and
 Marmot account.

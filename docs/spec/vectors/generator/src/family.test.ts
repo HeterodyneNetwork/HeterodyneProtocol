@@ -138,4 +138,11 @@ describe("protocol document family", () => {
       expect(DOCUMENT_LAYERING[document]).not.toContain("assurance");
     }
   });
+
+  it("keeps Assurance optional and forbids Control-to-Workspace authority", () => {
+    expect(DOCUMENT_LAYERING.workspace).not.toContain("assurance");
+    expect(DOCUMENT_LAYERING.control).not.toContain("workspace");
+    expect(() => assertAllowedDependency("workspace", "assurance")).toThrow();
+    expect(() => assertAllowedDependency("control", "workspace")).toThrow();
+  });
 });

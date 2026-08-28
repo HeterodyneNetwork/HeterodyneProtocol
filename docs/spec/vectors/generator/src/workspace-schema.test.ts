@@ -280,6 +280,23 @@ describe("Workspace authority object schemas", () => {
     })).not.toBeNull();
   });
 
+  it("accepts bare-key policy and one exact optional Assurance profile", () => {
+    const bare = {
+      ...values["workspace-policy-v1"],
+      spec_version: "heterodyne/0.6.0",
+    };
+    expect(validate("workspace-policy-v1", bare)).toBeNull();
+    const assurance = {
+      profile: "heterodyne.workspace.assurance.v1",
+      inception_event_id: "a".repeat(64),
+      required_state: "verified",
+    };
+    expect(validate("workspace-policy-v1", { ...bare, assurance })).toBeNull();
+    expect(validate("workspace-policy-v1", {
+      ...bare, assurance: { ...assurance, cold_root: "b".repeat(64) },
+    })).toContainEqual(expect.objectContaining({ keyword: "additionalProperties" }));
+  });
+
   it("requires an exact Marmot MLS leaf recipient on resource key envelopes", () => {
     const envelope = values["resource-key-envelope-v1"];
     const missingRecipient = { ...envelope };
