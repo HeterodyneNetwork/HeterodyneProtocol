@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { schnorr } from "@noble/curves/secp256k1";
 import { sha256 } from "@noble/hashes/sha2";
+import { domainSeparatedJcsDigest } from "./credential-continuity.js";
 import { jcsCanonicalize } from "./jcs.js";
 import {
   associatedKeyRecordDigest,
+  createAssuranceEnrollmentObservationAuthority,
   evaluateAssuranceAuthorityAt,
   evaluateAssociatedKey,
   evaluateEnrollment,
+  evaluateEnrollmentEligibility,
   evaluateSuccessorAcceptance,
   evaluateSuccession,
   successionTransitionDigest,
@@ -14,6 +17,7 @@ import {
   type AssociatedKeyRecord,
   type AssociatedKeyState,
   type AssuranceHeadState,
+  type AssuranceEnrollmentObservationAuthority,
   type EnrollmentInception,
   type SuccessionRecord,
 } from "./assurance.js";
@@ -32,6 +36,8 @@ const NEXT_EPOCH_SECRET = secret(7);
 const FUTURE_EPOCH_SECRET = secret(8);
 const WRONG_SECRET = secret(9);
 const SUBJECT_SECRET = secret(10);
+const SECOND_WITNESS_SECRET = secret(11);
+const UNCONFIGURED_WITNESS_SECRET = secret(12);
 const COLD_KEY = getPublicKey(COLD_SECRET);
 const ACTIVE_KEY = getPublicKey(ACTIVE_SECRET);
 const SUCCESSION_KEY = getPublicKey(SUCCESSION_SECRET);
@@ -42,6 +48,8 @@ const NEXT_EPOCH_KEY = getPublicKey(NEXT_EPOCH_SECRET);
 const FUTURE_EPOCH_KEY = getPublicKey(FUTURE_EPOCH_SECRET);
 const WRONG_KEY = getPublicKey(WRONG_SECRET);
 const SUBJECT_KEY = getPublicKey(SUBJECT_SECRET);
+const SECOND_WITNESS_KEY = getPublicKey(SECOND_WITNESS_SECRET);
+const UNCONFIGURED_WITNESS_KEY = getPublicKey(UNCONFIGURED_WITNESS_SECRET);
 const CREATED_AT = 1_785_000_000;
 
 const associatedKeyPolicy: AssociatedKeyPolicy = {
@@ -79,7 +87,7 @@ async function assuranceEvent(
 async function enrolledPersona(overrides: Partial<EnrollmentInception> = {}) {
   const inceptionBody: EnrollmentInception = {
     profile: "heterodyne.assurance.enrollment-inception.v1",
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     active_key: ACTIVE_KEY,
     created_at: CREATED_AT,
     predecessor: null,
@@ -105,7 +113,7 @@ async function enrolledPersona(overrides: Partial<EnrollmentInception> = {}) {
   );
   const acceptanceBody = {
     profile: "heterodyne.assurance.active-key-acceptance.v1" as const,
-    spec_version: "heterodyne/0.5.0" as const,
+    spec_version: "heterodyne/0.6.0" as const,
     active_key: ACTIVE_KEY,
     created_at: CREATED_AT + 1,
     predecessor: inception.id,
@@ -141,7 +149,7 @@ function successionBody(
 ): SuccessionRecord {
   const base: SuccessionRecord = {
     profile: "heterodyne.assurance.succession.v1",
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     active_key: state.active_key,
     created_at: state.head_created_at + 10,
     predecessor: state.head,
@@ -221,7 +229,7 @@ function associatedBody(
 ): AssociatedKeyRecord {
   const base: AssociatedKeyRecord = {
     profile: "heterodyne.assurance.associated-key.v1",
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     active_key: state.active_key,
     created_at: state.head_created_at + 2,
     predecessor: state.head,
@@ -402,7 +410,7 @@ describe("Assurance succession validation", () => {
     if (pending.verdict !== "accept") throw new Error(pending.reason_code);
     const acceptanceBody = {
       profile: "heterodyne.assurance.active-key-acceptance.v1" as const,
-      spec_version: "heterodyne/0.5.0" as const,
+      spec_version: "heterodyne/0.6.0" as const,
       active_key: body.new_active_key,
       created_at: body.created_at + 1,
       predecessor: succession.id,
@@ -734,5 +742,552 @@ describe("Assurance associated-key evaluation", () => {
       now: stale.created_at,
       previous: null,
     })).toEqual({ verdict: "reject", reason_code: "assurance-head-mismatch" });
+  });
+});
+
+type EnrollmentObservationReceiptFixture = {
+  profile: "heterodyne.assurance.enrollment-observation-receipt.v1";
+  spec_version: "heterodyne/0.6.0";
+  inception_event_id: string;
+  active_key: string;
+  cold_root: string;
+  first_observed_at: number;
+  last_observed_at: number;
+  conflict_free: true;
+  witness_key: string;
+  signature: string;
+};
+
+type ObservedContestFixture = {
+  observed_at: number;
+  event: NostrSignedEvent;
+};
+
+type ObservedCompetingInceptionFixture = {
+  observed_at: number;
+  inception: NostrSignedEvent;
+  acceptance: NostrSignedEvent;
+};
+
+type EnrollmentEvidenceFixture = {
+  local_first_observed_at: number | null;
+  witness_receipts: EnrollmentObservationReceiptFixture[];
+  contests: ObservedContestFixture[];
+  competing_inceptions: ObservedCompetingInceptionFixture[];
+  authoritative_pin: string | null;
+};
+
+const ENROLLMENT_WINDOW_SECONDS = 604_800;
+const OBSERVATION_NOW = CREATED_AT + 2 * ENROLLMENT_WINDOW_SECONDS;
+
+function createObservationAuthority(
+  config: unknown,
+): AssuranceEnrollmentObservationAuthority {
+  return createAssuranceEnrollmentObservationAuthority(
+    config as Parameters<typeof createAssuranceEnrollmentObservationAuthority>[0],
+  );
+}
+
+async function evaluateObservedEnrollment(
+  authority: AssuranceEnrollmentObservationAuthority,
+  pair: { inception: NostrSignedEvent; acceptance: NostrSignedEvent },
+): Promise<unknown> {
+  return evaluateEnrollmentEligibility(authority, pair);
+}
+
+function evidenceFor(
+  overrides: Partial<EnrollmentEvidenceFixture> = {},
+): EnrollmentEvidenceFixture {
+  return {
+    local_first_observed_at: OBSERVATION_NOW - ENROLLMENT_WINDOW_SECONDS,
+    witness_receipts: [],
+    contests: [],
+    competing_inceptions: [],
+    authoritative_pin: null,
+    ...overrides,
+  };
+}
+
+function observationAuthority(
+  evidence: EnrollmentEvidenceFixture,
+  now = OBSERVATION_NOW,
+): AssuranceEnrollmentObservationAuthority {
+  return createObservationAuthority({
+    trusted_now: () => now,
+    load_evidence: async () => evidence,
+  });
+}
+
+function signedEnrollmentReceipt(
+  pair: Awaited<ReturnType<typeof enrolledPersona>>,
+  secretKey = WITNESS_SECRET,
+  overrides: Partial<Omit<EnrollmentObservationReceiptFixture, "signature">> = {},
+): EnrollmentObservationReceiptFixture {
+  const unsigned = {
+    profile: "heterodyne.assurance.enrollment-observation-receipt.v1" as const,
+    spec_version: "heterodyne/0.6.0" as const,
+    inception_event_id: pair.inception.id,
+    active_key: ACTIVE_KEY,
+    cold_root: COLD_KEY,
+    first_observed_at: OBSERVATION_NOW - ENROLLMENT_WINDOW_SECONDS,
+    last_observed_at: OBSERVATION_NOW,
+    conflict_free: true as const,
+    witness_key: getPublicKey(secretKey),
+    ...overrides,
+  };
+  return {
+    ...unsigned,
+    signature: proof(
+      secretKey,
+      domainSeparatedJcsDigest(
+        "heterodyne-assurance-enrollment-observation-v1",
+        unsigned,
+      ),
+    ),
+  };
+}
+
+async function enrollmentContest(
+  pair: Awaited<ReturnType<typeof enrolledPersona>>,
+  overrides: {
+    secretKey?: string;
+    kind?: number;
+    body?: Record<string, unknown>;
+    tags?: string[][];
+    content?: string;
+    created_at?: number;
+  } = {},
+): Promise<NostrSignedEvent> {
+  const contestBody = overrides.body ?? {
+    profile: "heterodyne.assurance.enrollment-contest.v1",
+    spec_version: "heterodyne/0.6.0",
+    inception_event_id: pair.inception.id,
+    cold_root: COLD_KEY,
+  };
+  return signEvent({
+    secretKey: overrides.secretKey ?? ACTIVE_SECRET,
+    created_at: overrides.created_at ?? CREATED_AT + 50,
+    kind: overrides.kind ?? 31006,
+    tags: overrides.tags ?? [["d", pair.inception.id], ["p", COLD_KEY]],
+    content: overrides.content ?? jcsCanonicalize(contestBody),
+    auxRand: AUX_RAND,
+  });
+}
+
+async function competingEnrollment(): Promise<{
+  inception: NostrSignedEvent;
+  acceptance: NostrSignedEvent;
+}> {
+  const original = await enrolledPersona();
+  const inceptionBody: EnrollmentInception = {
+    ...original.inceptionBody,
+    created_at: CREATED_AT + 10,
+    cold_root: WRONG_KEY,
+  };
+  const inception = await assuranceEvent(
+    WRONG_SECRET,
+    31002,
+    `assurance-inception:${ACTIVE_KEY}`,
+    inceptionBody.profile,
+    inceptionBody,
+    [ACTIVE_KEY],
+  );
+  const acceptanceBody = {
+    ...original.acceptanceBody,
+    created_at: CREATED_AT + 11,
+    predecessor: inception.id,
+    inception_event_id: inception.id,
+    cold_root: WRONG_KEY,
+    cold_root_signature: inception.sig,
+    assurance_head: inception.id,
+  };
+  const acceptance = await assuranceEvent(
+    ACTIVE_SECRET,
+    31000,
+    "assurance-head",
+    acceptanceBody.profile,
+    acceptanceBody,
+  );
+  return { inception, acceptance };
+}
+
+describe("Assurance enrollment contest authentication", () => {
+  it("accepts kind 31006 only with the active-key signature, exact tags, canonical body, and repeated equality", async () => {
+    const pair = await enrolledPersona();
+    const contest = await enrollmentContest(pair);
+    const result = await evaluateObservedEnrollment(
+      observationAuthority(evidenceFor({
+        contests: [{
+          observed_at: OBSERVATION_NOW - ENROLLMENT_WINDOW_SECONDS + 1,
+          event: contest,
+        }],
+      })),
+      pair,
+    );
+
+    expect(result).toMatchObject({
+      state: "contested",
+      reason: "assurance-enrollment-contested",
+    });
+  });
+
+  it.each([
+    "wrong-kind",
+    "wrong-active-key",
+    "generic-stamping",
+    "extra-tag",
+    "noncanonical-content",
+    "extra-content-member",
+    "wrong-cold-root",
+    "wrong-inception",
+    "repeated-field-mismatch",
+  ] as const)("rejects hostile contest variant %s", async (variant) => {
+    const pair = await enrolledPersona();
+    const exactBody = {
+      profile: "heterodyne.assurance.enrollment-contest.v1",
+      spec_version: "heterodyne/0.6.0",
+      inception_event_id: pair.inception.id,
+      cold_root: COLD_KEY,
+    };
+    const wrongInception = "ab".repeat(32);
+    let contest: NostrSignedEvent;
+    switch (variant) {
+      case "wrong-kind":
+        contest = await enrollmentContest(pair, { kind: 31005 });
+        break;
+      case "wrong-active-key":
+        contest = await enrollmentContest(pair, { secretKey: WRONG_SECRET });
+        break;
+      case "generic-stamping":
+        contest = await enrollmentContest(pair, {
+          tags: [
+            ["d", pair.inception.id],
+            ["p", COLD_KEY],
+            ["profile", exactBody.profile],
+          ],
+        });
+        break;
+      case "extra-tag":
+        contest = await enrollmentContest(pair, {
+          tags: [["d", pair.inception.id], ["p", COLD_KEY], ["x", "1"]],
+        });
+        break;
+      case "noncanonical-content":
+        contest = await enrollmentContest(pair, { content: JSON.stringify(exactBody) });
+        break;
+      case "extra-content-member":
+        contest = await enrollmentContest(pair, { body: { ...exactBody, reason: "extra" } });
+        break;
+      case "wrong-cold-root":
+        contest = await enrollmentContest(pair, {
+          body: { ...exactBody, cold_root: WRONG_KEY },
+          tags: [["d", pair.inception.id], ["p", WRONG_KEY]],
+        });
+        break;
+      case "wrong-inception":
+        contest = await enrollmentContest(pair, {
+          body: { ...exactBody, inception_event_id: wrongInception },
+          tags: [["d", wrongInception], ["p", COLD_KEY]],
+        });
+        break;
+      case "repeated-field-mismatch":
+        contest = await enrollmentContest(pair, {
+          tags: [["d", pair.inception.id], ["p", WRONG_KEY]],
+        });
+        break;
+    }
+
+    const result = await evaluateObservedEnrollment(
+      observationAuthority(evidenceFor({
+        contests: [{
+          observed_at: OBSERVATION_NOW - ENROLLMENT_WINDOW_SECONDS + 1,
+          event: contest,
+        }],
+      })),
+      pair,
+    );
+    expect(result, variant).toMatchObject({ state: "verified", reason: null });
+  });
+});
+
+describe("Assurance enrollment observation window", () => {
+  it.each([
+    [604_799, "none", "pending", "assurance-enrollment-pending-window"],
+    [604_800, "none", "verified", null],
+    [604_800, "contest", "contested", "assurance-enrollment-contested"],
+    [604_800, "competitor", "contested", "assurance-enrollment-contested"],
+  ] as const)(
+    "evaluates window age %i with %s conflict as %s",
+    async (age, conflict, state, reason) => {
+      const pair = await enrolledPersona();
+      const firstObserved = OBSERVATION_NOW - age;
+      const contests: ObservedContestFixture[] = [];
+      const competingInceptions: ObservedCompetingInceptionFixture[] = [];
+      if (conflict === "contest") {
+        contests.push({
+          observed_at: firstObserved + 1,
+          event: await enrollmentContest(pair),
+        });
+      }
+      if (conflict === "competitor") {
+        competingInceptions.push({
+          observed_at: firstObserved + 1,
+          ...await competingEnrollment(),
+        });
+      }
+
+      const result = await evaluateObservedEnrollment(
+        observationAuthority(evidenceFor({
+          local_first_observed_at: firstObserved,
+          contests,
+          competing_inceptions: competingInceptions,
+        })),
+        pair,
+      );
+      expect(result).toMatchObject({ state, reason });
+    },
+  );
+
+  it("does not use a backdated created_at or caller-supplied time and state to satisfy the window", async () => {
+    const pair = await enrolledPersona({ created_at: 1 });
+    const evidence = evidenceFor({ local_first_observed_at: OBSERVATION_NOW - 1 });
+    const authority = observationAuthority(evidence);
+    const result = await evaluateEnrollmentEligibility(
+      authority,
+      {
+        inception: pair.inception,
+        acceptance: pair.acceptance,
+        trusted_now: OBSERVATION_NOW + ENROLLMENT_WINDOW_SECONDS,
+        authoritative_pin: pair.inception.id,
+        local_first_observed_at: 0,
+      } as unknown as { inception: NostrSignedEvent; acceptance: NostrSignedEvent },
+    );
+    expect(result).toMatchObject({
+      state: "pending",
+      reason: "assurance-enrollment-pending-window",
+    });
+  });
+
+  it("keeps a timely contest absorbing after the window has passed", async () => {
+    const pair = await enrolledPersona();
+    const firstObserved = OBSERVATION_NOW - 2 * ENROLLMENT_WINDOW_SECONDS;
+    const result = await evaluateObservedEnrollment(
+      observationAuthority(evidenceFor({
+        local_first_observed_at: firstObserved,
+        contests: [{
+          observed_at: firstObserved + ENROLLMENT_WINDOW_SECONDS,
+          event: await enrollmentContest(pair),
+        }],
+      })),
+      pair,
+    );
+    expect(result).toMatchObject({
+      state: "contested",
+      reason: "assurance-enrollment-contested",
+    });
+  });
+
+  it("keeps an authoritative verified pin despite late contest evidence and emits a warning", async () => {
+    const pair = await enrolledPersona();
+    const firstObserved = OBSERVATION_NOW - 2 * ENROLLMENT_WINDOW_SECONDS;
+    const result = await evaluateObservedEnrollment(
+      observationAuthority(evidenceFor({
+        local_first_observed_at: firstObserved,
+        contests: [{
+          observed_at: firstObserved + ENROLLMENT_WINDOW_SECONDS + 1,
+          event: await enrollmentContest(pair),
+        }],
+        authoritative_pin: pair.inception.id,
+      })),
+      pair,
+    );
+    expect(result).toMatchObject({
+      state: "verified",
+      reason: null,
+      warnings: ["assurance-enrollment-contested"],
+    });
+  });
+
+  it("rejects a malformed reciprocal pair before consulting observation evidence", async () => {
+    const pair = await enrolledPersona();
+    let loadCalls = 0;
+    const authority = createObservationAuthority({
+      trusted_now: () => OBSERVATION_NOW,
+      load_evidence: async () => {
+        loadCalls += 1;
+        return evidenceFor();
+      },
+    });
+
+    const result = await evaluateObservedEnrollment(authority, {
+      inception: pair.inception,
+      acceptance: { ...pair.acceptance, sig: "00".repeat(64) },
+    });
+    expect(result).toEqual({
+      verdict: "reject",
+      reason_code: "assurance-reciprocal-proof-invalid",
+    });
+    expect(loadCalls).toBe(0);
+  });
+});
+
+describe("Assurance enrollment witness observations", () => {
+  it("accepts distinct configured receipts whose valid weight reaches the inception threshold", async () => {
+    const pair = await enrolledPersona({
+      witnesses: [
+        { key: WITNESS_KEY, weight: 1 },
+        { key: SECOND_WITNESS_KEY, weight: 1 },
+      ],
+      thresholds: { epoch: 1, witness: 2 },
+    });
+    const result = await evaluateObservedEnrollment(
+      observationAuthority(evidenceFor({
+        local_first_observed_at: null,
+        witness_receipts: [
+          signedEnrollmentReceipt(pair),
+          signedEnrollmentReceipt(pair, SECOND_WITNESS_SECRET),
+        ],
+      })),
+      pair,
+    );
+    expect(result).toMatchObject({ state: "verified", reason: null });
+  });
+
+  it.each([
+    "insufficient-weight",
+    "duplicate-weight",
+    "unconfigured-witness",
+    "forged-receipt",
+    "insufficient-span",
+  ] as const)("does not satisfy the window with %s", async (variant) => {
+    const pair = await enrolledPersona({
+      witnesses: [
+        { key: WITNESS_KEY, weight: 1 },
+        { key: SECOND_WITNESS_KEY, weight: 1 },
+      ],
+      thresholds: { epoch: 1, witness: 2 },
+    });
+    const first = signedEnrollmentReceipt(pair);
+    const second = signedEnrollmentReceipt(pair, SECOND_WITNESS_SECRET);
+    let receipts: EnrollmentObservationReceiptFixture[];
+    switch (variant) {
+      case "insufficient-weight":
+        receipts = [first];
+        break;
+      case "duplicate-weight":
+        receipts = [first, first];
+        break;
+      case "unconfigured-witness":
+        receipts = [first, signedEnrollmentReceipt(pair, UNCONFIGURED_WITNESS_SECRET)];
+        break;
+      case "forged-receipt":
+        receipts = [{ ...first, witness_key: SECOND_WITNESS_KEY }, second];
+        break;
+      case "insufficient-span":
+        receipts = [
+          signedEnrollmentReceipt(pair, WITNESS_SECRET, {
+            first_observed_at: OBSERVATION_NOW - ENROLLMENT_WINDOW_SECONDS + 1,
+          }),
+          second,
+        ];
+        break;
+    }
+
+    const result = await evaluateObservedEnrollment(
+      observationAuthority(evidenceFor({
+        local_first_observed_at: null,
+        witness_receipts: receipts,
+      })),
+      pair,
+    );
+    expect(result, variant).toMatchObject({
+      state: "pending",
+      reason: "assurance-enrollment-pending-window",
+    });
+  });
+});
+
+describe("Assurance enrollment observation authority hardening", () => {
+  it("captures trusted callbacks once and ignores later config mutation", async () => {
+    const pair = await enrolledPersona();
+    const config = {
+      trusted_now: () => OBSERVATION_NOW,
+      load_evidence: async () => evidenceFor(),
+    };
+    const authority = createObservationAuthority(config);
+    config.trusted_now = () => 0;
+    config.load_evidence = async () => evidenceFor({
+      local_first_observed_at: OBSERVATION_NOW - 1,
+    });
+
+    await expect(evaluateObservedEnrollment(authority, pair)).resolves.toMatchObject({
+      state: "verified",
+      reason: null,
+    });
+  });
+
+  it("rejects proxied and accessor-backed authority configuration without invoking it", () => {
+    const config = {
+      trusted_now: () => OBSERVATION_NOW,
+      load_evidence: async () => evidenceFor(),
+    };
+    expect(() => createObservationAuthority(new Proxy(config, {})))
+      .toThrow(/observation-authority-invalid/);
+    expect(() => createObservationAuthority({
+      trusted_now: new Proxy(config.trusted_now, {}),
+      load_evidence: config.load_evidence,
+    })).toThrow(/observation-authority-invalid/);
+
+    let getterCalls = 0;
+    const accessor = { load_evidence: config.load_evidence } as Record<string, unknown>;
+    Object.defineProperty(accessor, "trusted_now", {
+      enumerable: true,
+      get() {
+        getterCalls += 1;
+        return config.trusted_now;
+      },
+    });
+    expect(() => createObservationAuthority(accessor))
+      .toThrow(/observation-authority-invalid/);
+    expect(getterCalls).toBe(0);
+  });
+
+  it("snapshots exact callback evidence and never invokes evidence accessors", async () => {
+    const pair = await enrolledPersona();
+    let getterCalls = 0;
+    const hostile = evidenceFor();
+    Object.defineProperty(hostile, "contests", {
+      enumerable: true,
+      get() {
+        getterCalls += 1;
+        return [];
+      },
+    });
+    const authority = createObservationAuthority({
+      trusted_now: () => OBSERVATION_NOW,
+      load_evidence: async () => hostile,
+    });
+
+    await expect(evaluateObservedEnrollment(authority, pair)).resolves.toMatchObject({
+      state: "pending",
+      reason: "assurance-enrollment-pending-window",
+    });
+    expect(getterCalls).toBe(0);
+  });
+
+  it("does not let replay of the candidate carrier event ID manufacture a conflict", async () => {
+    const pair = await enrolledPersona();
+    const result = await evaluateObservedEnrollment(
+      observationAuthority(evidenceFor({
+        contests: [{ observed_at: OBSERVATION_NOW - 1, event: pair.inception }],
+        competing_inceptions: [{
+          observed_at: OBSERVATION_NOW - 1,
+          inception: pair.inception,
+          acceptance: pair.acceptance,
+        }],
+      })),
+      pair,
+    );
+    expect(result).toMatchObject({ state: "verified", reason: null });
   });
 });

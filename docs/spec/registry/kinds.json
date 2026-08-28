@@ -545,8 +545,8 @@
         {
           "profile_id": "heterodyne-assurance-enrollment-contest-profile-v1",
           "owner": "assurance",
-          "discriminator": "enrollment_contest",
-          "stamping": true,
+          "discriminator": "content.profile=heterodyne.assurance.enrollment-contest.v1",
+          "stamping": false,
           "first_version": "heterodyne/0.6.0",
           "status": "draft"
         }

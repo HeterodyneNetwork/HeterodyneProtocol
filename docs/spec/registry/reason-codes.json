@@ -1981,7 +1981,7 @@
     {
       "code": "assurance-enrollment-contested",
       "owner": "assurance", "status": "draft", "first_version": "heterodyne/0.6.0",
-      "description": "A same-key contest or competing enrollment was observed during the observation window; the enrollment is not pin-eligible and the persona remains baseline.",
+      "description": "An active-key-authenticated contest or fully reciprocal competing enrollment was observed during the observation window; the candidate is permanently non-pin-eligible and the persona remains baseline.",
       "spec_refs": ["heterodyne:0.6.0#assurance-enrollment-window"]
     }
   ]

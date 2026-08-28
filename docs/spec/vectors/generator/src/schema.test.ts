@@ -762,7 +762,7 @@ describe("trusted private seed and flexible agent schemas", () => {
 
 const assuranceInception = {
   profile: "heterodyne.assurance.enrollment-inception.v1",
-  spec_version: "heterodyne/0.5.0",
+  spec_version: "heterodyne/0.6.0",
   active_key: h("1"),
   created_at: 1_785_000_000,
   predecessor: null,
@@ -789,7 +789,7 @@ const assuranceInception = {
 
 const assuranceAcceptance = {
   profile: "heterodyne.assurance.active-key-acceptance.v1",
-  spec_version: "heterodyne/0.5.0",
+  spec_version: "heterodyne/0.6.0",
   active_key: assuranceInception.active_key,
   created_at: assuranceInception.created_at + 1,
   predecessor: h("7"),
@@ -802,7 +802,7 @@ const assuranceAcceptance = {
 
 const assuranceSuccession = {
   profile: "heterodyne.assurance.succession.v1",
-  spec_version: "heterodyne/0.5.0",
+  spec_version: "heterodyne/0.6.0",
   active_key: assuranceInception.active_key,
   created_at: assuranceInception.created_at + 2,
   predecessor: h("7"),
@@ -838,7 +838,7 @@ const assuranceSuccession = {
 
 const assuranceAssociatedKey = {
   profile: "heterodyne.assurance.associated-key.v1",
-  spec_version: "heterodyne/0.5.0",
+  spec_version: "heterodyne/0.6.0",
   active_key: assuranceInception.active_key,
   created_at: assuranceInception.created_at + 3,
   predecessor: h("e"),
@@ -994,6 +994,63 @@ describe("Assurance record schemas", () => {
         continue_authority: true,
       },
     })).toMatch(/additionalProperties/);
+  });
+
+  it("accepts only the exact closed enrollment contest body", () => {
+    const contestBody = {
+      profile: "heterodyne.assurance.enrollment-contest.v1",
+      spec_version: "heterodyne/0.6.0",
+      inception_event_id: h("7"),
+      cold_root: assuranceInception.cold_root,
+    };
+
+    expect(validateAssuranceSchema(
+      "enrollment-contest-v1.schema.json",
+      contestBody,
+    )).toBeNull();
+    expect(validateAssuranceSchema(
+      "enrollment-contest-v1.schema.json",
+      { ...contestBody, reason: "generic stamping is not content authority" },
+    )).toMatch(/additionalProperties/);
+    const { cold_root: _coldRoot, ...missingColdRoot } = contestBody;
+    expect(validateAssuranceSchema(
+      "enrollment-contest-v1.schema.json",
+      missingColdRoot,
+    )).toMatch(/cold_root|required/);
+  });
+
+  it("accepts only closed signed enrollment observation receipts", () => {
+    const receipt = {
+      profile: "heterodyne.assurance.enrollment-observation-receipt.v1",
+      spec_version: "heterodyne/0.6.0",
+      inception_event_id: h("7"),
+      active_key: assuranceInception.active_key,
+      cold_root: assuranceInception.cold_root,
+      first_observed_at: 1_784_000_000,
+      last_observed_at: 1_784_604_800,
+      conflict_free: true,
+      witness_key: h("6"),
+      signature: sig("a"),
+    };
+
+    expect(validateAssuranceSchema(
+      "enrollment-observation-receipt-v1.schema.json",
+      receipt,
+    )).toBeNull();
+    for (const invalid of [
+      { ...receipt, conflict_free: false },
+      { ...receipt, unsigned_hint: true },
+    ]) {
+      expect(validateAssuranceSchema(
+        "enrollment-observation-receipt-v1.schema.json",
+        invalid,
+      )).not.toBeNull();
+    }
+    const { signature: _signature, ...unsigned } = receipt;
+    expect(validateAssuranceSchema(
+      "enrollment-observation-receipt-v1.schema.json",
+      unsigned,
+    )).toMatch(/signature|required/);
   });
 });
 

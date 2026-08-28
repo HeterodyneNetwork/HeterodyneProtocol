@@ -555,7 +555,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.6.0",
       "feature": "assurance.continuity.v1",
-      "description": "No enrollment is pin-eligible before 604800 seconds of observably public, conflict-free existence; contests and competing enrollments fail closed to baseline, and a conflict resolves only to an enrollment with both materially earlier proven existence and witness receipts spanning the gap."
+      "description": "No enrollment is pin-eligible before 604800 seconds of authenticated observation; a timely active-key contest or fully reciprocal competing enrollment is absorbing, and later initial-enrollment evidence cannot unpin an authoritative verified enrollment."
     },
     {
       "id": "COMMS-I-TIER3-CONFINED",

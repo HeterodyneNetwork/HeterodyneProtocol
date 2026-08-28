@@ -46,8 +46,8 @@ MLS leaf.
 <a id="assurance-record-envelope"></a>
 ## 2. Record envelope and common contract
 
-The four current Assurance records are addressable Nostr events. Their exact
-contents are the closed schemas below:
+The five current Assurance event profiles are addressable Nostr events. Their
+exact contents are the closed schemas below:
 
 | Kind | Profile | Schema |
 |---|---|---|
@@ -55,14 +55,23 @@ contents are the closed schemas below:
 | `31000` | `heterodyne.assurance.active-key-acceptance.v1` | [`active-key-acceptance-v1.schema.json`](schemas/assurance/active-key-acceptance-v1.schema.json) |
 | `31003` | `heterodyne.assurance.succession.v1` | [`succession-v1.schema.json`](schemas/assurance/succession-v1.schema.json) |
 | `31001` | `heterodyne.assurance.associated-key.v1` | [`associated-key-v1.schema.json`](schemas/assurance/associated-key-v1.schema.json) |
+| `31006` | `heterodyne.assurance.enrollment-contest.v1` | [`enrollment-contest-v1.schema.json`](schemas/assurance/enrollment-contest-v1.schema.json) |
 
-Every content object contains exactly its schema members, including
+The inception, acceptance, succession, and associated-key content objects
+contain exactly their schema members, including
 `profile`, `spec_version`, `active_key`, `created_at`, and `predecessor`.
 `spec_version` is exactly `heterodyne/0.6.0`. `active_key`, event IDs,
 commitments, and Nostr keys are 64 lowercase hexadecimal characters.
 Signatures are 128 lowercase hexadecimal characters. `created_at` equals the
 outer event's integer `created_at`. `predecessor` is `null` only in an
-inception; every other record requires a 64-hex predecessor event ID.
+inception; each of the other three common records requires a 64-hex
+predecessor event ID.
+
+The enrollment-contest content has its own smaller closed shape and exact
+outer binding in [§8](#assurance-enrollment-window). It carries no generic
+Heterodyne stamping tag. Enrollment observation receipts are signed portable
+objects rather than Nostr events and conform to
+[`enrollment-observation-receipt-v1.schema.json`](schemas/assurance/enrollment-observation-receipt-v1.schema.json).
 
 The outer NIP-01 `pubkey` is always the key that actually signed the event.
 The `active_key`, `cold_root`, `issuer`, `subject_key`, and proof keys inside
@@ -205,19 +214,11 @@ predecessor's witness evidence uniquely satisfies one branch. Arrival time,
 relay count, repository location, and a later Nostr timestamp MUST NOT select
 an otherwise ambiguous branch.
 
-<a id="assurance-enrollment-tiebreak"></a>
-A conflict between two individually valid enrollments E1 and E2 for one active
-key resolves to E1 instead of stalling only when both hold: E1 carries a
-matured OpenTimestamps attestation under
-[`heterodyne:0.6.0#core-ots-anchor`](heterodyne-core.md#core-ots-anchor)
-proving it existed at least 604,800 seconds before E2's earliest provable
-existence — E2's own attestation time if anchored, otherwise E2's earliest
-witnessed observation — and E1 carries conflict-free witness receipts covering
-that same period. Existence evidence without the observation trail MUST NOT
-resolve a conflict: a withheld enrollment has no receipts, so a secretly
-anchored enrollment published later cannot displace an established one.
-Conflicts meeting neither condition stall exactly as above. Arrival order,
-relay count, and `created_at` still select nothing.
+Initial-enrollment conflicts follow the authenticated observation and
+finality rules in [§8](#assurance-enrollment-window), not the successor-branch
+rule above. No timestamp proof, arrival order, relay count, repository
+location, or author-controlled `created_at` selects between competing initial
+enrollments.
 
 <a id="assurance-succession"></a>
 ## 6. Active-key succession and cold-root recovery
@@ -335,25 +336,52 @@ subject key signs an event, that subject key is the author.
 
 <a id="assurance-enrollment-window"></a>
 A reciprocal enrollment is pin-eligible only after it has been observably
-public and conflict-free for 604,800 seconds. Either satisfies the window: the
-verifier's own conflict-free observation for that duration, or conflict-free
-witness receipts spanning at least that duration and satisfying the
-enrollment's configured witness thresholds. The window is observation-based;
-`created_at` values MUST NOT satisfy it. A verifier evaluating an enrollment
-whose window has not elapsed returns `pending` with reason
+public and conflict-free for `W = 604800` seconds. Either satisfies the
+window: the verifier's own durable conflict-free observation for that
+duration, or distinct configured witness receipts spanning at least that
+duration and satisfying the witness weights and threshold fixed by the
+inception. The window is observation-based; event `created_at` values and
+caller-supplied time or state MUST NOT satisfy it. A verifier evaluating an
+enrollment whose window has not elapsed returns `pending` with reason
 `assurance-enrollment-pending-window`; `pending` contributes no enhanced
 claim.
 
+A witness receipt contains exactly `profile`, `spec_version`,
+`inception_event_id`, `active_key`, `cold_root`, `first_observed_at`,
+`last_observed_at`, `conflict_free:true`, `witness_key`, and `signature`.
+The witness key makes a BIP-340 signature over the
+`heterodyne-assurance-enrollment-observation-v1` domain-separated JCS digest
+of every member except `signature`. A receipt counts at most once, only at the
+weight configured for that exact witness by the inception, and only when its
+signature and repeated inception ID, active key, and cold root validate.
+Duplicate, unconfigured, forged, future, or too-short receipts contribute no
+weight.
+
 A client holding a persona's active key MUST alarm when it observes any
-enrollment for that key that it did not initiate, and MAY publish a kind
-`31006` enrollment contest conforming to
-`schemas/assurance/enrollment-contest-v1.schema.json`, signed by the same
-active key. A contest or a competing enrollment observed during any verifier's
-window makes the enrollment non-pin-eligible wherever observed, with reason
-`assurance-enrollment-contested`; the persona remains baseline. A key thief
-can therefore deny Assurance but cannot gain recovery authority over the
-owner: denial is bounded harm, because a bare-key holder can already
-impersonate at baseline.
+enrollment for that key that it did not initiate, and MAY publish an absorbing
+kind `31006` enrollment contest. Its outer `pubkey` is that active key; its
+tags are exactly `["d", inception_event_id]` and `["p", cold_root]`; and its
+canonical closed content is exactly `profile`, `spec_version`,
+`inception_event_id`, and `cold_root`, with the repeated fields equal to the
+tags and candidate inception. The event has no generic Heterodyne stamping
+tag. Its author-controlled outer `created_at` does not establish when the
+contest was observed.
+
+A valid contest or a fully reciprocal competing inception and active-key
+acceptance durably observed during a verifier's candidate window makes that
+candidate permanently non-pin-eligible with reason
+`assurance-enrollment-contested`; the persona remains baseline. A bare
+cold-root-authored competing inception without reciprocal active-key
+acceptance cannot create a contest. A key thief can therefore deny Assurance
+but cannot gain recovery authority over the owner: denial is bounded harm,
+because a bare-key holder can already impersonate at baseline.
+
+Once a verifier has authoritatively pinned a candidate after a completed
+conflict-free window, that verified pin is absorbing against later contests
+and competing initial enrollments. Late evidence remains visible as a warning
+and audit fact but MUST NOT unpin or replace the established enrollment.
+Only the succession and dual-consent downgrade mechanisms defined below can
+change an established Assurance pin.
 
 A client with no prior Assurance state MAY use trust on first use only after
 validating reciprocal enrollment and its completed window. It pins at least
@@ -509,7 +537,7 @@ Assurance implementations preserve these registered invariants:
 
 - **ASSURANCE-I-CORE-OPTIONALITY:** Absent, invalid, stale, or withdrawn Assurance cannot invalidate a Core-valid active-key persona or alter NIP-01 or Marmot identity semantics.
 - **ASSURANCE-I-RECIPROCAL-ENROLLMENT:** Assurance attaches only when a cold-root inception and no-earlier active-key acceptance bind the same exact active key, inception event, and cold-root signature.
-- **ASSURANCE-I-ENROLLMENT-WINDOWED:** No enrollment is pin-eligible before 604800 seconds of observably public, conflict-free existence; contests and competing enrollments fail closed to baseline, and a conflict resolves only to an enrollment with both materially earlier proven existence and witness receipts spanning the gap.
+- **ASSURANCE-I-ENROLLMENT-WINDOWED:** No enrollment is pin-eligible before 604800 seconds of authenticated observation; a timely active-key contest or fully reciprocal competing enrollment is absorbing, and later initial-enrollment evidence cannot unpin an authoritative verified enrollment.
 - **ASSURANCE-I-TRANSITION-PROOF-BINDING:** Every succession authority proof, new-key acceptance, and witness receipt binds one identical digest containing every closed transition member except the proof signature values themselves.
 - **ASSURANCE-I-PIN-DOWNGRADE:** A pinned Assurance state survives disappearing or conflicting hints and can be downgraded only by the active key plus current recovery authority.
 - **ASSURANCE-I-SUCCESSION-NON-ALIASING:** A verified successor proves continuity but remains a distinct Nostr author and Marmot account whose authority does not silently inherit.
@@ -525,9 +553,10 @@ An implementation that does not implement Assurance claims Core and any
 other implemented documents normally and makes no Assurance claim. No warning
 or reduced baseline label is required.
 
-An implementation claiming `assurance.continuity.v1` MUST implement the four
-record-envelope checks relevant to continuity, reciprocal enrollment, chain
-and head validation, KERI-style epoch and witness policy, routine and
+An implementation claiming `assurance.continuity.v1` MUST implement the
+record-envelope checks relevant to continuity, reciprocal enrollment, the
+authenticated observation window and contest finality, chain and head
+validation, KERI-style epoch and witness policy, routine and
 compromise succession, pin retention, cold-root recovery, and dual-consent
 downgrade. Succession validation includes the one exact transition digest,
 old-active routine participation, recovery-only compromise transitions,
@@ -545,8 +574,11 @@ lossless export or the exact defined failures. Both features require
 
 Minimum Assurance validation coverage includes a first-class persona with no
 Assurance; later reciprocal enrollment; invalid and mismatched enrollment;
-TOFU and retained pins after hint disappearance; routine, recovery, forked,
-and compromise succession; cutoff enforcement; empty compromise
+the 604799/604800 observation boundary; exact active-key contests; configured,
+duplicate, unconfigured, and forged witness receipts; timely competing
+reciprocal enrollment; absorbing conflicts; late-evidence warnings; TOFU and
+retained pins after hint disappearance; routine, recovery, forked, and
+compromise succession; cutoff enforcement; empty compromise
 continuations; explicit routine reauthorization; public-agent subject proof;
 associated-key expiry and revocation; active-key-only downgrade rejection;
 dual-consent downgrade acceptance; and lossless and failed KERI export.

@@ -90,6 +90,7 @@ describe("revisioned protocol registry", () => {
       "active-key-acceptance-v1",
       "succession-v1",
       "associated-key-v1",
+      "enrollment-observation-receipt-v1",
       "trusted-seed-acl-v1",
       "workspace-manifest-v1",
       "workspace-policy-v1",
@@ -177,6 +178,21 @@ describe("revisioned protocol registry", () => {
         profiles: [],
       });
     }
+
+    expect(registry.kinds.find((entry) => entry.kind === 31006)).toMatchObject({
+      allocation_authority: "heterodyne",
+      base_schema_owner: "assurance",
+      status: "draft",
+      first_version: "heterodyne/0.6.0",
+      profiles: [{
+        profile_id: "heterodyne-assurance-enrollment-contest-profile-v1",
+        owner: "assurance",
+        discriminator: "content.profile=heterodyne.assurance.enrollment-contest.v1",
+        stamping: false,
+        first_version: "heterodyne/0.6.0",
+        status: "draft",
+      }],
+    });
   });
 
   it("registers Social as a vanilla-Nostr extension without feed-index or KEL prerequisites", () => {
@@ -417,12 +433,14 @@ describe("revisioned protocol registry", () => {
       "active-key-acceptance-v1",
       "succession-v1",
       "associated-key-v1",
+      "enrollment-observation-receipt-v1",
     ]);
     expect(assuranceObjects.map(({ carriers }) => carriers)).toEqual([
       ["nostr-event"],
       ["nostr-event"],
       ["nostr-event"],
       ["nostr-event"],
+      ["radicle-authority-file"],
     ]);
 
     const assuranceCarrier: ObjectEntry["carriers"][number] = "nostr-event";
@@ -435,6 +453,7 @@ describe("revisioned protocol registry", () => {
       "heterodyne-assurance-succession-transition-v1",
       "heterodyne-assurance-associated-key-record-v1",
       "heterodyne-assurance-downgrade-v1",
+      "heterodyne-assurance-enrollment-observation-v1",
     ]));
     expect(assuranceProofs).not.toContain("heterodyne-assurance-succession-v1");
     expect(assuranceProofs).not.toContain("heterodyne-assurance-associated-key-subject-v1");
@@ -482,6 +501,23 @@ describe("revisioned protocol registry", () => {
       "subject_key",
       "visibility",
     ]);
+    expect(registry.proof_domains.find(
+      ({ id }) => id === "heterodyne-assurance-enrollment-observation-v1",
+    )).toMatchObject({
+      owner: "assurance",
+      suites: ["bip340"],
+      bound_members: [
+        "active_key",
+        "cold_root",
+        "conflict_free",
+        "first_observed_at",
+        "inception_event_id",
+        "last_observed_at",
+        "profile",
+        "spec_version",
+        "witness_key",
+      ],
+    });
 
     const assuranceReasons = registry.reason_codes
       .filter(({ owner }) => owner === "assurance")
@@ -497,6 +533,8 @@ describe("revisioned protocol registry", () => {
       "assurance-associated-key-revoked",
       "assurance-downgrade-consent-required",
       "assurance-pin-conflict",
+      "assurance-enrollment-pending-window",
+      "assurance-enrollment-contested",
     ]));
 
     const assuranceInvariants = registry.security_invariants
@@ -512,7 +550,14 @@ describe("revisioned protocol registry", () => {
       "ASSURANCE-I-COMPROMISE-CUTOFF",
       "ASSURANCE-I-NO-IMPLICIT-CONTINUATION",
       "ASSURANCE-I-ASSOCIATED-KEY-BOUNDS",
+      "ASSURANCE-I-ENROLLMENT-WINDOWED",
     ]));
+    expect(registry.security_invariants.find(
+      ({ id }) => id === "ASSURANCE-I-ENROLLMENT-WINDOWED",
+    )?.description).toMatch(/observation.*604800|604800.*observation/i);
+    expect(registry.security_invariants.find(
+      ({ id }) => id === "ASSURANCE-I-ENROLLMENT-WINDOWED",
+    )?.description).not.toMatch(/OpenTimestamp|OTS|tiebreak|materially earlier/i);
   });
 
   it("composes public Comms and Marmot from Core Nostr and repository primitives", () => {
