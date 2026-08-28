@@ -117,7 +117,10 @@ object or JSON `null`:
 The illustrative assurance values above stand for JSON object or `null`
 values, not strings. `previous_policy_head` is exactly the transition's
 nullable `predecessor`, `next_policy_head` is exactly its `policy_head`, and
-the assurance values are the profiles in those two policy states. The
+`previous_assurance` MUST be derived from the exact authenticated history entry
+whose `policy_head` equals that predecessor; it MUST NOT be taken merely from
+the last in-memory view. The assurance values are the profiles in those two
+policy states. The
 ordinary Workspace governance decision and the
 optional authority therefore authorize the same complete canonical policy
 transition; a digest, time, or authorization result for any other transition
@@ -154,13 +157,41 @@ authority. The boundary authenticates one closed
 `spec_version`, `resolver_policy`, `resolver_version`, `workspace_key`,
 `repository_rid`, `canonical_head`, `canonical_ancestry`, `observed_heads`,
 `fork_status`, `policy_head`, nullable `predecessor`, `authority_checkpoint`,
-`object_ids`, `object_set_digest`, `observed_at`, `expires_at`, and
+`policy_history`, `object_ids`, `object_set_digest`, `observed_at`, `expires_at`, and
 `signature`. `signature` is made by a locally configured trusted repository
 verification key over proof bytes for domain
 `heterodyne-workspace-repository-view-v1`. The configured policy and minimum
 resolver version MUST establish the Radicle repository boundary's canonical
 RID, reachable current head, complete fork observation, checkpoint, trusted
-observation time, and complete signed object set.
+observation time, and complete signed object set. It MUST derive every
+`policy_history` entry from the exact closed, active-key-signed historical
+`workspace-policy-v1` on that canonical repository ancestry and MUST reject a
+history whose signature, head, predecessor, or assurance profile disagrees
+with that policy object.
+
+`policy_history` is the nonempty, complete genesis-to-current array of closed
+entries containing exactly `policy_head`, nullable `predecessor`, and
+`assurance`. Each `assurance` value is either JSON `null` or the exact closed
+profile defined at [`heterodyne:0.6.0#workspace-optional-assurance`](#workspace-optional-assurance).
+The first entry has null `predecessor`; every later entry's `predecessor` is
+exactly the immediately prior entry's unique `policy_head`; and the final
+entry's head, predecessor, and assurance profile exactly equal the current
+view and current `workspace-policy-v1`. A partial, reordered, duplicated,
+forked, or profile-inconsistent history is invalid. Because the repository
+verification signature covers this complete array, a new resolver can replay
+the same authenticated consecutive profile transitions even when it did not
+observe each intermediate current view.
+
+The consumer MUST replay every consecutive `policy_history` transition
+through the optional Assurance boundary before accepting the view. This
+includes a bare-to-Assurance activation and every Assurance replacement or
+removal, so skipping an intermediate view or recreating the resolver cannot
+erase the dual-authority obligation. For a resolver that already accepted a
+generation, that generation's complete policy history MUST be an exact prefix
+of every later accepted history. A changed prior profile or predecessor fails
+with `workspace_repository_invalid`; a correctly bound transition lacking its
+required optional authority result fails with
+`workspace-assurance-state-required`.
 
 `object_ids` is the unique, strictly increasing byte-sorted array of SHA-256
 JCS object identifiers; set-equivalent reordering is invalid.
@@ -215,7 +246,10 @@ their Nostr identities.
 The stable workspace repository contains exactly one current
 `workspace-manifest-v1`, the root `workspace-policy-v1`, and the append-only
 history from which both are derived. Its canonical authority branch is the one
-unambiguous policy-approved predecessor and checkpoint chain. A public
+unambiguous policy-approved predecessor and checkpoint chain. The repository
+verification boundary exposes that complete consecutive policy/profile chain
+as the signed current view's `policy_history`; an implementation MUST NOT
+substitute a process-local last-seen profile for authenticated history. A public
 workspace MAY advertise this repository
 from its public account profile. A private workspace has no required public
 projection; an invitation or relationship conveys the active workspace key,

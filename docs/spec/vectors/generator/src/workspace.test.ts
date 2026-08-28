@@ -61,6 +61,9 @@ const RESOURCE_ID = "aa".repeat(32);
 const ACTOR_GRANT_ID = "bb".repeat(32);
 const REVOCATION_ID = "cc".repeat(32);
 const ASSURANCE_INCEPTION_EVENT_ID = "ef".repeat(32);
+const GENESIS_POLICY_HEAD = "d0".repeat(32);
+const ASSURED_POLICY_HEAD = "d1".repeat(32);
+const FINAL_POLICY_HEAD = "d2".repeat(32);
 const WORKSPACE_ASSURANCE = Object.freeze({
   profile: "heterodyne.workspace.assurance.v1" as const,
   inception_event_id: ASSURANCE_INCEPTION_EVENT_ID,
@@ -646,6 +649,53 @@ const currentAuthorityObjects = (
   return [policy, role, actorGrant, revocation, resource, checkpoint];
 };
 
+const authorityObjectsAtPolicy = (
+  policyHead: string,
+  predecessor: string | null,
+  assurance: typeof WORKSPACE_ASSURANCE | null,
+): Record<string, unknown>[] => {
+  const objects = currentAuthorityObjects().map((source) => {
+    const unsigned: Record<string, unknown> = {
+      ...source,
+      policy_head: policyHead,
+      predecessor,
+    };
+    delete unsigned.signature;
+    if (unsigned.object_type === "workspace-policy-v1") {
+      unsigned.policy_id = policyHead;
+      if (assurance === null) delete unsigned.assurance;
+      else unsigned.assurance = assurance;
+    }
+    if (unsigned.object_type === "role-checkpoint-v1") {
+      unsigned.workspace_policy_head = policyHead;
+    }
+    return signWorkspaceObject(unsigned, WORKSPACE_SECRET);
+  });
+  const role = objects.find((object) => object.object_type === "role-manifest-v1");
+  const checkpointIndex = objects.findIndex((object) =>
+    object.object_type === "role-checkpoint-v1");
+  if (role === undefined || checkpointIndex < 0) throw new Error("invalid policy fixture");
+  const unsignedCheckpoint: Record<string, unknown> = {
+    ...objects[checkpointIndex],
+    role_policy_heads: [objectDigest(role)],
+  };
+  delete unsignedCheckpoint.signature;
+  objects[checkpointIndex] = signWorkspaceObject(unsignedCheckpoint, WORKSPACE_SECRET);
+  return objects;
+};
+
+type PolicyHistoryEntry = Readonly<{
+  policy_head: string;
+  predecessor: string | null;
+  assurance: typeof WORKSPACE_ASSURANCE | null;
+}>;
+
+const policyHistoryEntry = (
+  policy_head: string,
+  predecessor: string | null,
+  assurance: typeof WORKSPACE_ASSURANCE | null,
+): PolicyHistoryEntry => ({ policy_head, predecessor, assurance });
+
 const receivingAuthorityObjects = (): Record<string, unknown>[] => {
   const receivingPolicy = "77".repeat(32);
   const receivingPredecessor = "88".repeat(32);
@@ -696,6 +746,24 @@ const repositoryViewEvidence = (
   changed: Record<string, unknown> = {},
 ): Record<string, unknown> => {
   const object_ids = objects.map(objectDigest).sort();
+  const policy = objects.find((object) => object.object_type === "workspace-policy-v1");
+  const policyHead = typeof changed.policy_head === "string"
+    ? changed.policy_head : POLICY_HEAD;
+  const predecessor = Object.hasOwn(changed, "predecessor")
+    ? changed.predecessor as string | null
+    : PREDECESSOR;
+  const assurance = policy !== undefined
+    && policy.assurance !== null
+    && typeof policy.assurance === "object"
+    && !Array.isArray(policy.assurance)
+    ? policy.assurance as typeof WORKSPACE_ASSURANCE
+    : null;
+  const policy_history = Object.hasOwn(changed, "policy_history")
+    ? changed.policy_history
+    : [
+      ...(predecessor === null ? [] : [policyHistoryEntry(predecessor, null, null)]),
+      policyHistoryEntry(policyHead, predecessor, assurance),
+    ];
   const unsigned = {
     profile: "heterodyne.workspace-repository-view.v1",
     spec_version: "heterodyne/0.5.0",
@@ -710,6 +778,7 @@ const repositoryViewEvidence = (
     policy_head: POLICY_HEAD,
     predecessor: PREDECESSOR,
     authority_checkpoint: CHECKPOINT,
+    policy_history,
     object_ids,
     object_set_digest: bytesToHex(sha256(proofBytes(
       "heterodyne-workspace-object-set-v1",
@@ -804,6 +873,55 @@ describe("Workspace configured repository resolver", () => {
       evidence,
       objects,
     })).toEqual({ verdict: "reject", reason_code: "checkpoint_stale" });
+  });
+
+  it("snapshots an exact closed authenticated policy history", async () => {
+    const api = await import("./workspace.js");
+    const objects = currentAuthorityObjects();
+    const baseConfig = {
+      trust_anchors: [{ suite: "bip340" as const, public_key: RESOLVER_KEY }],
+      allowed_policies: ["radicle-verified-complete-v1"],
+      minimum_version: "1.0.0",
+      max_ttl: 600,
+      max_view_age: 300,
+      repositories: [{
+        workspace_key: WORKSPACE_KEY,
+        repository_rid: "rad:zWorkspace",
+        pinned_head: H40,
+      }],
+      trusted_now: () => 1_720_000_400,
+    };
+    const history = [
+      policyHistoryEntry(PREDECESSOR, null, null),
+      policyHistoryEntry(POLICY_HEAD, PREDECESSOR, null),
+    ];
+    const openEvidence = repositoryViewEvidence(objects, {
+      policy_history: [{ ...history[0], proof: true }, history[1]],
+    });
+    expect(api.authenticateWorkspaceRepositoryView({
+      authority: api.createWorkspaceRepositoryResolverAuthority(baseConfig),
+      evidence: openEvidence,
+      objects,
+    })).toEqual({ verdict: "reject", reason_code: "workspace_repository_invalid" });
+
+    let getterCalls = 0;
+    const accessorEntry = Object.defineProperty({
+      policy_head: POLICY_HEAD,
+      predecessor: PREDECESSOR,
+    }, "assurance", {
+      enumerable: true,
+      get() {
+        getterCalls += 1;
+        return null;
+      },
+    });
+    const evidence = repositoryViewEvidence(objects);
+    expect(api.authenticateWorkspaceRepositoryView({
+      authority: api.createWorkspaceRepositoryResolverAuthority(baseConfig),
+      evidence: { ...evidence, policy_history: [history[0], accessorEntry] },
+      objects,
+    })).toEqual({ verdict: "reject", reason_code: "workspace_schema_invalid" });
+    expect(getterCalls).toBe(0);
   });
 
   it("rejects non-canonical object-id attestations and superseded current-state handles", async () => {
@@ -1192,9 +1310,27 @@ describe("Workspace optional Assurance composition", () => {
 
   it("requires matching Assurance authorization to remove an active profile", async () => {
     const api = await import("./workspace.js");
-    const assuredObjects = currentAuthorityObjects(WORKSPACE_ASSURANCE);
-    const bareObjects = currentAuthorityObjects();
+    const assuredObjects = authorityObjectsAtPolicy(
+      ASSURED_POLICY_HEAD,
+      GENESIS_POLICY_HEAD,
+      WORKSPACE_ASSURANCE,
+    );
+    const bareObjects = authorityObjectsAtPolicy(
+      FINAL_POLICY_HEAD,
+      ASSURED_POLICY_HEAD,
+      null,
+    );
+    const assuredHistory = [
+      policyHistoryEntry(GENESIS_POLICY_HEAD, null, null),
+      policyHistoryEntry(ASSURED_POLICY_HEAD, GENESIS_POLICY_HEAD, WORKSPACE_ASSURANCE),
+    ];
     const nextEvidence = repositoryViewEvidence(bareObjects, {
+      policy_head: FINAL_POLICY_HEAD,
+      predecessor: ASSURED_POLICY_HEAD,
+      policy_history: [
+        ...assuredHistory,
+        policyHistoryEntry(FINAL_POLICY_HEAD, ASSURED_POLICY_HEAD, null),
+      ],
       observed_at: 1_720_000_200,
       expires_at: 1_720_000_750,
     });
@@ -1204,7 +1340,11 @@ describe("Workspace optional Assurance composition", () => {
     );
     expect(api.authenticateWorkspaceRepositoryView({
       authority: unilateral,
-      evidence: repositoryViewEvidence(assuredObjects),
+      evidence: repositoryViewEvidence(assuredObjects, {
+        policy_head: ASSURED_POLICY_HEAD,
+        predecessor: GENESIS_POLICY_HEAD,
+        policy_history: assuredHistory,
+      }),
       objects: assuredObjects,
     })).toMatchObject({ verdict: "accept" });
     expect(api.authenticateWorkspaceRepositoryView({
@@ -1230,7 +1370,11 @@ describe("Workspace optional Assurance composition", () => {
     )));
     expect(api.authenticateWorkspaceRepositoryView({
       authority: dual,
-      evidence: repositoryViewEvidence(assuredObjects),
+      evidence: repositoryViewEvidence(assuredObjects, {
+        policy_head: ASSURED_POLICY_HEAD,
+        predecessor: GENESIS_POLICY_HEAD,
+        policy_history: assuredHistory,
+      }),
       objects: assuredObjects,
     })).toMatchObject({ verdict: "accept" });
     expect(api.authenticateWorkspaceRepositoryView({
@@ -1244,6 +1388,124 @@ describe("Workspace optional Assurance composition", () => {
       transition_digest: expect.stringMatching(/^[0-9a-f]{64}$/u),
       evaluated_at: 1_720_000_400,
     });
+  });
+
+  it("rejects a skipped assured intermediate before accepting the final bare policy", async () => {
+    const api = await import("./workspace.js");
+    const genesisObjects = authorityObjectsAtPolicy(GENESIS_POLICY_HEAD, null, null);
+    const finalObjects = authorityObjectsAtPolicy(
+      FINAL_POLICY_HEAD,
+      ASSURED_POLICY_HEAD,
+      null,
+    );
+    const genesisHistory = [policyHistoryEntry(GENESIS_POLICY_HEAD, null, null)];
+    const completeHistory = [
+      ...genesisHistory,
+      policyHistoryEntry(ASSURED_POLICY_HEAD, GENESIS_POLICY_HEAD, WORKSPACE_ASSURANCE),
+      policyHistoryEntry(FINAL_POLICY_HEAD, ASSURED_POLICY_HEAD, null),
+    ];
+    const authority = api.createWorkspaceRepositoryResolverAuthority(
+      resolverConfig(assuranceAuthority(() => "verified")),
+    );
+    const genesis = api.authenticateWorkspaceRepositoryView({
+      authority,
+      evidence: repositoryViewEvidence(genesisObjects, {
+        policy_head: GENESIS_POLICY_HEAD,
+        predecessor: null,
+        policy_history: genesisHistory,
+      }),
+      objects: genesisObjects,
+    });
+    expect(genesis.verdict).toBe("accept");
+    expect(api.authenticateWorkspaceRepositoryView({
+      authority,
+      evidence: repositoryViewEvidence(finalObjects, {
+        policy_head: FINAL_POLICY_HEAD,
+        predecessor: ASSURED_POLICY_HEAD,
+        policy_history: completeHistory,
+        observed_at: 1_720_000_200,
+        expires_at: 1_720_000_750,
+      }),
+      objects: finalObjects,
+    })).toEqual({
+      verdict: "reject",
+      reason_code: "workspace-assurance-state-required",
+    });
+  });
+
+  it("rejects the same skipped assured downgrade in a fresh resolver", async () => {
+    const api = await import("./workspace.js");
+    const finalObjects = authorityObjectsAtPolicy(
+      FINAL_POLICY_HEAD,
+      ASSURED_POLICY_HEAD,
+      null,
+    );
+    const completeHistory = [
+      policyHistoryEntry(GENESIS_POLICY_HEAD, null, null),
+      policyHistoryEntry(ASSURED_POLICY_HEAD, GENESIS_POLICY_HEAD, WORKSPACE_ASSURANCE),
+      policyHistoryEntry(FINAL_POLICY_HEAD, ASSURED_POLICY_HEAD, null),
+    ];
+    const authority = api.createWorkspaceRepositoryResolverAuthority(
+      resolverConfig(assuranceAuthority(() => "verified")),
+    );
+    expect(api.authenticateWorkspaceRepositoryView({
+      authority,
+      evidence: repositoryViewEvidence(finalObjects, {
+        policy_head: FINAL_POLICY_HEAD,
+        predecessor: ASSURED_POLICY_HEAD,
+        policy_history: completeHistory,
+      }),
+      objects: finalObjects,
+    })).toEqual({
+      verdict: "reject",
+      reason_code: "workspace-assurance-state-required",
+    });
+  });
+
+  it("rejects history that changes the profile bound to the exact predecessor", async () => {
+    const api = await import("./workspace.js");
+    const assuredObjects = authorityObjectsAtPolicy(
+      ASSURED_POLICY_HEAD,
+      GENESIS_POLICY_HEAD,
+      WORKSPACE_ASSURANCE,
+    );
+    const assuredHistory = [
+      policyHistoryEntry(GENESIS_POLICY_HEAD, null, null),
+      policyHistoryEntry(ASSURED_POLICY_HEAD, GENESIS_POLICY_HEAD, WORKSPACE_ASSURANCE),
+    ];
+    const authority = api.createWorkspaceRepositoryResolverAuthority(
+      resolverConfig(assuranceAuthority(() => "verified")),
+    );
+    expect(api.authenticateWorkspaceRepositoryView({
+      authority,
+      evidence: repositoryViewEvidence(assuredObjects, {
+        policy_head: ASSURED_POLICY_HEAD,
+        predecessor: GENESIS_POLICY_HEAD,
+        policy_history: assuredHistory,
+      }),
+      objects: assuredObjects,
+    })).toMatchObject({ verdict: "accept", state: expect.any(Object) });
+
+    const finalObjects = authorityObjectsAtPolicy(
+      FINAL_POLICY_HEAD,
+      ASSURED_POLICY_HEAD,
+      null,
+    );
+    expect(api.authenticateWorkspaceRepositoryView({
+      authority,
+      evidence: repositoryViewEvidence(finalObjects, {
+        policy_head: FINAL_POLICY_HEAD,
+        predecessor: ASSURED_POLICY_HEAD,
+        policy_history: [
+          policyHistoryEntry(GENESIS_POLICY_HEAD, null, null),
+          policyHistoryEntry(ASSURED_POLICY_HEAD, GENESIS_POLICY_HEAD, null),
+          policyHistoryEntry(FINAL_POLICY_HEAD, ASSURED_POLICY_HEAD, null),
+        ],
+        observed_at: 1_720_000_200,
+        expires_at: 1_720_000_750,
+      }),
+      objects: finalObjects,
+    })).toEqual({ verdict: "reject", reason_code: "workspace_repository_invalid" });
   });
 });
 

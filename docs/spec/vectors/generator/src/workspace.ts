@@ -103,6 +103,7 @@ type WorkspaceCurrentStateRecord = Readonly<{
   objects: readonly Readonly<Record<string, unknown>>[];
   policy: Readonly<Record<string, unknown>>;
   assurance: WorkspaceAssuranceProfile | null;
+  policy_history: readonly WorkspacePolicyHistoryEntry[];
   role: Readonly<Record<string, unknown>>;
   roles: readonly Readonly<Record<string, unknown>>[];
   grants: readonly Readonly<Record<string, unknown>>[];
@@ -118,6 +119,12 @@ type WorkspaceCurrentStateRecord = Readonly<{
     envelope_id: string;
     object_id: string;
   }>[];
+}>;
+
+type WorkspacePolicyHistoryEntry = Readonly<{
+  policy_head: string;
+  predecessor: string | null;
+  assurance: WorkspaceAssuranceProfile | null;
 }>;
 
 const WORKSPACE_RESOLVER_AUTHORITIES = new WeakMap<object, WorkspaceResolverConfig>();
@@ -517,6 +524,7 @@ export function authenticateWorkspaceRepositoryView(value: unknown):
       "policy_head",
       "predecessor",
       "authority_checkpoint",
+      "policy_history",
       "object_ids",
       "object_set_digest",
       "observed_at",
@@ -539,6 +547,7 @@ export function authenticateWorkspaceRepositoryView(value: unknown):
     || !isH64(evidence.policy_head)
     || !(evidence.predecessor === null || isH64(evidence.predecessor))
     || !isH64(evidence.authority_checkpoint)
+    || !Array.isArray(evidence.policy_history)
     || !isByteSortedH64Array(evidence.object_ids)
     || !isH64(evidence.object_set_digest)
     || !isSafeNonNegativeInteger(evidence.observed_at)
@@ -637,13 +646,27 @@ export function authenticateWorkspaceRepositoryView(value: unknown):
   if (previous !== undefined && previousRecord === undefined) {
     return { verdict: "reject", reason_code: "workspace_repository_invalid" };
   }
-  if (assurance !== null || (previousRecord !== undefined && previousRecord.assurance !== null)) {
+  const policyHistory = captureWorkspacePolicyHistory(evidence.policy_history);
+  if (policyHistory === null
+    || !workspaceAssuranceProfilesEqual(
+      policyHistory[policyHistory.length - 1]?.assurance,
+      assurance,
+    )
+    || policyHistory[policyHistory.length - 1]?.policy_head !== currentState.policy_head
+    || policyHistory[policyHistory.length - 1]?.predecessor !== currentState.predecessor
+    || (previousRecord !== undefined
+      && !workspacePolicyHistoryIsPrefix(previousRecord.policy_history, policyHistory))) {
+    return { verdict: "reject", reason_code: "workspace_repository_invalid" };
+  }
+  for (const [index, entry] of policyHistory.entries()) {
+    const prior = index === 0 ? null : policyHistory[index - 1];
+    if (entry.assurance === null && (prior?.assurance ?? null) === null) continue;
     const assuranceDecision = evaluateWorkspaceAssuranceTransition(config.assurance_authority, {
       workspace_key: currentState.workspace_key,
-      previous_policy_head: currentState.predecessor,
-      next_policy_head: currentState.policy_head,
-      previous_assurance: previousRecord?.assurance ?? null,
-      next_assurance: assurance,
+      previous_policy_head: entry.predecessor,
+      next_policy_head: entry.policy_head,
+      previous_assurance: prior?.assurance ?? null,
+      next_assurance: entry.assurance,
     });
     if (assuranceDecision.verdict !== "accept") return assuranceDecision;
   }
@@ -675,6 +698,7 @@ export function authenticateWorkspaceRepositoryView(value: unknown):
     evidence,
     objects: validatedObjects,
     assurance,
+    policy_history: policyHistory,
     envelope_identity_history: envelopeIdentityHistory,
     ...complete.value,
   }));
@@ -3258,7 +3282,7 @@ function hasExactMembers(value: Record<string, unknown>, members: readonly strin
 function captureWorkspaceAssuranceProfile(
   value: unknown,
 ): WorkspaceAssuranceProfile | null | undefined {
-  if (value === undefined) return null;
+  if (value === undefined || value === null) return null;
   const snapshot = snapshotJsonRecord(value);
   if (snapshot === null || !hasExactMembers(snapshot, [
     "profile",
@@ -3269,6 +3293,61 @@ function captureWorkspaceAssuranceProfile(
     || !isH64(snapshot.inception_event_id)
     || snapshot.required_state !== "verified") return undefined;
   return snapshot as WorkspaceAssuranceProfile;
+}
+
+function captureWorkspacePolicyHistory(
+  value: unknown,
+): readonly WorkspacePolicyHistoryEntry[] | null {
+  const snapshot = snapshotJsonArray(value);
+  if (snapshot === null || snapshot.length === 0) return null;
+  const history: WorkspacePolicyHistoryEntry[] = [];
+  const seen = new Set<string>();
+  for (const [index, candidate] of snapshot.entries()) {
+    if (!isRecord(candidate) || !hasExactMembers(candidate, [
+      "policy_head",
+      "predecessor",
+      "assurance",
+    ])
+      || !isH64(candidate.policy_head)
+      || !(candidate.predecessor === null || isH64(candidate.predecessor))) return null;
+    const assurance = captureWorkspaceAssuranceProfile(candidate.assurance);
+    const prior = history[index - 1];
+    if (assurance === undefined
+      || seen.has(candidate.policy_head)
+      || (index === 0
+        ? candidate.predecessor !== null
+        : candidate.predecessor !== prior?.policy_head)) return null;
+    seen.add(candidate.policy_head);
+    history.push(deepFreeze({
+      policy_head: candidate.policy_head,
+      predecessor: candidate.predecessor,
+      assurance,
+    }));
+  }
+  return deepFreeze(history);
+}
+
+function workspaceAssuranceProfilesEqual(
+  left: WorkspaceAssuranceProfile | null | undefined,
+  right: WorkspaceAssuranceProfile | null | undefined,
+): boolean {
+  return left === null ? right === null : left !== undefined && right !== null && right !== undefined
+    && left.profile === right.profile
+    && left.inception_event_id === right.inception_event_id
+    && left.required_state === right.required_state;
+}
+
+function workspacePolicyHistoryIsPrefix(
+  prefix: readonly WorkspacePolicyHistoryEntry[],
+  history: readonly WorkspacePolicyHistoryEntry[],
+): boolean {
+  return prefix.length <= history.length && prefix.every((entry, index) => {
+    const candidate = history[index];
+    return candidate !== undefined
+      && entry.policy_head === candidate.policy_head
+      && entry.predecessor === candidate.predecessor
+      && workspaceAssuranceProfilesEqual(entry.assurance, candidate.assurance);
+  });
 }
 function hasExactShape(
   value: Record<string, unknown>,
