@@ -114,7 +114,7 @@ const VALIDATED_CONTINUITY_CHAINS = new WeakMap<object, string>();
 const SHA256_HEX = /^[0-9a-f]{64}$/;
 const BASE64URL = /^[A-Za-z0-9_-]+$/;
 
-/** Exact Comms 0.5 profile of draft-ietf-oauth-status-list-21 section 4.1. */
+/** Exact Comms 0.6 profile of draft-ietf-oauth-status-list-21 section 4.1. */
 export function encodeStatusList(statuses: TokenStatus[]): { bits: 1; lst: string } {
   if (!Array.isArray(statuses) || statuses.length === 0 || statuses.some((status) => status !== 0 && status !== 1)) {
     throw new Error("oidc-status-invalid: status list must contain one or more one-bit values");

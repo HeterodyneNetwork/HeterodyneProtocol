@@ -779,7 +779,7 @@ registered internal reason in encrypted audit.
 <a id="control-conformance"></a>
 ## 10. Conformance
 
-A Control 0.5.0 implementation may claim conformance only when it is Core and
+A Control 0.6.0 implementation may claim conformance only when it is Core and
 Comms conformant and passes the applicable executable checks for:
 
 - zero, one, and multiple isolated human or organization persona vaults;

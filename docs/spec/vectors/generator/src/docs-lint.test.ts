@@ -24,6 +24,41 @@ const repositoryRoot = resolve(import.meta.dirname, "../../../../../");
 const read = (path: string) => readFileSync(resolve(repositoryRoot, path), "utf8");
 const temps: string[] = [];
 
+function currentVersionLintRoot(): string {
+  const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-version-lint-"));
+  temps.push(root);
+  mkdirSync(resolve(root, "docs/spec/vectors/generator/src"), { recursive: true });
+  cpSync(
+    resolve(repositoryRoot, "docs/spec/registry"),
+    resolve(root, "docs/spec/registry"),
+    { recursive: true },
+  );
+  cpSync(
+    resolve(repositoryRoot, "docs/spec/external/marmot"),
+    resolve(root, "docs/spec/external/marmot"),
+    { recursive: true },
+  );
+  for (const document of ["core", "assurance", "comms", "control", "social", "workspace"]) {
+    const source = read(`docs/spec/heterodyne-${document}.md`)
+      .replaceAll("Comms 0.5.0", "Comms 0.6.0")
+      .replaceAll("Control 0.5.0", "Control 0.6.0");
+    writeFileSync(resolve(root, `docs/spec/heterodyne-${document}.md`), source);
+  }
+  writeFileSync(
+    resolve(root, "docs/spec/heterodyne.md"),
+    read("docs/spec/heterodyne.md").replace(
+      "0.5.0. Historical generation,",
+      "0.5.0. Frozen Comms 0.5.0 snapshot behavior remains historical. Historical generation,",
+    ),
+  );
+  writeFileSync(
+    resolve(root, "docs/spec/vectors/generator/src/token-status.ts"),
+    read("docs/spec/vectors/generator/src/token-status.ts")
+      .replaceAll("Comms 0.5 profile", "Comms 0.6 profile"),
+  );
+  return root;
+}
+
 type StrictProfileFixture = {
   profile_id: string;
   requires_profiles: string[];
@@ -49,6 +84,73 @@ afterEach(() => {
 describe("canonical family documentation", () => {
   it("passes layering and anchor lint", () => {
     expect(lintFamilyDocs(repositoryRoot)).toEqual([]);
+  });
+
+  it("rejects bare 0.5 document qualifiers only on live specifications and current sources", () => {
+    const root = currentVersionLintRoot();
+
+    // The transitional frozen-snapshot explanation in heterodyne.md remains
+    // inside its explicit, section-bounded exemption.
+    expect(lintFamilyDocs(root)).toEqual([]);
+
+    const staleClauses = {
+      core: "Core 0.5 implementations are current.",
+      assurance: "Assurance 0.5.0 implementations are current.",
+      comms: "Comms 0.5 implementations are current.",
+      control: "Control 0.5.0 implementations are current.",
+      social: "Social 0.5 implementations are current.",
+      workspace: "Workspace 0.5.0 implementations are current.",
+    } as const;
+    for (const [document, clause] of Object.entries(staleClauses)) {
+      const path = resolve(root, `docs/spec/heterodyne-${document}.md`);
+      writeFileSync(path, `${readFileSync(path, "utf8")}\n${clause}\n`);
+    }
+    const tokenStatusPath = resolve(
+      root,
+      "docs/spec/vectors/generator/src/token-status.ts",
+    );
+    writeFileSync(
+      tokenStatusPath,
+      `${readFileSync(tokenStatusPath, "utf8")}\n/** Exact Comms 0.5 profile. */\n`,
+    );
+
+    for (const file of [
+      "snapshot-version-note.ts",
+      "legacy-version-note.ts",
+      "topics-version-note.ts",
+      "kel-version-note.ts",
+      "keri-version-note.ts",
+      "version-note.test.ts",
+    ]) {
+      writeFileSync(
+        resolve(root, "docs/spec/vectors/generator/src", file),
+        "/** Historical Comms 0.5.0 behavior. */\n",
+      );
+    }
+    mkdirSync(resolve(root, "docs/spec/superseded"), { recursive: true });
+    writeFileSync(
+      resolve(root, "docs/spec/superseded/heterodyne-core-0.5.md"),
+      "Core 0.5.0 was superseded.\n",
+    );
+
+    const issues = lintFamilyDocs(root);
+    expect(issues
+      .filter(({ code }) => code === "stale-family-version")
+      .map(({ path }) => path)
+      .sort()).toEqual([
+      "docs/spec/heterodyne-assurance.md",
+      "docs/spec/heterodyne-comms.md",
+      "docs/spec/heterodyne-control.md",
+      "docs/spec/heterodyne-core.md",
+      "docs/spec/heterodyne-social.md",
+      "docs/spec/heterodyne-workspace.md",
+      "docs/spec/vectors/generator/src/token-status.ts",
+    ]);
+    expect(issues.filter(({ path }) =>
+      path === "docs/spec/heterodyne.md"
+      || /(?:snapshot|legacy|topics|kel|keri|\.test)\b/.test(path)
+      || path.includes("/superseded/")
+    )).toEqual([]);
   });
 
   it("keeps maintained authoring guides on the single-family model", () => {

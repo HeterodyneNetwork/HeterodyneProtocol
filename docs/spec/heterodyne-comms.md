@@ -1424,7 +1424,7 @@ Every claim contains exactly one `(namespace, name, value)` assertion, where
 over RFC 8785 JCS bytes of the complete semantic object with only `claim_id`
 omitted. Tags, transport, event id, and signatures are excluded. Reusing an
 address is permitted only for a byte-identical canonical semantic object.
-Selective release selects whole atomic signed claims. Comms 0.5.0 MUST NOT
+Selective release selects whole atomic signed claims. Comms 0.6.0 MUST NOT
 perform SD-JWT disclosure. It MUST NOT automatically bundle multiple claim names
 into one signed claim.
 
@@ -1863,7 +1863,7 @@ consent, reader, issuance mapping, or secret key.
 <a id="comms-token-status"></a>
 ## 14. Token status profile
 
-Comms 0.5.0 freezes the complete behavior used from
+Comms 0.6.0 freezes the complete behavior used from
 `draft-ietf-oauth-status-list-21`; later drafts do not change this profile.
 Each projected JWT contains `status.status_list` with an HTTPS `uri` and
 non-negative `idx`. That URI returns a distinct compact Status List Token with

@@ -1,6 +1,7 @@
 import {
   existsSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   writeFileSync,
 } from "node:fs";
@@ -53,6 +54,7 @@ export type FamilyDocIssue = {
     | "unregistered-proof-domain"
     | "mislinked-reference"
     | "retired-authoring-model"
+    | "stale-family-version"
     | "markdown-resource-limit"
     | "profile-revision-registry-context-missing";
   message: string;
@@ -85,6 +87,8 @@ const LOCAL_ANCHOR_LINK = /\]\(#([a-z0-9-]+)\)/g;
 const NONCANONICAL_DECISION_REFERENCE = /\bADR-\d{3}\b|docs\/adr\//;
 const NUMBERED_HEADING = /^#{2,6}\s+(\d+(?:\.\d+)*)\.?\s/;
 const SECTION_REFERENCE = /§(\d+(?:\.\d+)*)/g;
+const STALE_BARE_FAMILY_VERSION =
+  /\b(?:Core|Assurance|Comms|Control|Social|Workspace)\s+0\.5(?:\.0)?\b(?!\.\d)/giu;
 const PROOF_DOMAIN = /\bdomain\s+`(heterodyne-[a-z0-9-]*-v[1-9][0-9]*)`/gi;
 const PROOF_DOMAIN_FENCED = /`?<?(heterodyne-[a-z0-9-]*-v[1-9][0-9]*) proof bytes>?`?/g;
 const FEATURE_ID =
@@ -518,6 +522,76 @@ function loadFamilyDocuments(repoRoot: string): FamilyDocument[] {
   });
 }
 
+type VersionQualifierSurface = {
+  path: string;
+  text: string;
+};
+
+// Mirror the current compiler lane: tests and generator-owned historical
+// authoring/snapshot sources must not turn preserved 0.5 evidence into lint.
+const HISTORICAL_GENERATOR_SOURCE_PREFIXES = [
+  "kel",
+  "keri-",
+  "legacy-",
+  "snapshot",
+  "topics",
+] as const;
+const HISTORICAL_GENERATOR_SOURCE_NAMES = new Set([
+  "author.ts",
+  "cli.ts",
+  "coverage.ts",
+  "verify.ts",
+]);
+const SNAPSHOT_TRANSITION_PATH = "docs/spec/heterodyne.md";
+const SNAPSHOT_TRANSITION_HEADING = "## Live validation and frozen history";
+
+function isCurrentGeneratorSource(file: string): boolean {
+  return file.endsWith(".ts")
+    && !file.endsWith(".test.ts")
+    && !HISTORICAL_GENERATOR_SOURCE_NAMES.has(file)
+    && !HISTORICAL_GENERATOR_SOURCE_PREFIXES.some((prefix) => file.startsWith(prefix));
+}
+
+function isIntentionalSnapshotTransitionQualifier(
+  path: string,
+  text: string,
+  offset: number,
+): boolean {
+  if (path !== SNAPSHOT_TRANSITION_PATH) return false;
+  const start = text.indexOf(SNAPSHOT_TRANSITION_HEADING);
+  if (start < 0) return false;
+  const nextHeading = text.indexOf("\n## ", start + SNAPSHOT_TRANSITION_HEADING.length);
+  return offset >= start && (nextHeading < 0 || offset < nextHeading);
+}
+
+function loadVersionQualifierSurfaces(
+  repoRoot: string,
+  documents: readonly FamilyDocument[],
+): VersionQualifierSurface[] {
+  const surfaces = documents.map(({ displayPath: path, lines }) => ({
+    path,
+    text: lines.join("\n"),
+  }));
+  const overviewPath = resolve(repoRoot, SNAPSHOT_TRANSITION_PATH);
+  if (existsSync(overviewPath)) {
+    surfaces.push({
+      path: SNAPSHOT_TRANSITION_PATH,
+      text: readFileSync(overviewPath, "utf8"),
+    });
+  }
+  const sourceDirectory = resolve(repoRoot, "docs/spec/vectors/generator/src");
+  if (!existsSync(sourceDirectory)) return surfaces;
+  for (const entry of readdirSync(sourceDirectory, { withFileTypes: true })) {
+    if (!entry.isFile() || !isCurrentGeneratorSource(entry.name)) continue;
+    const absolutePath = resolve(sourceDirectory, entry.name);
+    surfaces.push({
+      path: displayPath(repoRoot, absolutePath),
+      text: readFileSync(absolutePath, "utf8"),
+    });
+  }
+  return surfaces;
+}
+
 function carriesNormativeForce(line: string): boolean {
   return BCP14_KEYWORD.test(line) || EXPLICIT_NORMATIVE.test(line);
 }
@@ -640,6 +714,18 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
       document.displayPath,
       document.lines.join("\n"),
     ));
+  }
+
+  for (const { path, text } of loadVersionQualifierSurfaces(repoRoot, documents)) {
+    for (const match of text.matchAll(STALE_BARE_FAMILY_VERSION)) {
+      if (isIntentionalSnapshotTransitionQualifier(path, text, match.index)) continue;
+      issues.push({
+        path,
+        line: text.slice(0, match.index).split(/\r?\n/).length,
+        code: "stale-family-version",
+        message: `${match[0]} is not the current family version ${FAMILY_VERSION}`,
+      });
+    }
   }
 
   for (const document of documents) {
