@@ -179,16 +179,7 @@
       "base_schema_owner": "nostr",
       "status": "draft",
       "first_version": "heterodyne/0.6.0",
-      "profiles": [
-        {
-          "profile_id": "heterodyne-core-ots-attestation-profile-v1",
-          "owner": "core",
-          "discriminator": "production-rule:ots-attestation-kind1040-v1",
-          "stamping": false,
-          "first_version": "heterodyne/0.6.0",
-          "status": "draft"
-        }
-      ]
+      "profiles": []
     },
     {
       "kind": 1059,

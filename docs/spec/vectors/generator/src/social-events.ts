@@ -11,6 +11,11 @@ import {
   type NostrSignedEvent,
   type VerifiedNostrEvent,
 } from "./nostr.js";
+import {
+  createReplaceableSelectionAuthority,
+  selectCurrentReplaceableEvent,
+  type ReplaceableSelectionAuthority,
+} from "./replaceable-selection.js";
 
 export type SocialAuthorshipInput = {
   event: NostrSignedEvent;
@@ -45,6 +50,9 @@ export type SocialReplaceableCoordinate = {
 
 const SEVEN_DAYS_SECONDS = 7 * 24 * 60 * 60;
 const HEX_32 = /^[0-9a-f]{64}$/;
+const SOCIAL_SELECTION_AUTHORITY = createReplaceableSelectionAuthority({
+  trusted_now: () => Math.floor(Date.now() / 1_000),
+});
 
 export function validateSocialAuthorship(
   input: SocialAuthorshipInput,
@@ -114,22 +122,25 @@ function validateSocialAuthorshipWithConsumer(
 }
 
 export function selectCurrentSocialEvent(input: {
+  selection_authority?: ReplaceableSelectionAuthority;
   coordinate: SocialReplaceableCoordinate;
   candidates: readonly SocialEventCandidate[];
 }): NostrSignedEvent | null {
   if (!validCoordinate(input.coordinate)) return null;
-  const unique = new Map<string, VerifiedNostrEvent>();
+  const candidates: VerifiedNostrEvent[] = [];
   for (const { event: sourceEvent } of input.candidates) {
     const event = snapshotAndVerifyNostrEvent(sourceEvent);
     if (event !== null && validateSocialReplaceableCandidate({
       coordinate: input.coordinate,
       event,
     }).verdict === "accept") {
-      unique.set(event.id, event);
+      candidates.push(event);
     }
   }
-  return [...unique.values()].sort((left, right) =>
-    right.created_at - left.created_at || left.id.localeCompare(right.id))[0] ?? null;
+  return selectCurrentReplaceableEvent(
+    input.selection_authority ?? SOCIAL_SELECTION_AUTHORITY,
+    candidates,
+  ).selected;
 }
 
 export function validateSocialReplaceableCandidate(input: {

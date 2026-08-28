@@ -1983,12 +1983,6 @@
       "owner": "assurance", "status": "draft", "first_version": "heterodyne/0.6.0",
       "description": "A same-key contest or competing enrollment was observed during the observation window; the enrollment is not pin-eligible and the persona remains baseline.",
       "spec_refs": ["heterodyne:0.6.0#assurance-enrollment-window"]
-    },
-    {
-      "code": "core-created-at-refuted",
-      "owner": "core", "status": "draft", "first_version": "heterodyne/0.6.0",
-      "description": "Event permanently excluded because a matured OpenTimestamps attestation proves its created_at exceeds its true existence time by more than the 900 second bound.",
-      "spec_refs": ["heterodyne:0.6.0#core-ots-refutation"]
     }
   ]
 }

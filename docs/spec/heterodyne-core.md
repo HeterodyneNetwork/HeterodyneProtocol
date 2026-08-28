@@ -460,39 +460,22 @@ wins immediately and makes the repository stale until an authorized writer
 ingests the exact event. Repository unavailability never makes valid relay
 state unusable.
 
-<a id="core-ots-anchor"></a>
-### 6.1 Optional OpenTimestamps anchoring
+<a id="core-nip03-advisory"></a>
+### 6.1 Advisory NIP-03 interoperability
 
-`core.ots-anchor.v1` is optional. It adopts NIP-03: a kind `1040` event whose
-`e` tag names a target event ID and whose content carries the OpenTimestamps
-proof for that ID. Any event MAY be anchored. Publishers of security-relevant
-replaceable state — kinds `0` and `10002`, mute and policy lists, Assurance
-records, and Workspace heads — SHOULD anchor.
+An independent NIP-03 implementation MAY display evidence that a commitment
+to an unsigned NIP-01 event existed no later than a confirmed block.
+Heterodyne defines no timestamp-authority feature or kind `1040` profile and
+assigns that evidence no protocol authority. It MUST NOT decide replaceable
+selection, Assurance enrollment or continuity, permanent event rejection,
+when an event was signed, published, or observed, whether its `created_at` is
+truthful, whether competing events are complete, or a precise wall-clock time
+derived from a block header. Heterodyne selection and Assurance ignore it.
 
-A matured, validated proof yields an attestation time `T_ots`: an upper bound
-on the target event's true creation time, verified against Bitcoin block
-headers that the verifier obtains and validates itself. Calendar servers are
-untrusted hints and MUST NOT be treated as attestation authorities. A proof
-that has not matured to a Bitcoin attestation is pending and contributes
-nothing. Absence of a proof is never an error, and no proof requirement may
-gate baseline interoperability.
-
-<a id="core-ots-refutation"></a>
-If a validated attestation satisfies `created_at > T_ots + 900` seconds, the
-target event's timestamp is proven false. The event MUST be permanently
-excluded from replaceable selection and from every enhanced claim, with reason
-code `core-created-at-refuted`. Refutation survives restarts and carrier
-changes once evidence is validated.
-
-Where two candidates compete at one replaceable coordinate under the baseline
-rules, an anchored, non-refuted candidate outranks an unanchored one only for
-an explicitly requested enhanced claim; baseline NIP-01 selection is
-unchanged, following the Assurance layering discipline.
-
-OpenTimestamps bounds only pastward existence. It cannot prove that an event
-was created recently and cannot refute backdating. It complements the
-premature-candidate bound in `heterodyne:0.6.0#core-created-at-bound` and
-never replaces it.
+The non-absorbing 900-second quarantine in
+[`heterodyne:0.6.0#core-created-at-bound`](#core-created-at-bound) depends only
+on the verifier's trusted current time and remains the sole Core
+future-candidate bound.
 
 <a id="core-publication-retry"></a>
 ## 7. Exact-byte publication, retrieval, and retry

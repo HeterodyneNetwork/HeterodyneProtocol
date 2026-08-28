@@ -563,14 +563,6 @@
       "status": "draft",
       "first_version": "heterodyne/0.6.0",
       "description": "Tier 3 posts, audience wraps, rosters, and rotation records are carried only via the private repository's authorized interfaces, never ordinary public relays, confining audience membership metadata to allowed nodes."
-    },
-    {
-      "id": "CORE-I-CREATED-AT-REFUTATION",
-      "owner": "core",
-      "status": "draft",
-      "first_version": "heterodyne/0.6.0",
-      "feature": "core.ots-anchor.v1",
-      "description": "A matured OpenTimestamps attestation proving created_at materially exceeds true existence time permanently excludes the event from replaceable selection and every enhanced claim, and no proof requirement gates baseline interoperability."
     }
   ]
 }

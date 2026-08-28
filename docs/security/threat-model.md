@@ -97,9 +97,16 @@ Carriers can withhold revocations and other monotonic state. The defenses are
 multiple independent carriers and the declared authorization-view bound, which
 converts a withheld revocation from indefinite into bounded staleness at any
 honest minting node. Residual exposure for pure-relay reading clients is
-inherited from the Nostr carrier model and accepted. Equivocation-induced
-Assurance stalls have a specified recovery for properly enrolled personas: the
-witnessed-anchor tiebreak in the Assurance enrollment rules.
+inherited from the Nostr carrier model and accepted. Equivocation during
+Assurance enrollment stalls the candidate and fails closed to the baseline
+active-key identity; timestamp evidence does not select an enrollment winner.
+
+A future-dated replaceable candidate is quarantined only while it exceeds the
+verifier's trusted current time by more than 900 seconds. The candidate is
+reconsidered on later evaluations. Independent NIP-03 evidence can support an
+advisory display that a commitment existed no later than a confirmed block,
+but cannot decide selection, enrollment, permanent rejection, signing or
+publication time, completeness, or precise wall time.
 
 ### Replay, races, and partial failure
 
@@ -200,7 +207,6 @@ reviewers can trace the threat control to its owner and feature binding.
 - **WORKSPACE-I-GOVERNANCE-ASSURED:** Workspace authority mutations execute only under a window-complete verified Assurance enrollment bound at inception, compromise reset for a workspace uses only the assurance-recovery class, and ordinary writes continue under their own window when governance fails closed.
 - **ASSURANCE-I-ENROLLMENT-WINDOWED:** No enrollment is pin-eligible before 604800 seconds of observably public, conflict-free existence; contests and competing enrollments fail closed to baseline, and a conflict resolves only to an enrollment with both materially earlier proven existence and witness receipts spanning the gap.
 - **COMMS-I-TIER3-CONFINED:** Tier 3 posts, audience wraps, rosters, and rotation records are carried only via the private repository's authorized interfaces, never ordinary public relays, confining audience membership metadata to allowed nodes.
-- **CORE-I-CREATED-AT-REFUTATION:** A matured OpenTimestamps attestation proving created_at materially exceeds true existence time permanently excludes the event from replaceable selection and every enhanced claim, and no proof requirement gates baseline interoperability.
 
 ## Current draft versus frozen validation history
 

@@ -108,6 +108,12 @@ produces a visible warning and MUST NOT invalidate the latest valid profile or
 relay-list event. Every other state retains its applicable freshness and expiry
 rules and MUST fail closed where those rules require.
 
+Every Social replaceable selection applies Core's non-absorbing 900-second
+future-candidate quarantine before NIP-01 ordering. Independently supplied
+NIP-03 evidence MAY be displayed as advisory commitment-existence evidence,
+but it MUST NOT change Social selection, authorship, validity, moderation,
+presentation authority, or any optional Assurance decision.
+
 Transitive discovery MUST NOT disclose an inner feed before the reader holds
 the outer audience's access capability. A search result, starter pack, graph
 snapshot, or recommendation is never identity authority: every npub MUST walk

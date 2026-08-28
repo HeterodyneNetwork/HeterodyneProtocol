@@ -15,6 +15,7 @@ import {
   type NostrUnsignedEvent,
 } from "./nostr.js";
 import { bytesToHex, hexToBytes } from "./hex.js";
+import type { ReplaceableSelectionAuthority } from "./replaceable-selection.js";
 import { AUX_RAND } from "./vector-helpers.js";
 
 type AgentAssociation = { kind: "key" | "role"; value: string };
@@ -52,6 +53,7 @@ type SocialEventsModule = {
     reason_code?: string;
   };
   selectCurrentSocialEvent?: (input: {
+    selection_authority?: ReplaceableSelectionAuthority;
     coordinate: { pubkey: string; kind: number; d?: string };
     candidates: Array<{
       carrier: "relay" | "repository";
@@ -73,6 +75,16 @@ type SocialEventsModule = {
 
 async function loadSocialEvents(): Promise<SocialEventsModule> {
   return await import("./social-events.js").catch(() => ({}));
+}
+
+async function selectionAuthority(now: number): Promise<ReplaceableSelectionAuthority> {
+  const selection = await import("./replaceable-selection.js").catch(() => ({})) as {
+    createReplaceableSelectionAuthority?: (input: {
+      trusted_now: () => number;
+    }) => ReplaceableSelectionAuthority;
+  };
+  return selection.createReplaceableSelectionAuthority?.({ trusted_now: () => now })
+    ?? Object.freeze({}) as ReplaceableSelectionAuthority;
 }
 
 function unsigned(event: NostrSignedEvent): NostrUnsignedEvent {
@@ -520,6 +532,7 @@ describe("source-neutral Social state", () => {
       auxRand: AUX_RAND,
     });
     expect(social.selectCurrentSocialEvent?.({
+      selection_authority: await selectionAuthority(2_001),
       coordinate: { pubkey: personaKey, kind: 10000 },
       candidates: [
         { carrier: "repository", event: oldRepository },
@@ -567,6 +580,7 @@ describe("source-neutral Social state", () => {
       event: { ...left, sig: "00".repeat(64) },
     })).toEqual({ verdict: "reject", reason_code: "social-event-invalid" });
     expect(social.selectCurrentSocialEvent?.({
+      selection_authority: await selectionAuthority(2_200),
       coordinate: { pubkey: personaKey, kind: 30000, d: "team" },
       candidates: [
         { carrier: "relay", event: right },
@@ -588,9 +602,39 @@ describe("source-neutral Social state", () => {
       auxRand: AUX_RAND,
     });
     expect(social.selectCurrentSocialEvent?.({
+      selection_authority: await selectionAuthority(2_300),
       coordinate: { pubkey: personaKey, kind: 30000, d: "team" },
       candidates: [{ carrier: "relay", event }],
     })?.id).toBe(event.id);
+  });
+
+  it("keeps a future Social candidate quarantined until the shared bound admits it", async () => {
+    const social = await loadSocialEvents();
+    const current = await signEvent({
+      secretKey: personaSecret,
+      created_at: 2_400,
+      kind: 10000,
+      tags: [],
+      content: "current",
+      auxRand: AUX_RAND,
+    });
+    const future = await signEvent({
+      secretKey: personaSecret,
+      created_at: 3_301,
+      kind: 10000,
+      tags: [],
+      content: "premature",
+      auxRand: AUX_RAND,
+    });
+
+    expect(social.selectCurrentSocialEvent?.({
+      selection_authority: await selectionAuthority(2_400),
+      coordinate: { pubkey: personaKey, kind: 10000 },
+      candidates: [
+        { carrier: "relay", event: current },
+        { carrier: "repository", event: future },
+      ],
+    })?.id).toBe(current.id);
   });
 
   it("reports seven-day staleness as a warning without invalidating signed state", async () => {
