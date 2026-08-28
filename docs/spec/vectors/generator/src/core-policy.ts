@@ -11,12 +11,17 @@ type CoreReason =
   | "unknown_major_version"
   | "version_stamp_invalid";
 
-/** Verify the exact stored signing bytes and the current family stamp policy. */
-export function validateCoreWireEnvelope(input: {
+type CoreWireEnvelopeInput = {
   event: NostrSignedEvent;
   nip01_raw: string;
   stamp_policy: "required" | "optional" | "forbidden";
-}): { verdict: "accept"; event_id: string } | { verdict: "reject"; reason_code: CoreReason } {
+};
+
+type VerifiedCoreWireEnvelope =
+  | { verdict: "accept"; event: NostrSignedEvent }
+  | { verdict: "reject"; reason_code: CoreReason };
+
+function verifyCoreWireEnvelope(input: CoreWireEnvelopeInput): VerifiedCoreWireEnvelope {
   if (input.nip01_raw !== canonicalNip01(input.event)) {
     return { verdict: "reject", reason_code: "nip01_raw_mismatch" };
   }
@@ -42,7 +47,31 @@ export function validateCoreWireEnvelope(input: {
         ? stamps.length !== 1 || stamps[0]!.length !== 2 || stamps[0]![1] !== QUALIFIED_VERSION
         : stamps.length > 1 || (stamps.length === 1 && (stamps[0]!.length !== 2 || stamps[0]![1] !== QUALIFIED_VERSION))
   ) return { verdict: "reject", reason_code: "version_stamp_invalid" };
-  return { verdict: "accept", event_id: event.id };
+  return { verdict: "accept", event };
+}
+
+/** Verify the exact stored signing bytes and the current family stamp policy. */
+export function validateCoreWireEnvelope(input: CoreWireEnvelopeInput):
+  | { verdict: "accept"; event_id: string }
+  | { verdict: "reject"; reason_code: CoreReason } {
+  const verified = verifyCoreWireEnvelope(input);
+  return verified.verdict === "reject"
+    ? verified
+    : { verdict: "accept", event_id: verified.event.id };
+}
+
+/** Verify one persona-scoped Core event against the exact active key. */
+export function validateCorePersonaSignedEvent(
+  input: CoreWireEnvelopeInput & { active_persona_key: string },
+):
+  | { verdict: "accept"; event_id: string }
+  | { verdict: "reject"; reason_code: CoreReason | "delegation_mismatch" } {
+  const verified = verifyCoreWireEnvelope(input);
+  if (verified.verdict === "reject") return verified;
+  if (verified.event.pubkey !== input.active_persona_key) {
+    return { verdict: "reject", reason_code: "delegation_mismatch" };
+  }
+  return { verdict: "accept", event_id: verified.event.id };
 }
 
 type OperationalInput =

@@ -1,70 +1,58 @@
-import {
-  validateRegisteredKindProfile,
-  type Registry,
-  type RegisteredKindProfile,
-} from "../registry.js";
-import { currentSpecRef, type CurrentVectorCase } from "./types.js";
-
-function profileInvariants(profileId: string): string[] {
-  if (profileId.startsWith("heterodyne-core-")) {
-    return ["CORE-I-IDENTITY-INTEGRITY"];
-  }
-  if (profileId.includes("assurance-associated-key")) {
-    return ["ASSURANCE-I-ASSOCIATED-KEY-BOUNDS"];
-  }
-  if (profileId.includes("assurance-succession")) {
-    return ["ASSURANCE-I-TRANSITION-PROOF-BINDING"];
-  }
-  if (profileId.includes("assurance-enrollment-contest")) {
-    return ["ASSURANCE-I-ENROLLMENT-WINDOWED"];
-  }
-  if (profileId.startsWith("heterodyne-assurance-")) {
-    return ["ASSURANCE-I-RECIPROCAL-ENROLLMENT"];
-  }
-  if (profileId.includes("comms-tier3")) {
-    return ["COMMS-I-TIER3-BLIND-CARRIER", "COMMS-I-TIER3-CONFINED"];
-  }
-  if (profileId.includes("comms-agent-attribution")) {
-    return ["COMMS-I-AGENT-ATTRIBUTION", "COMMS-I-AGENT-SIGNER-BINDING"];
-  }
-  if (profileId.includes("comms-key-claim")) {
-    return ["COMMS-I-CLAIM-AUTHENTICITY"];
-  }
-  if (profileId.includes("comms-claim-revocation")) {
-    return ["COMMS-I-CLAIM-REVOCATION"];
-  }
-  if (profileId.includes("social-mute-list")) {
-    return ["SOCIAL-I-PRIVATE-STATE-AT-REST"];
-  }
-  if (profileId.startsWith("heterodyne-social-")) {
-    return ["SOCIAL-I-AGENT-AUTHORSHIP-EXACT", "SOCIAL-I-AGENT-POLICY-LOCAL"];
-  }
-  if (profileId.startsWith("heterodyne-control-")) {
-    return ["CONTROL-I-MARMOT-GRANT-CONFINEMENT"];
-  }
-  throw new Error(`current profile has no semantic invariant mapping: ${profileId}`);
-}
-
-export function buildProfileCases(registry: Registry): CurrentVectorCase[] {
-  return registry.kinds.flatMap(({ kind, profiles }) => profiles.map((profile) => {
-    const candidate: RegisteredKindProfile = { kind, ...profile };
-    const decision = validateRegisteredKindProfile(registry, candidate);
-    if (decision.verdict !== "accept") {
-      throw new Error(`registered profile did not validate: ${profile.profile_id}`);
-    }
-    return {
-      relativePath: `${profile.owner}/profile-${profile.profile_id}.json`,
-      semantic_boundary: "registry.validateRegisteredKindProfile",
-      vector_id: `${profile.owner}/profile-${profile.profile_id}`,
-      owner_document: profile.owner,
-      profile: profile.profile_id,
-      spec_refs: [currentSpecRef(`${profile.owner}-security`)],
-      invariants: profileInvariants(profile.profile_id),
-      reason_codes: [],
-      description: `The complete kind/profile allocation tuple for ${profile.profile_id} validates without inference.`,
-      direction: "consume" as const,
-      input: candidate,
-      expected_output: decision,
-    };
-  }));
+import { type Registry, type RegisteredKindProfile, } from "../registry.js";
+import type { CurrentProfileWireProbe } from "../profile-negotiation.js";
+import { currentSpecRef, type CurrentCaseFixture } from "./types.js";
+export function buildProfileCases(registry: Registry): CurrentCaseFixture[] {
+    return registry.kinds.flatMap(({ kind, profiles }) => profiles.map((profile) => {
+        const candidate: RegisteredKindProfile = { kind, ...profile };
+        const discriminator = profile.discriminator;
+        const wireProbe: CurrentProfileWireProbe = discriminator.startsWith("content.profile=")
+            ? {
+                content_is_heterodyne_json: true,
+                is_dr_outer: false,
+                content_profile: discriminator.slice("content.profile=".length),
+            }
+            : discriminator.startsWith("tag:")
+                ? (() => {
+                    const allocation = discriminator.slice("tag:".length);
+                    const separator = allocation.indexOf("=");
+                    return {
+                        content_is_heterodyne_json: false,
+                        is_dr_outer: false,
+                        tags: [[allocation.slice(0, separator), allocation.slice(separator + 1)]],
+                    };
+                })()
+                : discriminator.startsWith("tags:L=")
+                    ? (() => {
+                        const namespace = /^tags:L=([^,]+),/u.exec(discriminator)?.[1];
+                        if (namespace === undefined)
+                            throw new Error(`invalid profile discriminator: ${discriminator}`);
+                        return {
+                            content_is_heterodyne_json: false,
+                            is_dr_outer: false,
+                            tags: [["L", namespace], ["l", `policy-denied@${namespace}`]],
+                        };
+                    })()
+                    : discriminator.startsWith("production-rule:")
+                        ? {
+                            content_is_heterodyne_json: false,
+                            is_dr_outer: false,
+                            production_rule: discriminator.slice("production-rule:".length),
+                        }
+                        : discriminator === "marmot-inner-only;content=control-frame-v1"
+                            ? {
+                                content_is_heterodyne_json: true,
+                                is_dr_outer: false,
+                                transport: "marmot-inner",
+                                content_profile_id: "control-frame-v1",
+                            }
+                            : (() => {
+                                throw new Error(`unsupported profile discriminator: ${discriminator}`);
+                            })();
+        return {
+            vector_id: `${profile.owner}/profile-${profile.profile_id}`,
+            description: `The complete kind/profile allocation tuple for ${profile.profile_id} validates without inference.`,
+            direction: "consume" as const,
+            input: { ...candidate, wire_probe: wireProbe }
+        };
+    }));
 }

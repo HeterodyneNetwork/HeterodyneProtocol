@@ -22,6 +22,19 @@ export type CurrentVectorCase = Readonly<{
   expected_output: Readonly<Record<string, unknown>>;
 }>;
 
+/**
+ * Family-owned deterministic fixture data. Semantic metadata and expected
+ * results are intentionally absent: the closed catalog supplies both.
+ */
+export type CurrentCaseFixture = Readonly<{
+  vector_id: string;
+  description: string;
+  direction: VectorDirection;
+  input: Readonly<Record<string, unknown>>;
+  /** Additional typed arguments needed by the catalog-owned boundary. */
+  boundary_args?: readonly unknown[];
+}>;
+
 export function currentSpecRef(anchor: string): string {
   return `heterodyne:${FAMILY_VERSION}#${anchor}`;
 }

@@ -4,6 +4,7 @@ import {
   evaluateAssuranceCompromiseContinuation,
   evaluateAssuranceExport,
   evaluateAssurancePinPolicy,
+  validateAssuranceWireFormat,
 } from "./assurance-policy.js";
 
 const pin = {
@@ -13,6 +14,13 @@ const pin = {
 };
 
 describe("current Assurance pin and export policy", () => {
+  it("rejects KERI export bytes when presented as an Assurance wire record", () => {
+    expect(validateAssuranceWireFormat({
+      format: "keri10json",
+      serialized_record: "{\"v\":\"KERI10JSON000000_\"}",
+    })).toEqual({ verdict: "reject", reason_code: "keri_wire_format_rejected" });
+  });
+
   it("rejects conflicting pins, unilateral downgrade, and duplicity", () => {
     expect(evaluateAssurancePinPolicy({
       retained_pin: pin,

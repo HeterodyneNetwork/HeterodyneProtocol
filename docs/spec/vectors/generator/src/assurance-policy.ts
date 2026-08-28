@@ -113,3 +113,16 @@ export function evaluateAssuranceCompromiseContinuation(input: Readonly<{
   }
   return { verdict: "accept" };
 }
+
+/** Enforces NIP-01 as the only Assurance wire and storage representation. */
+export function validateAssuranceWireFormat(input: Readonly<{
+  format: "nip01" | "keri10json" | "cesr";
+  serialized_record: string;
+}>):
+  | { verdict: "accept"; format: "nip01" }
+  | { verdict: "reject"; reason_code: "keri_wire_format_rejected" } {
+  if (input.format !== "nip01") {
+    return { verdict: "reject", reason_code: "keri_wire_format_rejected" };
+  }
+  return { verdict: "accept", format: "nip01" };
+}

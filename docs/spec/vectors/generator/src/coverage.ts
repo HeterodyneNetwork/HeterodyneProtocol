@@ -3,6 +3,10 @@ import { join } from "node:path";
 import { DOCUMENTS } from "./family.js";
 import type { Registry } from "./registry.js";
 import type { DocumentId } from "./types.js";
+import {
+  semanticEvidenceForCase,
+  type CurrentVectorCase,
+} from "./current-vectors/index.js";
 
 /** Registry allocations awaiting current-draft vectors. */
 export const PENDING_PROFILE_IDS = [] as const;
@@ -22,10 +26,6 @@ export const NON_WIRE_REASON_EXCLUSIONS: readonly Readonly<{
   {
     code: "compromise_rotation_breadcrumb_forbidden",
     justification: "Retained only to classify pre-redesign rotation breadcrumbs; current Assurance succession never authors that retired wire profile.",
-  },
-  {
-    code: "delegation_mismatch",
-    justification: "Retained only for validation reports about pre-redesign delegation material; current Core and Assurance use their closed successor and associated-key evaluators.",
   },
   {
     code: "equivocation_flagged",
@@ -54,10 +54,6 @@ export const NON_WIRE_REASON_EXCLUSIONS: readonly Readonly<{
   {
     code: "kel_revoked_nid",
     justification: "Retained for historical KEL-delegate reconciliation; current writer-NID and associated-key authorization use live direct proof boundaries.",
-  },
-  {
-    code: "keri_wire_format_rejected",
-    justification: "Retained as an administrative format classification for imported historical material; the current catalog admits only NIP-01 and never constructs a KERI wire graph.",
   },
   {
     code: "nid_binding_missing_signature",
@@ -115,12 +111,6 @@ type CoverageVector = {
   reason_codes: readonly string[];
 };
 
-type SemanticCoverageVector = CoverageVector & {
-  semantic_boundary: string;
-  input: Readonly<Record<string, unknown>>;
-  expected_output: Readonly<Record<string, unknown>>;
-};
-
 type HistoricalCoverageVector = Omit<CoverageVector, "invariants" | "reason_codes">;
 type HistoricalCoverageEntry = Omit<CoverageEntry, "invariants" | "reason_codes">;
 type ProjectionCoverageEntry = CoverageEntry | HistoricalCoverageEntry;
@@ -154,7 +144,7 @@ export function buildCoverage(vectors: readonly CoverageVector[]): CoverageEntry
  * merely by repeating an invariant, reason, or profile identifier.
  */
 export function buildSemanticCoverage(
-  cases: readonly SemanticCoverageVector[],
+  cases: readonly CurrentVectorCase[],
 ): SemanticCoverageEntry[] {
   const seen = new Set<string>();
   return cases.map((entry) => {
@@ -162,9 +152,7 @@ export function buildSemanticCoverage(
       throw new Error(`duplicate semantic coverage vector_id: ${entry.vector_id}`);
     }
     seen.add(entry.vector_id);
-    if (entry.semantic_boundary.trim().length === 0) {
-      throw new Error(`semantic coverage boundary is empty: ${entry.vector_id}`);
-    }
+    const evidence = semanticEvidenceForCase(entry);
     if (
       entry.vector_id.includes("/trace/")
       || Object.hasOwn(entry.input, "diagnostic_condition")
@@ -175,12 +163,12 @@ export function buildSemanticCoverage(
     }
     return {
       vector_id: entry.vector_id,
-      owner_document: entry.owner_document,
-      ...(entry.profile === undefined ? {} : { profile: entry.profile }),
-      spec_refs: [...entry.spec_refs],
-      invariants: [...entry.invariants],
-      reason_codes: [...entry.reason_codes],
-      semantic_boundary: entry.semantic_boundary,
+      owner_document: evidence.owner_document,
+      ...(evidence.profile === undefined ? {} : { profile: evidence.profile }),
+      spec_refs: [...evidence.spec_refs],
+      invariants: [...evidence.invariants],
+      reason_codes: [...evidence.reason_codes],
+      semantic_boundary: evidence.boundary_id,
     };
   }).sort((left, right) => left.vector_id.localeCompare(right.vector_id, "en"));
 }

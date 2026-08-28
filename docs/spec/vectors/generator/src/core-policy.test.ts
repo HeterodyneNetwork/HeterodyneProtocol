@@ -3,6 +3,7 @@ import { QUALIFIED_VERSION } from "./family.js";
 import { getPublicKey, signEvent } from "./nostr.js";
 import {
   evaluateCoreOperationalBoundary,
+  validateCorePersonaSignedEvent,
   validateCoreWireEnvelope,
   validateOrganizationMemberAddition,
   validateRoleDelegation,
@@ -12,6 +13,30 @@ const SECRET = "31".repeat(32);
 const AUX_RAND = "00".repeat(32);
 
 describe("current Core semantic boundaries", () => {
+  it("rejects an authenticated event whose author is not the active persona key", async () => {
+    const event = await signEvent({
+      secretKey: SECRET,
+      created_at: 1_800_000_000,
+      kind: 1,
+      tags: [["spec_version", QUALIFIED_VERSION]],
+      content: "active persona binding",
+      auxRand: AUX_RAND,
+    });
+    expect(validateCorePersonaSignedEvent({
+      event,
+      nip01_raw: JSON.stringify([
+        0,
+        event.pubkey,
+        event.created_at,
+        event.kind,
+        event.tags,
+        event.content,
+      ]),
+      stamp_policy: "required",
+      active_persona_key: getPublicKey("32".repeat(32)),
+    })).toEqual({ verdict: "reject", reason_code: "delegation_mismatch" });
+  });
+
   it("validates raw NIP-01 bytes and exact current version stamps", async () => {
     const event = await signEvent({
       secretKey: SECRET,

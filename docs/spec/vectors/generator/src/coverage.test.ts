@@ -27,6 +27,8 @@ describe("current family coverage", () => {
     const vectors = (await buildCurrentVectors()).map(({ vector }) => vector);
     const coverage = buildCoverage(vectors);
     const semanticCoverage = buildSemanticCoverage(await buildCurrentCases());
+    expect(vectors).toHaveLength(275);
+    expect(semanticCoverage).toHaveLength(275);
     expect(coverage.map(({ vector_id }) => vector_id)).toEqual(
       [...coverage.map(({ vector_id }) => vector_id)].sort(),
     );
@@ -44,6 +46,15 @@ describe("current family coverage", () => {
     ]));
     expect(coverage.every(({ invariants }) => invariants.length > 0)).toBe(true);
     const registry = loadRegistry(resolve(import.meta.dirname, "../../../../../"));
+    expect(registry.security_invariants).toHaveLength(74);
+    expect(new Set(semanticCoverage.flatMap(({ invariants }) => invariants)).size).toBe(74);
+    expect(registry.reason_codes).toHaveLength(211);
+    expect(new Set(semanticCoverage.flatMap(({ reason_codes }) => reason_codes)).size).toBe(195);
+    expect(NON_WIRE_REASON_EXCLUSIONS).toHaveLength(16);
+    expect(registry.kinds.flatMap(({ profiles }) => profiles)).toHaveLength(31);
+    expect(new Set(semanticCoverage.flatMap(({ profile }) =>
+      profile === undefined ? [] : [profile]
+    )).size).toBe(31);
     expect(findInvariantCoverageIssues(registry, semanticCoverage)).toEqual([]);
     expect(findReasonCoverageIssues(registry, semanticCoverage)).toEqual([]);
     expect(findProfileCoverageIssues(registry, semanticCoverage)).toEqual([]);
@@ -59,6 +70,47 @@ describe("current family coverage", () => {
     expect(findInvariantCoverageIssues(registry, administrative)).toContain(
       `coverage entry lacks executable boundary: ${administrative[0]!.vector_id}`,
     );
+  }, 30_000);
+
+  it("rejects cloned semantic evidence", async () => {
+    const cases = await buildCurrentCases();
+    const badSignature = cases.find(({ vector_id }) =>
+      vector_id === "core/node-advert-bad-signature"
+    )!;
+    expect(() => buildSemanticCoverage([{ ...badSignature }])).toThrow(
+      /unbranded semantic evidence/u,
+    );
+  }, 30_000);
+
+  it("rejects same-owner invariant reassignment", async () => {
+    const badSignature = (await buildCurrentCases()).find(({ vector_id }) =>
+      vector_id === "core/node-advert-bad-signature"
+    )!;
+    expect(() => buildSemanticCoverage([{
+      ...badSignature,
+      invariants: ["CORE-I-IDENTITY-INTEGRITY"],
+    }])).toThrow(/unbranded semantic evidence/u);
+  }, 30_000);
+
+  it("rejects same-owner reason reassignment", async () => {
+    const badSignature = (await buildCurrentCases()).find(({ vector_id }) =>
+      vector_id === "core/node-advert-bad-signature"
+    )!;
+    expect(() => buildSemanticCoverage([{
+      ...badSignature,
+      reason_codes: ["nid_proof_invalid"],
+    }])).toThrow(/unbranded semantic evidence/u);
+  }, 30_000);
+
+  it("rejects fabricated accept evidence for bad_signature", async () => {
+    const badSignature = (await buildCurrentCases()).find(({ vector_id }) =>
+      vector_id === "core/node-advert-bad-signature"
+    )!;
+    expect(() => buildSemanticCoverage([{
+      ...badSignature,
+      expected_output: { verdict: "accept" },
+      reason_codes: ["bad_signature"],
+    }])).toThrow(/unbranded semantic evidence/u);
   }, 30_000);
 
   it("reports missing owner-bound invariant, reason, and profile evidence", async () => {
@@ -103,7 +155,24 @@ describe("current family coverage", () => {
 
   it("keeps the non-wire reason exclusion audit closed and specific", () => {
     const codes = NON_WIRE_REASON_EXCLUSIONS.map(({ code }) => code);
-    expect(codes).toEqual([...codes].sort());
+    expect(codes).toEqual([
+      "compromise_rotation_breadcrumb_forbidden",
+      "equivocation_flagged",
+      "expired_delegation",
+      "informal_vouch_not_counted",
+      "kel_head_forbidden",
+      "kel_head_mismatch",
+      "kel_head_missing",
+      "kel_revoked_nid",
+      "nid_binding_missing_signature",
+      "provisional_not_final",
+      "repo_head_regression",
+      "retiring_key_nip05_invalid",
+      "revoked_key_post_revoked_at",
+      "signing_key_compromised_at_created_at",
+      "successor_persona_mismatch",
+      "withdrawn_on_reconcile",
+    ]);
     expect(new Set(codes).size)
       .toBe(NON_WIRE_REASON_EXCLUSIONS.length);
     expect(NON_WIRE_REASON_EXCLUSIONS.every(({ justification }) =>
