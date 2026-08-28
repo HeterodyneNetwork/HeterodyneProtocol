@@ -769,12 +769,21 @@ type ObservedCompetingInceptionFixture = {
   acceptance: NostrSignedEvent;
 };
 
+type AuthoritativeEnrollmentPinFixture = {
+  active_key: string;
+  inception_event_id: string;
+  cold_root: string;
+  accepted_head: string;
+  state: string;
+  observed_at: number;
+};
+
 type EnrollmentEvidenceFixture = {
   local_first_observed_at: number | null;
   witness_receipts: EnrollmentObservationReceiptFixture[];
   contests: ObservedContestFixture[];
   competing_inceptions: ObservedCompetingInceptionFixture[];
-  authoritative_pin: string | null;
+  authoritative_pin: AuthoritativeEnrollmentPinFixture | null;
 };
 
 const ENROLLMENT_WINDOW_SECONDS = 604_800;
@@ -804,6 +813,21 @@ function evidenceFor(
     contests: [],
     competing_inceptions: [],
     authoritative_pin: null,
+    ...overrides,
+  };
+}
+
+function authoritativePinFor(
+  pair: Awaited<ReturnType<typeof enrolledPersona>>,
+  overrides: Partial<AuthoritativeEnrollmentPinFixture> = {},
+): AuthoritativeEnrollmentPinFixture {
+  return {
+    active_key: ACTIVE_KEY,
+    inception_event_id: pair.inception.id,
+    cold_root: COLD_KEY,
+    accepted_head: pair.acceptance.id,
+    state: "verified",
+    observed_at: OBSERVATION_NOW - 1,
     ...overrides,
   };
 }
@@ -1087,6 +1111,44 @@ describe("Assurance enrollment observation window", () => {
     });
   });
 
+  it.each(["contest", "competitor"] as const)(
+    "does not let a matching verified pin absorb a timely %s",
+    async (conflict) => {
+      const pair = await enrolledPersona();
+      const pinObservedAt = OBSERVATION_NOW - 1;
+      const contests: ObservedContestFixture[] = [];
+      const competingInceptions: ObservedCompetingInceptionFixture[] = [];
+      if (conflict === "contest") {
+        contests.push({
+          observed_at: pinObservedAt,
+          event: await enrollmentContest(pair),
+        });
+      } else {
+        competingInceptions.push({
+          observed_at: pinObservedAt,
+          ...await competingEnrollment(),
+        });
+      }
+
+      const result = await evaluateObservedEnrollment(
+        observationAuthority(evidenceFor({
+          local_first_observed_at: null,
+          contests,
+          competing_inceptions: competingInceptions,
+          authoritative_pin: authoritativePinFor(pair, {
+            observed_at: pinObservedAt,
+          }),
+        })),
+        pair,
+      );
+      expect(result).toMatchObject({
+        state: "contested",
+        reason: "assurance-enrollment-contested",
+        warnings: ["assurance-enrollment-contested"],
+      });
+    },
+  );
+
   it("keeps an authoritative verified pin despite late contest evidence and emits a warning", async () => {
     const pair = await enrolledPersona();
     const firstObserved = OBSERVATION_NOW - 2 * ENROLLMENT_WINDOW_SECONDS;
@@ -1097,7 +1159,9 @@ describe("Assurance enrollment observation window", () => {
           observed_at: firstObserved + ENROLLMENT_WINDOW_SECONDS + 1,
           event: await enrollmentContest(pair),
         }],
-        authoritative_pin: pair.inception.id,
+        authoritative_pin: authoritativePinFor(pair, {
+          observed_at: firstObserved + ENROLLMENT_WINDOW_SECONDS,
+        }),
       })),
       pair,
     );
@@ -1128,6 +1192,157 @@ describe("Assurance enrollment observation window", () => {
       reason_code: "assurance-reciprocal-proof-invalid",
     });
     expect(loadCalls).toBe(0);
+  });
+
+  it("reads each caller event property once before observation callbacks", async () => {
+    const pair = await enrolledPersona();
+    let inceptionReads = 0;
+    let acceptanceReads = 0;
+    const input = {} as { inception: NostrSignedEvent; acceptance: NostrSignedEvent };
+    Object.defineProperties(input, {
+      inception: {
+        enumerable: true,
+        get() {
+          inceptionReads += 1;
+          return pair.inception;
+        },
+      },
+      acceptance: {
+        enumerable: true,
+        get() {
+          acceptanceReads += 1;
+          return pair.acceptance;
+        },
+      },
+    });
+
+    const result = await evaluateEnrollmentEligibility(
+      observationAuthority(evidenceFor()),
+      input,
+    );
+    expect(result).toMatchObject({ state: "verified", reason: null });
+    expect({ inceptionReads, acceptanceReads }).toEqual({
+      inceptionReads: 1,
+      acceptanceReads: 1,
+    });
+  });
+
+  it("uses only the verified candidate snapshots when an evidence callback mutates the caller input", async () => {
+    const pair = await enrolledPersona();
+    const input = {
+      inception: pair.inception,
+      acceptance: pair.acceptance,
+    };
+    const authority = createObservationAuthority({
+      trusted_now: () => OBSERVATION_NOW,
+      load_evidence: async () => {
+        input.inception = { ...pair.inception, sig: "00".repeat(64) };
+        input.acceptance = { ...pair.acceptance, sig: "00".repeat(64) };
+        return evidenceFor({
+          local_first_observed_at: null,
+          authoritative_pin: authoritativePinFor(pair),
+        });
+      },
+    });
+
+    await expect(evaluateEnrollmentEligibility(authority, input)).resolves.toMatchObject({
+      state: "verified",
+      reason: null,
+      normalized: {
+        inception_event_id: pair.inception.id,
+        head: pair.acceptance.id,
+      },
+    });
+  });
+});
+
+describe("Assurance enrollment authoritative pin binding", () => {
+  it("accepts only the exact verified enrollment tuple as an authoritative pin", async () => {
+    const pair = await enrolledPersona();
+    const result = await evaluateObservedEnrollment(
+      observationAuthority(evidenceFor({
+        local_first_observed_at: null,
+        authoritative_pin: authoritativePinFor(pair),
+      })),
+      pair,
+    );
+
+    expect(result).toMatchObject({ state: "verified", reason: null });
+  });
+
+  it("does not let a different valid acceptance replace the pinned head", async () => {
+    const pair = await enrolledPersona();
+    const alternateAcceptanceBody = {
+      ...pair.acceptanceBody,
+      created_at: pair.acceptanceBody.created_at + 1,
+    };
+    const alternateAcceptance = await assuranceEvent(
+      ACTIVE_SECRET,
+      31000,
+      "assurance-head",
+      alternateAcceptanceBody.profile,
+      alternateAcceptanceBody,
+    );
+    const result = await evaluateObservedEnrollment(
+      observationAuthority(evidenceFor({
+        local_first_observed_at: null,
+        authoritative_pin: authoritativePinFor(pair),
+      })),
+      { inception: pair.inception, acceptance: alternateAcceptance },
+    );
+
+    expect(result).toMatchObject({
+      state: "contested",
+      reason: "assurance-enrollment-contested",
+      normalized: { head: alternateAcceptance.id },
+    });
+  });
+
+  it.each([
+    ["active_key", WRONG_KEY, "contested"],
+    ["inception_event_id", "ab".repeat(32), "contested"],
+    ["cold_root", WRONG_KEY, "contested"],
+    ["accepted_head", "cd".repeat(32), "contested"],
+    ["state", "pending", "pending"],
+    ["observed_at", OBSERVATION_NOW + 1, "pending"],
+  ] as const)(
+    "does not honor an authoritative pin with mutated %s",
+    async (field, value, state) => {
+      const pair = await enrolledPersona();
+      const result = await evaluateObservedEnrollment(
+        observationAuthority(evidenceFor({
+          local_first_observed_at: null,
+          authoritative_pin: authoritativePinFor(pair, { [field]: value }),
+        })),
+        pair,
+      );
+
+      expect(result).toMatchObject({
+        state,
+        reason: state === "contested"
+          ? "assurance-enrollment-contested"
+          : "assurance-enrollment-pending-window",
+      });
+    },
+  );
+
+  it("treats extra authoritative-pin members as invalid callback evidence", async () => {
+    const pair = await enrolledPersona();
+    const result = await evaluateObservedEnrollment(
+      observationAuthority(evidenceFor({
+        local_first_observed_at: null,
+        authoritative_pin: {
+          ...authoritativePinFor(pair),
+          ignored: true,
+        } as AuthoritativeEnrollmentPinFixture,
+      })),
+      pair,
+    );
+
+    expect(result).toMatchObject({
+      state: "pending",
+      reason: "assurance-enrollment-pending-window",
+    });
   });
 });
 

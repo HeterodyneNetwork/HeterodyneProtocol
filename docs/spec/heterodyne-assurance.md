@@ -380,6 +380,12 @@ Once a verifier has authoritatively pinned a candidate after a completed
 conflict-free window, that verified pin is absorbing against later contests
 and competing initial enrollments. Late evidence remains visible as a warning
 and audit fact but MUST NOT unpin or replace the established enrollment.
+Before honoring a matching pin, the verifier MUST authenticate the supplied
+contest and competitor evidence and evaluate its durable observation time.
+Evidence observed no later than any applicable candidate-window boundary,
+including the matching pin's authoritative `observed_at`, is timely and makes
+the candidate permanently `contested` even when that pin is supplied. Pin
+absorption applies only to evidence observed after every applicable boundary.
 Only the succession and dual-consent downgrade mechanisms defined below can
 change an established Assurance pin.
 
@@ -387,7 +393,14 @@ A client with no prior Assurance state MAY use trust on first use only after
 validating reciprocal enrollment and its completed window. It pins at least
 the active key,
 inception event ID, cold root, accepted head event ID, state, and observation
-time. A stronger local trust source MAY replace TOFU before the first pin.
+time. At the eligibility boundary, an embedding supplies that authoritative
+pin as a closed local record containing exactly `active_key`,
+`inception_event_id`, `cold_root`, `accepted_head`, `state:"verified"`, and
+`observed_at`. The four identifiers MUST match the reciprocally validated
+candidate exactly, `state` MUST be `verified`, and `observed_at` MUST be an
+authoritative, non-future Unix time; matching only the inception event ID is
+insufficient. A stronger local trust source MAY replace TOFU before the first
+pin.
 
 Once pinned, state is advanced only by a valid descendant or explicit
 downgrade. Removing `identity_chain`, `cold_root`, or

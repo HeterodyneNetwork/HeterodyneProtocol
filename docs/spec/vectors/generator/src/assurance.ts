@@ -184,12 +184,21 @@ export type AssuranceEnrollmentObservedCompetitor = {
   acceptance: NostrSignedEvent;
 };
 
+export type AssuranceEnrollmentAuthoritativePin = {
+  active_key: string;
+  inception_event_id: string;
+  cold_root: string;
+  accepted_head: string;
+  state: "verified";
+  observed_at: number;
+};
+
 export type AssuranceEnrollmentObservationEvidence = {
   local_first_observed_at: number | null;
   witness_receipts: EnrollmentObservationReceipt[];
   contests: AssuranceEnrollmentObservedContest[];
   competing_inceptions: AssuranceEnrollmentObservedCompetitor[];
-  authoritative_pin: string | null;
+  authoritative_pin: AssuranceEnrollmentAuthoritativePin | null;
 };
 
 export type AssuranceEnrollmentEligibility = {
@@ -260,8 +269,19 @@ export async function evaluateEnrollmentEligibility(
     : undefined;
   if (callbacks === undefined) throw observationAuthorityInvalid();
 
-  const reciprocal = evaluateEnrollment(input);
+  const candidate = snapshotEnrollmentCandidate(input);
+  if (candidate === null) return reciprocalReject();
+  const reciprocal = evaluateVerifiedEnrollment(
+    candidate.inception,
+    candidate.acceptance,
+  );
   if (reciprocal.verdict === "reject") return reciprocal;
+  const inception = parseRecord<EnrollmentInception>(
+    candidate.inception,
+    31002,
+    validateInception,
+  );
+  if (inception === null) return reciprocalReject();
 
   let now: number;
   try {
@@ -279,7 +299,7 @@ export async function evaluateEnrollmentEligibility(
   } catch {
     loaded = null;
   }
-  const evidence = snapshotEnrollmentEvidence(loaded);
+  const evidence = snapshotEnrollmentEvidence(loaded, now);
   if (evidence === null) {
     return enrollmentEligibility(
       "pending",
@@ -288,15 +308,6 @@ export async function evaluateEnrollmentEligibility(
       [],
     );
   }
-
-  const inceptionEvent = snapshotAndVerifyNostrEvent(input.inception);
-  if (inceptionEvent === null) return reciprocalReject();
-  const inception = parseRecord<EnrollmentInception>(
-    inceptionEvent,
-    31002,
-    validateInception,
-  );
-  if (inception === null) return reciprocalReject();
 
   const conflictWindowEnds: number[] = [];
   let localMatured = false;
@@ -315,16 +326,23 @@ export async function evaluateEnrollmentEligibility(
   const receiptEvaluation = evaluateObservationReceipts(
     evidence.witness_receipts,
     inception,
-    inceptionEvent.id,
+    candidate.inception.id,
     now,
   );
   conflictWindowEnds.push(...receiptEvaluation.window_ends);
+  const matchingAuthoritativePin = evidence.authoritative_pin !== null &&
+      authoritativePinMatches(evidence.authoritative_pin, reciprocal.normalized)
+    ? evidence.authoritative_pin
+    : null;
+  if (matchingAuthoritativePin !== null) {
+    conflictWindowEnds.push(matchingAuthoritativePin.observed_at);
+  }
 
   const conflicts = authenticatedEnrollmentConflicts(
     evidence,
     inception,
-    inceptionEvent,
-    input.acceptance,
+    candidate.inception,
+    candidate.acceptance,
     now,
   );
   const hasTimelyConflict = conflicts.some(({ observed_at }) =>
@@ -333,18 +351,7 @@ export async function evaluateEnrollmentEligibility(
     ? []
     : ["assurance-enrollment-contested"] as const;
 
-  if (evidence.authoritative_pin === inceptionEvent.id) {
-    return enrollmentEligibility(
-      "verified",
-      null,
-      reciprocal.normalized,
-      [...warnings],
-    );
-  }
-  if (
-    evidence.authoritative_pin !== null &&
-    evidence.authoritative_pin !== inceptionEvent.id
-  ) {
+  if (hasTimelyConflict) {
     return enrollmentEligibility(
       "contested",
       "assurance-enrollment-contested",
@@ -352,7 +359,15 @@ export async function evaluateEnrollmentEligibility(
       [...warnings],
     );
   }
-  if (hasTimelyConflict) {
+  if (matchingAuthoritativePin !== null) {
+    return enrollmentEligibility(
+      "verified",
+      null,
+      reciprocal.normalized,
+      [...warnings],
+    );
+  }
+  if (evidence.authoritative_pin !== null) {
     return enrollmentEligibility(
       "contested",
       "assurance-enrollment-contested",
@@ -380,9 +395,33 @@ export function evaluateEnrollment(input: {
   inception: NostrSignedEvent;
   acceptance: NostrSignedEvent;
 }): AssuranceVerdict<AssuranceHeadState> {
-  const inceptionEvent = snapshotAndVerifyNostrEvent(input.inception);
-  const acceptanceEvent = snapshotAndVerifyNostrEvent(input.acceptance);
-  if (inceptionEvent === null || acceptanceEvent === null) return reciprocalReject();
+  const candidate = snapshotEnrollmentCandidate(input);
+  if (candidate === null) return reciprocalReject();
+  return evaluateVerifiedEnrollment(candidate.inception, candidate.acceptance);
+}
+
+function snapshotEnrollmentCandidate(input: {
+  inception: NostrSignedEvent;
+  acceptance: NostrSignedEvent;
+}): { inception: VerifiedNostrEvent; acceptance: VerifiedNostrEvent } | null {
+  let inceptionInput: NostrSignedEvent;
+  let acceptanceInput: NostrSignedEvent;
+  try {
+    inceptionInput = input.inception;
+    acceptanceInput = input.acceptance;
+  } catch {
+    return null;
+  }
+  const inception = snapshotAndVerifyNostrEvent(inceptionInput);
+  const acceptance = snapshotAndVerifyNostrEvent(acceptanceInput);
+  if (inception === null || acceptance === null) return null;
+  return Object.freeze({ inception, acceptance });
+}
+
+function evaluateVerifiedEnrollment(
+  inceptionEvent: VerifiedNostrEvent,
+  acceptanceEvent: VerifiedNostrEvent,
+): AssuranceVerdict<AssuranceHeadState> {
   const inception = parseRecord<EnrollmentInception>(
     inceptionEvent,
     31002,
@@ -773,13 +812,12 @@ function authenticatedEnrollmentConflicts(
   evidence: AssuranceEnrollmentObservationEvidence,
   inception: EnrollmentInception,
   inceptionEvent: VerifiedNostrEvent,
-  acceptanceInput: NostrSignedEvent,
+  acceptanceEvent: VerifiedNostrEvent,
   now: number,
 ): Array<{ observed_at: number }> {
-  const acceptanceEvent = snapshotAndVerifyNostrEvent(acceptanceInput);
   const seenEventIds = new Set([
     inceptionEvent.id,
-    ...(acceptanceEvent === null ? [] : [acceptanceEvent.id]),
+    acceptanceEvent.id,
   ]);
   const conflicts: Array<{ observed_at: number }> = [];
 
@@ -835,6 +873,7 @@ function authenticatedEnrollmentConflicts(
 
 function snapshotEnrollmentEvidence(
   value: unknown,
+  now: number,
 ): AssuranceEnrollmentObservationEvidence | null {
   const record = snapshotExactRecord(value, [
     "local_first_observed_at",
@@ -850,12 +889,40 @@ function snapshotEnrollmentEvidence(
     localFirstObservedAt !== null &&
     !isUnixTime(localFirstObservedAt)
   ) return null;
-  const authoritativePin = record.authoritative_pin;
-  if (
-    authoritativePin !== null &&
-    (typeof authoritativePin !== "string" ||
-      !/^[0-9a-f]{64}$/.test(authoritativePin))
-  ) return null;
+  const authoritativePinValue = record.authoritative_pin;
+  let authoritativePin: AssuranceEnrollmentAuthoritativePin | null = null;
+  if (authoritativePinValue !== null) {
+    const pin = snapshotExactRecord(authoritativePinValue, [
+      "active_key",
+      "inception_event_id",
+      "cold_root",
+      "accepted_head",
+      "state",
+      "observed_at",
+    ]);
+    if (
+      pin === null ||
+      typeof pin.active_key !== "string" ||
+      !/^[0-9a-f]{64}$/.test(pin.active_key) ||
+      typeof pin.inception_event_id !== "string" ||
+      !/^[0-9a-f]{64}$/.test(pin.inception_event_id) ||
+      typeof pin.cold_root !== "string" ||
+      !/^[0-9a-f]{64}$/.test(pin.cold_root) ||
+      typeof pin.accepted_head !== "string" ||
+      !/^[0-9a-f]{64}$/.test(pin.accepted_head) ||
+      pin.state !== "verified" ||
+      !isUnixTime(pin.observed_at) ||
+      pin.observed_at > now
+    ) return null;
+    authoritativePin = Object.freeze({
+      active_key: pin.active_key,
+      inception_event_id: pin.inception_event_id,
+      cold_root: pin.cold_root,
+      accepted_head: pin.accepted_head,
+      state: "verified",
+      observed_at: pin.observed_at,
+    }) as AssuranceEnrollmentAuthoritativePin;
+  }
 
   const receiptValues = snapshotDenseArray(record.witness_receipts);
   const contestValues = snapshotDenseArray(record.contests);
@@ -912,8 +979,19 @@ function snapshotEnrollmentEvidence(
     witness_receipts: Object.freeze(witnessReceipts) as unknown as EnrollmentObservationReceipt[],
     contests: Object.freeze(contests) as unknown as AssuranceEnrollmentObservedContest[],
     competing_inceptions: Object.freeze(competingInceptions) as unknown as AssuranceEnrollmentObservedCompetitor[],
-    authoritative_pin: authoritativePin as string | null,
+    authoritative_pin: authoritativePin,
   });
+}
+
+function authoritativePinMatches(
+  pin: AssuranceEnrollmentAuthoritativePin,
+  enrollment: AssuranceHeadState,
+): boolean {
+  return pin.active_key === enrollment.active_key &&
+    pin.inception_event_id === enrollment.inception_event_id &&
+    pin.cold_root === enrollment.cold_root &&
+    pin.accepted_head === enrollment.head &&
+    pin.state === "verified";
 }
 
 function snapshotExactRecord(
