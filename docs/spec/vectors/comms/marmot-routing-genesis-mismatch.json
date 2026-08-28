@@ -3,7 +3,7 @@
   "vector_schema_version": "3.0.0",
   "owner_document": "comms",
   "spec_refs": [
-    "heterodyne:comms#comms-routing-generations-and-bindings"
+    "heterodyne:comms#comms-marmot-routing-generation"
   ],
   "invariants": [
     "COMMS-I-RADICLE-ROUTING-AUTHORITY"

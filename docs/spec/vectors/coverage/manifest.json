@@ -251,7 +251,7 @@
     "vector_id": "assurance/persona-author-mismatch",
     "owner_document": "assurance",
     "spec_refs": [
-      "heterodyne:assurance#core-verification"
+      "heterodyne:assurance#assurance-scope"
     ],
     "invariants": [
       "ASSURANCE-I-CORE-OPTIONALITY"
@@ -493,7 +493,7 @@
     "vector_id": "comms/agent-attribution-encrypted-inner",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-mandatory-pre-sign-attribution"
+      "heterodyne:comms#comms-agent-attribution"
     ],
     "invariants": [
       "COMMS-I-AGENT-ATTRIBUTION",
@@ -596,7 +596,7 @@
     "vector_id": "comms/agent-workload-token-accepted",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-fail-closed-authorization-and-privacy"
+      "heterodyne:comms#comms-agent-fail-closed"
     ],
     "invariants": [
       "COMMS-I-AGENT-SIGNER-BINDING",
@@ -680,7 +680,7 @@
     "vector_id": "comms/claim-active-authenticated",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-verification-trust-proof-of-possession-and-state"
+      "heterodyne:comms#comms-claim-verification"
     ],
     "invariants": [
       "COMMS-I-CLAIM-ATTENUATION",
@@ -848,7 +848,7 @@
     "vector_id": "comms/claim-repository-unconfirmed",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-authoritative-private-persona-claim-ledger"
+      "heterodyne:comms#comms-claim-ledger"
     ],
     "invariants": [
       "COMMS-I-CLAIM-REPOSITORY-AUTHORITY"
@@ -913,7 +913,7 @@
     "vector_id": "comms/config-private-state-encrypted",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-config-repository-protection-profile"
+      "heterodyne:comms#comms-config-repository"
     ],
     "invariants": [
       "COMMS-I-CONFIG-AT-REST",
@@ -1016,7 +1016,7 @@
     "vector_id": "comms/ledger-reader-authorized",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-authoritative-private-persona-claim-ledger"
+      "heterodyne:comms#comms-claim-ledger"
     ],
     "invariants": [
       "COMMS-I-CLAIM-REVOCATION",
@@ -1028,7 +1028,7 @@
     "vector_id": "comms/ledger-reader-unauthorized",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-authoritative-private-persona-claim-ledger"
+      "heterodyne:comms#comms-claim-ledger"
     ],
     "invariants": [
       "COMMS-I-LEDGER-CONFINEMENT"
@@ -1054,7 +1054,7 @@
     "vector_id": "comms/marmot-exact-bytes-durable",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-exact-event-and-media-bytes"
+      "heterodyne:comms#comms-marmot-exact-bytes"
     ],
     "invariants": [
       "COMMS-I-MARMOT-EXACT-BYTES"
@@ -1065,7 +1065,7 @@
     "vector_id": "comms/marmot-expiration-not-erasure",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-retention-and-non-erasure"
+      "heterodyne:comms#comms-marmot-retention"
     ],
     "invariants": [
       "COMMS-I-RADICLE-NON-ERASURE"
@@ -1089,7 +1089,7 @@
     "vector_id": "comms/marmot-ordinary-welcome-held",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-ordinary-conversation-hook"
+      "heterodyne:comms#comms-ordinary-conversation-admission"
     ],
     "invariants": [
       "COMMS-I-MARMOT-ACCOUNT-IDENTITY",
@@ -1102,7 +1102,7 @@
     "vector_id": "comms/marmot-premature-ack",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-rotation-transaction-and-durable-acknowledgement"
+      "heterodyne:comms#comms-marmot-rotation"
     ],
     "invariants": [
       "COMMS-I-MARMOT-EXACT-BYTES"
@@ -1141,7 +1141,7 @@
     "vector_id": "comms/marmot-routing-binding-valid",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-routing-generations-and-bindings"
+      "heterodyne:comms#comms-marmot-routing-generation"
     ],
     "invariants": [
       "COMMS-I-RADICLE-ROUTING-AUTHORITY"
@@ -1165,7 +1165,7 @@
     "vector_id": "comms/marmot-routing-genesis-mismatch",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-routing-generations-and-bindings"
+      "heterodyne:comms#comms-marmot-routing-generation"
     ],
     "invariants": [
       "COMMS-I-RADICLE-ROUTING-AUTHORITY"
@@ -1191,7 +1191,7 @@
     "vector_id": "comms/nip59-broadcast-rejected",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-encrypted-audience-posts"
+      "heterodyne:comms#comms-tier-three-profile"
     ],
     "invariants": [
       "COMMS-I-MARMOT-UPSTREAM-AUTHORITY"
@@ -1204,7 +1204,7 @@
     "vector_id": "comms/oidc-access-token-validated",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-interoperable-jwt-projection"
+      "heterodyne:comms#comms-jwt-projection"
     ],
     "invariants": [
       "COMMS-I-JWT-TYPE-AUDIENCE",
@@ -1216,7 +1216,7 @@
     "vector_id": "comms/oidc-audience-invalid",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-interoperable-jwt-projection"
+      "heterodyne:comms#comms-jwt-projection"
     ],
     "invariants": [
       "COMMS-I-JWT-TYPE-AUDIENCE"
@@ -1229,7 +1229,7 @@
     "vector_id": "comms/oidc-claim-release",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-authorization-clients-consent-and-release"
+      "heterodyne:comms#comms-oidc-authorization"
     ],
     "invariants": [
       "COMMS-I-CLAIM-RELEASE",
@@ -1241,7 +1241,7 @@
     "vector_id": "comms/oidc-claim-release-denied",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-authorization-clients-consent-and-release"
+      "heterodyne:comms#comms-oidc-authorization"
     ],
     "invariants": [
       "COMMS-I-CLAIM-RELEASE"
@@ -1254,7 +1254,7 @@
     "vector_id": "comms/oidc-client-unregistered",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-authorization-clients-consent-and-release"
+      "heterodyne:comms#comms-oidc-authorization"
     ],
     "invariants": [
       "COMMS-I-CLAIM-RELEASE"
@@ -1267,7 +1267,7 @@
     "vector_id": "comms/oidc-consent-required",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-authorization-clients-consent-and-release"
+      "heterodyne:comms#comms-oidc-authorization"
     ],
     "invariants": [
       "COMMS-I-CLAIM-RELEASE"
@@ -1280,7 +1280,7 @@
     "vector_id": "comms/oidc-grant-prohibited",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-authorization-clients-consent-and-release"
+      "heterodyne:comms#comms-oidc-authorization"
     ],
     "invariants": [
       "COMMS-I-CLAIM-RELEASE"
@@ -1306,7 +1306,7 @@
     "vector_id": "comms/oidc-issuer-mismatch",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-radicle-issuer-continuity"
+      "heterodyne:comms#comms-issuer-continuity"
     ],
     "invariants": [
       "COMMS-I-ISSUER-CONTINUITY"
@@ -1319,7 +1319,7 @@
     "vector_id": "comms/oidc-issuer-persona-continuity",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-radicle-issuer-continuity"
+      "heterodyne:comms#comms-issuer-continuity"
     ],
     "invariants": [
       "COMMS-I-ISSUER-CONTINUITY"
@@ -1356,7 +1356,7 @@
     "vector_id": "comms/oidc-token-type-invalid",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-interoperable-jwt-projection"
+      "heterodyne:comms#comms-jwt-projection"
     ],
     "invariants": [
       "COMMS-I-JWT-TYPE-AUDIENCE"
@@ -1623,7 +1623,7 @@
     "vector_id": "comms/public-reader-private-content",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-public-reader-feature"
+      "heterodyne:comms#comms-public-reader"
     ],
     "invariants": [
       "COMMS-I-PUBLIC-READER-TIER1-ONLY"
@@ -1636,7 +1636,7 @@
     "vector_id": "comms/public-reader-private-tier",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-public-reader-feature"
+      "heterodyne:comms#comms-public-reader"
     ],
     "invariants": [
       "COMMS-I-PUBLIC-READER-TIER1-ONLY"
@@ -1647,7 +1647,7 @@
     "vector_id": "comms/public-reader-relay-hint-invalid",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-launcher-and-content-security"
+      "heterodyne:comms#comms-public-reader-security"
     ],
     "invariants": [
       "COMMS-I-PUBLIC-READER-TIER1-ONLY"
@@ -1660,7 +1660,7 @@
     "vector_id": "comms/public-reader-route-invalid",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-universal-public-launcher"
+      "heterodyne:comms#comms-public-launcher"
     ],
     "invariants": [
       "COMMS-I-PUBLIC-READER-TIER1-ONLY"
@@ -1673,7 +1673,7 @@
     "vector_id": "comms/tier3-client-side-encryption",
     "owner_document": "comms",
     "spec_refs": [
-      "heterodyne:comms#comms-audience-encryption-profile-tiers-2-and-3"
+      "heterodyne:comms#comms-tier-three-profile"
     ],
     "invariants": [
       "COMMS-I-CLIENT-SIDE-DELIVERY",
@@ -3000,7 +3000,7 @@
     "vector_id": "social/agent-attribution-falsified",
     "owner_document": "social",
     "spec_refs": [
-      "heterodyne:social#social-agent-policy"
+      "heterodyne:social#social-agent-policy-receipts"
     ],
     "invariants": [
       "SOCIAL-I-AGENT-AUTHORSHIP-EXACT"
@@ -3013,7 +3013,7 @@
     "vector_id": "social/agent-attribution-missing",
     "owner_document": "social",
     "spec_refs": [
-      "heterodyne:social#social-agent-policy"
+      "heterodyne:social#social-agent-policy-receipts"
     ],
     "invariants": [
       "SOCIAL-I-AGENT-AUTHORSHIP-EXACT"
@@ -3026,7 +3026,7 @@
     "vector_id": "social/agent-policy-binding-invalid",
     "owner_document": "social",
     "spec_refs": [
-      "heterodyne:social#social-agent-policy"
+      "heterodyne:social#social-agent-policy-list"
     ],
     "invariants": [
       "SOCIAL-I-AGENT-POLICY-LOCAL"
@@ -3039,7 +3039,7 @@
     "vector_id": "social/agent-policy-receipt-invalid",
     "owner_document": "social",
     "spec_refs": [
-      "heterodyne:social#social-agent-policy"
+      "heterodyne:social#social-agent-policy-receipts"
     ],
     "invariants": [
       "SOCIAL-I-AGENT-POLICY-LOCAL"
@@ -3052,7 +3052,7 @@
     "vector_id": "social/agent-publication-bypass",
     "owner_document": "social",
     "spec_refs": [
-      "heterodyne:social#social-agent-policy"
+      "heterodyne:social#social-agent-policy-receipts"
     ],
     "invariants": [
       "SOCIAL-I-AGENT-AUTHORSHIP-EXACT"
@@ -3301,7 +3301,7 @@
     "vector_id": "workspace/carrier-not-ambient-authority",
     "owner_document": "workspace",
     "spec_refs": [
-      "heterodyne:workspace#workspace-authorization"
+      "heterodyne:workspace#workspace-security"
     ],
     "invariants": [
       "WORKSPACE-I-CARRIER-NOT-AUTHORITY",
@@ -3315,7 +3315,7 @@
     "vector_id": "workspace/current-capability-intersection",
     "owner_document": "workspace",
     "spec_refs": [
-      "heterodyne:workspace#workspace-authorization"
+      "heterodyne:workspace#workspace-role-policy"
     ],
     "invariants": [
       "WORKSPACE-I-AUTHENTICATED-CURRENT-STATE",
@@ -3367,7 +3367,7 @@
     "vector_id": "workspace/independent-device-leaf-removal",
     "owner_document": "workspace",
     "spec_refs": [
-      "heterodyne:workspace#workspace-device-leaves"
+      "heterodyne:workspace#workspace-role-control"
     ],
     "invariants": [
       "WORKSPACE-I-DEVICE-LEAF-SEPARATION",
@@ -3379,7 +3379,7 @@
     "vector_id": "workspace/independent-resource-content-keys",
     "owner_document": "workspace",
     "spec_refs": [
-      "heterodyne:workspace#workspace-resource-key-delivery"
+      "heterodyne:workspace#workspace-key-delivery"
     ],
     "invariants": [
       "WORKSPACE-I-INDEPENDENT-RESOURCE-KEYS"
@@ -3390,7 +3390,7 @@
     "vector_id": "workspace/inheritance-escalation-rejected",
     "owner_document": "workspace",
     "spec_refs": [
-      "heterodyne:workspace#workspace-inheritance"
+      "heterodyne:workspace#workspace-role-policy"
     ],
     "invariants": [
       "WORKSPACE-I-INHERITANCE-NARROWS"
@@ -3416,7 +3416,7 @@
     "vector_id": "workspace/private-topology-clean",
     "owner_document": "workspace",
     "spec_refs": [
-      "heterodyne:workspace#workspace-private-discovery"
+      "heterodyne:workspace#workspace-privacy"
     ],
     "invariants": [
       "WORKSPACE-I-PRIVATE-TOPOLOGY"
@@ -3427,7 +3427,7 @@
     "vector_id": "workspace/private-topology-disclosed",
     "owner_document": "workspace",
     "spec_refs": [
-      "heterodyne:workspace#workspace-private-discovery"
+      "heterodyne:workspace#workspace-privacy"
     ],
     "invariants": [
       "WORKSPACE-I-PRIVATE-TOPOLOGY"
@@ -3440,7 +3440,7 @@
     "vector_id": "workspace/radicle-backed-hosts",
     "owner_document": "workspace",
     "spec_refs": [
-      "heterodyne:workspace#workspace-hosting"
+      "heterodyne:workspace#workspace-advertisements"
     ],
     "invariants": [
       "WORKSPACE-I-HOST-AUTHORITY-SEPARATION",
@@ -3478,7 +3478,7 @@
     "vector_id": "workspace/revocation-blocks-future-effect",
     "owner_document": "workspace",
     "spec_refs": [
-      "heterodyne:workspace#workspace-revocation"
+      "heterodyne:workspace#workspace-grants"
     ],
     "invariants": [
       "WORKSPACE-I-REVOCATION-FUTURE-ONLY"

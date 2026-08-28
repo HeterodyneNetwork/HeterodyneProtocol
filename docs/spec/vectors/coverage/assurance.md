@@ -23,7 +23,7 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `assurance/export-unmappable-feature` | assurance | — | `ASSURANCE-I-EXPORT-LOSSLESS` | `export_unmappable_feature` | `heterodyne:assurance#assurance-keri-export` |
 | `assurance/export-unsupported-suite` | assurance | — | `ASSURANCE-I-EXPORT-LOSSLESS` | `export_unsupported_crypto_suite` | `heterodyne:assurance#assurance-keri-export` |
 | `assurance/keri-wire-format-rejected` | assurance | — | `ASSURANCE-I-EXPORT-LOSSLESS` | `keri_wire_format_rejected` | `heterodyne:assurance#assurance-keri-export` |
-| `assurance/persona-author-mismatch` | assurance | — | `ASSURANCE-I-CORE-OPTIONALITY` | `delegation_mismatch` | `heterodyne:assurance#core-verification` |
+| `assurance/persona-author-mismatch` | assurance | — | `ASSURANCE-I-CORE-OPTIONALITY` | `delegation_mismatch` | `heterodyne:assurance#assurance-scope` |
 | `assurance/pin-conflict-rejected` | assurance | — | `ASSURANCE-I-PIN-DOWNGRADE` | `assurance-pin-conflict` | `heterodyne:assurance#assurance-pinning` |
 | `assurance/profile-heterodyne-assurance-active-key-acceptance-v1` | assurance | `heterodyne-assurance-active-key-acceptance-v1` | `ASSURANCE-I-RECIPROCAL-ENROLLMENT` | — | `heterodyne:assurance#assurance-security` |
 | `assurance/profile-heterodyne-assurance-associated-key-v1` | assurance | `heterodyne-assurance-associated-key-v1` | `ASSURANCE-I-ASSOCIATED-KEY-BOUNDS` | — | `heterodyne:assurance#assurance-security` |

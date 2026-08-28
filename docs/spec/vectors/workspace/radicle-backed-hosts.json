@@ -3,7 +3,7 @@
   "vector_schema_version": "3.0.0",
   "owner_document": "workspace",
   "spec_refs": [
-    "heterodyne:workspace#workspace-hosting"
+    "heterodyne:workspace#workspace-advertisements"
   ],
   "invariants": [
     "WORKSPACE-I-HOST-AUTHORITY-SEPARATION",

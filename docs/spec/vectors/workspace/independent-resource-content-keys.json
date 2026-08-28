@@ -3,7 +3,7 @@
   "vector_schema_version": "3.0.0",
   "owner_document": "workspace",
   "spec_refs": [
-    "heterodyne:workspace#workspace-resource-key-delivery"
+    "heterodyne:workspace#workspace-key-delivery"
   ],
   "invariants": [
     "WORKSPACE-I-INDEPENDENT-RESOURCE-KEYS"

@@ -3,7 +3,7 @@
   "vector_schema_version": "3.0.0",
   "owner_document": "comms",
   "spec_refs": [
-    "heterodyne:comms#comms-config-repository-protection-profile"
+    "heterodyne:comms#comms-config-repository"
   ],
   "invariants": [
     "COMMS-I-CONFIG-AT-REST",

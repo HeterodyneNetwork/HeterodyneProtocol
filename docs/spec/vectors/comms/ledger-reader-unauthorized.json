@@ -3,7 +3,7 @@
   "vector_schema_version": "3.0.0",
   "owner_document": "comms",
   "spec_refs": [
-    "heterodyne:comms#comms-authoritative-private-persona-claim-ledger"
+    "heterodyne:comms#comms-claim-ledger"
   ],
   "invariants": [
     "COMMS-I-LEDGER-CONFINEMENT"

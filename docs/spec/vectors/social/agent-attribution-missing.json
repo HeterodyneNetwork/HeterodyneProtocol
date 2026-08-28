@@ -3,7 +3,7 @@
   "vector_schema_version": "3.0.0",
   "owner_document": "social",
   "spec_refs": [
-    "heterodyne:social#social-agent-policy"
+    "heterodyne:social#social-agent-policy-receipts"
   ],
   "invariants": [
     "SOCIAL-I-AGENT-AUTHORSHIP-EXACT"

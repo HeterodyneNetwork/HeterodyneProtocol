@@ -3,7 +3,7 @@
   "vector_schema_version": "3.0.0",
   "owner_document": "comms",
   "spec_refs": [
-    "heterodyne:comms#comms-ordinary-conversation-hook"
+    "heterodyne:comms#comms-ordinary-conversation-admission"
   ],
   "invariants": [
     "COMMS-I-MARMOT-ACCOUNT-IDENTITY",

@@ -3,7 +3,7 @@
   "vector_schema_version": "3.0.0",
   "owner_document": "comms",
   "spec_refs": [
-    "heterodyne:comms#comms-exact-event-and-media-bytes"
+    "heterodyne:comms#comms-marmot-exact-bytes"
   ],
   "invariants": [
     "COMMS-I-MARMOT-EXACT-BYTES"

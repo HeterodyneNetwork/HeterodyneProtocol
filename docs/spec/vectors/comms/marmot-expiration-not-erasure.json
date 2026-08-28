@@ -3,7 +3,7 @@
   "vector_schema_version": "3.0.0",
   "owner_document": "comms",
   "spec_refs": [
-    "heterodyne:comms#comms-retention-and-non-erasure"
+    "heterodyne:comms#comms-marmot-retention"
   ],
   "invariants": [
     "COMMS-I-RADICLE-NON-ERASURE"

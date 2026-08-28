@@ -3,7 +3,7 @@
   "vector_schema_version": "3.0.0",
   "owner_document": "comms",
   "spec_refs": [
-    "heterodyne:comms#comms-interoperable-jwt-projection"
+    "heterodyne:comms#comms-jwt-projection"
   ],
   "invariants": [
     "COMMS-I-JWT-TYPE-AUDIENCE"

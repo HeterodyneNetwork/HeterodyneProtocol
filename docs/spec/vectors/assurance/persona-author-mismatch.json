@@ -3,7 +3,7 @@
   "vector_schema_version": "3.0.0",
   "owner_document": "assurance",
   "spec_refs": [
-    "heterodyne:assurance#core-verification"
+    "heterodyne:assurance#assurance-scope"
   ],
   "invariants": [
     "ASSURANCE-I-CORE-OPTIONALITY"

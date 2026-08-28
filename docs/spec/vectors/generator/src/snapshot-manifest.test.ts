@@ -39,7 +39,7 @@ const VECTOR_PATHS = [
   "workspace/001-second.json",
 ] as const;
 const SOURCE_COMMIT = "1".repeat(40);
-const TASK_8_SOURCE_COMMIT = "08ac4418b14586b0053829349ee7173febeb806e";
+const RECONCILIATION_SOURCE_COMMIT = "0dd150682903d14eddd8d14b57892395f750c47f";
 const SNAPSHOT_META_SCHEMA_ID =
   "https://heterodyne.network/schemas/vector-snapshot-manifest-meta-v1.schema.json";
 const DRAFT_2020_12_CORE_VOCABULARY_ID =
@@ -101,9 +101,9 @@ function writeManifest(root: string, manifest: SnapshotManifest, bytes = canonic
 }
 
 describe("snapshot manifest", () => {
-  it("pins the 0.6 reconciliation to the reviewed Task 8 source and corpus", () => {
+  it("pins the 0.6 reconciliation to the reviewed source and corpus", () => {
     expect(loadSnapshotManifest(repositoryRoot)).toMatchObject({
-      source_commit: TASK_8_SOURCE_COMMIT,
+      source_commit: RECONCILIATION_SOURCE_COMMIT,
       vector_schema_version: "3.0.0",
       vector_count: 275,
     });

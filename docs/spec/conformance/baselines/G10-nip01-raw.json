@@ -1,6 +1,6 @@
 {
-  "source_commit": "08ac4418b14586b0053829349ee7173febeb806e",
-  "artifact_set_sha256": "b8bb7ebde421f2038c61bfabfbfb1dbb778a1a5f74b25a9c848d64afa4f3edf7",
+  "source_commit": "0dd150682903d14eddd8d14b57892395f750c47f",
+  "artifact_set_sha256": "c762013418d78b83fe09499ebbf0cdfe4201db9efb5cde5600b80de29529a66f",
   "gate": "G10",
   "failures": [
     "docs/spec/vectors/assurance/associated-key-expired.json :: event-sha256:15f84394a5d3b5a1ca94f54b5ab75585e455fc16745c70fe60555a8d7d0f8a99",

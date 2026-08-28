@@ -3,7 +3,7 @@
   "vector_schema_version": "3.0.0",
   "owner_document": "comms",
   "spec_refs": [
-    "heterodyne:comms#comms-public-reader-feature"
+    "heterodyne:comms#comms-public-reader"
   ],
   "invariants": [
     "COMMS-I-PUBLIC-READER-TIER1-ONLY"

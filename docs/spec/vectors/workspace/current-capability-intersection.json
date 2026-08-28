@@ -3,7 +3,7 @@
   "vector_schema_version": "3.0.0",
   "owner_document": "workspace",
   "spec_refs": [
-    "heterodyne:workspace#workspace-authorization"
+    "heterodyne:workspace#workspace-role-policy"
   ],
   "invariants": [
     "WORKSPACE-I-AUTHENTICATED-CURRENT-STATE",

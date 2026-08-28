@@ -3,7 +3,7 @@
   "vector_schema_version": "3.0.0",
   "owner_document": "comms",
   "spec_refs": [
-    "heterodyne:comms#comms-fail-closed-authorization-and-privacy"
+    "heterodyne:comms#comms-agent-fail-closed"
   ],
   "invariants": [
     "COMMS-I-AGENT-SIGNER-BINDING",

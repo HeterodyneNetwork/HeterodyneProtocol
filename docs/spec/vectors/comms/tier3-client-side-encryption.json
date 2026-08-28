@@ -3,7 +3,7 @@
   "vector_schema_version": "3.0.0",
   "owner_document": "comms",
   "spec_refs": [
-    "heterodyne:comms#comms-audience-encryption-profile-tiers-2-and-3"
+    "heterodyne:comms#comms-tier-three-profile"
   ],
   "invariants": [
     "COMMS-I-CLIENT-SIDE-DELIVERY",
