@@ -15,7 +15,7 @@ explicit release approval.
 family map, and the single registry pin is
 [`docs/spec/registry/manifest.json`](docs/spec/registry/manifest.json).
 
-### Security review remediation (0.6.0)
+## heterodyne/0.6.0 (draft)
 
 Security review remediation: verifier-time bound and optional OpenTimestamps
 anchoring for replaceable state, privacy-tier re-cut with Tier 3 metadata
@@ -23,8 +23,8 @@ confinement, mandatory Assurance for workspace governance, enrollment contest
 window, per-binding SHA-1 analysis, declared authorization-freshness bound.
 Design:
 [`docs/superpowers/specs/2026-08-26-security-review-remediation-design.md`](docs/superpowers/specs/2026-08-26-security-review-remediation-design.md).
-ADR-048. Vectors intentionally not regenerated in this change; the current
-vector lane remains pinned at 0.5.0 until the follow-up vectors step.
+ADR-048 remains Proposed until the complete 0.6 closure matrix, including
+current conformance vectors, is green.
 
 ### Nostr-first family integration
 

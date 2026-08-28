@@ -1,5 +1,10 @@
 # Security Review Remediation Design
 
+> **Superseded before merge:** The approved closure design and implementation
+> plan dated 2026-08-27 replace this artifact where they differ. In particular,
+> vectors are required, Workspace Assurance is optional, NIP-03 is advisory,
+> and existing registry `first_version` values retain their history.
+
 - **Date:** 2026-08-26
 - **Status:** Draft for review
 - **Scope:** Remediation of the seven structural findings from the 2026-08 external model review (Opus 4.8) of the `heterodyne/0.5.0` specification family

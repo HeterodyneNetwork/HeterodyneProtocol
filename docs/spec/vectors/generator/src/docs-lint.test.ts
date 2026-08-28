@@ -50,6 +50,17 @@ describe("canonical family documentation", () => {
     ))).toBe(false);
   });
 
+  it("keeps ADR-048 proposed while the 0.6 closure matrix is incomplete", () => {
+    const live = resolve(repositoryRoot,
+      "docs/adr/2026-08-26-048-security-review-remediation.md");
+    const archived = resolve(repositoryRoot,
+      "docs/adr/archive/2026-08-26-048-security-review-remediation.md");
+    expect(existsSync(live)).toBe(true);
+    expect(existsSync(archived)).toBe(false);
+    expect(readFileSync(live, "utf8")).toMatch(/\*\*Status:\*\* Proposed/);
+    expect(read("CHANGELOG.md")).toMatch(/heterodyne\/0\.6\.0 \(draft\)/);
+  });
+
   it("recognizes Assurance paths, qualified links, features, and invariant evidence", () => {
     const root = mkdtempSync(resolve(tmpdir(), "heterodyne-assurance-lint-"));
     temps.push(root);

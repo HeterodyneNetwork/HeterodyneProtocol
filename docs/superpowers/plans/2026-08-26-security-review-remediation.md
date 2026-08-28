@@ -1,5 +1,10 @@
 # Security Review Remediation (heterodyne/0.6.0) Implementation Plan
 
+> **Superseded before merge:** The approved closure design and implementation
+> plan dated 2026-08-27 replace this artifact where they differ. In particular,
+> vectors are required, Workspace Assurance is optional, NIP-03 is advisory,
+> and existing registry `first_version` values retain their history.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Land the approved security-review remediation as `heterodyne/0.6.0` normative text, registry, schemas, ADR, and threat-model changes — without touching `docs/spec/vectors`.

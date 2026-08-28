@@ -1,6 +1,6 @@
 # ADR-048: Security review remediation for heterodyne/0.6.0
 
-**Status:** Accepted
+**Status:** Proposed
 **Date:** 2026-08-26
 
 This record is non-canonical. The live specification family, protocol schemas,
@@ -10,8 +10,8 @@ disagree, the specification family and normative artifacts govern.
 ## Decision
 
 An external model review of the 0.5.0 family identified seven structural
-findings. The family adopts the following remediations and moves to
-`heterodyne/0.6.0`. The full agreed design is
+findings. This proposal records the following remediations for a complete
+`heterodyne/0.6.0` closure. The full agreed design is
 `docs/superpowers/specs/2026-08-26-security-review-remediation-design.md`.
 
 **Replaceable-state timestamp bounds.** Source-neutral selection gains a
@@ -74,25 +74,36 @@ threat model gains a carrier-withholding/equivocation entry, and the registry
 gains an `intentionally_coarse` flag reconciling Core §13.2 coarsening with
 the Workspace distinct-outcomes rule.
 
-## Accepted risks
+## Proposed risk disposition
 
 - `compromise_time` selection within
   `[current_head.created_at, succession.created_at]` remains a recovery-holder
   power; OpenTimestamps anchors on legitimate events provide third-party
   dispute evidence, but the protocol does not adjudicate the choice.
 - Carrier withholding for pure-relay readers is inherited from the Nostr
-  carrier model and accepted with disclosure.
+  carrier model and disclosed as a proposed risk.
 - Tier 2 and Tier 3 have no forward secrecy; users needing it use the
   Marmot/MLS path.
 - A key thief can deny Assurance enrollment (bounded harm; baseline
   impersonation was already possible with the key).
 - SHA-1 remains in the Radicle substrate; it is constrained, not replaced.
 
-## Vectors
+## Acceptance gate
 
-`docs/spec/vectors` is deliberately untouched by this change. The current
-vector lane remains pinned at `heterodyne/0.5.0` (generator `FAMILY_VERSION`)
-and its `draft:check` fails on the version pin until a follow-up change
-regenerates vectors at 0.6.0, adds this ADR to the docs-lint allowlist, and
-bumps the generator pin. The conformance vitest suite is version-agnostic and
-remains green.
+ADR-048 remains Proposed until Task 10's exact pre-acceptance matrix succeeds
+serially, with every command exiting 0:
+
+```bash
+npm --prefix docs/spec/vectors/generator run family:check
+npm --prefix docs/spec/vectors/generator run check
+npm --prefix docs/spec/conformance run build
+npm --prefix docs/spec/conformance test
+scripts/conformance-ci.sh
+git diff --check
+test -z "$(git status --porcelain=v1)"
+```
+
+That matrix requires every family dependency, normative artifact, semantic
+evaluator, and conformance vector to agree at 0.6.0. Acceptance and archival
+also require Task 10's independent specification and security reviews to find
+no unresolved Critical or Important findings.
