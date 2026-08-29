@@ -330,7 +330,7 @@ for (const [kind, profileId, discriminator, invariant, fixture] of [
       ? "assurance.evaluateAssociatedKey"
       : fixture === "reciprocal"
         ? "assurance.evaluateEnrollment"
-        : "assurance.evaluateEnrollmentEligibility";
+        : "assurance-observation.evaluateEnrollmentEligibility";
   rows.push(oracle(
     fixedTuple(
       kind,

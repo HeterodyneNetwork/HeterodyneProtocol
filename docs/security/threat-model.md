@@ -205,8 +205,17 @@ reviewers can trace the threat control to its owner and feature binding.
 - **WORKSPACE-I-RADICLE-BACKSTOP:** Every effective role retains an authorized Radicle locator and eligible Radicle-backed relay host independent of optional Nostr relays.
 - **WORKSPACE-I-DEVICE-LEAF-SEPARATION:** Each active account device has an independently revocable Marmot MLS leaf and receives only uniquely identified envelopes bound to that exact grant, single path admission epoch, account, device, leaf, role, resource, checkpoint, and custody host.
 - **WORKSPACE-I-OPTIONAL-ASSURANCE:** A Workspace remains valid under a bare active key with no Assurance profile; once an optional Assurance profile is activated, ordinary active-key governance alone cannot weaken, replace, or remove it, and any transition requires matching current Assurance authorization over the same canonical policy-transition digest.
-- **ASSURANCE-I-ENROLLMENT-WINDOWED:** No enrollment is pin-eligible before 604800 seconds of authenticated observation; a timely active-key contest or fully reciprocal competing enrollment is absorbing, and later initial-enrollment evidence cannot unpin an authoritative verified enrollment.
+- **ASSURANCE-I-ENROLLMENT-WINDOWED:** No enrollment is pin-eligible before 604800 seconds of one authority's durable trusted-clock ingestion chronology; signed/public times are audit-only, cross-authority receipt replay starts independent chronology, a pre-pin active-key contest or reciprocal competitor is absorbing, and post-pin initial-enrollment evidence is warning-only.
+
 - **COMMS-I-TIER3-CONFINED:** Tier 3 posts, audience wraps, rosters, and rotation records are carried only via the private repository's authorized interfaces, never ordinary public relays, confining audience membership metadata to allowed nodes.
+
+Assurance chronology boundary testing is **BLUE TEAM VALIDATION:
+synthetic/local** defensive protocol-quality work. Minimal deterministic local
+fixtures verify that backdated declarations, cross-authority receipt replay,
+wrong-head receipts, duplicate witness weight, and racing pre-pin evidence
+fail closed without contacting a live relay, deployment, account, credential,
+production system, or other external target and without creating a reusable
+exploit or payload.
 
 ## Current draft versus frozen validation history
 

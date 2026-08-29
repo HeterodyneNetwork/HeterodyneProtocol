@@ -116,7 +116,7 @@ const CURRENT_CASE_CONTRACTS = {
     ]
   },
   "assurance/enrollment-competing-inception": {
-    "boundary_id": "assurance.evaluateEnrollmentEligibility",
+    "boundary_id": "assurance-observation.evaluateEnrollmentEligibility",
     "owner_document": "assurance",
     "spec_refs": [
       "heterodyne:0.6.0#assurance-enrollment-window"
@@ -129,7 +129,7 @@ const CURRENT_CASE_CONTRACTS = {
     ]
   },
   "assurance/enrollment-forged-contest-ignored": {
-    "boundary_id": "assurance.evaluateEnrollmentEligibility",
+    "boundary_id": "assurance-observation.evaluateEnrollmentEligibility",
     "owner_document": "assurance",
     "spec_refs": [
       "heterodyne:0.6.0#assurance-enrollment-window"
@@ -141,7 +141,7 @@ const CURRENT_CASE_CONTRACTS = {
     "reason_codes": []
   },
   "assurance/enrollment-late-warning-no-unpin": {
-    "boundary_id": "assurance.evaluateEnrollmentEligibility",
+    "boundary_id": "assurance-observation.evaluateEnrollmentEligibility",
     "owner_document": "assurance",
     "spec_refs": [
       "heterodyne:0.6.0#assurance-pinning"
@@ -153,7 +153,7 @@ const CURRENT_CASE_CONTRACTS = {
     "reason_codes": []
   },
   "assurance/enrollment-pending-w-minus-one": {
-    "boundary_id": "assurance.evaluateEnrollmentEligibility",
+    "boundary_id": "assurance-observation.evaluateEnrollmentEligibility",
     "owner_document": "assurance",
     "profile": "heterodyne-assurance-enrollment-inception-v1",
     "spec_refs": [
@@ -167,7 +167,7 @@ const CURRENT_CASE_CONTRACTS = {
     ]
   },
   "assurance/enrollment-timely-contest": {
-    "boundary_id": "assurance.evaluateEnrollmentEligibility",
+    "boundary_id": "assurance-observation.evaluateEnrollmentEligibility",
     "owner_document": "assurance",
     "profile": "heterodyne-assurance-enrollment-contest-profile-v1",
     "spec_refs": [
@@ -181,7 +181,7 @@ const CURRENT_CASE_CONTRACTS = {
     ]
   },
   "assurance/enrollment-verified-at-window": {
-    "boundary_id": "assurance.evaluateEnrollmentEligibility",
+    "boundary_id": "assurance-observation.evaluateEnrollmentEligibility",
     "owner_document": "assurance",
     "spec_refs": [
       "heterodyne:0.6.0#assurance-enrollment-window"
@@ -486,7 +486,7 @@ const CURRENT_CASE_CONTRACTS = {
     ]
   },
   "assurance/witness-threshold-fail": {
-    "boundary_id": "assurance.evaluateEnrollmentEligibility",
+    "boundary_id": "assurance-observation.evaluateEnrollmentEligibility",
     "owner_document": "assurance",
     "spec_refs": [
       "heterodyne:0.6.0#assurance-enrollment-window"
@@ -499,7 +499,7 @@ const CURRENT_CASE_CONTRACTS = {
     ]
   },
   "assurance/witness-threshold-pass": {
-    "boundary_id": "assurance.evaluateEnrollmentEligibility",
+    "boundary_id": "assurance-observation.evaluateEnrollmentEligibility",
     "owner_document": "assurance",
     "spec_refs": [
       "heterodyne:0.6.0#assurance-enrollment-window"

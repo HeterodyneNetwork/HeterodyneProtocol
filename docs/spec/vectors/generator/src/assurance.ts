@@ -1,12 +1,9 @@
-import { types as utilTypes } from "node:util";
 import { Ajv, type AnySchema, type ValidateFunction } from "ajv";
 import { schnorr } from "@noble/curves/secp256k1";
 import { sha256 } from "@noble/hashes/sha2";
 import acceptanceSchema from "../../../schemas/assurance/active-key-acceptance-v1.schema.json" with { type: "json" };
 import associatedKeySchema from "../../../schemas/assurance/associated-key-v1.schema.json" with { type: "json" };
-import contestSchema from "../../../schemas/assurance/enrollment-contest-v1.schema.json" with { type: "json" };
 import inceptionSchema from "../../../schemas/assurance/enrollment-inception-v1.schema.json" with { type: "json" };
-import observationReceiptSchema from "../../../schemas/assurance/enrollment-observation-receipt-v1.schema.json" with { type: "json" };
 import successionSchema from "../../../schemas/assurance/succession-v1.schema.json" with { type: "json" };
 import { domainSeparatedJcsDigest } from "./credential-continuity.js";
 import { bytesToHex, hexToBytes } from "./hex.js";
@@ -16,6 +13,20 @@ import {
   type NostrSignedEvent,
   type VerifiedNostrEvent,
 } from "./nostr.js";
+
+export {
+  createAssuranceEnrollmentObservationAuthority,
+  evaluateEnrollmentEligibility,
+} from "./assurance-observation.js";
+export type {
+  AssuranceEnrollmentAuthoritativePin,
+  AssuranceEnrollmentObservationAuthority,
+  EnrollmentEvidenceInput,
+  EnrollmentObservationAuthorityConfig,
+  EnrollmentObservationJournal,
+  EnrollmentObservationJournalEntry,
+  EnrollmentWitnessPolicy,
+} from "./assurance-observation.js";
 
 export type EpochPolicy = {
   mode: "none" | "pre-rotation";
@@ -166,39 +177,12 @@ export type EnrollmentObservationReceipt = {
   inception_event_id: string;
   active_key: string;
   cold_root: string;
+  accepted_head: string;
   first_observed_at: number;
   last_observed_at: number;
   conflict_free: true;
   witness_key: string;
   signature: string;
-};
-
-export type AssuranceEnrollmentObservedContest = {
-  observed_at: number;
-  event: NostrSignedEvent;
-};
-
-export type AssuranceEnrollmentObservedCompetitor = {
-  observed_at: number;
-  inception: NostrSignedEvent;
-  acceptance: NostrSignedEvent;
-};
-
-export type AssuranceEnrollmentAuthoritativePin = {
-  active_key: string;
-  inception_event_id: string;
-  cold_root: string;
-  accepted_head: string;
-  state: "verified";
-  observed_at: number;
-};
-
-export type AssuranceEnrollmentObservationEvidence = {
-  local_first_observed_at: number | null;
-  witness_receipts: EnrollmentObservationReceipt[];
-  contests: AssuranceEnrollmentObservedContest[];
-  competing_inceptions: AssuranceEnrollmentObservedCompetitor[];
-  authoritative_pin: AssuranceEnrollmentAuthoritativePin | null;
 };
 
 export type AssuranceEnrollmentEligibility = {
@@ -209,187 +193,11 @@ export type AssuranceEnrollmentEligibility = {
   normalized: AssuranceHeadState;
 };
 
-declare const assuranceEnrollmentObservationAuthorityBrand: unique symbol;
-export type AssuranceEnrollmentObservationAuthority = {
-  readonly [assuranceEnrollmentObservationAuthorityBrand]: true;
-};
-
-type EnrollmentObservationAuthorityCallbacks = {
-  trusted_now: () => number;
-  load_evidence: (
-    inception_event_id: string,
-  ) => AssuranceEnrollmentObservationEvidence |
-    Promise<AssuranceEnrollmentObservationEvidence>;
-};
-
-const ENROLLMENT_WINDOW_SECONDS = 604_800;
-const ENROLLMENT_OBSERVATION_DOMAIN =
-  "heterodyne-assurance-enrollment-observation-v1";
-const OBSERVATION_AUTHORITIES = new WeakMap<
-  object,
-  EnrollmentObservationAuthorityCallbacks
->();
-
 const ajv = new Ajv({ allErrors: true, strict: false });
 const validateInception = ajv.compile(inceptionSchema as AnySchema);
 const validateAcceptance = ajv.compile(acceptanceSchema as AnySchema);
 const validateAssociatedKey = ajv.compile(associatedKeySchema as AnySchema);
-const validateContest = ajv.compile(contestSchema as AnySchema);
-const validateObservationReceipt = ajv.compile(
-  observationReceiptSchema as AnySchema,
-);
 const validateSuccession = ajv.compile(successionSchema as AnySchema);
-
-export function createAssuranceEnrollmentObservationAuthority(
-  config: EnrollmentObservationAuthorityCallbacks,
-): AssuranceEnrollmentObservationAuthority {
-  const snapshot = snapshotExactRecord(config, ["trusted_now", "load_evidence"]);
-  if (snapshot === null) throw observationAuthorityInvalid();
-  const trustedNow = snapshot.trusted_now;
-  const loadEvidence = snapshot.load_evidence;
-  if (
-    typeof trustedNow !== "function" || utilTypes.isProxy(trustedNow) ||
-    typeof loadEvidence !== "function" || utilTypes.isProxy(loadEvidence)
-  ) throw observationAuthorityInvalid();
-
-  const authority = Object.freeze({});
-  OBSERVATION_AUTHORITIES.set(authority, {
-    trusted_now: trustedNow as () => number,
-    load_evidence: loadEvidence as EnrollmentObservationAuthorityCallbacks["load_evidence"],
-  });
-  return authority as AssuranceEnrollmentObservationAuthority;
-}
-
-export async function evaluateEnrollmentEligibility(
-  authority: AssuranceEnrollmentObservationAuthority,
-  input: { inception: NostrSignedEvent; acceptance: NostrSignedEvent },
-): Promise<AssuranceEnrollmentEligibility | AssuranceVerdict<never>> {
-  const callbacks = authority !== null && typeof authority === "object"
-    ? OBSERVATION_AUTHORITIES.get(authority)
-    : undefined;
-  if (callbacks === undefined) throw observationAuthorityInvalid();
-
-  const candidate = snapshotEnrollmentCandidate(input);
-  if (candidate === null) return reciprocalReject();
-  const reciprocal = evaluateVerifiedEnrollment(
-    candidate.inception,
-    candidate.acceptance,
-  );
-  if (reciprocal.verdict === "reject") return reciprocal;
-  const inception = parseRecord<EnrollmentInception>(
-    candidate.inception,
-    31002,
-    validateInception,
-  );
-  if (inception === null) return reciprocalReject();
-
-  let now: number;
-  try {
-    const trustedNow = callbacks.trusted_now;
-    now = trustedNow();
-  } catch {
-    throw observationAuthorityInvalid();
-  }
-  if (!isUnixTime(now)) throw observationAuthorityInvalid();
-
-  let loaded: unknown;
-  try {
-    const loadEvidence = callbacks.load_evidence;
-    loaded = await loadEvidence(reciprocal.normalized.inception_event_id);
-  } catch {
-    loaded = null;
-  }
-  const evidence = snapshotEnrollmentEvidence(loaded, now);
-  if (evidence === null) {
-    return enrollmentEligibility(
-      "pending",
-      "assurance-enrollment-pending-window",
-      reciprocal.normalized,
-      [],
-    );
-  }
-
-  const conflictWindowEnds: number[] = [];
-  let localMatured = false;
-  if (
-    evidence.local_first_observed_at !== null &&
-    evidence.local_first_observed_at <= now
-  ) {
-    const localWindowEnd = evidence.local_first_observed_at +
-      ENROLLMENT_WINDOW_SECONDS;
-    if (Number.isSafeInteger(localWindowEnd)) {
-      conflictWindowEnds.push(localWindowEnd);
-      localMatured = now >= localWindowEnd;
-    }
-  }
-
-  const receiptEvaluation = evaluateObservationReceipts(
-    evidence.witness_receipts,
-    inception,
-    candidate.inception.id,
-    now,
-  );
-  conflictWindowEnds.push(...receiptEvaluation.window_ends);
-  const matchingAuthoritativePin = evidence.authoritative_pin !== null &&
-      authoritativePinMatches(evidence.authoritative_pin, reciprocal.normalized)
-    ? evidence.authoritative_pin
-    : null;
-  if (matchingAuthoritativePin !== null) {
-    conflictWindowEnds.push(matchingAuthoritativePin.observed_at);
-  }
-
-  const conflicts = authenticatedEnrollmentConflicts(
-    evidence,
-    inception,
-    candidate.inception,
-    candidate.acceptance,
-    now,
-  );
-  const hasTimelyConflict = conflicts.some(({ observed_at }) =>
-    conflictWindowEnds.some((windowEnd) => observed_at <= windowEnd));
-  const warnings = conflicts.length === 0
-    ? []
-    : ["assurance-enrollment-contested"] as const;
-
-  if (hasTimelyConflict) {
-    return enrollmentEligibility(
-      "contested",
-      "assurance-enrollment-contested",
-      reciprocal.normalized,
-      [...warnings],
-    );
-  }
-  if (matchingAuthoritativePin !== null) {
-    return enrollmentEligibility(
-      "verified",
-      null,
-      reciprocal.normalized,
-      [...warnings],
-    );
-  }
-  if (evidence.authoritative_pin !== null) {
-    return enrollmentEligibility(
-      "contested",
-      "assurance-enrollment-contested",
-      reciprocal.normalized,
-      [...warnings],
-    );
-  }
-  if (localMatured || receiptEvaluation.threshold_satisfied) {
-    return enrollmentEligibility(
-      "verified",
-      null,
-      reciprocal.normalized,
-      [...warnings],
-    );
-  }
-  return enrollmentEligibility(
-    "pending",
-    "assurance-enrollment-pending-window",
-    reciprocal.normalized,
-    [...warnings],
-  );
-}
 
 export function evaluateEnrollment(input: {
   inception: NostrSignedEvent;
@@ -756,336 +564,6 @@ export function evaluateAssociatedKey(input: {
     verdict: "accept",
     normalized: associatedKeyState(record, event.id),
   };
-}
-
-function evaluateObservationReceipts(
-  receipts: EnrollmentObservationReceipt[],
-  inception: EnrollmentInception,
-  inceptionEventId: string,
-  now: number,
-): { threshold_satisfied: boolean; window_ends: number[] } {
-  const counted = new Set<string>();
-  const windowEnds: number[] = [];
-  let maturedWeight = 0;
-
-  for (const receipt of receipts) {
-    if (counted.has(receipt.witness_key)) continue;
-    const configured = inception.witnesses.find(
-      ({ key }) => key === receipt.witness_key,
-    );
-    if (configured === undefined) continue;
-    if (
-      receipt.inception_event_id !== inceptionEventId ||
-      receipt.active_key !== inception.active_key ||
-      receipt.cold_root !== inception.cold_root ||
-      receipt.first_observed_at > receipt.last_observed_at ||
-      receipt.last_observed_at > now ||
-      !validEnrollmentObservationReceipt(receipt)
-    ) continue;
-
-    counted.add(receipt.witness_key);
-    const windowEnd = receipt.first_observed_at + ENROLLMENT_WINDOW_SECONDS;
-    if (!Number.isSafeInteger(windowEnd)) continue;
-    windowEnds.push(windowEnd);
-    if (receipt.last_observed_at >= windowEnd) maturedWeight += configured.weight;
-  }
-
-  return {
-    threshold_satisfied: inception.thresholds.witness > 0 &&
-      maturedWeight >= inception.thresholds.witness,
-    window_ends: windowEnds,
-  };
-}
-
-function validEnrollmentObservationReceipt(
-  receipt: EnrollmentObservationReceipt,
-): boolean {
-  const { signature, ...bound } = receipt;
-  return validSchnorr(
-    signature,
-    domainSeparatedJcsDigest(ENROLLMENT_OBSERVATION_DOMAIN, bound),
-    receipt.witness_key,
-  );
-}
-
-function authenticatedEnrollmentConflicts(
-  evidence: AssuranceEnrollmentObservationEvidence,
-  inception: EnrollmentInception,
-  inceptionEvent: VerifiedNostrEvent,
-  acceptanceEvent: VerifiedNostrEvent,
-  now: number,
-): Array<{ observed_at: number }> {
-  const seenEventIds = new Set([
-    inceptionEvent.id,
-    acceptanceEvent.id,
-  ]);
-  const conflicts: Array<{ observed_at: number }> = [];
-
-  for (const observed of evidence.contests) {
-    if (observed.observed_at > now) continue;
-    const event = snapshotAndVerifyNostrEvent(observed.event);
-    if (event === null || seenEventIds.has(event.id)) continue;
-    const contest = parseClosedContent<{
-      profile: "heterodyne.assurance.enrollment-contest.v1";
-      spec_version: "heterodyne/0.6.0";
-      inception_event_id: string;
-      cold_root: string;
-    }>(event, 31006, validateContest);
-    if (
-      contest === null ||
-      event.pubkey !== inception.active_key ||
-      contest.inception_event_id !== inceptionEvent.id ||
-      contest.cold_root !== inception.cold_root ||
-      !hasExactTags(event, [
-        ["d", contest.inception_event_id],
-        ["p", contest.cold_root],
-      ])
-    ) continue;
-    seenEventIds.add(event.id);
-    conflicts.push({ observed_at: observed.observed_at });
-  }
-
-  for (const observed of evidence.competing_inceptions) {
-    if (observed.observed_at > now) continue;
-    const competingInception = snapshotAndVerifyNostrEvent(observed.inception);
-    const competingAcceptance = snapshotAndVerifyNostrEvent(observed.acceptance);
-    if (
-      competingInception === null || competingAcceptance === null ||
-      seenEventIds.has(competingInception.id) ||
-      seenEventIds.has(competingAcceptance.id)
-    ) continue;
-    const competitor = evaluateEnrollment({
-      inception: competingInception,
-      acceptance: competingAcceptance,
-    });
-    if (
-      competitor.verdict === "reject" ||
-      competitor.normalized.active_key !== inception.active_key ||
-      competitor.normalized.inception_event_id === inceptionEvent.id
-    ) continue;
-    seenEventIds.add(competingInception.id);
-    seenEventIds.add(competingAcceptance.id);
-    conflicts.push({ observed_at: observed.observed_at });
-  }
-
-  return conflicts;
-}
-
-function snapshotEnrollmentEvidence(
-  value: unknown,
-  now: number,
-): AssuranceEnrollmentObservationEvidence | null {
-  const record = snapshotExactRecord(value, [
-    "local_first_observed_at",
-    "witness_receipts",
-    "contests",
-    "competing_inceptions",
-    "authoritative_pin",
-  ]);
-  if (record === null) return null;
-
-  const localFirstObservedAt = record.local_first_observed_at;
-  if (
-    localFirstObservedAt !== null &&
-    !isUnixTime(localFirstObservedAt)
-  ) return null;
-  const authoritativePinValue = record.authoritative_pin;
-  let authoritativePin: AssuranceEnrollmentAuthoritativePin | null = null;
-  if (authoritativePinValue !== null) {
-    const pin = snapshotExactRecord(authoritativePinValue, [
-      "active_key",
-      "inception_event_id",
-      "cold_root",
-      "accepted_head",
-      "state",
-      "observed_at",
-    ]);
-    if (
-      pin === null ||
-      typeof pin.active_key !== "string" ||
-      !/^[0-9a-f]{64}$/.test(pin.active_key) ||
-      typeof pin.inception_event_id !== "string" ||
-      !/^[0-9a-f]{64}$/.test(pin.inception_event_id) ||
-      typeof pin.cold_root !== "string" ||
-      !/^[0-9a-f]{64}$/.test(pin.cold_root) ||
-      typeof pin.accepted_head !== "string" ||
-      !/^[0-9a-f]{64}$/.test(pin.accepted_head) ||
-      pin.state !== "verified" ||
-      !isUnixTime(pin.observed_at) ||
-      pin.observed_at > now
-    ) return null;
-    authoritativePin = Object.freeze({
-      active_key: pin.active_key,
-      inception_event_id: pin.inception_event_id,
-      cold_root: pin.cold_root,
-      accepted_head: pin.accepted_head,
-      state: "verified",
-      observed_at: pin.observed_at,
-    }) as AssuranceEnrollmentAuthoritativePin;
-  }
-
-  const receiptValues = snapshotDenseArray(record.witness_receipts);
-  const contestValues = snapshotDenseArray(record.contests);
-  const competitorValues = snapshotDenseArray(record.competing_inceptions);
-  if (
-    receiptValues === null || contestValues === null || competitorValues === null
-  ) return null;
-
-  const witnessReceipts: EnrollmentObservationReceipt[] = [];
-  for (const receiptValue of receiptValues) {
-    const receipt = snapshotExactRecord(receiptValue, [
-      "profile",
-      "spec_version",
-      "inception_event_id",
-      "active_key",
-      "cold_root",
-      "first_observed_at",
-      "last_observed_at",
-      "conflict_free",
-      "witness_key",
-      "signature",
-    ]);
-    if (receipt === null || !validateObservationReceipt(receipt)) return null;
-    witnessReceipts.push(Object.freeze({ ...receipt }) as EnrollmentObservationReceipt);
-  }
-
-  const contests: AssuranceEnrollmentObservedContest[] = [];
-  for (const contestValue of contestValues) {
-    const contest = snapshotExactRecord(contestValue, ["observed_at", "event"]);
-    if (contest === null || !isUnixTime(contest.observed_at)) return null;
-    contests.push(Object.freeze({
-      observed_at: contest.observed_at as number,
-      event: contest.event as NostrSignedEvent,
-    }));
-  }
-
-  const competingInceptions: AssuranceEnrollmentObservedCompetitor[] = [];
-  for (const competitorValue of competitorValues) {
-    const competitor = snapshotExactRecord(competitorValue, [
-      "observed_at",
-      "inception",
-      "acceptance",
-    ]);
-    if (competitor === null || !isUnixTime(competitor.observed_at)) return null;
-    competingInceptions.push(Object.freeze({
-      observed_at: competitor.observed_at as number,
-      inception: competitor.inception as NostrSignedEvent,
-      acceptance: competitor.acceptance as NostrSignedEvent,
-    }));
-  }
-
-  return Object.freeze({
-    local_first_observed_at: localFirstObservedAt as number | null,
-    witness_receipts: Object.freeze(witnessReceipts) as unknown as EnrollmentObservationReceipt[],
-    contests: Object.freeze(contests) as unknown as AssuranceEnrollmentObservedContest[],
-    competing_inceptions: Object.freeze(competingInceptions) as unknown as AssuranceEnrollmentObservedCompetitor[],
-    authoritative_pin: authoritativePin,
-  });
-}
-
-function authoritativePinMatches(
-  pin: AssuranceEnrollmentAuthoritativePin,
-  enrollment: AssuranceHeadState,
-): boolean {
-  return pin.active_key === enrollment.active_key &&
-    pin.inception_event_id === enrollment.inception_event_id &&
-    pin.cold_root === enrollment.cold_root &&
-    pin.accepted_head === enrollment.head &&
-    pin.state === "verified";
-}
-
-function snapshotExactRecord(
-  value: unknown,
-  members: readonly string[],
-): Record<string, unknown> | null {
-  if (
-    value === null || typeof value !== "object" || Array.isArray(value) ||
-    utilTypes.isProxy(value)
-  ) return null;
-  try {
-    if (Object.getPrototypeOf(value) !== Object.prototype) return null;
-    const descriptors = Object.getOwnPropertyDescriptors(value);
-    const keys = Reflect.ownKeys(descriptors);
-    if (
-      keys.some((key) => typeof key !== "string") ||
-      keys.length !== members.length ||
-      !members.every((member) => Object.hasOwn(descriptors, member))
-    ) return null;
-    const snapshot: Record<string, unknown> = {};
-    for (const member of members) {
-      const descriptor = descriptors[member];
-      if (
-        descriptor === undefined || !("value" in descriptor) ||
-        descriptor.enumerable !== true
-      ) return null;
-      snapshot[member] = descriptor.value;
-    }
-    return snapshot;
-  } catch {
-    return null;
-  }
-}
-
-function snapshotDenseArray(value: unknown): unknown[] | null {
-  if (!Array.isArray(value) || utilTypes.isProxy(value)) return null;
-  try {
-    if (Object.getPrototypeOf(value) !== Array.prototype) return null;
-    const descriptors = Object.getOwnPropertyDescriptors(value) as unknown as
-      PropertyDescriptorMap;
-    const keys = Reflect.ownKeys(descriptors);
-    const lengthDescriptor = descriptors.length;
-    if (
-      keys.some((key) => typeof key !== "string") ||
-      lengthDescriptor === undefined || !("value" in lengthDescriptor) ||
-      !Number.isSafeInteger(lengthDescriptor.value) ||
-      (lengthDescriptor.value as number) < 0 ||
-      keys.length !== (lengthDescriptor.value as number) + 1
-    ) return null;
-    const snapshot: unknown[] = [];
-    for (let index = 0; index < lengthDescriptor.value; index += 1) {
-      const descriptor = descriptors[String(index)];
-      if (
-        descriptor === undefined || !("value" in descriptor) ||
-        descriptor.enumerable !== true
-      ) return null;
-      snapshot.push(descriptor.value);
-    }
-    return snapshot;
-  } catch {
-    return null;
-  }
-}
-
-function parseClosedContent<T>(
-  event: VerifiedNostrEvent,
-  kind: number,
-  validate: ValidateFunction,
-): T | null {
-  try {
-    if (event.kind !== kind) return null;
-    const value = JSON.parse(event.content) as unknown;
-    if (event.content !== jcsCanonicalize(value) || !validate(value)) return null;
-    return deepFreeze(value) as T;
-  } catch {
-    return null;
-  }
-}
-
-function enrollmentEligibility(
-  state: AssuranceEnrollmentEligibility["state"],
-  reason: AssuranceEnrollmentEligibility["reason"],
-  normalized: AssuranceHeadState,
-  warnings: AssuranceEnrollmentEligibility["warnings"],
-): AssuranceEnrollmentEligibility {
-  return { state, reason, warnings, normalized };
-}
-
-function isUnixTime(value: unknown): value is number {
-  return Number.isSafeInteger(value) && (value as number) >= 0;
-}
-
-function observationAuthorityInvalid(): Error {
-  return new Error("assurance-enrollment-observation-authority-invalid");
 }
 
 function parseRecord<T>(

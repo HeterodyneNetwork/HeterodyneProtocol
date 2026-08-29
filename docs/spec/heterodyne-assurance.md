@@ -69,15 +69,17 @@ predecessor event ID.
 
 The enrollment-contest content has its own smaller closed shape and exact
 outer binding in [§8](#assurance-enrollment-window). It carries no generic
-Heterodyne stamping tag. Enrollment observation receipts are signed portable
-objects rather than Nostr events and conform to
+Heterodyne stamping tag. Enrollment observation receipts are signed objects
+rather than Nostr events and conform to
 [`enrollment-observation-receipt-v1.schema.json`](schemas/assurance/enrollment-observation-receipt-v1.schema.json).
 Their BIP-340 signature covers the
 [`heterodyne:0.6.0#core-proof-bytes`](heterodyne-core.md#core-proof-bytes)
 bytes for domain `heterodyne-assurance-enrollment-observation-v1` and binds
-`active_key`, `cold_root`, `conflict_free`, `first_observed_at`,
+`active_key`, `accepted_head`, `cold_root`, `conflict_free`, `first_observed_at`,
 `inception_event_id`, `last_observed_at`, `profile`, `spec_version`, and
-`witness_key`; `signature` itself is excluded.
+`witness_key`; `signature` itself is excluded. The signed object is portable
+as an audit artifact, but its asserted times are not portable elapsed-time
+authority.
 
 The outer NIP-01 `pubkey` is always the key that actually signed the event.
 The `active_key`, `cold_root`, `issuer`, `subject_key`, and proof keys inside
@@ -343,25 +345,47 @@ subject key signs an event, that subject key is the author.
 <a id="assurance-enrollment-window"></a>
 A reciprocal enrollment is pin-eligible only after it has been observably
 public and conflict-free for `W = 604800` seconds. Either satisfies the
-window: the verifier's own durable conflict-free observation for that
-duration, or distinct configured witness receipts spanning at least that
-duration and satisfying the witness weights and threshold fixed by the
-inception. The window is observation-based; event `created_at` values and
-caller-supplied time or state MUST NOT satisfy it. A verifier evaluating an
-enrollment whose window has not elapsed returns `pending` with reason
+window: an observation authority's own durable conflict-free ingestion of the
+exact candidate for that duration, or qualifying witness receipt updates that
+the same authority ingested at least that duration apart. The authority is
+configured independently with a trusted monotonic clock, a stable local
+authority identifier, a witness-key/maximum-weight policy and local minimum
+threshold, and a durable compare-and-swap journal. Production journals MUST
+survive restart and serialize competing workers. They are keyed by the full
+`(active_key, inception_event_id, cold_root, accepted_head)` tuple.
+
+This chronology is intentionally nonportable. Event `created_at`, signed
+receipt times, public evidence, and caller-supplied callbacks or state are
+audit assertions only and MUST NOT supply an authoritative ingestion time or
+move one backward. Importing the same evidence into a second authority starts
+an independent local chronology there. A shared durable authority can serve
+multiple local clients, but a wire receipt by itself cannot fast-forward a new
+authority. A verifier evaluating an enrollment whose window has not elapsed
+returns `pending` with reason
 `assurance-enrollment-pending-window`; `pending` contributes no enhanced
 claim.
 
 A witness receipt contains exactly `profile`, `spec_version`,
-`inception_event_id`, `active_key`, `cold_root`, `first_observed_at`,
-`last_observed_at`, `conflict_free:true`, `witness_key`, and `signature`.
+`inception_event_id`, `active_key`, `cold_root`, `accepted_head`,
+`first_observed_at`, `last_observed_at`, `conflict_free:true`, `witness_key`,
+and `signature`.
 The witness key makes a BIP-340 signature over the
 `heterodyne-assurance-enrollment-observation-v1` domain-separated JCS digest
-of every member except `signature`. A receipt counts at most once, only at the
-weight configured for that exact witness by the inception, and only when its
-signature and repeated inception ID, active key, and cold root validate.
-Duplicate, unconfigured, forged, future, or too-short receipts contribute no
-weight.
+of every member except `signature`. All four repeated candidate identifiers
+MUST match the exact reciprocally verified pair. A witness key qualifies only
+when it occurs in both the inception and the authority's independent policy;
+its effective weight is at most the lesser configured weight. Both the
+inception threshold and the authority's local minimum MUST be satisfied with
+distinct witness keys.
+
+A witness key matures only after the authority ingests two distinct valid
+receipts for the exact tuple at least `W` trusted monotonic seconds apart. The
+second receipt MUST preserve `first_observed_at`, MUST NOT regress
+`last_observed_at`, MUST be non-future when ingested, and MUST cover the
+completed signed interval. Signed times remain audit-only: the authority's
+first and latest ingestion times establish elapsed time. Exact receipt replay
+is idempotent and cannot advance a witness. Duplicate, unconfigured, forged,
+wrong-head, nonmonotonic, future, or too-short updates contribute no weight.
 
 A client holding a persona's active key MUST alarm when it observes any
 enrollment for that key that it did not initiate, and MAY publish an absorbing
@@ -374,39 +398,43 @@ tag. Its author-controlled outer `created_at` does not establish when the
 contest was observed.
 
 A valid contest or a fully reciprocal competing inception and active-key
-acceptance durably observed during a verifier's candidate window makes that
-candidate permanently non-pin-eligible with reason
+acceptance durably ingested before the pin transaction makes that candidate
+permanently non-pin-eligible with reason
 `assurance-enrollment-contested`; the persona remains baseline. A bare
 cold-root-authored competing inception without reciprocal active-key
 acceptance cannot create a contest. A key thief can therefore deny Assurance
 but cannot gain recovery authority over the owner: denial is bounded harm,
 because a bare-key holder can already impersonate at baseline.
 
-Once a verifier has authoritatively pinned a candidate after a completed
-conflict-free window, that verified pin is absorbing against later contests
-and competing initial enrollments. Late evidence remains visible as a warning
-and audit fact but MUST NOT unpin or replace the established enrollment.
-Before honoring a matching pin, the verifier MUST authenticate the supplied
-contest and competitor evidence and evaluate its durable observation time.
-Evidence observed no later than any applicable candidate-window boundary,
-including the matching pin's authoritative `observed_at`, is timely and makes
-the candidate permanently `contested` even when that pin is supplied. Pin
-absorption applies only to evidence observed after every applicable boundary.
-Only the succession and dual-consent downgrade mechanisms defined below can
-change an established Assurance pin.
+Contest is an absorbing pre-pin journal state. Eligibility closure and pin
+creation MUST occur in one compare-and-swap against the unchanged journal
+revision. A racing conflict changes that revision, makes the close fail, and
+is evaluated before retry. `verified` MUST NOT be returned before the pin and
+its complete eligibility basis are durably committed.
+
+Once authoritatively committed, an exact verified pin is absorbing against
+later contests and competing initial enrollments. An evaluator first validates
+the retained pin and provenance, then authenticates and journals newly
+presented evidence at the authority's current ingestion time, and returns the
+retained `verified` state before constructing any new candidate window. Late
+authenticated conflicts remain visible as warnings and audit facts but MUST
+NOT unpin or replace the established enrollment. A nonmatching retained pin is
+`assurance-pin-conflict`. Only the succession and dual-consent downgrade
+mechanisms defined below can change an established Assurance pin.
 
 A client with no prior Assurance state MAY use trust on first use only after
-validating reciprocal enrollment and its completed window. It pins at least
-the active key,
-inception event ID, cold root, accepted head event ID, state, and observation
-time. At the eligibility boundary, an embedding supplies that authoritative
-pin as a closed local record containing exactly `active_key`,
-`inception_event_id`, `cold_root`, `accepted_head`, `state:"verified"`, and
-`observed_at`. The four identifiers MUST match the reciprocally validated
-candidate exactly, `state` MUST be `verified`, and `observed_at` MUST be an
-authoritative, non-future Unix time; matching only the inception event ID is
-insufficient. A stronger local trust source MAY replace TOFU before the first
-pin.
+validating reciprocal enrollment and its completed window. It pins the active
+key, inception event ID, cold root, accepted head event ID, state, authority
+identifier, and authoritative close time together with a closed
+`eligibility_basis`. That basis contains the exact tuple, closing journal
+revision, authority-owned start and close times, local-or-witness mode,
+qualifying receipt digests, witness-policy digest, empty closing conflict set,
+and a digest over the complete basis. The identifiers and basis MUST match the
+reciprocally validated candidate, retained journal evidence, and configured
+authority exactly. Backup or export MUST preserve the complete basis and
+referenced journal evidence; a digest or partial tuple without that provenance
+is not a valid pin. A stronger local trust source MAY replace TOFU before the
+first pin.
 
 Once pinned, state is advanced only by a valid descendant or explicit
 downgrade. Removing `identity_chain`, `cold_root`, or

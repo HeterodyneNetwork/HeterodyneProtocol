@@ -1056,6 +1056,7 @@ describe("Assurance record schemas", () => {
       inception_event_id: h("7"),
       active_key: assuranceInception.active_key,
       cold_root: assuranceInception.cold_root,
+      accepted_head: h("8"),
       first_observed_at: 1_784_000_000,
       last_observed_at: 1_784_604_800,
       conflict_free: true,

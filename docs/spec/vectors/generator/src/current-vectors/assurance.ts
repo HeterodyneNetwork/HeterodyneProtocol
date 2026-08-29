@@ -1,6 +1,7 @@
 import { schnorr } from "@noble/curves/secp256k1";
 import { sha256 } from "@noble/hashes/sha2";
-import { createAssuranceEnrollmentObservationAuthority, associatedKeyRecordDigest, evaluateAssuranceAuthorityAt, evaluateAssociatedKey, evaluateEnrollment, evaluateEnrollmentEligibility, evaluateSuccession, successionTransitionDigest, type AssociatedKeyRecord, type AssociatedKeyState, type AssuranceEnrollmentObservationEvidence, type AssuranceHeadState, type EnrollmentInception, type EnrollmentObservationReceipt, type SuccessionRecord, } from "../assurance.js";
+import { associatedKeyRecordDigest, evaluateAssuranceAuthorityAt, evaluateAssociatedKey, evaluateEnrollment, evaluateSuccession, successionTransitionDigest, type AssociatedKeyRecord, type AssociatedKeyState, type AssuranceHeadState, type EnrollmentInception, type EnrollmentObservationReceipt, type SuccessionRecord, } from "../assurance.js";
+import type { EnrollmentEvidenceInput } from "../assurance-observation.js";
 import { evaluateAssuranceAssociatedKeyConsent, evaluateAssuranceCompromiseContinuation, evaluateAssuranceExport, evaluateAssurancePinPolicy, } from "../assurance-policy.js";
 import { domainSeparatedJcsDigest } from "../credential-continuity.js";
 import { QUALIFIED_VERSION } from "../family.js";
@@ -95,39 +96,13 @@ async function enrolledPersona(options: {
     const acceptance = await assuranceEvent(ACTIVE_SECRET, 31000, "assurance-head", acceptanceBody.profile, acceptanceBody);
     return { inception, acceptance, inceptionBody, acceptanceBody };
 }
-function baseEvidence(overrides: Partial<AssuranceEnrollmentObservationEvidence> = {}): AssuranceEnrollmentObservationEvidence {
+function baseEvidence(overrides: Partial<EnrollmentEvidenceInput> = {}): EnrollmentEvidenceInput {
     return {
-        local_first_observed_at: OBSERVATION_NOW - WINDOW,
         witness_receipts: [],
         contests: [],
-        competing_inceptions: [],
-        authoritative_pin: null,
+        competing_enrollments: [],
         ...overrides,
     };
-}
-async function evaluate(pair: Awaited<ReturnType<typeof enrolledPersona>>, evidence: AssuranceEnrollmentObservationEvidence): Promise<Awaited<ReturnType<typeof evaluateEnrollmentEligibility>>> {
-    return evaluateEnrollmentEligibility(createAssuranceEnrollmentObservationAuthority({
-        trusted_now: () => OBSERVATION_NOW,
-        load_evidence: async () => evidence,
-    }), pair);
-}
-function output(result: Awaited<ReturnType<typeof evaluate>>): Record<string, unknown> {
-    if ("verdict" in result)
-        return result;
-    return result.reason === null
-        ? {
-            verdict: "accept",
-            state: result.state,
-            warnings: result.warnings,
-            assurance_head: result.normalized.head,
-        }
-        : {
-            verdict: "reject",
-            reason_code: result.reason,
-            state: result.state,
-            warnings: result.warnings,
-            assurance_head: result.normalized.head,
-        };
 }
 async function enrollmentContest(pair: Awaited<ReturnType<typeof enrolledPersona>>, signingSecret = ACTIVE_SECRET): Promise<NostrSignedEvent> {
     const body = {
@@ -152,21 +127,40 @@ async function competingEnrollment() {
         acceptance: pair.acceptance,
     };
 }
-function receipt(pair: Awaited<ReturnType<typeof enrolledPersona>>, signingSecret: string): EnrollmentObservationReceipt {
+function receipt(pair: Awaited<ReturnType<typeof enrolledPersona>>, signingSecret: string, firstObservedAt = 1, lastObservedAt = OBSERVATION_NOW): EnrollmentObservationReceipt {
     const unsigned = {
         profile: "heterodyne.assurance.enrollment-observation-receipt.v1" as const,
         spec_version: QUALIFIED_VERSION as EnrollmentObservationReceipt["spec_version"],
         inception_event_id: pair.inception.id,
         active_key: ACTIVE_KEY,
         cold_root: COLD_KEY,
-        first_observed_at: OBSERVATION_NOW - WINDOW,
-        last_observed_at: OBSERVATION_NOW,
+        accepted_head: pair.acceptance.id,
+        first_observed_at: firstObservedAt,
+        last_observed_at: lastObservedAt,
         conflict_free: true as const,
         witness_key: getPublicKey(signingSecret),
     };
     return {
         ...unsigned,
         signature: proof(signingSecret, domainSeparatedJcsDigest("heterodyne-assurance-enrollment-observation-v1", unsigned)),
+    };
+}
+function observationInput(
+    pair: Awaited<ReturnType<typeof enrolledPersona>>,
+    steps: ReadonlyArray<Readonly<{ at: number; evidence: EnrollmentEvidenceInput }>>,
+    witnesses: ReadonlyArray<readonly [string, number]> = [[WITNESS_KEY, 1], [SECOND_WITNESS_KEY, 1]],
+    minimumWeight = 1,
+): Readonly<Record<string, unknown>> {
+    return {
+        inception: pair.inception,
+        acceptance: pair.acceptance,
+        authority_id: "current-vector-assurance-observer",
+        witness_policy: {
+            policy_digest: "11".repeat(32),
+            minimum_weight: minimumWeight,
+            witnesses,
+        },
+        steps,
     };
 }
 function acceptedHead(pair: Awaited<ReturnType<typeof enrolledPersona>>): AssuranceHeadState {
@@ -282,13 +276,10 @@ export async function buildAssuranceProfileBoundaryFixtures(): Promise<Readonly<
             acceptance: pair.acceptance,
         },
         contest: {
-            inception: pair.inception,
-            acceptance: pair.acceptance,
-            trusted_now: OBSERVATION_NOW,
-            evidence: baseEvidence({
-                local_first_observed_at: firstObserved,
-                contests: [{ observed_at: firstObserved + 1, event: forgedContest }],
-            }),
+            ...observationInput(pair, [
+                { at: firstObserved, evidence: baseEvidence() },
+                { at: OBSERVATION_NOW, evidence: baseEvidence({ contests: [forgedContest] }) },
+            ]),
         },
         succession: {
             current,
@@ -308,50 +299,12 @@ export async function buildAssuranceCases(): Promise<CurrentCaseFixture[]> {
     const contest = await enrollmentContest(pair);
     const competitor = await competingEnrollment();
     const forgedContest = await enrollmentContest(pair, WRONG_SECRET);
-    const pendingEvidence = baseEvidence({ local_first_observed_at: firstObserved + 1 });
-    const verifiedEvidence = baseEvidence({ local_first_observed_at: firstObserved });
-    const contestEvidence = baseEvidence({
-        contests: [{ observed_at: firstObserved + 1, event: contest }],
-    });
-    const competitorEvidence = baseEvidence({
-        competing_inceptions: [{
-                observed_at: firstObserved + 1,
-                inception: competitor.inception,
-                acceptance: competitor.acceptance,
-            }],
-    });
-    const forgedEvidence = baseEvidence({
-        contests: [{ observed_at: firstObserved + 1, event: forgedContest }],
-    });
-    const lateEvidence = baseEvidence({
-        local_first_observed_at: firstObserved - WINDOW,
-        contests: [{ observed_at: firstObserved + 1, event: contest }],
-        authoritative_pin: {
-            active_key: ACTIVE_KEY,
-            inception_event_id: pair.inception.id,
-            cold_root: COLD_KEY,
-            accepted_head: pair.acceptance.id,
-            state: "verified",
-            observed_at: firstObserved,
-        },
-    });
     const witnessPair = await enrolledPersona({
         witnesses: [
             { key: WITNESS_KEY, weight: 1 },
             { key: SECOND_WITNESS_KEY, weight: 1 },
         ],
         witnessThreshold: 2,
-    });
-    const witnessPassEvidence = baseEvidence({
-        local_first_observed_at: null,
-        witness_receipts: [
-            receipt(witnessPair, WITNESS_SECRET),
-            receipt(witnessPair, SECOND_WITNESS_SECRET),
-        ],
-    });
-    const witnessFailEvidence = baseEvidence({
-        local_first_observed_at: null,
-        witness_receipts: [receipt(witnessPair, WITNESS_SECRET)],
     });
     const ids = [
         "enrollment-pending-w-minus-one",
@@ -363,15 +316,56 @@ export async function buildAssuranceCases(): Promise<CurrentCaseFixture[]> {
         "witness-threshold-pass",
         "witness-threshold-fail",
     ] as const;
-    const evidences = [
-        pendingEvidence,
-        verifiedEvidence,
-        contestEvidence,
-        competitorEvidence,
-        forgedEvidence,
-        lateEvidence,
-        witnessPassEvidence,
-        witnessFailEvidence,
+    const inputs = [
+        observationInput(pair, [
+            { at: firstObserved + 1, evidence: baseEvidence() },
+            { at: OBSERVATION_NOW, evidence: baseEvidence() },
+        ]),
+        observationInput(pair, [
+            { at: firstObserved, evidence: baseEvidence() },
+            { at: OBSERVATION_NOW, evidence: baseEvidence() },
+        ]),
+        observationInput(pair, [
+            { at: firstObserved, evidence: baseEvidence() },
+            { at: OBSERVATION_NOW, evidence: baseEvidence({ contests: [contest] }) },
+        ]),
+        observationInput(pair, [
+            { at: firstObserved, evidence: baseEvidence() },
+            { at: OBSERVATION_NOW, evidence: baseEvidence({
+                competing_enrollments: [competitor],
+            }) },
+        ]),
+        observationInput(pair, [
+            { at: firstObserved, evidence: baseEvidence() },
+            { at: OBSERVATION_NOW, evidence: baseEvidence({ contests: [forgedContest] }) },
+        ]),
+        observationInput(pair, [
+            { at: firstObserved - WINDOW, evidence: baseEvidence() },
+            { at: firstObserved, evidence: baseEvidence() },
+            { at: OBSERVATION_NOW, evidence: baseEvidence({ contests: [contest] }) },
+        ]),
+        observationInput(witnessPair, [
+            { at: firstObserved, evidence: baseEvidence({
+                witness_receipts: [
+                    receipt(witnessPair, WITNESS_SECRET, 1, firstObserved),
+                    receipt(witnessPair, SECOND_WITNESS_SECRET, 1, firstObserved),
+                ],
+            }) },
+            { at: OBSERVATION_NOW, evidence: baseEvidence({
+                witness_receipts: [
+                    receipt(witnessPair, WITNESS_SECRET, 1, OBSERVATION_NOW),
+                    receipt(witnessPair, SECOND_WITNESS_SECRET, 1, OBSERVATION_NOW),
+                ],
+            }) },
+        ], [[WITNESS_KEY, 1], [SECOND_WITNESS_KEY, 1]], 2),
+        observationInput(witnessPair, [
+            { at: firstObserved + 1, evidence: baseEvidence({
+                witness_receipts: [receipt(witnessPair, WITNESS_SECRET, 1, firstObserved + 1)],
+            }) },
+            { at: OBSERVATION_NOW, evidence: baseEvidence({
+                witness_receipts: [receipt(witnessPair, WITNESS_SECRET, 1, firstObserved + 1)],
+            }) },
+        ], [[WITNESS_KEY, 1], [SECOND_WITNESS_KEY, 1]], 2),
     ];
     const descriptions = [
         "Enrollment remains pending one second before the local observation window matures.",
@@ -388,12 +382,7 @@ export async function buildAssuranceCases(): Promise<CurrentCaseFixture[]> {
             vector_id: `assurance/${id}`,
             description: descriptions[index],
             direction: "consume" as const,
-            input: {
-                inception: index >= 6 ? witnessPair.inception : pair.inception,
-                acceptance: index >= 6 ? witnessPair.acceptance : pair.acceptance,
-                trusted_now: OBSERVATION_NOW,
-                evidence: evidences[index],
-            }
+            input: inputs[index]!
         };
     });
     const current = acceptedHead(pair);

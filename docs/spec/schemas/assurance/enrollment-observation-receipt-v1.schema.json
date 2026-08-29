@@ -10,6 +10,7 @@
     "inception_event_id",
     "active_key",
     "cold_root",
+    "accepted_head",
     "first_observed_at",
     "last_observed_at",
     "conflict_free",
@@ -30,6 +31,9 @@
       "$ref": "#/definitions/hex32"
     },
     "cold_root": {
+      "$ref": "#/definitions/hex32"
+    },
+    "accepted_head": {
       "$ref": "#/definitions/hex32"
     },
     "first_observed_at": {

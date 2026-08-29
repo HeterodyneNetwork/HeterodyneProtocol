@@ -1,6 +1,7 @@
 import * as agentAuthorship from "../agent-authorship.js";
 import * as agentModeration from "../agent-moderation.js";
 import * as assurance from "../assurance.js";
+import * as assuranceObservation from "../assurance-observation.js";
 import * as assurancePolicy from "../assurance-policy.js";
 import * as authorizationFreshness from "../authorization-freshness.js";
 import * as backupCrypto from "../backup-crypto.js";
@@ -47,6 +48,7 @@ const BOUNDARY_MODULES: Readonly<Record<string, BoundaryModule>> = Object.freeze
   "agent-authorship": agentAuthorship,
   "agent-moderation": agentModeration,
   assurance,
+  "assurance-observation": assuranceObservation,
   "assurance-policy": assurancePolicy,
   "authorization-freshness": authorizationFreshness,
   "backup-crypto": backupCrypto,
@@ -231,21 +233,54 @@ async function executeCurrentBoundary(
         : { verdict: "reject", reason_code: raw.failure },
     };
   }
-  if (boundaryId === "assurance.evaluateEnrollmentEligibility") {
+  if (boundaryId === "assurance-observation.evaluateEnrollmentEligibility") {
     const input = fixture.input as {
       inception: Parameters<typeof assurance.evaluateEnrollment>[0]["inception"];
       acceptance: Parameters<typeof assurance.evaluateEnrollment>[0]["acceptance"];
-      trusted_now: number;
-      evidence: assurance.AssuranceEnrollmentObservationEvidence;
+      authority_id: string;
+      witness_policy: {
+        policy_digest: string;
+        minimum_weight: number;
+        witnesses: Array<[string, number]>;
+      };
+      steps: Array<{
+        at: number;
+        evidence: assuranceObservation.EnrollmentEvidenceInput;
+      }>;
     };
-    const authority = assurance.createAssuranceEnrollmentObservationAuthority({
-      trusted_now: () => input.trusted_now,
-      load_evidence: async () => input.evidence,
+    const entries = new Map<string, assuranceObservation.EnrollmentObservationJournalEntry>();
+    let trustedNow = input.steps[0]?.at ?? 0;
+    const authority = assuranceObservation.createAssuranceEnrollmentObservationAuthority({
+      authority_id: input.authority_id,
+      trusted_now: () => trustedNow,
+      witness_policy: {
+        policy_digest: input.witness_policy.policy_digest,
+        minimum_weight: input.witness_policy.minimum_weight,
+        witnesses: new Map(input.witness_policy.witnesses),
+      },
+      journal: {
+        load: (key) => entries.get(key) ?? null,
+        compareAndSwap(key, expectedRevision, next) {
+          if ((entries.get(key)?.revision ?? null) !== expectedRevision) {
+            return "conflict";
+          }
+          entries.set(key, next);
+          return "committed";
+        },
+      },
     });
-    const raw = await assurance.evaluateEnrollmentEligibility(authority, {
-      inception: input.inception,
-      acceptance: input.acceptance,
-    });
+    let raw: Awaited<ReturnType<typeof assuranceObservation.evaluateEnrollmentEligibility>> = {
+      verdict: "reject",
+      reason_code: "assurance-enrollment-pending-window",
+    };
+    for (const step of input.steps) {
+      trustedNow = step.at;
+      raw = await assuranceObservation.evaluateEnrollmentEligibility(authority, {
+        inception: input.inception,
+        acceptance: input.acceptance,
+        evidence: step.evidence,
+      });
+    }
     const projected = "verdict" in raw
       ? raw
       : raw.reason === null
