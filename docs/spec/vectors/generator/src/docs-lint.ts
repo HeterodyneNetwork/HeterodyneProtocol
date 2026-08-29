@@ -140,8 +140,21 @@ const DEFENSIVE_VALIDATION_TARGET_PATTERNS = [
   /\bexternal\s+systems?\b/giu,
   /\b(?:reusable|functional|deployable)\s+(?:exploit|payload)s?(?:\s+directions?)?\b/giu,
 ] as const;
-const DEFENSIVE_VALIDATION_PROHIBITION =
-  /\b(?:no|without|never|prohibited|forbidden|disallowed?|must\s+not|shall\s+not|do\s+not|don't|cannot|can't|avoid|excluded?|excluding|prohibited?)\b\s*[,:-]?[^.;:!?\n]{0,192}$/iu;
+const DEFENSIVE_VALIDATION_DIRECT_PROHIBITION_BEFORE =
+  /\b(?:no|without|never)\s+(?:(?:any|a|an|the)\s+)?$|\b(?:must|shall|do)\s+not\s+(?:(?:use|contact|target|access|exercise|interact\s+with|test|create|produce|generate|deliver|send|run|deploy|connect)\s+)?(?:(?:any|a|an|the)\s+)?$|\b(?:avoid|exclude|excluding|excluded?|prohibit(?:s|ed)?|forbid(?:s|den)?)\s*$/iu;
+const DEFENSIVE_VALIDATION_DIRECT_PROHIBITION_AFTER =
+  /^\s*(?:(?:is|are|was|were|must|shall)\s+)?(?:prohibited|forbidden|disallowed|excluded|not\s+(?:allowed|permitted)|must\s+not\s+be\s+used)\b/iu;
+
+const APPROVED_CLOSURE_PLAN_PATH =
+  "docs/superpowers/plans/2026-08-29-heterodyne-0.6-final-security-closure.md";
+const CREATED_CLOSURE_TEST_PATHS = [
+  "docs/spec/vectors/generator/src/assurance-observation.test.ts",
+  "docs/spec/vectors/generator/src/assurance-downgrade.test.ts",
+  "docs/spec/vectors/generator/src/core-writer-binding.test.ts",
+  "docs/spec/vectors/generator/src/claim-authorization.test.ts",
+  "docs/spec/vectors/generator/src/current-vectors/semantic-certificates.test.ts",
+] as const;
+const DEFENSIVE_REVIEW_PATH = /(?:\.test\.ts|(?:brief|review)\.(?:md|txt))$/iu;
 
 /** Check new hostile-boundary test or brief prose for defensive framing. */
 export function lintDefensiveValidationText(
@@ -163,9 +176,12 @@ export function lintDefensiveValidationText(
   if (hostile) {
     for (const pattern of DEFENSIVE_VALIDATION_TARGET_PATTERNS) {
       for (const match of text.matchAll(pattern)) {
-        const prefix = text.slice(0, match.index);
-        const sentencePrefix = prefix.slice(prefix.lastIndexOf("\n") + 1);
-        if (DEFENSIVE_VALIDATION_PROHIBITION.test(sentencePrefix)) continue;
+        const matchStart = match.index;
+        const matchEnd = matchStart + match[0].length;
+        const before = text.slice(Math.max(0, matchStart - 96), matchStart);
+        const after = text.slice(matchEnd, matchEnd + 96);
+        if (DEFENSIVE_VALIDATION_DIRECT_PROHIBITION_BEFORE.test(before)
+          || DEFENSIVE_VALIDATION_DIRECT_PROHIBITION_AFTER.test(after)) continue;
         issues.push({
           path,
           line: 1,
@@ -175,6 +191,28 @@ export function lintDefensiveValidationText(
         return issues;
       }
     }
+  }
+  return issues;
+}
+
+function lintDefensiveValidationReviews(
+  repoRoot: string,
+  contentOverrides: Readonly<Record<string, string>> = {},
+): DocsLintIssue[] {
+  const paths = [APPROVED_CLOSURE_PLAN_PATH, ...CREATED_CLOSURE_TEST_PATHS];
+  const issues: DocsLintIssue[] = [];
+  for (const path of paths) {
+    const text = contentOverrides[path]
+      ?? (existsSync(resolve(repoRoot, path))
+        ? readFileSync(resolve(repoRoot, path), "utf8")
+        : undefined);
+    if (text !== undefined) issues.push(...lintDefensiveValidationText(text, path));
+  }
+  for (const [path, text] of Object.entries(contentOverrides)) {
+    if (paths.includes(path as (typeof paths)[number]) || !DEFENSIVE_REVIEW_PATH.test(path)) {
+      continue;
+    }
+    issues.push(...lintDefensiveValidationText(text, path));
   }
   return issues;
 }
@@ -740,6 +778,7 @@ function normativeParagraphLines(lines: readonly string[]): Set<number> {
 export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
   const documents = loadFamilyDocuments(repoRoot);
   const issues: FamilyDocIssue[] = [];
+  issues.push(...lintDefensiveValidationReviews(repoRoot));
   const anchors = new Map<string, { path: string; line: number }>();
   const documentAnchors = new Set(
     [...anchorInventory(documents)].flatMap(([document, documentValues]) =>
@@ -1169,15 +1208,7 @@ export function lintMaintainedGuides(
       contentOverrides[path] ?? readFileSync(resolve(repoRoot, path), "utf8"),
     ]),
   );
-  // Boundary tests and task briefs are review inputs, not maintained guides.
-  // Every such override is mandatory input to the defensive-validation lint;
-  // ordinary historical-guide overrides stay on their existing lint path.
-  const defensiveReviewPath = /(?:\.test\.ts|(?:brief|review)\.(?:md|txt))$/iu;
-  for (const [path, text] of Object.entries(contentOverrides)) {
-    if (defensiveReviewPath.test(path)) {
-      issues.push(...lintDefensiveValidationText(text, path));
-    }
-  }
+  issues.push(...lintDefensiveValidationReviews(repoRoot, contentOverrides));
   const corpusBytes = [...contents.values()].reduce(
     (total, text) => total + Buffer.byteLength(text, "utf8"),
     0,

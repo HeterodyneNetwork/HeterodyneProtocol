@@ -124,9 +124,17 @@ describe("canonical family documentation", () => {
     expect(issues.map(({ code }) => code)).toContain("defensive-validation-target");
   });
 
+  it("rejects an earlier prohibition that does not govern a later live target", () => {
+    const issues = lintDefensiveValidationText(
+      "BLUE TEAM VALIDATION: synthetic/local hostile case makes no state change, then attacks a live relay",
+      "synthetic-boundary.test.ts",
+    );
+    expect(issues.map(({ code }) => code)).toContain("defensive-validation-target");
+  });
+
   it("allows explicit prohibition of live targets and reusable payloads", () => {
     expect(lintDefensiveValidationText(
-      "BLUE TEAM VALIDATION: synthetic/local hostile accessor mutation; no live targets, production deployments/services/relays, real credentials/accounts, external systems, or reusable exploit/payload directions",
+      "BLUE TEAM VALIDATION: synthetic/local hostile accessor mutation; no live targets; production deployments are prohibited; production services are prohibited; production relays are prohibited; real credentials are prohibited; real accounts are prohibited; external systems are prohibited; reusable exploit directions are prohibited; reusable payload directions are prohibited",
       "synthetic-boundary.test.ts",
     )).toEqual([]);
   });
@@ -137,6 +145,35 @@ describe("canonical family documentation", () => {
         "BLUE TEAM VALIDATION: synthetic/local hostile accessor mutation reaches a live relay",
     });
     expect(issues.map(({ code }) => code)).toContain("defensive-validation-target");
+  });
+
+  it("enforces the tracked closure plan through the normal family lint gate", () => {
+    const root = currentVersionLintRoot();
+    const planPath = resolve(
+      root,
+      "docs/superpowers/plans/2026-08-29-heterodyne-0.6-final-security-closure.md",
+    );
+    mkdirSync(resolve(root, "docs/superpowers/plans"), { recursive: true });
+    writeFileSync(
+      planPath,
+      `${read("docs/superpowers/plans/2026-08-29-heterodyne-0.6-final-security-closure.md")}
+BLUE TEAM VALIDATION: synthetic/local hostile case uses a live relay
+`,
+    );
+    expect(lintFamilyDocs(root).map(({ code }) => code))
+      .toContain("defensive-validation-target");
+  });
+
+  it("enforces each present Task-2-to-10 boundary test through family lint", () => {
+    const root = currentVersionLintRoot();
+    const path = "docs/spec/vectors/generator/src/assurance-observation.test.ts";
+    mkdirSync(resolve(root, "docs/spec/vectors/generator/src"), { recursive: true });
+    writeFileSync(
+      resolve(root, path),
+      "BLUE TEAM VALIDATION: synthetic/local hostile case uses a live relay\n",
+    );
+    expect(lintFamilyDocs(root).map(({ code }) => code))
+      .toContain("defensive-validation-target");
   });
 
   it("passes layering and anchor lint", () => {
