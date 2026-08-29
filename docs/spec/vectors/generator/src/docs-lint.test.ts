@@ -102,6 +102,43 @@ describe("canonical family documentation", () => {
     )).toEqual([]);
   });
 
+  it("rejects a marker without a synthetic or local fixture qualifier", () => {
+    expect(lintDefensiveValidationText(
+      "BLUE TEAM VALIDATION: hostile accessor mutation must fail closed",
+      "synthetic-boundary.test.ts",
+    ).map(({ code }) => code)).toContain("defensive-validation-scope");
+  });
+
+  it("rejects a synthetic or local fixture without the validation marker", () => {
+    expect(lintDefensiveValidationText(
+      "synthetic/local hostile accessor mutation must fail closed",
+      "synthetic-boundary.test.ts",
+    ).map(({ code }) => code)).toContain("defensive-validation-scope");
+  });
+
+  it("rejects hostile validation directed at live targets or reusable payloads", () => {
+    const issues = lintDefensiveValidationText(
+      "BLUE TEAM VALIDATION: synthetic/local hostile accessor mutation uses a live relay and real credentials to deliver reusable exploit directions",
+      "synthetic-boundary.test.ts",
+    );
+    expect(issues.map(({ code }) => code)).toContain("defensive-validation-target");
+  });
+
+  it("allows explicit prohibition of live targets and reusable payloads", () => {
+    expect(lintDefensiveValidationText(
+      "BLUE TEAM VALIDATION: synthetic/local hostile accessor mutation; no live targets, production deployments/services/relays, real credentials/accounts, external systems, or reusable exploit/payload directions",
+      "synthetic-boundary.test.ts",
+    )).toEqual([]);
+  });
+
+  it("enforces defensive validation through the maintained-guide review path", () => {
+    const issues = lintMaintainedGuides(repositoryRoot, {
+      "synthetic-boundary.test.ts":
+        "BLUE TEAM VALIDATION: synthetic/local hostile accessor mutation reaches a live relay",
+    });
+    expect(issues.map(({ code }) => code)).toContain("defensive-validation-target");
+  });
+
   it("passes layering and anchor lint", () => {
     expect(lintFamilyDocs(repositoryRoot)).toEqual([]);
   });

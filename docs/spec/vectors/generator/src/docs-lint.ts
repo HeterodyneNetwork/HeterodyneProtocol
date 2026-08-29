@@ -57,7 +57,8 @@ export type FamilyDocIssue = {
     | "stale-family-version"
     | "markdown-resource-limit"
     | "profile-revision-registry-context-missing"
-    | "defensive-validation-scope";
+    | "defensive-validation-scope"
+    | "defensive-validation-target";
   message: string;
 };
 
@@ -131,11 +132,18 @@ const RETIRED_MAINTAINED_GUIDE_PATTERNS = [
   /recheck the named family release/i,
 ];
 
-/**
- * Check new hostile-boundary test or brief prose for the required defensive
- * validation framing. This deliberately remains a literal, narrow helper;
- * callers decide which new prose requires this check.
- */
+const DEFENSIVE_VALIDATION_TARGET_PATTERNS = [
+  /\blive[-\s]+targets?\b/giu,
+  /\blive\s+(?:relay|node|service|deployment)s?\b/giu,
+  /\bproduction\s+(?:deployment|service|relay|node|system)s?\b/giu,
+  /\breal\s+(?:credential|account)s?\b/giu,
+  /\bexternal\s+systems?\b/giu,
+  /\b(?:reusable|functional|deployable)\s+(?:exploit|payload)s?(?:\s+directions?)?\b/giu,
+] as const;
+const DEFENSIVE_VALIDATION_PROHIBITION =
+  /\b(?:no|without|never|prohibited|forbidden|disallowed?|must\s+not|shall\s+not|do\s+not|don't|cannot|can't|avoid|excluded?|excluding|prohibited?)\b\s*[,:-]?[^.;:!?\n]{0,192}$/iu;
+
+/** Check new hostile-boundary test or brief prose for defensive framing. */
 export function lintDefensiveValidationText(
   text: string,
   path: string,
@@ -143,12 +151,32 @@ export function lintDefensiveValidationText(
   const hostile = /\b(hostile|adversarial|attacker|attack)\b/iu.test(text);
   const defensive = /\bBLUE TEAM VALIDATION\b/u.test(text)
     && /\b(synthetic|local)\b/iu.test(text);
-  return hostile && !defensive ? [{
-    path,
-    line: 1,
-    code: "defensive-validation-scope",
-    message: "hostile-boundary validation must be framed as synthetic/local BLUE TEAM VALIDATION",
-  }] : [];
+  const issues: DocsLintIssue[] = [];
+  if (hostile && !defensive) {
+    issues.push({
+      path,
+      line: 1,
+      code: "defensive-validation-scope",
+      message: "hostile-boundary validation must be framed as synthetic/local BLUE TEAM VALIDATION",
+    });
+  }
+  if (hostile) {
+    for (const pattern of DEFENSIVE_VALIDATION_TARGET_PATTERNS) {
+      for (const match of text.matchAll(pattern)) {
+        const prefix = text.slice(0, match.index);
+        const sentencePrefix = prefix.slice(prefix.lastIndexOf("\n") + 1);
+        if (DEFENSIVE_VALIDATION_PROHIBITION.test(sentencePrefix)) continue;
+        issues.push({
+          path,
+          line: 1,
+          code: "defensive-validation-target",
+          message: "hostile-boundary validation must prohibit live targets, real credentials, external systems, and reusable payload directions",
+        });
+        return issues;
+      }
+    }
+  }
+  return issues;
 }
 
 // These patterns target affirmative live guidance, not historical or explicit
@@ -1141,6 +1169,15 @@ export function lintMaintainedGuides(
       contentOverrides[path] ?? readFileSync(resolve(repoRoot, path), "utf8"),
     ]),
   );
+  // Boundary tests and task briefs are review inputs, not maintained guides.
+  // Every such override is mandatory input to the defensive-validation lint;
+  // ordinary historical-guide overrides stay on their existing lint path.
+  const defensiveReviewPath = /(?:\.test\.ts|(?:brief|review)\.(?:md|txt))$/iu;
+  for (const [path, text] of Object.entries(contentOverrides)) {
+    if (defensiveReviewPath.test(path)) {
+      issues.push(...lintDefensiveValidationText(text, path));
+    }
+  }
   const corpusBytes = [...contents.values()].reduce(
     (total, text) => total + Buffer.byteLength(text, "utf8"),
     0,
