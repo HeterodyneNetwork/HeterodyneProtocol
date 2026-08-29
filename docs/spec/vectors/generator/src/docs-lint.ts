@@ -56,9 +56,12 @@ export type FamilyDocIssue = {
     | "retired-authoring-model"
     | "stale-family-version"
     | "markdown-resource-limit"
-    | "profile-revision-registry-context-missing";
+    | "profile-revision-registry-context-missing"
+    | "defensive-validation-scope";
   message: string;
 };
+
+export type DocsLintIssue = FamilyDocIssue;
 
 type FamilyDocument = {
   document: DocumentId;
@@ -127,6 +130,26 @@ const RETIRED_MAINTAINED_GUIDE_PATTERNS = [
   /generator-owned\s+protocol\s+inputs:\s+live\s+normative\s+machine-readable\s+artifacts/i,
   /recheck the named family release/i,
 ];
+
+/**
+ * Check new hostile-boundary test or brief prose for the required defensive
+ * validation framing. This deliberately remains a literal, narrow helper;
+ * callers decide which new prose requires this check.
+ */
+export function lintDefensiveValidationText(
+  text: string,
+  path: string,
+): DocsLintIssue[] {
+  const hostile = /\b(hostile|adversarial|attacker|attack)\b/iu.test(text);
+  const defensive = /\bBLUE TEAM VALIDATION\b/u.test(text)
+    && /\b(synthetic|local)\b/iu.test(text);
+  return hostile && !defensive ? [{
+    path,
+    line: 1,
+    code: "defensive-validation-scope",
+    message: "hostile-boundary validation must be framed as synthetic/local BLUE TEAM VALIDATION",
+  }] : [];
+}
 
 // These patterns target affirmative live guidance, not historical or explicit
 // retirement/optionality statements. Whitespace is intentionally flexible so

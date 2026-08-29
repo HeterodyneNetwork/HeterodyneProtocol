@@ -15,6 +15,7 @@ import {
   findInvariantEvidenceIssues,
   findRetiredNormativeClaimIssues,
   findStrictProfileClosureIssues,
+  lintDefensiveValidationText,
   lintFamilyDocs,
   lintMaintainedGuides,
 } from "./docs-lint.js";
@@ -82,6 +83,25 @@ afterEach(() => {
 });
 
 describe("canonical family documentation", () => {
+  it("keeps ADR-048 Proposed until exact repaired-candidate reviews pass", () => {
+    expect(existsSync(resolve(repositoryRoot, "docs/adr/2026-08-26-048-security-review-remediation.md"))).toBe(true);
+    expect(existsSync(resolve(repositoryRoot, "docs/adr/archive/2026-08-26-048-security-review-remediation.md"))).toBe(false);
+    expect(read("docs/adr/2026-08-26-048-security-review-remediation.md"))
+      .toMatch(/\*\*Status:\*\* Proposed/);
+  });
+
+  it("requires hostile-boundary fixtures to declare BLUE TEAM VALIDATION", () => {
+    const issues = lintDefensiveValidationText(
+      "hostile accessor mutation reaches the authority boundary",
+      "synthetic-boundary.test.ts",
+    );
+    expect(issues.map(({ code }) => code)).toContain("defensive-validation-scope");
+    expect(lintDefensiveValidationText(
+      "BLUE TEAM VALIDATION: synthetic/local accessor mutation must fail closed",
+      "synthetic-boundary.test.ts",
+    )).toEqual([]);
+  });
+
   it("passes layering and anchor lint", () => {
     expect(lintFamilyDocs(repositoryRoot)).toEqual([]);
   });
