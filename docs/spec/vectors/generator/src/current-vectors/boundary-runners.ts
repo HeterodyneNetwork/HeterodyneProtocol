@@ -238,6 +238,7 @@ async function executeCurrentBoundary(
       inception: Parameters<typeof assurance.evaluateEnrollment>[0]["inception"];
       acceptance: Parameters<typeof assurance.evaluateEnrollment>[0]["acceptance"];
       authority_id: string;
+      journal_integrity_key: string;
       witness_policy: {
         policy_digest: string;
         minimum_weight: number;
@@ -252,6 +253,7 @@ async function executeCurrentBoundary(
     let trustedNow = input.steps[0]?.at ?? 0;
     const authority = assuranceObservation.createAssuranceEnrollmentObservationAuthority({
       authority_id: input.authority_id,
+      journal_integrity_key: input.journal_integrity_key,
       trusted_now: () => trustedNow,
       witness_policy: {
         policy_digest: input.witness_policy.policy_digest,

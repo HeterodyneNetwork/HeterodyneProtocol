@@ -1,7 +1,7 @@
 import { schnorr } from "@noble/curves/secp256k1";
 import { sha256 } from "@noble/hashes/sha2";
 import { associatedKeyRecordDigest, evaluateAssuranceAuthorityAt, evaluateAssociatedKey, evaluateEnrollment, evaluateSuccession, successionTransitionDigest, type AssociatedKeyRecord, type AssociatedKeyState, type AssuranceHeadState, type EnrollmentInception, type EnrollmentObservationReceipt, type SuccessionRecord, } from "../assurance.js";
-import type { EnrollmentEvidenceInput } from "../assurance-observation.js";
+import { assuranceEnrollmentWitnessPolicyDigest, type EnrollmentEvidenceInput } from "../assurance-observation.js";
 import { evaluateAssuranceAssociatedKeyConsent, evaluateAssuranceCompromiseContinuation, evaluateAssuranceExport, evaluateAssurancePinPolicy, } from "../assurance-policy.js";
 import { domainSeparatedJcsDigest } from "../credential-continuity.js";
 import { QUALIFIED_VERSION } from "../family.js";
@@ -151,14 +151,19 @@ function observationInput(
     witnesses: ReadonlyArray<readonly [string, number]> = [[WITNESS_KEY, 1], [SECOND_WITNESS_KEY, 1]],
     minimumWeight = 1,
 ): Readonly<Record<string, unknown>> {
+    const witnessMap = new Map(witnesses);
     return {
         inception: pair.inception,
         acceptance: pair.acceptance,
         authority_id: "current-vector-assurance-observer",
+        journal_integrity_key: "a1".repeat(32),
         witness_policy: {
-            policy_digest: "11".repeat(32),
+            policy_digest: assuranceEnrollmentWitnessPolicyDigest({
+                minimum_weight: minimumWeight,
+                witnesses: witnessMap,
+            }),
             minimum_weight: minimumWeight,
-            witnesses,
+            witnesses: [...witnessMap.entries()],
         },
         steps,
     };

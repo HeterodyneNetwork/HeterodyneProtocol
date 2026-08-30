@@ -5,6 +5,7 @@ import { bytesToHex, hexToBytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
 import { getPublicKey, signEvent, type NostrSignedEvent } from "./nostr.js";
 import {
+  assuranceEnrollmentWitnessPolicyDigest,
   createAssuranceEnrollmentObservationAuthority,
   evaluateEnrollmentEligibility,
   type EnrollmentObservationJournal,
@@ -18,9 +19,9 @@ import type {
 } from "./assurance.js";
 
 // BLUE TEAM VALIDATION: synthetic/local fixtures below are deterministic,
-// minimal, non-deployable protocol-quality checks. They use no live target,
-// production system, real credential/account, external system, or reusable
-// exploit/payload.
+// minimal, non-deployable protocol-quality checks: no live targets; no
+// production deployments; no real credentials; no external systems; no
+// reusable payloads.
 
 const AUX_RAND = "00".repeat(32);
 const secret = (value: number): string => value.toString(16).padStart(64, "0");
@@ -35,6 +36,8 @@ const WITNESS_KEY = getPublicKey(WITNESS_SECRET);
 const SECOND_WITNESS_KEY = getPublicKey(SECOND_WITNESS_SECRET);
 const WINDOW = 604_800;
 const START = 1_800_000_000;
+const INTEGRITY_KEY = "a1".repeat(32);
+const WRONG_INTEGRITY_KEY = "b2".repeat(32);
 
 const associatedKeyPolicy: AssociatedKeyPolicy = {
   active_key: [],
@@ -184,11 +187,15 @@ class MemoryJournal implements EnrollmentObservationJournal {
 function trustedPolicy(
   overrides: Partial<EnrollmentWitnessPolicy> = {},
 ): EnrollmentWitnessPolicy {
-  return {
-    policy_digest: "11".repeat(32),
+  const base = {
     minimum_weight: 1,
     witnesses: new Map([[WITNESS_KEY, 1], [SECOND_WITNESS_KEY, 1]]),
     ...overrides,
+  };
+  return {
+    ...base,
+    policy_digest: overrides.policy_digest ??
+      assuranceEnrollmentWitnessPolicyDigest(base),
   };
 }
 
@@ -197,11 +204,13 @@ function authority(
   now: () => number,
   policy: EnrollmentWitnessPolicy = trustedPolicy(),
   authorityId = "local-authority-a",
+  integrityKey = INTEGRITY_KEY,
 ) {
   return createAssuranceEnrollmentObservationAuthority({
     authority_id: authorityId,
     trusted_now: now,
     witness_policy: policy,
+    journal_integrity_key: integrityKey,
     journal,
   });
 }
@@ -364,6 +373,7 @@ describe("BLUE TEAM VALIDATION: synthetic/local authority-owned chronology", () 
       authority_id: "captured-authority",
       trusted_now: () => START,
       witness_policy: policy,
+      journal_integrity_key: INTEGRITY_KEY,
       journal,
     };
     const localAuthority = createAssuranceEnrollmentObservationAuthority(config);
@@ -375,11 +385,42 @@ describe("BLUE TEAM VALIDATION: synthetic/local authority-owned chronology", () 
       ...pair,
       evidence: { ...emptyEvidence(), witness_receipts: [signedReceipt(pair)] },
     });
-    expect(onlyEntry(journal).policy_digest).toBe("11".repeat(32));
+    expect(onlyEntry(journal).policy_digest).toBe(policy.policy_digest);
   });
 });
 
 describe("BLUE TEAM VALIDATION: synthetic/local absorbing contests and pins", () => {
+  it("durably contests a second valid head in the same pre-pin scope", async () => {
+    const pair = await enrollment();
+    const journal = new MemoryJournal();
+    const localAuthority = authority(journal, () => START);
+    await evaluateEnrollmentEligibility(localAuthority, {
+      ...pair,
+      evidence: emptyEvidence(),
+    });
+    const body = JSON.parse(pair.acceptance.content) as Record<string, unknown>;
+    const alternate = await assuranceEvent(
+      ACTIVE_SECRET,
+      31000,
+      "assurance-head",
+      body.profile as string,
+      { ...body, created_at: 4 },
+    );
+    const contested = await evaluateEnrollmentEligibility(localAuthority, {
+      inception: pair.inception,
+      acceptance: alternate,
+      evidence: emptyEvidence(),
+    });
+    const restarted = authority(journal, () => START + WINDOW, trustedPolicy());
+    const original = await evaluateEnrollmentEligibility(restarted, {
+      ...pair,
+      evidence: emptyEvidence(),
+    });
+    expect(contested).toMatchObject({ state: "contested" });
+    expect(original).toMatchObject({ state: "contested" });
+    expect(journal.entries.size).toBe(1);
+  });
+
   it("keeps a pre-pin contest absorbing after later evidence disappears", async () => {
     const pair = await enrollment();
     const journal = new MemoryJournal();
@@ -410,23 +451,20 @@ describe("BLUE TEAM VALIDATION: synthetic/local absorbing contests and pins", ()
     });
     now += WINDOW;
     const racingContest = await contest(pair);
+    const [scopeKey, preRace] = [...base.entries.entries()][0]!;
+    await evaluateEnrollmentEligibility(localAuthority, {
+      ...pair,
+      evidence: { ...emptyEvidence(), contests: [racingContest] },
+    });
+    const racedState = base.load(scopeKey)!;
+    base.entries.set(scopeKey, preRace);
     let raced = false;
     const racingJournal: EnrollmentObservationJournal = {
       load: (key) => base.load(key),
       compareAndSwap(key, expectedRevision, next) {
         if (!raced && next.pin !== null) {
           raced = true;
-          const current = base.load(key)!;
-          base.entries.set(key, {
-            ...current,
-            revision: current.revision + 1,
-            contested: true,
-            conflicts: [{
-              digest: racingContest.id,
-              first_ingested_at: now,
-              kind: "contest",
-            }],
-          });
+          base.entries.set(key, racedState);
           return "conflict";
         }
         return base.compareAndSwap(key, expectedRevision, next);
@@ -507,6 +545,95 @@ describe("BLUE TEAM VALIDATION: synthetic/local absorbing contests and pins", ()
     });
   });
 
+  it("preserves one sealed pin across restart and rejects alternate tuple maturity", async () => {
+    const pair = await enrollment();
+    const journal = new MemoryJournal();
+    let now = START;
+    const firstAuthority = authority(journal, () => now);
+    await evaluateEnrollmentEligibility(firstAuthority, {
+      ...pair,
+      evidence: emptyEvidence(),
+    });
+    now += WINDOW;
+    await evaluateEnrollmentEligibility(firstAuthority, {
+      ...pair,
+      evidence: emptyEvidence(),
+    });
+
+    const restarted = authority(journal, () => now);
+    expect(await evaluateEnrollmentEligibility(restarted, {
+      ...pair,
+      evidence: emptyEvidence(),
+    })).toMatchObject({ state: "verified" });
+
+    const body = JSON.parse(pair.acceptance.content) as Record<string, unknown>;
+    const alternate = await assuranceEvent(
+      ACTIVE_SECRET,
+      31000,
+      "assurance-head",
+      body.profile as string,
+      { ...body, created_at: 5 },
+    );
+    expect(await evaluateEnrollmentEligibility(restarted, {
+      inception: pair.inception,
+      acceptance: alternate,
+      evidence: emptyEvidence(),
+    })).toEqual({ verdict: "reject", reason_code: "assurance-pin-conflict" });
+    expect(journal.entries.size).toBe(1);
+  });
+
+  it("rejects a shaped future pin with a recomputed public basis digest but no valid seal", async () => {
+    const pair = await enrollment();
+    const journal = new MemoryJournal();
+    let now = START;
+    const firstAuthority = authority(journal, () => now);
+    await evaluateEnrollmentEligibility(firstAuthority, { ...pair, evidence: emptyEvidence() });
+    now += WINDOW;
+    await evaluateEnrollmentEligibility(firstAuthority, { ...pair, evidence: emptyEvidence() });
+    const [key, stored] = [...journal.entries.entries()][0]!;
+    const shaped = structuredClone(stored);
+    if (shaped.pin === null) throw new Error("fixture did not pin");
+    const shapedBasis = {
+      ...shaped.pin.eligibility_basis,
+      closed_at: now + WINDOW,
+    };
+    const shapedEntry: EnrollmentObservationJournalEntry = {
+      ...shaped,
+      pin: {
+        ...shaped.pin,
+        observed_at: now + WINDOW,
+        eligibility_basis: shapedBasis,
+        eligibility_basis_digest: domainSeparatedJcsDigest(
+          "heterodyne-assurance-enrollment-pin-basis-v1",
+          shapedBasis,
+        ),
+      },
+    };
+    journal.entries.set(key, shapedEntry);
+    expect(await evaluateEnrollmentEligibility(
+      authority(journal, () => now),
+      { ...pair, evidence: emptyEvidence() },
+    )).toEqual({ verdict: "reject", reason_code: "assurance-pin-conflict" });
+  });
+
+  it("accepts a genuine sealed pin only with the restart-stable integrity key", async () => {
+    const pair = await enrollment();
+    const journal = new MemoryJournal();
+    let now = START;
+    const firstAuthority = authority(journal, () => now);
+    await evaluateEnrollmentEligibility(firstAuthority, { ...pair, evidence: emptyEvidence() });
+    now += WINDOW;
+    await evaluateEnrollmentEligibility(firstAuthority, { ...pair, evidence: emptyEvidence() });
+    expect(await evaluateEnrollmentEligibility(
+      authority(journal, () => now, trustedPolicy(), "local-authority-a", WRONG_INTEGRITY_KEY),
+      { ...pair, evidence: emptyEvidence() },
+    )).toEqual({ verdict: "reject", reason_code: "assurance-pin-conflict" });
+    expect(await evaluateEnrollmentEligibility(
+      authority(journal, () => now),
+      { ...pair, evidence: emptyEvidence() },
+    )).toMatchObject({ state: "verified" });
+  });
+
   it("fails closed when retained pin provenance is mutated", async () => {
     const pair = await enrollment();
     const base = new MemoryJournal();
@@ -548,6 +675,7 @@ describe("BLUE TEAM VALIDATION: synthetic/local callback boundary hardening", ()
       authority_id: "local",
       trusted_now: () => START,
       witness_policy: trustedPolicy(),
+      journal_integrity_key: INTEGRITY_KEY,
       journal,
     };
     expect(() => createAssuranceEnrollmentObservationAuthority(new Proxy(config, {})))
@@ -577,5 +705,96 @@ describe("BLUE TEAM VALIDATION: synthetic/local callback boundary hardening", ()
       loaded.contested = true;
     }).toThrow(TypeError);
     expect(onlyEntry(journal).contested).toBe(false);
+  });
+
+  it("rejects changed witness weights even when the caller reuses the claimed digest", () => {
+    const journal = new MemoryJournal();
+    const original = trustedPolicy();
+    expect(() => authority(journal, () => START, {
+      policy_digest: original.policy_digest,
+      minimum_weight: original.minimum_weight,
+      witnesses: new Map([[WITNESS_KEY, 99], [SECOND_WITNESS_KEY, 1]]),
+    })).toThrow(/observation-authority-invalid/);
+  });
+
+  it("rejects a proxy in the journal prototype chain without invoking descriptor traps", () => {
+    let descriptorCalls = 0;
+    const prototype = new Proxy({
+      load: (_key: string) => null,
+      compareAndSwap: () => "committed" as const,
+    }, {
+      getOwnPropertyDescriptor(target, property) {
+        descriptorCalls += 1;
+        return Reflect.getOwnPropertyDescriptor(target, property);
+      },
+    });
+    const journal = Object.create(prototype) as EnrollmentObservationJournal;
+    expect(() => authority(journal, () => START)).toThrow(/observation-authority-invalid/);
+    expect(descriptorCalls).toBe(0);
+  });
+});
+
+describe("BLUE TEAM VALIDATION: synthetic/local witness and competitor reconstruction", () => {
+  it("matures two distinct trusted witnesses only after two receipts each over the local window", async () => {
+    const pair = await enrollment([
+      { key: WITNESS_KEY, weight: 1 },
+      { key: SECOND_WITNESS_KEY, weight: 1 },
+    ], 2);
+    const journal = new MemoryJournal();
+    let now = START;
+    const localAuthority = authority(
+      journal,
+      () => now,
+      trustedPolicy({ minimum_weight: 2 }),
+    );
+    await evaluateEnrollmentEligibility(localAuthority, {
+      ...pair,
+      evidence: {
+        ...emptyEvidence(),
+        witness_receipts: [
+          signedReceipt(pair, WITNESS_SECRET, { last_observed_at: START }),
+          signedReceipt(pair, SECOND_WITNESS_SECRET, { last_observed_at: START }),
+        ],
+      },
+    });
+    now += WINDOW;
+    const result = await evaluateEnrollmentEligibility(localAuthority, {
+      ...pair,
+      evidence: {
+        ...emptyEvidence(),
+        witness_receipts: [
+          signedReceipt(pair, WITNESS_SECRET, { last_observed_at: now }),
+          signedReceipt(pair, SECOND_WITNESS_SECRET, { last_observed_at: now }),
+        ],
+      },
+    });
+    expect(result).toMatchObject({ state: "verified" });
+    expect(onlyEntry(journal).pin?.eligibility_basis.mode).toBe("witness");
+  });
+
+  it("ignores directly supplied competitors with invalid authentication or head binding", async () => {
+    const pair = await enrollment();
+    const body = JSON.parse(pair.acceptance.content) as Record<string, unknown>;
+    const wrongHead = await assuranceEvent(
+      ACTIVE_SECRET,
+      31000,
+      "assurance-head",
+      body.profile as string,
+      { ...body, assurance_head: "cc".repeat(32) },
+    );
+    const result = await evaluateEnrollmentEligibility(
+      authority(new MemoryJournal(), () => START),
+      {
+        ...pair,
+        evidence: {
+          ...emptyEvidence(),
+          competing_enrollments: [
+            { inception: pair.inception, acceptance: { ...pair.acceptance, sig: "00".repeat(64) } },
+            { inception: pair.inception, acceptance: wrongHead },
+          ],
+        },
+      },
+    );
+    expect(result).toMatchObject({ state: "pending", warnings: [] });
   });
 });

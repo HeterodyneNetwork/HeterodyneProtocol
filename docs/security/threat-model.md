@@ -116,6 +116,18 @@ Exact completed retries can return isolated cached results; ambiguous terminal
 persistence stays poisoned for reconciliation. Claim revocation and authority
 reduction are monotonic, and every authorization effect rechecks current state.
 
+Assurance enrollment serializes every full candidate tuple for one active-key
+and inception-event scope through one durable compare-and-swap record. This
+prevents a restart or second worker from pinning an alternate cold root or
+accepted head in a parallel journal. A private restart-stable embedding key
+seals the complete record; every load verifies the seal and reconstructs its
+policy, receipt chronology, distinct-witness threshold, conflicts, basis, and
+non-future close before returning a retained pin or changing state. Public
+authority IDs and policy digests are not journal-integrity keys. Callback,
+policy, integrity-key, and journal boundaries reject proxies and accessors and
+snapshot accepted values so descriptor traps and later mutation cannot alter
+an authorization decision.
+
 ### Compromise
 
 Compromise of the active key also puts its bound device-local Marmot leaves at
@@ -212,10 +224,11 @@ reviewers can trace the threat control to its owner and feature binding.
 Assurance chronology boundary testing is **BLUE TEAM VALIDATION:
 synthetic/local** defensive protocol-quality work. Minimal deterministic local
 fixtures verify that backdated declarations, cross-authority receipt replay,
-wrong-head receipts, duplicate witness weight, and racing pre-pin evidence
-fail closed without contacting a live relay, deployment, account, credential,
-production system, or other external target and without creating a reusable
-exploit or payload.
+wrong-head receipts, duplicate witness weight, restart/worker alternate pins,
+forged or future sealed state, policy substitution, proxy descriptor traps,
+and racing pre-pin evidence fail closed. The fixtures use no live targets; no
+production deployments; no real credentials; no external systems; no reusable
+payloads.
 
 ## Current draft versus frozen validation history
 

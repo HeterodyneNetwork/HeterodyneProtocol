@@ -352,7 +352,35 @@ configured independently with a trusted monotonic clock, a stable local
 authority identifier, a witness-key/maximum-weight policy and local minimum
 threshold, and a durable compare-and-swap journal. Production journals MUST
 survive restart and serialize competing workers. They are keyed by the full
-`(active_key, inception_event_id, cold_root, accepted_head)` tuple.
+`(active_key, inception_event_id)` scope. The one record for that scope retains
+the complete candidate `(active_key, inception_event_id, cold_root,
+accepted_head)` tuple. Every tuple presented for the scope therefore passes
+through the same compare-and-swap sequence across processes and restarts. A
+different reciprocally valid tuple makes an unpinned scope durably contested;
+it cannot open a parallel candidate journal or pin independently.
+
+The embedding MUST provision the authority with a private restart-stable
+journal-integrity key and authenticate every complete scope record with a
+keyed integrity seal. The sealed state covers the scope and candidate tuples,
+authority and witness-policy binding, revision, authority-owned chronology,
+deduplicated evidence, receipt-ingestion and distinct-witness state,
+conflicts, contest state, and the complete eligibility basis and pin when
+present. The integrity key is not public evidence, MUST NOT be derived from
+the public authority identifier or policy digest, and MUST NOT be exposed by
+evaluation results. On every load, before returning retained state or causing
+an effect, the authority MUST verify the seal and reconstruct these fields,
+including the qualifying distinct-witness weight, threshold, basis mode,
+closing revision, and non-future close time. A missing or invalid seal,
+impossible chronology, future close, or inconsistent reconstruction fails
+closed as `assurance-pin-conflict`.
+
+The witness-policy digest is the SHA-256 digest of JCS over exactly the closed
+object `{"minimum_weight":<integer>,"witnesses":[...]}`, where each witness
+array member is exactly `{"key":<witness key>,"weight":<maximum weight>}`
+and members are sorted by ascending witness key. The configured digest MUST
+equal the digest derived from the captured map and minimum threshold before
+the authority loads or advances chronology. This policy digest is included in
+the sealed record and any eligibility basis.
 
 This chronology is intentionally nonportable. Event `created_at`, signed
 receipt times, public evidence, and caller-supplied callbacks or state are
@@ -407,10 +435,11 @@ but cannot gain recovery authority over the owner: denial is bounded harm,
 because a bare-key holder can already impersonate at baseline.
 
 Contest is an absorbing pre-pin journal state. Eligibility closure and pin
-creation MUST occur in one compare-and-swap against the unchanged journal
-revision. A racing conflict changes that revision, makes the close fail, and
-is evaluated before retry. `verified` MUST NOT be returned before the pin and
-its complete eligibility basis are durably committed.
+creation MUST occur together in one compare-and-swap against the unchanged
+scope-record revision. A racing alternate tuple or conflict changes that
+revision, makes the close fail, and is evaluated before retry. `verified` MUST
+NOT be returned before the complete eligibility basis and matching pin are
+sealed and durably committed in that transaction.
 
 Once authoritatively committed, an exact verified pin is absorbing against
 later contests and competing initial enrollments. An evaluator first validates

@@ -15,6 +15,7 @@ import {
 } from "./nostr.js";
 
 export {
+  assuranceEnrollmentWitnessPolicyDigest,
   createAssuranceEnrollmentObservationAuthority,
   evaluateEnrollmentEligibility,
 } from "./assurance-observation.js";
