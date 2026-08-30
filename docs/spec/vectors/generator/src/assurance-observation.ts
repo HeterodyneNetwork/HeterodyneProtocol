@@ -50,6 +50,7 @@ export type EnrollmentObservationWitnessState = Readonly<{
 export type EnrollmentObservationReceiptIngestion = Readonly<{
   digest: string;
   ingested_at: number;
+  ingested_revision: number;
   first_observed_at: number;
   last_observed_at: number;
 }>;
@@ -471,6 +472,7 @@ function ingestEvidence(
         receipt_ingestions: [{
           digest,
           ingested_at: now,
+          ingested_revision: entry.revision + 1,
           first_observed_at: receipt.first_observed_at,
           last_observed_at: receipt.last_observed_at,
         }],
@@ -484,6 +486,7 @@ function ingestEvidence(
         receipt_ingestions: [...current.receipt_ingestions, {
           digest,
           ingested_at: now,
+          ingested_revision: entry.revision + 1,
           first_observed_at: receipt.first_observed_at,
           last_observed_at: receipt.last_observed_at,
         }],
@@ -545,7 +548,13 @@ function qualifyingWitnessReceipts(
   authority: CapturedAuthority,
   now: number,
 ): { start: number; digests: string[] } | null {
-  return qualifyingWitnessReceiptsAt(entry, candidate, authority, now);
+  return qualifyingWitnessReceiptsAt(
+    entry,
+    candidate,
+    authority,
+    now,
+    entry.revision,
+  );
 }
 
 function qualifyingWitnessReceiptsAt(
@@ -553,6 +562,7 @@ function qualifyingWitnessReceiptsAt(
   candidate: Candidate,
   authority: CapturedAuthority,
   closeAt: number,
+  closingRevision: number,
 ): { start: number; digests: string[] } | null {
   let weight = 0;
   let start = closeAt;
@@ -561,7 +571,7 @@ function qualifyingWitnessReceiptsAt(
     const localWeight = authority.witnesses.get(configured.key);
     const state = entry.witnesses[configured.key];
     const receipts = state?.receipt_ingestions.filter(
-      ({ ingested_at }) => ingested_at <= closeAt,
+      ({ ingested_revision }) => ingested_revision <= closingRevision,
     ) ?? [];
     const first = receipts[0];
     const latest = receipts.at(-1);
@@ -645,18 +655,28 @@ function validJournalState(
     const receipts = witness.receipt_ingestions;
     if (receipts.length === 0 || witness.witness_key !== key) return false;
     let priorIngestedAt = -1;
+    let priorIngestedRevision = -1;
     let priorLastObservedAt = -1;
+    const receiptDigests = new Set<string>();
     for (const receipt of receipts) {
       if (
         receipt.ingested_at < priorIngestedAt || receipt.ingested_at > now ||
         receipt.ingested_at < entry.first_candidate_ingested_at ||
+        receipt.ingested_revision < 1 ||
+        receipt.ingested_revision < priorIngestedRevision ||
+        receipt.ingested_revision > entry.revision ||
+        (receipt.ingested_revision === priorIngestedRevision &&
+          receipt.ingested_at !== priorIngestedAt) ||
+        receiptDigests.has(receipt.digest) ||
         receipt.first_observed_at !== receipts[0]!.first_observed_at ||
         receipt.first_observed_at > receipt.last_observed_at ||
         receipt.last_observed_at < priorLastObservedAt ||
         receipt.last_observed_at > receipt.ingested_at
       ) return false;
       priorIngestedAt = receipt.ingested_at;
+      priorIngestedRevision = receipt.ingested_revision;
       priorLastObservedAt = receipt.last_observed_at;
+      receiptDigests.add(receipt.digest);
       reconstructedDigests.push(receipt.digest);
     }
     const latest = receipts.at(-1)!;
@@ -710,6 +730,7 @@ function validRetainedPin(
     candidate,
     authority,
     basis.closed_at,
+    basis.closing_revision,
   );
   const modeProvenanceValid = basis.mode === "local"
     ? basis.start_ingested_at === entry.first_candidate_ingested_at &&
@@ -921,9 +942,12 @@ function snapshotJournalEntry(value: unknown): EnrollmentObservationJournalEntry
       ) return null;
       for (const receipt of witness.receipt_ingestions) {
         if (exactRecord(receipt, [
-          "digest", "ingested_at", "first_observed_at", "last_observed_at",
+          "digest", "ingested_at", "ingested_revision", "first_observed_at",
+          "last_observed_at",
         ]) === null || !isDigest(receipt.digest) ||
             !isUnixTime(receipt.ingested_at) ||
+            !Number.isSafeInteger(receipt.ingested_revision) ||
+            receipt.ingested_revision < 1 ||
             !isUnixTime(receipt.first_observed_at) ||
             !isUnixTime(receipt.last_observed_at)) return null;
       }

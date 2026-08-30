@@ -513,6 +513,47 @@ describe("BLUE TEAM VALIDATION: synthetic/local absorbing contests and pins", ()
     expect(onlyEntry(journal).first_candidate_ingested_at).toBe(START);
   });
 
+  it("keeps a local-mode pin exact when a same-second post-pin receipt later matures the witness", async () => {
+    const pair = await enrollment();
+    const journal = new MemoryJournal();
+    let now = START;
+    const localAuthority = authority(journal, () => now);
+    await evaluateEnrollmentEligibility(localAuthority, {
+      ...pair,
+      evidence: {
+        ...emptyEvidence(),
+        witness_receipts: [signedReceipt(pair, WITNESS_SECRET, {
+          last_observed_at: now,
+        })],
+      },
+    });
+    now += WINDOW;
+    const pinned = await evaluateEnrollmentEligibility(localAuthority, {
+      ...pair,
+      evidence: emptyEvidence(),
+    });
+    const retainedBasis = onlyEntry(journal).pin?.eligibility_basis;
+    const late = await evaluateEnrollmentEligibility(localAuthority, {
+      ...pair,
+      evidence: {
+        ...emptyEvidence(),
+        witness_receipts: [signedReceipt(pair, WITNESS_SECRET, {
+          last_observed_at: now,
+        })],
+      },
+    });
+    const replay = await evaluateEnrollmentEligibility(
+      authority(journal, () => now),
+      { ...pair, evidence: emptyEvidence() },
+    );
+
+    expect(pinned).toMatchObject({ state: "verified", warnings: [] });
+    expect(retainedBasis).toMatchObject({ mode: "local" });
+    expect(late).toMatchObject({ state: "verified", warnings: [] });
+    expect(replay).toMatchObject({ state: "verified", warnings: [] });
+    expect(onlyEntry(journal).pin?.eligibility_basis).toEqual(retainedBasis);
+  });
+
   it("rejects a nonmatching acceptance instead of replacing a retained pin", async () => {
     const pair = await enrollment();
     const journal = new MemoryJournal();

@@ -374,6 +374,17 @@ closing revision, and non-future close time. A missing or invalid seal,
 impossible chronology, future close, or inconsistent reconstruction fails
 closed as `assurance-pin-conflict`.
 
+Every receipt ingestion and conflict in the scope record carries the journal
+revision that first committed it. Receipt revisions are safe integers ordered
+with their ingestion sequence and are authenticated by the record seal. The
+pin basis `closing_revision` identifies exactly the committed state eligible
+to contribute to closure: witness qualification is reconstructed only from
+receipt ingestions whose revision is at most `closing_revision`. Evidence
+committed after the pin has a strictly greater revision even when the trusted
+clock has not advanced, remains warning/audit evidence, and MUST NOT
+retroactively alter the retained basis mode or qualifying receipt set. A
+legacy or shaped record missing this revision binding fails closed.
+
 The witness-policy digest is the SHA-256 digest of JCS over exactly the closed
 object `{"minimum_weight":<integer>,"witnesses":[...]}`, where each witness
 array member is exactly `{"key":<witness key>,"weight":<maximum weight>}`
@@ -456,7 +467,8 @@ validating reciprocal enrollment and its completed window. It pins the active
 key, inception event ID, cold root, accepted head event ID, state, authority
 identifier, and authoritative close time together with a closed
 `eligibility_basis`. That basis contains the exact tuple, closing journal
-revision, authority-owned start and close times, local-or-witness mode,
+revision identifying its included evidence state, authority-owned start and
+close times, local-or-witness mode,
 qualifying receipt digests, witness-policy digest, empty closing conflict set,
 and a digest over the complete basis. The identifiers and basis MUST match the
 reciprocally validated candidate, retained journal evidence, and configured
