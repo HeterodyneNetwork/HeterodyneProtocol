@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { schnorr } from "@noble/curves/secp256k1";
 import { domainSeparatedJcsDigest } from "./credential-continuity.js";
@@ -40,6 +41,8 @@ class MemoryJournal implements EnrollmentObservationJournal {
   readonly entries = new Map<string, EnrollmentObservationJournalEntry>();
   conflictNextCommit = false;
   throwNextCommit = false;
+  writeTerminalThenThrow = false;
+  terminalReentry: (() => void) | null = null;
 
   load(key: string): EnrollmentObservationJournalEntry | null {
     return this.entries.get(key) ?? null;
@@ -54,6 +57,17 @@ class MemoryJournal implements EnrollmentObservationJournal {
       this.throwNextCommit = false;
       throw new Error("synthetic local persistence failure");
     }
+    if (next.terminal !== null && this.terminalReentry !== null) {
+      const reenter = this.terminalReentry;
+      this.terminalReentry = null;
+      reenter();
+      return "conflict";
+    }
+    if (next.terminal !== null && this.writeTerminalThenThrow) {
+      this.writeTerminalThenThrow = false;
+      this.entries.set(key, next);
+      throw new Error("synthetic local post-write persistence failure");
+    }
     if (this.conflictNextCommit) {
       this.conflictNextCommit = false;
       return "conflict";
@@ -63,6 +77,18 @@ class MemoryJournal implements EnrollmentObservationJournal {
     this.entries.set(key, next);
     return "committed";
   }
+}
+
+function resealJournalEntry(
+  value: EnrollmentObservationJournalEntry,
+): EnrollmentObservationJournalEntry {
+  const { seal: _seal, ...body } = value;
+  const seal = createHmac("sha256", Buffer.from(INTEGRITY_KEY, "hex"))
+    .update("heterodyne-assurance-enrollment-journal-seal-v1", "utf8")
+    .update("\0", "utf8")
+    .update(jcsCanonicalize(body), "utf8")
+    .digest("hex");
+  return structuredClone({ ...body, seal });
 }
 
 function observationAuthority(journal: EnrollmentObservationJournal, now: () => number) {
@@ -386,6 +412,11 @@ describe("BLUE TEAM VALIDATION: synthetic/local dual-signature Assurance downgra
       reason_code: "assurance-pin-conflict",
     });
     expect([...journal.entries.values()][0]?.terminal).toBeNull();
+    expect(commitAssuranceDowngrade(artifact)).toEqual({
+      verdict: "reject",
+      reason_code: "assurance-downgrade-consent-required",
+    });
+    expect([...journal.entries.values()][0]?.terminal).toBeNull();
   });
 
   it("BLUE TEAM VALIDATION: synthetic/local fails closed when terminal persistence throws before commit", async () => {
@@ -401,6 +432,121 @@ describe("BLUE TEAM VALIDATION: synthetic/local dual-signature Assurance downgra
       reason_code: "assurance-pin-conflict",
     });
     expect([...journal.entries.values()][0]?.terminal).toBeNull();
+    expect(commitAssuranceDowngrade(artifact)).toEqual({
+      verdict: "reject",
+      reason_code: "assurance-downgrade-consent-required",
+    });
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local reconciles an exact terminal committed by reentrant same-artifact CAS", async () => {
+    const journal = new MemoryJournal();
+    const { pin } = await genuinePin({ journal });
+    const artifact = acceptedArtifact(evaluateAssuranceDowngrade(
+      pin,
+      await signedDowngrade(pin),
+    ));
+    let inner: ReturnType<typeof commitAssuranceDowngrade> | null = null;
+    journal.terminalReentry = () => {
+      inner = commitAssuranceDowngrade(artifact);
+    };
+
+    const outer = commitAssuranceDowngrade(artifact);
+    expect(inner).toMatchObject({ verdict: "accept" });
+    expect(outer).toEqual(inner);
+    expect(commitAssuranceDowngrade(artifact)).toEqual(outer);
+    expect([...journal.entries.values()][0]?.terminal).toEqual(
+      outer.verdict === "accept" ? outer.normalized : null,
+    );
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local reconciles an exact terminal stored before CAS throws", async () => {
+    const journal = new MemoryJournal();
+    const { pin } = await genuinePin({ journal });
+    const artifact = acceptedArtifact(evaluateAssuranceDowngrade(
+      pin,
+      await signedDowngrade(pin),
+    ));
+    journal.writeTerminalThenThrow = true;
+
+    const committed = commitAssuranceDowngrade(artifact);
+    expect(committed).toMatchObject({ verdict: "accept" });
+    expect(commitAssuranceDowngrade(artifact)).toEqual(committed);
+    expect([...journal.entries.values()][0]?.terminal).toEqual(
+      committed.verdict === "accept" ? committed.normalized : null,
+    );
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects and poisons an artifact when a different terminal wins reentrant CAS", async () => {
+    const journal = new MemoryJournal();
+    const { pin } = await genuinePin({ journal });
+    const first = acceptedArtifact(evaluateAssuranceDowngrade(
+      pin,
+      await signedDowngrade(pin),
+    ));
+    const second = acceptedArtifact(evaluateAssuranceDowngrade(
+      pin,
+      await signedDowngrade(pin, {
+        overrides: { created_at: START + WINDOW + 2 },
+      }),
+    ));
+    let secondCommit: ReturnType<typeof commitAssuranceDowngrade> | null = null;
+    journal.terminalReentry = () => {
+      secondCommit = commitAssuranceDowngrade(second);
+    };
+
+    expect(commitAssuranceDowngrade(first)).toEqual({
+      verdict: "reject",
+      reason_code: "assurance-pin-conflict",
+    });
+    expect(secondCommit).toMatchObject({ verdict: "accept" });
+    expect(commitAssuranceDowngrade(first)).toEqual({
+      verdict: "reject",
+      reason_code: "assurance-downgrade-consent-required",
+    });
+    expect(commitAssuranceDowngrade(second)).toEqual(secondCommit);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects a sealed max-revision pin without overflow or effect", async () => {
+    const journal = new MemoryJournal();
+    const { pair } = await genuinePin({ journal });
+    const [scopeKey, retained] = [...journal.entries.entries()][0]!;
+    journal.entries.set(scopeKey, resealJournalEntry({
+      ...retained,
+      revision: Number.MAX_SAFE_INTEGER,
+    }));
+    const restarted = observationAuthority(
+      journal,
+      () => START + WINDOW + 1,
+    );
+    const loaded = await evaluateEnrollmentEligibility(restarted, {
+      ...pair,
+      evidence: { witness_receipts: [], contests: [], competing_enrollments: [] },
+    });
+    if ("verdict" in loaded || loaded.retained_pin === null) {
+      throw new Error("synthetic max-revision pin did not reload");
+    }
+    PIN_INCEPTION_SIGNATURES.set(loaded.retained_pin, pair.inception.sig);
+    const artifact = acceptedArtifact(evaluateAssuranceDowngrade(
+      loaded.retained_pin,
+      await signedDowngrade(loaded.retained_pin),
+    ));
+
+    let overflow: ReturnType<typeof commitAssuranceDowngrade> | null = null;
+    expect(() => {
+      overflow = commitAssuranceDowngrade(artifact);
+    }).not.toThrow();
+    expect(overflow).toEqual({
+      verdict: "reject",
+      reason_code: "assurance-pin-conflict",
+    });
+    expect(commitAssuranceDowngrade(artifact)).toEqual({
+      verdict: "reject",
+      reason_code: "assurance-downgrade-consent-required",
+    });
+    expect(journal.entries.get(scopeKey)).toMatchObject({
+      revision: Number.MAX_SAFE_INTEGER,
+      terminal: null,
+    });
   });
 
   it("BLUE TEAM VALIDATION: synthetic/local rejects mismatched replay and preserves terminal state across restart", async () => {

@@ -47,6 +47,7 @@ type CapturedDowngrade = {
   source: object;
   source_snapshot: VerifiedNostrEvent;
   binding: AssuranceEnrollmentDowngradeBinding;
+  completed: AssuranceEnrollmentDowngradeTerminal | null;
   failed: boolean;
 };
 
@@ -135,6 +136,7 @@ export function evaluateAssuranceDowngrade(
     source: sourceEvent,
     source_snapshot: event,
     binding,
+    completed: null,
     failed: false,
   });
   return {
@@ -161,11 +163,18 @@ export function commitAssuranceDowngrade(
     captured.failed = true;
     return reject("assurance-downgrade-consent-required");
   }
+  if (captured.completed !== null) {
+    return { verdict: "accept", normalized: captured.completed };
+  }
   const committed = commitAssuranceEnrollmentDowngrade(
     captured.capability,
     artifact,
   );
-  if (committed.verdict === "reject") captured.failed = true;
+  if (committed.verdict === "accept") {
+    captured.completed = committed.normalized;
+  } else {
+    captured.failed = true;
+  }
   return committed;
 }
 

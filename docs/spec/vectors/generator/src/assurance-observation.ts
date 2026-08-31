@@ -208,6 +208,7 @@ type CapturedRetainedPin = Readonly<{
   scope_key: string;
   revision: number;
   pin: AssuranceEnrollmentAuthoritativePin;
+  terminal: AssuranceEnrollmentDowngradeTerminal | null;
 }>;
 
 const AUTHORITIES = new WeakMap<object, CapturedAuthority>();
@@ -329,55 +330,49 @@ export function commitAssuranceEnrollmentDowngrade(
     retained.pin,
   )) return pinConflict();
 
-  let now: number;
-  let loaded: unknown;
-  try {
-    now = retained.authority.trusted_now();
-    loaded = retained.authority.load(retained.scope_key);
-  } catch {
-    return pinConflict();
-  }
-  if (!isUnixTime(now)) return pinConflict();
-  const entry = snapshotJournalEntry(loaded);
-  if (
-    entry === null ||
-    !validJournalSeal(entry, retained.authority.journal_integrity_key) ||
-    !validJournalState(entry, retained.candidate, retained.authority, now) ||
-    !samePin(entry.pin, retained.pin)
-  ) return pinConflict();
+  const current = loadCapturedRetainedScope(retained);
+  if (current === null) return pinConflict();
+  const { entry, now } = current;
   if (entry.terminal !== null) {
-    return sameDowngradeTerminal(entry.terminal, binding)
-      ? { verdict: "accept", normalized: entry.terminal }
-      : pinConflict();
+    return reconcileAssuranceEnrollmentDowngrade(retained, binding);
   }
-  if (entry.revision !== retained.revision || entry.pin === null) {
+  if (
+    retained.terminal !== null || entry.revision !== retained.revision ||
+    entry.pin === null || !Number.isSafeInteger(entry.revision) ||
+    entry.revision >= Number.MAX_SAFE_INTEGER
+  ) {
     return pinConflict();
   }
 
-  const terminal: AssuranceEnrollmentDowngradeTerminal = Object.freeze({
-    state: "downgraded",
-    ...binding,
-  });
-  const next = sealJournalEntry({
-    ...entry,
-    revision: entry.revision + 1,
-    terminal,
-  }, retained.authority.journal_integrity_key);
-  if (!validJournalState(next, retained.candidate, retained.authority, now)) {
-    return pinConflict();
-  }
+  let next: EnrollmentObservationJournalEntry;
   try {
-    return commit(
-        retained.authority,
-        retained.scope_key,
-        retained.revision,
-        next,
-      )
-      ? { verdict: "accept", normalized: next.terminal! }
-      : pinConflict();
+    const terminal: AssuranceEnrollmentDowngradeTerminal = Object.freeze({
+      state: "downgraded",
+      ...binding,
+    });
+    next = sealJournalEntry({
+      ...entry,
+      revision: entry.revision + 1,
+      terminal,
+    }, retained.authority.journal_integrity_key);
+    if (!validJournalState(next, retained.candidate, retained.authority, now)) {
+      return pinConflict();
+    }
   } catch {
     return pinConflict();
   }
+  try {
+    commit(
+      retained.authority,
+      retained.scope_key,
+      retained.revision,
+      next,
+    );
+  } catch {
+    // Reconcile the durable scope below: the callback may have committed
+    // before reporting a conflict or throwing.
+  }
+  return reconcileAssuranceEnrollmentDowngrade(retained, binding);
 }
 
 export async function evaluateEnrollmentEligibility(
@@ -1209,8 +1204,54 @@ function registerRetainedPin(
     scope_key: scopeKey,
     revision: entry.revision,
     pin,
+    terminal: entry.terminal,
   }));
   return pin;
+}
+
+function loadCapturedRetainedScope(
+  retained: CapturedRetainedPin,
+): Readonly<{
+  entry: EnrollmentObservationJournalEntry;
+  now: number;
+}> | null {
+  let now: number;
+  let loaded: unknown;
+  try {
+    now = retained.authority.trusted_now();
+    loaded = retained.authority.load(retained.scope_key);
+  } catch {
+    return null;
+  }
+  if (!isUnixTime(now)) return null;
+  const entry = snapshotJournalEntry(loaded);
+  if (
+    entry === null ||
+    !validJournalSeal(entry, retained.authority.journal_integrity_key) ||
+    !scopeMatches(entry, retained.authority, retained.candidate.enrollment) ||
+    !candidateMatches(entry, retained.candidate.enrollment) ||
+    !validJournalState(entry, retained.candidate, retained.authority, now) ||
+    !samePin(entry.pin, retained.pin)
+  ) return null;
+  return { entry, now };
+}
+
+function reconcileAssuranceEnrollmentDowngrade(
+  retained: CapturedRetainedPin,
+  binding: AssuranceEnrollmentDowngradeBinding,
+): AssuranceVerdict<AssuranceEnrollmentDowngradeTerminal> {
+  const current = loadCapturedRetainedScope(retained);
+  if (current === null || current.entry.terminal === null) {
+    return pinConflict();
+  }
+  const expectedRevision = retained.terminal === null
+    ? retained.revision + 1
+    : retained.revision;
+  return Number.isSafeInteger(expectedRevision) &&
+      current.entry.revision === expectedRevision &&
+      sameDowngradeTerminal(current.entry.terminal, binding)
+    ? { verdict: "accept", normalized: current.entry.terminal }
+    : pinConflict();
 }
 
 function snapshotDowngradeBinding(
