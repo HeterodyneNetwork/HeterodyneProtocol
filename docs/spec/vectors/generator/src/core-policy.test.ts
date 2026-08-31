@@ -1,12 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { QUALIFIED_VERSION } from "./family.js";
 import { getPublicKey, signEvent } from "./nostr.js";
+import * as corePolicy from "./core-policy.js";
 import {
   evaluateCoreOperationalBoundary,
   validateCorePersonaSignedEvent,
   validateCoreWireEnvelope,
-  validateOrganizationMemberAddition,
-  validateRoleDelegation,
 } from "./core-policy.js";
 
 const SECRET = "31".repeat(32);
@@ -76,15 +75,9 @@ describe("current Core semantic boundaries", () => {
       .toEqual({ verdict: "reject", reason_code: "config_rid_advertised" });
   });
 
-  it("requires both organization authorities and exact role proofs", () => {
-    expect(validateOrganizationMemberAddition({ member_kel_authorized: true, org_admin_threshold_authorized: false }))
-      .toEqual({ verdict: "reject", reason_code: "org_member_add_unauthorized" });
-    expect(validateRoleDelegation({ namespace: "wrong", registered_namespace: "workspace.role", role_id: "maintainer", key_proof_valid: true }))
-      .toEqual({ verdict: "reject", reason_code: "role-delegation-address-invalid" });
-    expect(validateRoleDelegation({ namespace: "workspace.role", registered_namespace: "workspace.role", role_id: "maintainer", key_proof_valid: false }))
-      .toEqual({ verdict: "reject", reason_code: "role-delegation-key-proof-invalid" });
-    expect(validateRoleDelegation({ namespace: "workspace.role", registered_namespace: "workspace.role", role_id: "maintainer", key_proof_valid: true }))
-      .toMatchObject({ verdict: "accept", role_id: "maintainer" });
-    expect(getPublicKey(SECRET)).toMatch(/^[0-9a-f]{64}$/);
+  it("BLUE TEAM VALIDATION: synthetic/local retired authority is not callable from current Core", () => {
+    // BLUE TEAM VALIDATION: inspect only the local compiled module export surface.
+    expect(Object.keys(corePolicy)).not.toContain("validateOrganizationMemberAddition");
+    expect(Object.keys(corePolicy)).not.toContain("validateRoleDelegation");
   });
 });

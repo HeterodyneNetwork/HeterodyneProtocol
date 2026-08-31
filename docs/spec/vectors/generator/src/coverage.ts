@@ -60,6 +60,10 @@ export const NON_WIRE_REASON_EXCLUSIONS: readonly Readonly<{
     justification: "Retained for the historical kind-31001 dual-proof profile; current writer-NID authorization is covered by the Core direct proof boundary.",
   },
   {
+    code: "org_member_add_unauthorized",
+    justification: "Retained only for the pre-1.0 member-KEL organization-add rule; current Core grants no organization-membership authority and Workspace roles use their own governance.",
+  },
+  {
     code: "provisional_not_final",
     justification: "Retained as a historical KEL reconciliation state label; current Assurance enrollment exposes its own executable pending-window result.",
   },
@@ -74,6 +78,14 @@ export const NON_WIRE_REASON_EXCLUSIONS: readonly Readonly<{
   {
     code: "revoked_key_post_revoked_at",
     justification: "Retained for retired epoch-key events; current Assurance compromise cutoff and associated-key revocation have distinct executable reasons.",
+  },
+  {
+    code: "role-delegation-address-invalid",
+    justification: "Retained only for pre-1.0 boolean role-address delegation; current Core repository writers use the closed repository-writer binding and this reason is non-wire.",
+  },
+  {
+    code: "role-delegation-key-proof-invalid",
+    justification: "Retained only for pre-1.0 boolean role-proof delegation; current Core repository writers require exact dual proofs and this reason is non-wire.",
   },
   {
     code: "signing_key_compromised_at_created_at",

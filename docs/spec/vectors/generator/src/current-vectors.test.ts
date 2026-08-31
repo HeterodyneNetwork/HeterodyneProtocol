@@ -18,6 +18,7 @@ import { buildClaimLedgerScenario } from "./claim-ledger-test-support.js";
 import { buildLedgerRepositoryEvidence } from "./claim-ledger.js";
 import { validateControlSignedEffect } from "./control-policy.js";
 import { buildCurrentCases, buildCurrentVectors } from "./current-vectors/index.js";
+import { currentCaseIds } from "./current-vectors/case-contracts.js";
 import {
   assertProjectionPreservesVerdict,
   invokeCurrentBoundary,
@@ -63,6 +64,13 @@ afterEach(() => {
 });
 
 describe("current vector catalog import boundary", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local compiler graph omits retired Core evaluators", () => {
+    // BLUE TEAM VALIDATION: inspect only compiler-resolved local current-source imports.
+    const coreImports = importedNames(resolve(sourceRoot, "current-vectors/core.ts"));
+    expect(coreImports.has("validateOrganizationMemberAddition")).toBe(false);
+    expect(coreImports.has("validateRoleDelegation")).toBe(false);
+  });
+
   it("audits the exact trusted-source static graph without historical authoring modules", () => {
     expect(compilerConfigPath(catalogEntry)).toBe(currentConfigPath);
     const graph = moduleDependencies(catalogEntry);
@@ -205,6 +213,49 @@ describe("current vector catalog import boundary", () => {
 });
 
 describe("current 0.6 vector catalog", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local catalog cannot execute retired Core semantics", async () => {
+    // BLUE TEAM VALIDATION: deterministic in-process fixtures exercise no external target.
+    const retiredCaseIds = new Set([
+      "core/org-member-add-unauthorized",
+      "core/role-delegation-address-invalid",
+      "core/role-delegation-key-proof-invalid",
+    ]);
+    const cases = await buildCurrentCases();
+    expect(currentCaseIds().filter((id) => retiredCaseIds.has(id))).toEqual([]);
+    expect(cases.filter(({ vector_id }) => retiredCaseIds.has(vector_id))).toEqual([]);
+    expect(cases.filter(({ semantic_boundary }) =>
+      semantic_boundary === "core-policy.validateOrganizationMemberAddition"
+      || semantic_boundary === "core-policy.validateRoleDelegation"
+    )).toEqual([]);
+
+    await expect(invokeCurrentBoundary(
+      "core-policy.validateOrganizationMemberAddition",
+      {
+        vector_id: "synthetic/retired-member-kel",
+        description: "BLUE TEAM VALIDATION: synthetic/local retired member-KEL probe",
+        direction: "consume",
+        input: {
+          member_kel_authorized: true,
+          org_admin_threshold_authorized: true,
+        },
+      },
+    )).rejects.toThrow(/current boundary is not executable/u);
+    await expect(invokeCurrentBoundary(
+      "core-policy.validateRoleDelegation",
+      {
+        vector_id: "synthetic/retired-role-delegation",
+        description: "BLUE TEAM VALIDATION: synthetic/local retired role-delegation probe",
+        direction: "consume",
+        input: {
+          namespace: "workspace.role",
+          registered_namespace: "workspace.role",
+          role_id: "maintainer",
+          key_proof_valid: true,
+        },
+      },
+    )).rejects.toThrow(/current boundary is not executable/u);
+  }, 30_000);
+
   it("rejects any catalog projector that changes the raw verdict class", () => {
     expect(() => assertProjectionPreservesVerdict("reject", { verdict: "accept" }))
       .toThrow(/projector changed semantic verdict/u);
@@ -434,8 +485,8 @@ describe("current 0.6 vector catalog", () => {
     }).semantic_result.route_evidence;
     expect(secondEvidence.request_digest).toBe(firstEvidence.request_digest);
     expect(secondEvidence.authority_identity).not.toBe(firstEvidence.authority_identity);
-    expect((await buildCurrentCases()).length).toBe(275);
-    expect((await buildCurrentCases()).length).toBe(275);
+    expect((await buildCurrentCases()).length).toBe(274);
+    expect((await buildCurrentCases()).length).toBe(274);
   }, 30_000);
 
   it("rejects a revocation profile when the signed revocation is mutated before merge", async () => {

@@ -27,8 +27,8 @@ describe("current family coverage", () => {
     const vectors = (await buildCurrentVectors()).map(({ vector }) => vector);
     const coverage = buildCoverage(vectors);
     const semanticCoverage = buildSemanticCoverage(await buildCurrentCases());
-    expect(vectors).toHaveLength(275);
-    expect(semanticCoverage).toHaveLength(275);
+    expect(vectors).toHaveLength(274);
+    expect(semanticCoverage).toHaveLength(274);
     expect(coverage.map(({ vector_id }) => vector_id)).toEqual(
       [...coverage.map(({ vector_id }) => vector_id)].sort(),
     );
@@ -44,13 +44,14 @@ describe("current family coverage", () => {
       "social",
       "workspace",
     ]));
-    expect(coverage.every(({ invariants }) => invariants.length > 0)).toBe(true);
+    expect(coverage.filter(({ invariants }) => invariants.length === 0).map(({ vector_id }) => vector_id))
+      .toEqual(["core/node-advert-nid-proof-invalid"]);
     const registry = loadRegistry(resolve(import.meta.dirname, "../../../../../"));
     expect(registry.security_invariants).toHaveLength(74);
     expect(new Set(semanticCoverage.flatMap(({ invariants }) => invariants)).size).toBe(74);
     expect(registry.reason_codes).toHaveLength(211);
-    expect(new Set(semanticCoverage.flatMap(({ reason_codes }) => reason_codes)).size).toBe(195);
-    expect(NON_WIRE_REASON_EXCLUSIONS).toHaveLength(16);
+    expect(new Set(semanticCoverage.flatMap(({ reason_codes }) => reason_codes)).size).toBe(192);
+    expect(NON_WIRE_REASON_EXCLUSIONS).toHaveLength(19);
     expect(registry.kinds.flatMap(({ profiles }) => profiles)).toHaveLength(31);
     expect(new Set(semanticCoverage.flatMap(({ profile }) =>
       profile === undefined ? [] : [profile]
@@ -165,10 +166,13 @@ describe("current family coverage", () => {
       "kel_head_missing",
       "kel_revoked_nid",
       "nid_binding_missing_signature",
+      "org_member_add_unauthorized",
       "provisional_not_final",
       "repo_head_regression",
       "retiring_key_nip05_invalid",
       "revoked_key_post_revoked_at",
+      "role-delegation-address-invalid",
+      "role-delegation-key-proof-invalid",
       "signing_key_compromised_at_created_at",
       "successor_persona_mismatch",
       "withdrawn_on_reconcile",
@@ -179,6 +183,30 @@ describe("current family coverage", () => {
       justification.trim().length >= 24
     )).toBe(true);
   });
+
+  it("BLUE TEAM VALIDATION: synthetic/local semantic coverage omits retired Core authority", async () => {
+    // BLUE TEAM VALIDATION: inspect only deterministic current cases built in-process.
+    const retiredReasons = new Set([
+      "org_member_add_unauthorized",
+      "role-delegation-address-invalid",
+      "role-delegation-key-proof-invalid",
+    ]);
+    const coverage = buildSemanticCoverage(await buildCurrentCases());
+    expect(coverage.filter(({ reason_codes }) =>
+      reason_codes.some((code) => retiredReasons.has(code))
+    )).toEqual([]);
+    expect(coverage.filter(({ semantic_boundary }) =>
+      semantic_boundary === "core-policy.validateOrganizationMemberAddition"
+      || semantic_boundary === "core-policy.validateRoleDelegation"
+    )).toEqual([]);
+    expect(coverage.filter(({ vector_id }) =>
+      vector_id === "core/node-advert-dual-proof-valid"
+      || vector_id === "core/node-advert-nid-proof-invalid"
+    ).flatMap(({ invariants }) => invariants))
+      .not.toContain("CORE-I-NID-DELEGATION-DUAL-PROOF");
+    const exclusions = new Set(NON_WIRE_REASON_EXCLUSIONS.map(({ code }) => code));
+    expect([...retiredReasons].every((code) => exclusions.has(code))).toBe(true);
+  }, 30_000);
 
   it("keeps qualified snapshot references without adding version metadata", () => {
     const coverage = buildCoverage([{

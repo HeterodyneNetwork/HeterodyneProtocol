@@ -976,6 +976,15 @@ Core's current invariant meanings are:
   grants, and sensitive cached state use the Core keys-repository protection
   profile, including NIP-49 wrapping where applicable.
 
+<a id="core-retired-member-kel-and-role-delegation"></a>
+### Retired member-KEL and role-delegation semantics
+
+The pre-1.0 member-KEL organization-add rule and boolean role-delegation rules
+are historical only. They grant no current Core authority, are not Workspace
+roles, and MUST NOT be executed or counted as current conformance behavior.
+Their retained reason-code registrations provide audit continuity only; Git
+history, not the current evaluator graph, preserves the retired behavior.
+
 <a id="core-sha1-bindings"></a>
 SHA-1 appears in exactly three places, each analyzed individually rather than
 dismissed wholesale. The Comms genesis-manifest digest is already SHA-256 and

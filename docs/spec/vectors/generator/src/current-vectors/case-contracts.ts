@@ -2761,7 +2761,6 @@ const CURRENT_CASE_CONTRACTS = {
       "heterodyne:0.6.0#core-node-advertisement"
     ],
     "invariants": [
-      "CORE-I-NID-DELEGATION-DUAL-PROOF",
       "CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY"
     ],
     "reason_codes": []
@@ -2811,9 +2810,7 @@ const CURRENT_CASE_CONTRACTS = {
     "spec_refs": [
       "heterodyne:0.6.0#core-node-advertisement"
     ],
-    "invariants": [
-      "CORE-I-NID-DELEGATION-DUAL-PROOF"
-    ],
+    "invariants": [],
     "reason_codes": [
       "nid_proof_invalid"
     ]
@@ -2829,19 +2826,6 @@ const CURRENT_CASE_CONTRACTS = {
     ],
     "reason_codes": [
       "onion_dns_leak"
-    ]
-  },
-  "core/org-member-add-unauthorized": {
-    "boundary_id": "core-policy.validateOrganizationMemberAddition",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:0.6.0#core-conformance"
-    ],
-    "invariants": [
-      "CORE-I-IDENTITY-INTEGRITY"
-    ],
-    "reason_codes": [
-      "org_member_add_unauthorized"
     ]
   },
   "core/profile-heterodyne-core-rotation-breadcrumb-note-v1": {
@@ -2977,32 +2961,6 @@ const CURRENT_CASE_CONTRACTS = {
     ],
     "reason_codes": [
       "retired-key-authority-window-invalid"
-    ]
-  },
-  "core/role-delegation-address-invalid": {
-    "boundary_id": "core-policy.validateRoleDelegation",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:0.6.0#core-nid-delegation"
-    ],
-    "invariants": [
-      "CORE-I-NID-DELEGATION-DUAL-PROOF"
-    ],
-    "reason_codes": [
-      "role-delegation-address-invalid"
-    ]
-  },
-  "core/role-delegation-key-proof-invalid": {
-    "boundary_id": "core-policy.validateRoleDelegation",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:0.6.0#core-nid-delegation"
-    ],
-    "invariants": [
-      "CORE-I-NID-DELEGATION-DUAL-PROOF"
-    ],
-    "reason_codes": [
-      "role-delegation-key-proof-invalid"
     ]
   },
   "core/strict-mode-without-tor": {

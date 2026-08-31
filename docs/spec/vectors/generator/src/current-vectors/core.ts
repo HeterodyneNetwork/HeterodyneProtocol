@@ -1,6 +1,6 @@
 import * as nip49 from "nostr-tools/nip49";
 import { nip49EncryptDeterministic } from "../backup-crypto.js";
-import { evaluateCoreOperationalBoundary, validateCoreWireEnvelope, validateOrganizationMemberAddition, validateRoleDelegation, } from "../core-policy.js";
+import { evaluateCoreOperationalBoundary, validateCoreWireEnvelope, } from "../core-policy.js";
 import { QUALIFIED_VERSION } from "../family.js";
 import { bytesToHex } from "../hex.js";
 import { classifyRetiredKeyObservation, validateCanonicalProfile, validateNodeAdvertisementTime, } from "../follow-up-hardening.js";
@@ -173,9 +173,6 @@ export async function buildCoreCases(): Promise<CurrentCaseFixture[]> {
     const cacheInput = { operation: "read-friend-cache" as const, owner_signed: false, content_class: "nostr" as const };
     const relayInput = { operation: "relay-profile" as const, vanilla_nip01_unchanged: false };
     const configRidInput = { operation: "publish-surface" as const, config_rid: RID, values: [RID] };
-    const organizationInput = { member_kel_authorized: true, org_admin_threshold_authorized: false };
-    const roleAddressInput = { namespace: "other.role", registered_namespace: "workspace.role", role_id: "maintainer", key_proof_valid: true };
-    const roleProofInput = { namespace: "workspace.role", registered_namespace: "workspace.role", role_id: "maintainer", key_proof_valid: false };
     const corePolicyCases: CurrentCaseFixture[] = [
         {
             vector_id: "core/nip01-raw-mismatch",
@@ -207,24 +204,6 @@ export async function buildCoreCases(): Promise<CurrentCaseFixture[]> {
             direction: "consume" as const,
             input: input as Record<string, unknown>
         })),
-        {
-            vector_id: "core/org-member-add-unauthorized",
-            description: "One member-KEL approval cannot substitute for the independent organization-admin threshold.",
-            direction: "consume",
-            input: organizationInput
-        },
-        {
-            vector_id: "core/role-delegation-address-invalid",
-            description: "A role-addressed delegation must use the exact registered namespace and role syntax.",
-            direction: "consume",
-            input: roleAddressInput
-        },
-        {
-            vector_id: "core/role-delegation-key-proof-invalid",
-            description: "A correctly addressed role delegation remains unauthorized without its registered key proof.",
-            direction: "consume",
-            input: roleProofInput
-        },
     ];
     return [
         ...corePolicyCases,

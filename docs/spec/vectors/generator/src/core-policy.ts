@@ -177,30 +177,3 @@ export function evaluateCoreOperationalBoundary(input: OperationalInput):
     ? { verdict: "reject", reason_code: "config_rid_advertised" }
     : { verdict: "accept" };
 }
-
-export function validateOrganizationMemberAddition(input: {
-  member_kel_authorized: boolean;
-  org_admin_threshold_authorized: boolean;
-}): { verdict: "accept" } | { verdict: "reject"; reason_code: "org_member_add_unauthorized" } {
-  return input.member_kel_authorized && input.org_admin_threshold_authorized
-    ? { verdict: "accept" }
-    : { verdict: "reject", reason_code: "org_member_add_unauthorized" };
-}
-
-export function validateRoleDelegation(input: {
-  namespace: string;
-  registered_namespace: string;
-  role_id: string;
-  key_proof_valid: boolean;
-}):
-  | { verdict: "accept"; role_id: string }
-  | { verdict: "reject"; reason_code: "role-delegation-address-invalid" | "role-delegation-key-proof-invalid" } {
-  if (
-    input.namespace !== input.registered_namespace
-    || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(input.role_id)
-  ) return { verdict: "reject", reason_code: "role-delegation-address-invalid" };
-  if (!input.key_proof_valid) {
-    return { verdict: "reject", reason_code: "role-delegation-key-proof-invalid" };
-  }
-  return { verdict: "accept", role_id: input.role_id };
-}
