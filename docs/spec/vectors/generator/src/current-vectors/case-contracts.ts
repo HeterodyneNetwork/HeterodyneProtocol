@@ -733,6 +733,20 @@ const CURRENT_CASE_CONTRACTS = {
       "claim-attenuation-violation"
     ]
   },
+  "comms/claim-authorization-effect-indeterminate": {
+    "boundary_id": "claim-authorization.authorizeClaimEffect",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:0.6.0#comms-claim-verification"
+    ],
+    "invariants": [
+      "COMMS-I-CLAIM-AUTHENTICITY"
+    ],
+    "reason_codes": [],
+    "semantic_reason_codes": [
+      "claim-authorization-effect-indeterminate"
+    ]
+  },
   "comms/claim-chain-cycle": {
     "boundary_id": "claim-authorization.inspectClaimState",
     "owner_document": "comms",
@@ -939,6 +953,19 @@ const CURRENT_CASE_CONTRACTS = {
     ],
     "reason_codes": [
       "claim-subject-proof-invalid"
+    ]
+  },
+  "comms/claim-subject-proof-replayed": {
+    "boundary_id": "claim-authorization.authorizeClaimEffect+authorizeClaimEffect",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:0.6.0#comms-conformance"
+    ],
+    "invariants": [
+      "COMMS-I-CLAIM-AUTHENTICITY"
+    ],
+    "reason_codes": [
+      "claim-subject-proof-replayed"
     ]
   },
   "comms/claim-subject-proof-required": {
@@ -2810,7 +2837,9 @@ const CURRENT_CASE_CONTRACTS = {
     "spec_refs": [
       "heterodyne:0.6.0#core-node-advertisement"
     ],
-    "invariants": [],
+    "invariants": [
+      "CORE-I-VERIFY-BEFORE-USE"
+    ],
     "reason_codes": [
       "nid_proof_invalid"
     ]
@@ -2948,6 +2977,30 @@ const CURRENT_CASE_CONTRACTS = {
     ],
     "reason_codes": [
       "core-created-at-premature"
+    ]
+  },
+  "core/repository-writer-dual-proof-valid": {
+    "boundary_id": "core-writer-binding.resolveCurrentRepositoryWriterBinding+revalidateCurrentRepositoryWriterBinding",
+    "owner_document": "core",
+    "spec_refs": [
+      "heterodyne:0.6.0#core-nid-delegation"
+    ],
+    "invariants": [
+      "CORE-I-NID-DELEGATION-DUAL-PROOF"
+    ],
+    "reason_codes": []
+  },
+  "core/repository-writer-owner-proof-invalid": {
+    "boundary_id": "core-writer-binding.resolveCurrentRepositoryWriterBinding+revalidateCurrentRepositoryWriterBinding",
+    "owner_document": "core",
+    "spec_refs": [
+      "heterodyne:0.6.0#core-nid-delegation"
+    ],
+    "invariants": [
+      "CORE-I-NID-DELEGATION-DUAL-PROOF"
+    ],
+    "reason_codes": [
+      "repository-writer-binding-invalid"
     ]
   },
   "core/retired-key-authority-window-invalid": {
@@ -3507,7 +3560,7 @@ const CURRENT_CASE_CONTRACTS = {
     ]
   },
   "workspace/signature-invalid": {
-    "boundary_id": "workspace.eventsAreByteIdentical",
+    "boundary_id": "workspace.evaluateWorkspaceObject",
     "owner_document": "workspace",
     "spec_refs": [
       "heterodyne:0.6.0#workspace-object-types"

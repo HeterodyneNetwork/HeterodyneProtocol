@@ -1,11 +1,16 @@
 import * as nip49 from "nostr-tools/nip49";
+import { ed25519 } from "@noble/curves/ed25519";
+import { schnorr } from "@noble/curves/secp256k1";
+import { sha256 } from "@noble/hashes/sha2";
 import { nip49EncryptDeterministic } from "../backup-crypto.js";
-import { evaluateCoreOperationalBoundary, validateCoreWireEnvelope, } from "../core-policy.js";
+import { evaluateCoreOperationalBoundary, validateCoreWireEnvelope, type CurrentRepositoryPolicy, } from "../core-policy.js";
+import { createCoreRepositoryWriterAuthority, type RepositoryWriterBindingV1, } from "../core-writer-binding.js";
 import { QUALIFIED_VERSION } from "../family.js";
-import { bytesToHex } from "../hex.js";
+import { bytesToHex, hexToBytes } from "../hex.js";
 import { classifyRetiredKeyObservation, validateCanonicalProfile, validateNodeAdvertisementTime, } from "../follow-up-hardening.js";
 import { getPublicKey, signEvent, type NostrSignedEvent } from "../nostr.js";
-import { didKeyFromEd25519, ed25519PublicKey, ed25519Sign, nodeAdvertPayload, validateNodeAdvertisement, } from "../radicle.js";
+import { proofBytes } from "../proof-bytes.js";
+import { didKeyFromEd25519, ed25519PublicKey, ed25519Sign, fixtureRid, nodeAdvertPayload, validateNodeAdvertisement, } from "../radicle.js";
 import { createReplaceableSelectionAuthority, selectCurrentReplaceableEvent, } from "../replaceable-selection.js";
 import { currentSpecRef, type CurrentCaseFixture } from "./types.js";
 const SECRET = "19".repeat(32);
@@ -17,6 +22,14 @@ const RID = "rad:zCurrentCatalogFixture";
 const ENDPOINT = "wss://node.example/relay";
 const EXPIRY = NOW + 3600;
 const REPO_HEAD = "ab".repeat(20);
+// BLUE TEAM VALIDATION: synthetic/local deterministic, non-deployable writer
+// keys and repository fixtures only; no live target, real credential, or reusable payload.
+const WRITER_OWNER_SECRET = "31".repeat(32);
+const WRITER_NID_SECRET = "32".repeat(32);
+const WRITER_OWNER_KEY = bytesToHex(schnorr.getPublicKey(hexToBytes(WRITER_OWNER_SECRET)));
+const WRITER_NID = didKeyFromEd25519(ed25519PublicKey(WRITER_NID_SECRET));
+const WRITER_RID = fixtureRid("current-core-writer-binding");
+const WRITER_NAMESPACE = "refs/xyz.heterodyne.claim-ledger/writers/";
 async function replaceable(created_at: number, content: string): Promise<NostrSignedEvent> {
     return signEvent({
         secretKey: SECRET,
@@ -173,6 +186,57 @@ export async function buildCoreCases(): Promise<CurrentCaseFixture[]> {
     const cacheInput = { operation: "read-friend-cache" as const, owner_signed: false, content_class: "nostr" as const };
     const relayInput = { operation: "relay-profile" as const, vanilla_nip01_unchanged: false };
     const configRidInput = { operation: "publish-surface" as const, config_rid: RID, values: [RID] };
+    const writerBody = {
+        profile: "heterodyne.core.repository-writer-binding.v1" as const,
+        spec_version: QUALIFIED_VERSION as RepositoryWriterBindingV1["spec_version"],
+        owner_active_key: WRITER_OWNER_KEY,
+        repository_rid: WRITER_RID,
+        writer_nid: WRITER_NID,
+        ref_namespace: WRITER_NAMESPACE,
+        operations: ["claim-ledger-write"],
+        issued_at: NOW - 10,
+        expires_at: NOW + 100,
+    };
+    const writerPayload = proofBytes("heterodyne-core-repository-writer-binding-v1", writerBody);
+    const writerBinding: RepositoryWriterBindingV1 = {
+        ...writerBody,
+        owner_signature: bytesToHex(schnorr.sign(
+            sha256(writerPayload),
+            hexToBytes(WRITER_OWNER_SECRET),
+            hexToBytes(AUX_RAND),
+        )),
+        nid_signature: bytesToHex(ed25519.sign(writerPayload, hexToBytes(WRITER_NID_SECRET))),
+    };
+    const writerPolicy: CurrentRepositoryPolicy = {
+        repository_rid: WRITER_RID,
+        owner_active_key: WRITER_OWNER_KEY,
+        revision: 1,
+        checkpoint: "b1".repeat(20),
+        predecessor: null,
+        state: "active",
+        writers: [{
+            writer_nid: WRITER_NID,
+            ref_namespace: WRITER_NAMESPACE,
+            operations: ["claim-ledger-write"],
+            state: "active",
+        }],
+    };
+    const writerAuthority = createCoreRepositoryWriterAuthority({
+        authority_id: "synthetic-local-current-core-writer",
+        trusted_now: () => NOW,
+        load_current_policy: () => writerPolicy,
+    });
+    const writerRequest = {
+        owner_active_key: WRITER_OWNER_KEY,
+        repository_rid: WRITER_RID,
+        writer_nid: WRITER_NID,
+        writer_ref: `${WRITER_NAMESPACE}writer-one`,
+        operation: "claim-ledger-write" as const,
+    };
+    const invalidWriterBinding: RepositoryWriterBindingV1 = {
+        ...writerBinding,
+        owner_signature: "00".repeat(64),
+    };
     const corePolicyCases: CurrentCaseFixture[] = [
         {
             vector_id: "core/nip01-raw-mismatch",
@@ -207,6 +271,20 @@ export async function buildCoreCases(): Promise<CurrentCaseFixture[]> {
     ];
     return [
         ...corePolicyCases,
+        {
+            vector_id: "core/repository-writer-dual-proof-valid",
+            description: "The current Core writer boundary verifies owner and writer-NID proofs over the same closed binding and revalidates it against current policy.",
+            direction: "consume",
+            input: { binding: writerBinding, request: writerRequest },
+            boundary_args: [writerAuthority, writerBinding, writerRequest],
+        },
+        {
+            vector_id: "core/repository-writer-owner-proof-invalid",
+            description: "A deterministic synthetic binding with an invalid owner proof cannot mint current repository-writer authority.",
+            direction: "consume",
+            input: { binding: invalidWriterBinding, request: writerRequest },
+            boundary_args: [writerAuthority, invalidWriterBinding, writerRequest],
+        },
         {
             vector_id: "core/replaceable-future-quarantined",
             description: "A replaceable event more than 900 seconds ahead is quarantined without being selected.",

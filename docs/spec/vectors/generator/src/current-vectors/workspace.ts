@@ -1,8 +1,9 @@
 import { schnorr } from "@noble/curves/secp256k1";
 import { bytesToHex, hexToBytes } from "../hex.js";
 import { proofBytes } from "../proof-bytes.js";
+import { QUALIFIED_VERSION } from "../family.js";
 import { createWorkspaceAssuranceAuthority, evaluateWorkspaceAssuranceTransition, verifyWorkspaceAssuranceAuthorization, type WorkspaceAssuranceAttestationInput, type WorkspaceAssuranceConfig, } from "../workspace-assurance.js";
-import { authenticateWorkspaceRepositoryView, eventsAreByteIdentical, evaluateFreshness, evaluatePrivateProjection, evaluateRoleLeafChange, evaluateWorkspaceObject, resolveEffectiveHosts, } from "../workspace.js";
+import { authenticateWorkspaceRepositoryView, evaluateFreshness, evaluatePrivateProjection, evaluateRoleLeafChange, evaluateWorkspaceObject, resolveEffectiveHosts, signWorkspaceObject, workspaceObjectId, } from "../workspace.js";
 import { evaluateWorkspaceAffiliationBoundary, evaluateWorkspaceCapabilityBoundary, evaluateWorkspaceResourceDeliveryBoundary, evaluateWorkspaceResourceKeySeparation, evaluateWorkspaceStateTransitionBoundary, } from "../workspace-policy.js";
 import { currentSpecRef, type CurrentCaseFixture } from "./types.js";
 const WORKSPACE_KEY = "11".repeat(32);
@@ -11,6 +12,7 @@ const PREVIOUS_POLICY_HEAD = "33".repeat(32);
 const NEXT_POLICY_HEAD = "44".repeat(32);
 const EVALUATED_AT = 1720000400;
 const AUTHORIZATION_SECRET = "55".repeat(32);
+const WORKSPACE_SIGNATURE_SECRET = "5a".repeat(32);
 const AUX_RAND = "00".repeat(32);
 const AUTHORIZATION_KEY = bytesToHex(schnorr.getPublicKey(AUTHORIZATION_SECRET));
 const ASSURANCE = Object.freeze({
@@ -158,8 +160,43 @@ export function buildWorkspaceCases(): CurrentCaseFixture[] {
     const staleDecision = evaluateFreshness(staleInput);
     const invalidSchemaInput = { ...freshnessInput, checkpoint_age: -1 };
     const invalidSchemaDecision = evaluateFreshness(invalidSchemaInput);
-    const signatureInput = ["signed-event-a", "signed-event-b"];
-    const signatureDecision = eventsAreByteIdentical(signatureInput);
+    const signedManifest = signWorkspaceObject({
+        spec_version: QUALIFIED_VERSION,
+        object_type: "workspace-manifest-v1",
+        workspace_key: "00".repeat(32),
+        policy_head: PREVIOUS_POLICY_HEAD,
+        predecessor: null,
+        authority_checkpoint: INCEPTION_EVENT_ID,
+        repository_rid: "rad:zWorkspaceHostA",
+        repository_head: "aa".repeat(20),
+        issued_at: EVALUATED_AT,
+        root_policy_rid: "rad:zWorkspacePolicy",
+        root_policy_head: PREVIOUS_POLICY_HEAD,
+        visibility: "private",
+        public_roles: [],
+    }, WORKSPACE_SIGNATURE_SECRET, AUX_RAND);
+    const originalSignature = String(signedManifest.signature);
+    const signatureWorkspaceKey = String(signedManifest.workspace_key);
+    const invalidSignedManifest = {
+        ...signedManifest,
+        signature: `${originalSignature.startsWith("00") ? "01" : "00"}${originalSignature.slice(2)}`,
+    };
+    const signatureInput = {
+        object: invalidSignedManifest,
+        expected_object_id: workspaceObjectId(invalidSignedManifest),
+        current: {
+            workspace_key: signatureWorkspaceKey,
+            policy_head: PREVIOUS_POLICY_HEAD,
+            predecessor: null,
+            authority_checkpoint: INCEPTION_EVENT_ID,
+            repository_rid: "rad:zWorkspaceHostA",
+            repository_head: "aa".repeat(20),
+            repository_ancestry: ["aa".repeat(20)],
+            authority_checkpoint_candidates: [INCEPTION_EVENT_ID],
+            competing_repository_heads: [],
+        },
+    };
+    const signatureDecision = evaluateWorkspaceObject(signatureInput);
     const repositoryInput = { authority: {}, evidence: {}, objects: [] };
     const repositoryDecision = authenticateWorkspaceRepositoryView(repositoryInput);
     const conflictingState = {
@@ -216,7 +253,7 @@ export function buildWorkspaceCases(): CurrentCaseFixture[] {
     const historyDeniedDecision = evaluateWorkspaceResourceDeliveryBoundary(historyDeniedInput);
     const reasonCases = [
         ["schema-invalid", invalidSchemaInput],
-        ["signature-invalid", { events: signatureInput }],
+        ["signature-invalid", signatureInput],
         ["repository-invalid", { evidence: {}, objects: [] }],
         ["authority-conflict", authorityConflictInput],
         ["affiliation-stale", affiliationInput],
@@ -232,7 +269,6 @@ export function buildWorkspaceCases(): CurrentCaseFixture[] {
             input: input as Record<string, unknown>
     }));
     const boundaryArgs = new Map<string, readonly unknown[]>([
-        ["workspace/signature-invalid", [signatureInput]],
         ["workspace/repository-invalid", [repositoryInput]],
         ["workspace/bare-key-baseline", [null, bareTransition]],
         ["workspace/assurance-verified-activation", [authority(), activation]],

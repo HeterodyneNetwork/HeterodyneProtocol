@@ -231,6 +231,27 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
         view: options.view ?? claimView(),
     });
     const activeClaimBoundary = claimBoundary("claim-active-authenticated");
+    const indeterminateClaimBoundary = claimBoundary("claim-authorization-effect-indeterminate");
+    const indeterminateClaimInput = {
+        ...indeterminateClaimBoundary.input,
+        effect: () => ({ status: "unknown" as const }),
+    };
+    const replayedClaimBoundary = claimBoundary("claim-subject-proof-replayed");
+    let replayEffectExecutions = 0;
+    const replayedClaimInput = {
+        ...replayedClaimBoundary.input,
+        effect: () => ({
+            status: "completed" as const,
+            result: {
+                operation: "claim-authorized",
+                execution_index: ++replayEffectExecutions,
+            },
+        }),
+    };
+    const replayedSecondClaimInput = {
+        ...replayedClaimInput,
+        idempotency_key: `${replayedClaimInput.idempotency_key}:replay`,
+    };
     const unconfirmedClaimBoundary = claimBoundary("claim-repository-unconfirmed", {
         view: claimView({ claims: [] }),
     });
@@ -964,6 +985,15 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
                 },
             ]],
         ["comms/claim-active-authenticated", [activeClaimBoundary.authority, activeClaimBoundary.input]],
+        ["comms/claim-authorization-effect-indeterminate", [
+                indeterminateClaimBoundary.authority,
+                indeterminateClaimInput,
+            ]],
+        ["comms/claim-subject-proof-replayed", [
+                replayedClaimBoundary.authority,
+                replayedClaimInput,
+                replayedSecondClaimInput,
+            ]],
         ["comms/claim-repository-unconfirmed", [unconfirmedClaimBoundary.authority, unconfirmedClaimBoundary.input]],
         ["comms/ledger-reader-authorized", registerPrivateCurrentBoundaryArgs(
             "comms/ledger-reader-authorized",
@@ -1232,6 +1262,29 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
                 claim: ledger.claimOne.artifact,
                 requested_namespace: claimContext.requested_namespace,
                 requested_operation: claimContext.requested_operation,
+            }
+        },
+        {
+            vector_id: "comms/claim-authorization-effect-indeterminate",
+            description: "A durable claim effect with no known terminal outcome records one fail-closed reconciliation state without exposing a result.",
+            direction: "consume",
+            input: {
+                claim: ledger.claimOne.artifact,
+                idempotency_key: indeterminateClaimInput.idempotency_key,
+                effect_digest: indeterminateClaimInput.effect_digest,
+            }
+        },
+        {
+            vector_id: "comms/claim-subject-proof-replayed",
+            description: "A durable subject-proof authorization succeeds once and rejects a second execution of the same exact proof.",
+            direction: "consume",
+            input: {
+                claim: ledger.claimOne.artifact,
+                nonce: claimContext.expected_nonce,
+                idempotency_keys: [
+                    replayedClaimInput.idempotency_key,
+                    replayedSecondClaimInput.idempotency_key,
+                ],
             }
         },
         {

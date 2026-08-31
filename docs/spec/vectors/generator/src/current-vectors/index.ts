@@ -15,14 +15,19 @@ import { invokeCurrentBoundary } from "./boundary-runners.js";
 import {
   currentCaseContract,
   currentCaseIds,
-  type CurrentCaseContract,
 } from "./case-contracts.js";
 import { currentProfileOracleForVector } from "./profile-oracles.js";
+import {
+  certifyBoundaryExecution,
+  inspectSemanticBoundaryCertificate,
+  type SemanticBoundaryCertificate,
+} from "./semantic-certificates.js";
 
 type CurrentCaseEvidence = Readonly<{
-  contract: CurrentCaseContract;
-  /** Exact evaluator result retained privately; never serialized as evidence. */
-  raw_result: unknown;
+  certificate: SemanticBoundaryCertificate;
+  owner_document: CurrentVectorCase["owner_document"];
+  profile?: string;
+  spec_refs: readonly string[];
 }>;
 
 const evidenceByCase = new WeakMap<CurrentVectorCase, CurrentCaseEvidence>();
@@ -88,10 +93,14 @@ async function bindExecutedCase(raw: CurrentCaseFixture): Promise<CurrentVectorC
   }
   const projected = deepFreeze(requireRecordResult(raw.vector_id, execution.projected_output));
   const expectedReason = projected.verdict === "reject"
+    || (projected.verdict === "indeterminate" && contract.reason_codes.length > 0)
     ? projected.reason_code
     : undefined;
-  if (projected.verdict === "reject" && expectedReason === undefined) {
-    throw new Error(`current reject result lacks an exact reason: ${raw.vector_id}`);
+  if (
+    projected.verdict !== "accept"
+    && projected.reason_code === undefined
+  ) {
+    throw new Error(`current terminal result lacks an exact reason: ${raw.vector_id}`);
   }
   if (
     expectedReason !== undefined
@@ -116,6 +125,7 @@ async function bindExecutedCase(raw: CurrentCaseFixture): Promise<CurrentVectorC
   ) {
     throw new Error(`current evaluator diagnostic/contract mismatch: ${raw.vector_id}`);
   }
+  const certificate = certifyBoundaryExecution(contract, raw, execution);
 
   const bound = deepFreeze<CurrentVectorCase>({
     relativePath: expectedPath,
@@ -131,7 +141,12 @@ async function bindExecutedCase(raw: CurrentCaseFixture): Promise<CurrentVectorC
     input: deepFreeze(raw.input),
     expected_output: projected,
   });
-  evidenceByCase.set(bound, Object.freeze({ contract, raw_result: rawResult }));
+  evidenceByCase.set(bound, Object.freeze({
+    certificate,
+    owner_document: contract.owner_document,
+    ...(contract.profile === undefined ? {} : { profile: contract.profile }),
+    spec_refs: contract.spec_refs,
+  }));
   return bound;
 }
 
@@ -147,14 +162,18 @@ export function semanticEvidenceForCase(value: CurrentVectorCase): Readonly<{
   if (evidence === undefined) {
     throw new Error(`unbranded semantic evidence: ${value.vector_id}`);
   }
-  const { contract } = evidence;
+  const certificate = inspectSemanticBoundaryCertificate(evidence.certificate);
+  if (
+    certificate.vector_id !== value.vector_id
+    || certificate.boundary_id !== value.semantic_boundary
+  ) throw new Error(`semantic certificate/case mismatch: ${value.vector_id}`);
   return Object.freeze({
-    boundary_id: contract.boundary_id,
-    owner_document: contract.owner_document,
-    ...(contract.profile === undefined ? {} : { profile: contract.profile }),
-    spec_refs: contract.spec_refs,
-    invariants: contract.invariants,
-    reason_codes: contract.semantic_reason_codes ?? contract.reason_codes,
+    boundary_id: certificate.boundary_id,
+    owner_document: evidence.owner_document,
+    ...(evidence.profile === undefined ? {} : { profile: evidence.profile }),
+    spec_refs: evidence.spec_refs,
+    invariants: certificate.invariants,
+    reason_codes: certificate.reasons,
   });
 }
 

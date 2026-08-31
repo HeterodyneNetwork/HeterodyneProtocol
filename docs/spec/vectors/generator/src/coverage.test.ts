@@ -14,6 +14,7 @@ import {
   writeCoverage,
 } from "./coverage.js";
 import { buildCurrentCases, buildCurrentVectors } from "./current-vectors/index.js";
+import { currentCaseIds } from "./current-vectors/case-contracts.js";
 import { loadRegistry } from "./registry.js";
 
 const tempDirs: string[] = [];
@@ -27,8 +28,8 @@ describe("current family coverage", () => {
     const vectors = (await buildCurrentVectors()).map(({ vector }) => vector);
     const coverage = buildCoverage(vectors);
     const semanticCoverage = buildSemanticCoverage(await buildCurrentCases());
-    expect(vectors).toHaveLength(274);
-    expect(semanticCoverage).toHaveLength(274);
+    expect(vectors).toHaveLength(currentCaseIds().length);
+    expect(semanticCoverage).toHaveLength(currentCaseIds().length);
     expect(coverage.map(({ vector_id }) => vector_id)).toEqual(
       [...coverage.map(({ vector_id }) => vector_id)].sort(),
     );
@@ -45,12 +46,12 @@ describe("current family coverage", () => {
       "workspace",
     ]));
     expect(coverage.filter(({ invariants }) => invariants.length === 0).map(({ vector_id }) => vector_id))
-      .toEqual(["core/node-advert-nid-proof-invalid"]);
+      .toEqual([]);
     const registry = loadRegistry(resolve(import.meta.dirname, "../../../../../"));
     expect(registry.security_invariants).toHaveLength(74);
     expect(new Set(semanticCoverage.flatMap(({ invariants }) => invariants)).size).toBe(74);
-    expect(registry.reason_codes).toHaveLength(211);
-    expect(new Set(semanticCoverage.flatMap(({ reason_codes }) => reason_codes)).size).toBe(192);
+    expect(registry.reason_codes).toHaveLength(215);
+    expect(new Set(semanticCoverage.flatMap(({ reason_codes }) => reason_codes)).size).toBe(196);
     expect(NON_WIRE_REASON_EXCLUSIONS).toHaveLength(19);
     expect(registry.kinds.flatMap(({ profiles }) => profiles)).toHaveLength(31);
     expect(new Set(semanticCoverage.flatMap(({ profile }) =>

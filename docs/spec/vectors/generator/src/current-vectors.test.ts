@@ -74,7 +74,7 @@ describe("current vector catalog import boundary", () => {
   it("audits the exact trusted-source static graph without historical authoring modules", () => {
     expect(compilerConfigPath(catalogEntry)).toBe(currentConfigPath);
     const graph = moduleDependencies(catalogEntry);
-    expect(graph).toHaveLength(79);
+    expect(graph).toHaveLength(84);
     expect(graph.filter((path) => forbidden.some((pattern) => pattern.test(path))))
       .toEqual([]);
   }, 60_000);
@@ -485,8 +485,8 @@ describe("current 0.6 vector catalog", () => {
     }).semantic_result.route_evidence;
     expect(secondEvidence.request_digest).toBe(firstEvidence.request_digest);
     expect(secondEvidence.authority_identity).not.toBe(firstEvidence.authority_identity);
-    expect((await buildCurrentCases()).length).toBe(274);
-    expect((await buildCurrentCases()).length).toBe(274);
+    expect((await buildCurrentCases()).length).toBe(currentCaseIds().length);
+    expect((await buildCurrentCases()).length).toBe(currentCaseIds().length);
   }, 30_000);
 
   it("rejects a revocation profile when the signed revocation is mutated before merge", async () => {

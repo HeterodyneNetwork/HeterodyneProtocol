@@ -13,6 +13,7 @@ import * as commsPolicy from "../comms-policy.js";
 import * as controlPolicy from "../control-policy.js";
 import * as controlSigning from "../control-signing.js";
 import * as corePolicy from "../core-policy.js";
+import * as coreWriterBinding from "../core-writer-binding.js";
 import * as followUpHardening from "../follow-up-hardening.js";
 import * as marmotAdmission from "../marmot-admission.js";
 import * as marmotRoutingPolicy from "../marmot-routing-policy.js";
@@ -33,7 +34,8 @@ import * as workspaceAssurance from "../workspace-assurance.js";
 import * as workspacePolicy from "../workspace-policy.js";
 import * as nip49 from "nostr-tools/nip49";
 import { nip44 } from "nostr-tools";
-import { bytesToHex, hexToBytes } from "../hex.js";
+import { sha256 } from "@noble/hashes/sha2";
+import { bytesToHex, hexToBytes, utf8Bytes } from "../hex.js";
 import type { CurrentCaseFixture } from "./types.js";
 import { currentProfileOracleForVector } from "./profile-oracles.js";
 import { evaluateCurrentTier3PrivateRoute } from "./private-route-authority.js";
@@ -46,6 +48,163 @@ const REPOSITORY_ROOT = resolve(import.meta.dirname, "../../../../../..");
 type BoundaryModule = Readonly<Record<string, unknown>>;
 type BoundaryFunction = (...args: readonly unknown[]) => unknown;
 const PRIVATE_CURRENT_BOUNDARY_ARGS = new Map<string, readonly unknown[]>();
+
+declare const CURRENT_BOUNDARY_EXECUTION: unique symbol;
+export type CurrentBoundaryExecution = Readonly<{
+  readonly [CURRENT_BOUNDARY_EXECUTION]: true;
+  raw_result: unknown;
+  projected_output: unknown;
+}>;
+
+export type CurrentBoundaryExecutionRecord = Readonly<{
+  boundary_id: string;
+  fixture_digest: string;
+  result_digest: string;
+  raw_result: unknown;
+  projected_output: unknown;
+}>;
+
+type PrivateCurrentBoundaryExecutionRecord = CurrentBoundaryExecutionRecord & Readonly<{
+  fixture: CurrentCaseFixture;
+  evaluator_identity: object;
+}>;
+
+const EXECUTION_RECORDS = new WeakMap<object, PrivateCurrentBoundaryExecutionRecord>();
+const EVALUATOR_IDENTITIES = new Map<string, object>();
+
+type DescriptorState = { seen: WeakSet<object>; nodes: number };
+
+function boundedDescriptor(
+  value: unknown,
+  state: DescriptorState = { seen: new WeakSet<object>(), nodes: 0 },
+  depth = 0,
+): unknown {
+  if (depth > 64) throw new Error("semantic execution descriptor depth exceeded");
+  state.nodes += 1;
+  if (state.nodes > 16_384) throw new Error("semantic execution descriptor size exceeded");
+  if (value === null || typeof value === "string" || typeof value === "boolean") return value;
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) throw new Error("semantic execution descriptor is non-finite");
+    return value;
+  }
+  if (typeof value === "undefined") return { type: "undefined" };
+  if (typeof value === "bigint") return { type: "bigint", value: value.toString(10) };
+  if (typeof value === "symbol") return { type: "symbol", value: value.description ?? "" };
+  if (typeof value === "function") return { type: "function", name: value.name };
+  const object = value as object;
+  if (state.seen.has(object)) throw new Error("semantic execution descriptor cycle");
+  state.seen.add(object);
+  try {
+    if (value instanceof Error) {
+      return { type: "error", name: value.name, message: value.message };
+    }
+    if (ArrayBuffer.isView(value)) {
+      return {
+        type: value.constructor.name,
+        value: bytesToHex(new Uint8Array(value.buffer, value.byteOffset, value.byteLength)),
+      };
+    }
+    if (Array.isArray(value)) {
+      if (value.length > 4_096) throw new Error("semantic execution descriptor collection exceeded");
+      return value.map((entry) => boundedDescriptor(entry, state, depth + 1));
+    }
+    if (value instanceof Map) {
+      if (value.size > 4_096) throw new Error("semantic execution descriptor collection exceeded");
+      return {
+        type: "map",
+        entries: [...value.entries()].map(([key, entry]) => [
+          boundedDescriptor(key, state, depth + 1),
+          boundedDescriptor(entry, state, depth + 1),
+        ]),
+      };
+    }
+    if (value instanceof Set) {
+      if (value.size > 4_096) throw new Error("semantic execution descriptor collection exceeded");
+      return {
+        type: "set",
+        entries: [...value].map((entry) => boundedDescriptor(entry, state, depth + 1)),
+      };
+    }
+    const descriptors = Object.getOwnPropertyDescriptors(object);
+    const keys = Reflect.ownKeys(descriptors).sort((left, right) =>
+      String(left).localeCompare(String(right), "en")
+    );
+    if (keys.length > 4_096) throw new Error("semantic execution descriptor collection exceeded");
+    const entries: Array<[string, unknown]> = [];
+    for (const key of keys) {
+      const descriptor = Reflect.getOwnPropertyDescriptor(object, key)!;
+      if (!("value" in descriptor)) {
+        throw new Error("semantic execution descriptor accessor rejected");
+      }
+      entries.push([String(key), boundedDescriptor(descriptor.value, state, depth + 1)]);
+    }
+    return { type: object.constructor?.name ?? "object", entries };
+  } finally {
+    state.seen.delete(object);
+  }
+}
+
+function executionDigest(value: unknown): string {
+  return bytesToHex(sha256(utf8Bytes(JSON.stringify(boundedDescriptor(value)))));
+}
+
+function evaluatorIdentity(boundaryId: string): object {
+  let identity = EVALUATOR_IDENTITIES.get(boundaryId);
+  if (identity === undefined) {
+    identity = Object.freeze({});
+    EVALUATOR_IDENTITIES.set(boundaryId, identity);
+  }
+  return identity;
+}
+
+function mintBoundaryExecution(
+  boundaryId: string,
+  fixture: CurrentCaseFixture,
+  result: Readonly<{ raw_result: unknown; projected_output: unknown }>,
+): CurrentBoundaryExecution {
+  const execution = Object.freeze({
+    raw_result: result.raw_result,
+    projected_output: result.projected_output,
+  }) as CurrentBoundaryExecution;
+  EXECUTION_RECORDS.set(execution, Object.freeze({
+    boundary_id: boundaryId,
+    fixture,
+    raw_result: result.raw_result,
+    projected_output: result.projected_output,
+    fixture_digest: executionDigest(fixture),
+    result_digest: executionDigest(result),
+    evaluator_identity: evaluatorIdentity(boundaryId),
+  }));
+  return execution;
+}
+
+export function inspectCurrentBoundaryExecution(
+  execution: CurrentBoundaryExecution,
+  boundaryId: string,
+  fixture: CurrentCaseFixture,
+): CurrentBoundaryExecutionRecord {
+  const record = execution !== null && typeof execution === "object"
+    ? EXECUTION_RECORDS.get(execution)
+    : undefined;
+  if (
+    record === undefined
+    || record.boundary_id !== boundaryId
+    || record.fixture !== fixture
+    || record.evaluator_identity !== evaluatorIdentity(boundaryId)
+    || execution.raw_result !== record.raw_result
+    || execution.projected_output !== record.projected_output
+  ) throw new Error("semantic certificate requires the exact boundary execution");
+  if (executionDigest(fixture) !== record.fixture_digest) {
+    throw new Error("semantic certificate fixture changed after execution");
+  }
+  if (executionDigest({
+    raw_result: execution.raw_result,
+    projected_output: execution.projected_output,
+  }) !== record.result_digest) {
+    throw new Error("semantic certificate result changed after execution");
+  }
+  return record;
+}
 
 export function registerPrivateCurrentBoundaryArgs(
   fixtureId: string,
@@ -87,6 +246,7 @@ const BOUNDARY_MODULES: Readonly<Record<string, BoundaryModule>> = Object.freeze
   "control-policy": controlPolicy,
   "control-signing": controlSigning,
   "core-policy": corePolicy,
+  "core-writer-binding": coreWriterBinding,
   "follow-up-hardening": followUpHardening,
   "marmot-admission": marmotAdmission,
   "marmot-routing-policy": marmotRoutingPolicy,
@@ -532,6 +692,43 @@ async function executeCurrentBoundary(
     };
   }
   if (
+    boundaryId === "claim-authorization.authorizeClaimEffect+authorizeClaimEffect"
+  ) {
+    const [authority, input, replayInput] = fixture.boundary_args ?? [];
+    const first = await claimAuthorization.authorizeClaimEffect(
+      authority as Parameters<typeof claimAuthorization.authorizeClaimEffect>[0],
+      input as Parameters<typeof claimAuthorization.authorizeClaimEffect>[1],
+    );
+    const second = await claimAuthorization.authorizeClaimEffect(
+      authority as Parameters<typeof claimAuthorization.authorizeClaimEffect>[0],
+      replayInput as Parameters<typeof claimAuthorization.authorizeClaimEffect>[1],
+    );
+    return { raw_result: { first, second }, projected_output: second };
+  }
+  if (
+    boundaryId
+    === "core-writer-binding.resolveCurrentRepositoryWriterBinding+revalidateCurrentRepositoryWriterBinding"
+  ) {
+    const [authority, source, request] = fixture.boundary_args ?? [];
+    try {
+      const binding = coreWriterBinding.resolveCurrentRepositoryWriterBinding(
+        authority as Parameters<typeof coreWriterBinding.resolveCurrentRepositoryWriterBinding>[0],
+        source,
+        request as Parameters<typeof coreWriterBinding.resolveCurrentRepositoryWriterBinding>[2],
+      );
+      const revalidated = coreWriterBinding.revalidateCurrentRepositoryWriterBinding(
+        authority as Parameters<typeof coreWriterBinding.revalidateCurrentRepositoryWriterBinding>[0],
+        binding,
+      );
+      return {
+        raw_result: { binding, revalidated },
+        projected_output: { verdict: "accept", current_writer_binding: "opaque" },
+      };
+    } catch (error) {
+      return { raw_result: error, projected_output: thrownProjection(error) };
+    }
+  }
+  if (
     boundaryId
     === "claims.verifyClaimRevocationEnvelope+claim-authorization.inspectClaimState"
   ) {
@@ -724,7 +921,14 @@ async function executeCurrentBoundary(
         raw_result: decision,
         projected_output: decision.verdict === "accept"
           ? { verdict: "accept", authorization: decision }
-          : decision,
+          : decision.verdict === "indeterminate"
+            ? {
+                verdict: decision.verdict,
+                allowed: decision.allowed,
+                state: decision.state,
+                reason_code: decision.reason_code,
+              }
+            : decision,
       };
     }
     if (boundaryId === "claim-ledger.evaluateReaderAccess") {
@@ -859,6 +1063,16 @@ function rawSemanticVerdict(
   fixture: CurrentCaseFixture,
   raw: unknown,
 ): SemanticVerdict {
+  if (
+    boundaryId
+    === "core-writer-binding.resolveCurrentRepositoryWriterBinding+revalidateCurrentRepositoryWriterBinding"
+  ) {
+    if (raw instanceof Error) return "reject";
+    const result = raw as Readonly<{ binding?: unknown; revalidated?: unknown }>;
+    return result.binding !== undefined && result.revalidated === result.binding
+      ? "accept"
+      : "reject";
+  }
   if (boundaryId === "replaceable-selection.selectCurrentReplaceableEvent") {
     if (fixture.vector_id !== "core/replaceable-future-quarantined") return "accept";
     const result = raw as ReturnType<
@@ -964,7 +1178,7 @@ export function assertProjectionPreservesVerdict(
 export async function invokeCurrentBoundary(
   boundaryId: string,
   fixture: CurrentCaseFixture,
-): Promise<Readonly<{ raw_result: unknown; projected_output: unknown }>> {
+): Promise<CurrentBoundaryExecution> {
   const profileOracle = currentProfileOracleForVector(fixture.vector_id);
   let registryComparison: ReturnType<
     typeof profileNegotiation.validateCurrentKindProfileNegotiation
@@ -992,7 +1206,7 @@ export async function invokeCurrentBoundary(
       ? undefined
       : rawSemanticReason(boundaryId, fixture, execution.raw_result),
   );
-  return registryComparison === undefined
+  const boundResult = registryComparison === undefined
     ? execution
     : {
         raw_result: Object.freeze({
@@ -1002,4 +1216,5 @@ export async function invokeCurrentBoundary(
         }),
         projected_output: execution.projected_output,
       };
+  return mintBoundaryExecution(boundaryId, fixture, boundResult);
 }
