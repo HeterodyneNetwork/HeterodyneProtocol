@@ -1531,6 +1531,15 @@ authority. Production stores MUST preserve acquisition and terminal state
 across process restart and MUST serialize competing workers; a process-local
 store is suitable only for deterministic conformance testing.
 
+That authority MUST also capture a positive bounded effect timeout and its
+deadline scheduler at construction. Immediately after `acquired`, it MUST
+reload and verify the exact persisted `executing` record, including both the
+binding digest and execution token, before invoking the effect. An unknown
+acquire reply or a missing, malformed, or substituted record fails closed
+without invoking it. The authority-owned deadline applies to every asynchronous
+effect; expiry transitions the acquired execution to `indeterminate` and never
+reopens it.
+
 The only terminal states are `committed`, containing an immutable defensively
 captured result and its digest, and `indeterminate`, containing a
 reconciliation digest. A positive result MUST be returned only after the

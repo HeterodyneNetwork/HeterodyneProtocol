@@ -60,12 +60,18 @@ export type ClaimEffectStore = Readonly<{
   ): "indeterminate" | "conflict";
 }>;
 
+export type ClaimEffectDeadlineScheduler = Readonly<{
+  schedule(deadline: number, fire: () => void): () => void;
+}>;
+
 export type ClaimAuthorizationAuthorityConfig = Readonly<{
   authority_id: string;
   trusted_now: () => number;
   trusted_issuers: readonly KeyRef[];
   load_current_view: () => CurrentClaimAuthorizationView;
   store: ClaimEffectStore;
+  effect_timeout_ms: number;
+  schedule_effect_deadline: ClaimEffectDeadlineScheduler;
 }>;
 
 export type ClaimAuthorizationInspectionInput = Readonly<{
@@ -128,6 +134,14 @@ type AuthorityRecord = Readonly<{
   trusted_issuers: readonly KeyRef[];
   load_current_view: () => CurrentClaimAuthorizationView;
   store: CapturedStore;
+  effect_timeout_ms: number;
+  schedule_effect_deadline: ClaimEffectDeadlineScheduler["schedule"];
+}>;
+
+type ScheduledEffectDeadline = Readonly<{
+  expired: () => boolean;
+  wait: Promise<void>;
+  cancel: () => void;
 }>;
 
 type CapturedInspection = Readonly<{
@@ -166,6 +180,7 @@ const MAX_STRING = 4_096;
 const MAX_RESULT_BYTES = 65_536;
 const MAX_JSON_NODES = 4_096;
 const MAX_JSON_DEPTH = 32;
+const MAX_EFFECT_TIMEOUT_MS = 86_400_000;
 
 export function createClaimAuthorizationAuthority(
   config: ClaimAuthorizationAuthorityConfig,
@@ -222,7 +237,7 @@ export async function authorizeClaimEffect<T>(
 
     const binding = authorizationBinding(captured, retained, currentView);
     const executionToken = randomBytes(32).toString("hex");
-    let acquisition: "acquired" | "replay" | "conflict";
+    let acquisition: unknown;
     try {
       acquisition = retained.store.acquire(
         binding.single_use_key,
@@ -243,9 +258,29 @@ export async function authorizeClaimEffect<T>(
     if (acquisition === "replay") {
       return cachedTerminal<T>(retained, binding.single_use_key, binding.binding_digest);
     }
+    if (acquisition !== "acquired") return replayRejected();
+    if (!hasExactExecutingRecord(
+      retained,
+      binding.single_use_key,
+      binding.binding_digest,
+      executionToken,
+    )) {
+      return indeterminate(binding.binding_digest, executionToken, "acquire-confirmation-failed");
+    }
 
     let outcome: ClaimEffectOutcome<T>;
+    let deadline: ScheduledEffectDeadline | null = null;
     try {
+      deadline = scheduleEffectDeadline(retained);
+      if (deadline.expired()) {
+        return persistIndeterminate(
+          retained,
+          binding.single_use_key,
+          binding.binding_digest,
+          executionToken,
+          "effect-deadline-expired",
+        );
+      }
       const returned: unknown = captured.effect(executionToken);
       if (utilTypes.isProxy(returned)) {
         throw new Error("claim-authorization-effect-indeterminate: proxy effect outcome");
@@ -254,8 +289,30 @@ export async function authorizeClaimEffect<T>(
         if (Object.getPrototypeOf(returned) !== Promise.prototype) {
           throw new Error("claim-authorization-effect-indeterminate: nonordinary effect promise");
         }
-        outcome = await returned as ClaimEffectOutcome<T>;
+        const settled = await Promise.race([
+          returned.then((value) => Object.freeze({ kind: "effect" as const, value })),
+          deadline.wait.then(() => Object.freeze({ kind: "deadline" as const })),
+        ]);
+        if (settled.kind === "deadline") {
+          return persistIndeterminate(
+            retained,
+            binding.single_use_key,
+            binding.binding_digest,
+            executionToken,
+            "effect-deadline-expired",
+          );
+        }
+        outcome = settled.value as ClaimEffectOutcome<T>;
       } else {
+        if (deadline.expired()) {
+          return persistIndeterminate(
+            retained,
+            binding.single_use_key,
+            binding.binding_digest,
+            executionToken,
+            "effect-deadline-expired",
+          );
+        }
         outcome = returned as ClaimEffectOutcome<T>;
       }
     } catch {
@@ -266,6 +323,8 @@ export async function authorizeClaimEffect<T>(
         executionToken,
         "effect-threw-or-rejected",
       );
+    } finally {
+      deadline?.cancel();
     }
     let result: T;
     try {
@@ -335,6 +394,8 @@ function captureConfig(value: unknown): AuthorityRecord {
     "trusted_issuers",
     "load_current_view",
     "store",
+    "effect_timeout_ms",
+    "schedule_effect_deadline",
   ], "claim authorization configuration");
   const authorityId = boundedString(members.authority_id, "authority_id");
   const trustedNowCallback = safeCallback(members.trusted_now, "trusted_now");
@@ -354,6 +415,16 @@ function captureConfig(value: unknown): AuthorityRecord {
     "commit",
     "markIndeterminate",
   ], "claim effect store");
+  if (
+    !Number.isSafeInteger(members.effect_timeout_ms) ||
+    (members.effect_timeout_ms as number) <= 0 ||
+    (members.effect_timeout_ms as number) > MAX_EFFECT_TIMEOUT_MS
+  ) throw new Error("claim-issuer-authority-invalid: invalid effect_timeout_ms");
+  const schedulerMembers = captureClosedObject(
+    members.schedule_effect_deadline,
+    ["schedule"],
+    "claim effect deadline scheduler",
+  );
   return Object.freeze({
     authority_id: authorityId,
     trusted_now: trustedNowCallback as () => number,
@@ -368,6 +439,11 @@ function captureConfig(value: unknown): AuthorityRecord {
         "store.markIndeterminate",
       ) as ClaimEffectStore["markIndeterminate"],
     }),
+    effect_timeout_ms: members.effect_timeout_ms as number,
+    schedule_effect_deadline: safeCallback(
+      schedulerMembers.schedule,
+      "schedule_effect_deadline.schedule",
+    ) as ClaimEffectDeadlineScheduler["schedule"],
   });
 }
 
@@ -627,6 +703,58 @@ function cachedTerminal<T>(
     });
   }
   return indeterminate(bindingDigest, record.execution_token, "execution-still-open");
+}
+
+function hasExactExecutingRecord(
+  authority: AuthorityRecord,
+  singleUseKey: string,
+  bindingDigest: string,
+  executionToken: string,
+): boolean {
+  const loaded = safeLoad(authority, singleUseKey);
+  if (loaded === null) return false;
+  try {
+    const record = captureEffectRecord(loaded);
+    return record.state === "executing" &&
+      record.binding_digest === bindingDigest &&
+      record.execution_token === executionToken;
+  } catch {
+    return false;
+  }
+}
+
+function scheduleEffectDeadline(authority: AuthorityRecord): ScheduledEffectDeadline {
+  const now = trustedNow(authority);
+  const deadline = now + authority.effect_timeout_ms;
+  if (!Number.isSafeInteger(deadline)) {
+    throw new Error("claim-issuer-authority-invalid: effect deadline is unsafe");
+  }
+  let expired = false;
+  let resolveDeadline!: () => void;
+  const wait = new Promise<void>((resolve) => { resolveDeadline = resolve; });
+  let cancel: unknown;
+  try {
+    cancel = authority.schedule_effect_deadline(deadline, () => {
+      expired = true;
+      resolveDeadline();
+    });
+  } catch {
+    throw new Error("claim-authorization-effect-indeterminate: effect deadline scheduling failed");
+  }
+  if (typeof cancel !== "function" || utilTypes.isProxy(cancel)) {
+    throw new Error("claim-authorization-effect-indeterminate: effect deadline cancellation invalid");
+  }
+  return Object.freeze({
+    expired: () => expired,
+    wait,
+    cancel: () => {
+      try {
+        (cancel as () => void)();
+      } catch {
+        // Cancellation cannot reopen an acquired execution token.
+      }
+    },
+  });
 }
 
 function persistIndeterminate<T>(

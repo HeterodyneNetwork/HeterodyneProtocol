@@ -102,6 +102,8 @@ const currentClaimBoundary = (options: {
         trusted_issuers: options.context.trusted_issuers,
         load_current_view: () => options.view,
         store: currentClaimStore(),
+        effect_timeout_ms: 60_000,
+        schedule_effect_deadline: { schedule: () => () => {} },
     });
     const input: ClaimAuthorizationEffectInput<{ operation: string }> = {
         leaf: options.leaf,

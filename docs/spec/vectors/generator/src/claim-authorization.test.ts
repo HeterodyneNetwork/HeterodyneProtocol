@@ -223,6 +223,8 @@ function scenario(options: Readonly<{
     trusted_issuers: [inspectVerifiedClaim(artifact).issuer],
     load_current_view: options.load ?? (() => view),
     store: store.store,
+    effect_timeout_ms: 60_000,
+    schedule_effect_deadline: { schedule: () => () => {} },
   });
   let effects = 0;
   const input: ClaimAuthorizationEffectInput<{ receipt: string }> = {
@@ -244,6 +246,21 @@ function scenario(options: Readonly<{
     },
   };
   return { artifact, authority, input, store, effects: () => effects, view };
+}
+
+function authorityWithEffectDeadline(
+  value: ReturnType<typeof scenario>,
+  schedule: (deadline: number, fire: () => void) => () => void,
+) {
+  return createClaimAuthorizationAuthority({
+    authority_id: "claim-authority-deadline",
+    trusted_now: () => now,
+    trusted_issuers: [inspectVerifiedClaim(value.artifact).issuer],
+    load_current_view: () => value.view,
+    store: value.store.store,
+    effect_timeout_ms: 12,
+    schedule_effect_deadline: { schedule },
+  } as unknown as Parameters<typeof createClaimAuthorizationAuthority>[0]);
 }
 
 describe("claim authorization proof/effect fence", () => {
@@ -416,6 +433,107 @@ describe("claim authorization proof/effect fence", () => {
     expect(value.effects()).toBe(0);
   });
 
+  it("BLUE TEAM VALIDATION: synthetic/local refuses unknown acquire replies before invoking an effect", async () => {
+    // BLUE TEAM VALIDATION: synthetic/local store replies are bounded inert values and never leave this local authority.
+    for (const acquisition of [undefined, "unexpected-acquire-state"] as const) {
+      const base = storeHarness();
+      const value = scenario({ store: {
+        ...base,
+        store: { ...base.store, acquire: () => acquisition as never },
+      } });
+      await expect(authorizeClaimEffect(value.authority, value.input)).resolves.toMatchObject({
+        allowed: false,
+      });
+      expect(value.effects()).toBe(0);
+    }
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local confirms the exact acquired executing record before invoking an effect", async () => {
+    // BLUE TEAM VALIDATION: synthetic/local store mismatches are bounded in-memory records with no live effect.
+    for (const mismatched of [false, true]) {
+      const base = storeHarness();
+      const value = scenario({ store: {
+        ...base,
+        store: {
+          ...base.store,
+          acquire(key, _binding, token) {
+            if (mismatched) {
+              base.records.set(key, {
+                state: "executing",
+                binding_digest: "00".repeat(32),
+                execution_token: token,
+              });
+            }
+            return "acquired";
+          },
+        },
+      } });
+      await expect(authorizeClaimEffect(value.authority, value.input)).resolves.toMatchObject({
+        allowed: false,
+      });
+      expect(value.effects()).toBe(0);
+    }
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local marks one never-settling effect indeterminate at its authority deadline", async () => {
+    // BLUE TEAM VALIDATION: synthetic/local scheduling uses an explicit in-memory callback, never a wall clock or external timer.
+    const value = scenario();
+    let deadline = -1;
+    let fire: (() => void) | undefined;
+    const authority = authorityWithEffectDeadline(value, (receivedDeadline, callback) => {
+      deadline = receivedDeadline;
+      fire = callback;
+      return () => {};
+    });
+    let effects = 0;
+    const pending = authorizeClaimEffect(authority, {
+      ...value.input,
+      effect: () => {
+        effects += 1;
+        return new Promise<never>(() => {});
+      },
+    });
+    await Promise.resolve();
+    expect(deadline).toBe(now + 12);
+    expect(effects).toBe(1);
+    fire?.();
+    await expect(pending).resolves.toMatchObject({
+      verdict: "indeterminate",
+      allowed: false,
+      reason_code: "claim-authorization-effect-indeterminate",
+    });
+    expect(value.store.calls.mark).toBe(1);
+    expect(await authorizeClaimEffect(authority, {
+      ...value.input,
+      effect: () => ({ status: "completed" as const, result: { receipt: "reopened" } }),
+    })).toMatchObject({ verdict: "indeterminate", allowed: false });
+    expect(effects).toBe(1);
+    expect(value.store.calls.mark).toBe(1);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local never invokes an effect after an immediate authority deadline", async () => {
+    // BLUE TEAM VALIDATION: synthetic/local scheduling fires one in-memory callback before any inert effect callback can run.
+    const value = scenario();
+    const authority = authorityWithEffectDeadline(value, (_deadline, fire) => {
+      fire();
+      return () => {};
+    });
+    let effects = 0;
+    await expect(authorizeClaimEffect(authority, {
+      ...value.input,
+      effect: () => {
+        effects += 1;
+        return { status: "completed" as const, result: { receipt: "too-late" } };
+      },
+    })).resolves.toMatchObject({
+      verdict: "indeterminate",
+      allowed: false,
+      reason_code: "claim-authorization-effect-indeterminate",
+    });
+    expect(effects).toBe(0);
+    expect(value.store.calls.mark).toBe(1);
+  });
+
   it("BLUE TEAM VALIDATION: synthetic/local makes thrown and timeout/unknown effects durably indeterminate", async () => {
     // BLUE TEAM VALIDATION: synthetic/local callbacks are inert local functions with no live or external side effects.
     for (const effect of [
@@ -583,6 +701,8 @@ describe("claim authorization proof/effect fence", () => {
       trusted_issuers: [inspectVerifiedClaim(artifact).issuer],
       load_current_view: () => currentView(artifact),
       store: base.store.store,
+      effect_timeout_ms: 60_000,
+      schedule_effect_deadline: { schedule: () => () => {} },
     };
     Object.defineProperty(config, "trusted_now", {
       enumerable: true,
@@ -622,6 +742,8 @@ describe("claim authorization proof/effect fence", () => {
       trusted_issuers: [inspectVerifiedClaim(artifact).issuer],
       load_current_view: () => currentView(artifact),
       store: base.store.store,
+      effect_timeout_ms: 60_000,
+      schedule_effect_deadline: { schedule: () => () => {} },
     })).toThrow(/non-proxy callback/i);
     expect(callbackTraps).toBe(0);
   });
