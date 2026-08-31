@@ -30,6 +30,7 @@ import { buildLiveOidcScenario } from "./oidc-test-support.js";
 import { inspectVerifiedClaim } from "./claims.js";
 import { buildLedgerRepositoryEvidence, mergeClaimLedger } from "./claim-ledger.js";
 import { jcsCanonicalize } from "./jcs.js";
+import type { ClaimAuthorizationAuthority } from "./claim-authorization.js";
 
 const fixtures = buildFixtures();
 let x: Awaited<ReturnType<typeof buildLiveOidcScenario>>;
@@ -56,6 +57,8 @@ function resignJwt(jwt: string, mutate: (claims: Record<string, unknown>) => voi
 async function durableAuthorization(
   request: OidcAuthorizationRequest,
   idempotencyKey: string,
+  purpose: "authorization_code" | "device_authorization" | "jwt_projection" =
+    request.flow === "device_authorization" ? "device_authorization" : "authorization_code",
 ): Promise<OidcAuthorizedRelease> {
   const harness = x.s.makeClaimAuthorizationHarness({
     load_state: () => x.preMintState,
@@ -64,10 +67,36 @@ async function durableAuthorization(
   const result = await authorizeAuthorizationRequestEffect(harness.authority, {
     request,
     idempotency_key: idempotencyKey,
+    purpose,
+    authorization_validity_seconds: 300,
     effect: () => ({ status: "completed", result: { executed: true } }),
   });
   if (result.verdict !== "accept") throw new Error(`synthetic OIDC authorization failed: ${result.reason_code}`);
   return result.authorization;
+}
+
+async function durableAuthorizationRecord(
+  request: OidcAuthorizationRequest,
+  idempotencyKey: string,
+  purpose: "authorization_code" | "device_authorization" | "jwt_projection" =
+    request.flow === "device_authorization" ? "device_authorization" : "authorization_code",
+): Promise<Readonly<{
+  authorization: OidcAuthorizedRelease;
+  authority: ClaimAuthorizationAuthority;
+}>> {
+  const harness = x.s.makeClaimAuthorizationHarness({
+    load_state: () => x.preMintState,
+    trusted_now: () => x.s.now + 69,
+  });
+  const result = await authorizeAuthorizationRequestEffect(harness.authority, {
+    request,
+    idempotency_key: idempotencyKey,
+    purpose,
+    authorization_validity_seconds: 300,
+    effect: () => ({ status: "completed", result: { executed: true } }),
+  });
+  if (result.verdict !== "accept") throw new Error(`synthetic OIDC authorization failed: ${result.reason_code}`);
+  return Object.freeze({ authorization: result.authorization, authority: harness.authority });
 }
 
 describe("active-persona issuer and exact origin identity", () => {
@@ -119,6 +148,8 @@ describe("evidence-bound release and OAuth state machines", () => {
     await expect(authorizeAuthorizationRequestEffect(harness.authority, {
       request: x.request,
       idempotency_key: "synthetic-local-oidc-async-effect-0001",
+      purpose: "jwt_projection",
+      authorization_validity_seconds: 300,
       effect: async (release) => ({
         status: "completed",
         result: { release_digest: release.release_digest },
@@ -162,6 +193,8 @@ describe("evidence-bound release and OAuth state machines", () => {
       await expect(authorizeAuthorizationRequestEffect(harness.authority, {
         request: x.request,
         idempotency_key: "synthetic-local-oidc-writer-removed-0001",
+        purpose: "jwt_projection",
+        authorization_validity_seconds: 300,
         effect: () => {
           effects += 1;
           return { status: "completed", result: { release: "unexpected" } };
@@ -197,6 +230,8 @@ describe("evidence-bound release and OAuth state machines", () => {
     await expect(authorizeAuthorizationRequestEffect(harness.authority, {
       request: x.request,
       idempotency_key: "synthetic-local-oidc-source-removed-0001",
+      purpose: "jwt_projection",
+      authorization_validity_seconds: 300,
       effect: () => {
         effects += 1;
         return { status: "completed", result: { release: "unexpected" } };
@@ -216,6 +251,8 @@ describe("evidence-bound release and OAuth state machines", () => {
     const hostile = {
       request: x.request,
       idempotency_key: "synthetic-local-oidc-accessor-0001",
+      purpose: "jwt_projection",
+      authorization_validity_seconds: 300,
     } as Record<string, unknown>;
     Object.defineProperty(hostile, "effect", {
       enumerable: true,
@@ -234,6 +271,8 @@ describe("evidence-bound release and OAuth state machines", () => {
     const proxy = new Proxy({
       request: x.request,
       idempotency_key: "synthetic-local-oidc-proxy-0001",
+      purpose: "jwt_projection" as const,
+      authorization_validity_seconds: 300,
       effect: () => ({ status: "completed" as const, result: {} }),
     }, {
       get(target, property, receiver) {
@@ -271,6 +310,8 @@ describe("evidence-bound release and OAuth state machines", () => {
     await expect(authorizeAuthorizationRequestEffect(harness.authority, {
       request,
       idempotency_key: "synthetic-local-oidc-request-mutation-0001",
+      purpose: "jwt_projection",
+      authorization_validity_seconds: 300,
       effect: (release) => ({
         status: "completed",
         result: { name: release.released_claims?.name },
@@ -291,6 +332,8 @@ describe("evidence-bound release and OAuth state machines", () => {
     await expect(authorizeAuthorizationRequestEffect(harness.authority, {
       request: { ...x.request, requested_claims: proxiedClaims },
       idempotency_key: "synthetic-local-oidc-request-proxy-0001",
+      purpose: "jwt_projection",
+      authorization_validity_seconds: 300,
       effect: () => ({ status: "completed", result: {} }),
     })).resolves.toMatchObject({ verdict: "reject", allowed: false });
     expect(traps).toBe(0);
@@ -299,17 +342,168 @@ describe("evidence-bound release and OAuth state machines", () => {
   it("BLUE TEAM VALIDATION: synthetic/local public issuance and projection reject inspection-only requests", () => {
     // BLUE TEAM VALIDATION: synthetic/local uses one deterministic request object and performs no code delivery, token delivery, or external transaction.
     expect(() => issueAuthorizationCode(
+      x.releaseHarness.authority,
       x.request as never,
-      x.issuance.issued_at,
     )).toThrow(/durable|authorization|grant/i);
     expect(() => issueDeviceAuthorization(
+      x.releaseHarness.authority,
       x.request as never,
-      x.issuance.issued_at,
     )).toThrow(/durable|authorization|grant/i);
     expect(() => projectAccessToken({
       ...x.projection,
       authorization: x.request as never,
     })).toThrow(/durable|authorization|grant/i);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects direct and simultaneous reuse of one durable artifact", async () => {
+    // BLUE TEAM VALIDATION: synthetic/local invokes only deterministic in-memory issuance functions and never delivers a code or contacts an external client.
+    const authorization = await durableAuthorizationRecord(
+      x.request,
+      "synthetic-local-oidc-artifact-reuse-0001",
+    );
+    issueAuthorizationCode(authorization.authority, authorization.authorization);
+    expect(() => issueAuthorizationCode(
+      authorization.authority,
+      authorization.authorization,
+    )).toThrow(/consumed|replay|authorization/i);
+
+    const simultaneous = await durableAuthorizationRecord(
+      x.request,
+      "synthetic-local-oidc-artifact-simultaneous-0001",
+    );
+    const results = await Promise.allSettled([
+      Promise.resolve().then(() => issueAuthorizationCode(simultaneous.authority, simultaneous.authorization)),
+      Promise.resolve().then(() => issueAuthorizationCode(simultaneous.authority, simultaneous.authorization)),
+    ]);
+    expect(results.filter(({ status }) => status === "fulfilled")).toHaveLength(1);
+    expect(results.filter(({ status }) => status === "rejected")).toHaveLength(1);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects cross-purpose and later-time durable artifact use", async () => {
+    // BLUE TEAM VALIDATION: synthetic/local varies only an in-memory purpose and safe-integer fixture time; it contains no live credential, target, or reusable payload.
+    const codeAuthorization = await durableAuthorizationRecord(
+      x.request,
+      "synthetic-local-oidc-artifact-purpose-0001",
+    );
+    expect(() => issueDeviceAuthorization(
+      codeAuthorization.authority,
+      codeAuthorization.authorization,
+    )).toThrow(/purpose|authorization|grant/i);
+    const jwtSubstitution = await durableAuthorizationRecord(
+      x.request,
+      "synthetic-local-oidc-artifact-jwt-purpose-0001",
+    );
+    expect(() => projectAccessToken({
+      ...x.projection,
+      authorization_authority: jwtSubstitution.authority,
+      authorization: jwtSubstitution.authorization,
+    })).toThrow(/purpose|authorization|grant/i);
+
+    let trustedNow = x.s.now + 69;
+    const harness = x.s.makeClaimAuthorizationHarness({
+      load_state: () => x.preMintState,
+      trusted_now: () => trustedNow,
+    });
+    const result = await authorizeAuthorizationRequestEffect(harness.authority, {
+      request: x.request,
+      idempotency_key: "synthetic-local-oidc-artifact-later-time-0001",
+      purpose: "authorization_code",
+      authorization_validity_seconds: 2,
+      effect: () => ({ status: "completed", result: { executed: true } }),
+    });
+    if (result.verdict !== "accept") throw new Error(result.reason_code);
+    trustedNow += 2;
+    expect(() => issueAuthorizationCode(
+      harness.authority,
+      result.authorization,
+    )).toThrow(/stale|expired|replay|authorization|grant/i);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local binds artifacts to one authority and current view", async () => {
+    // BLUE TEAM VALIDATION: synthetic/local swaps only in-memory authority objects and writer-policy fixtures; no live repository or credential is accessed.
+    const authorized = await durableAuthorizationRecord(
+      x.request,
+      "synthetic-local-oidc-artifact-authority-0001",
+    );
+    const other = x.s.makeClaimAuthorizationHarness({
+      load_state: () => x.preMintState,
+      trusted_now: () => x.s.now + 69,
+    });
+    expect(() => issueAuthorizationCode(
+      other.authority,
+      authorized.authorization,
+    )).toThrow(/authority|authorization|grant/i);
+
+    const bindingHarness = x.s.makeClaimAuthorizationHarness({
+      load_state: () => x.preMintState,
+      trusted_now: () => x.s.now + 69,
+    });
+    const bindingInput = {
+      request: x.request,
+      idempotency_key: "synthetic-local-oidc-artifact-binding-0001",
+      authorization_validity_seconds: 300,
+      effect: () => ({ status: "completed" as const, result: { executed: true } }),
+    };
+    await expect(authorizeAuthorizationRequestEffect(bindingHarness.authority, {
+      ...bindingInput,
+      purpose: "authorization_code",
+    })).resolves.toMatchObject({ verdict: "accept", allowed: true });
+    await expect(authorizeAuthorizationRequestEffect(bindingHarness.authority, {
+      ...bindingInput,
+      purpose: "jwt_projection",
+    })).resolves.toMatchObject({ verdict: "reject", allowed: false });
+
+    const current = await durableAuthorizationRecord(
+      x.request,
+      "synthetic-local-oidc-artifact-current-view-0001",
+    );
+    x.s.setCurrentWriterPolicy({
+      ...x.s.activeWriterPolicy(),
+      writers: x.s.activeWriterPolicy().writers.map((writer) => ({
+        ...writer,
+        state: "revoked" as const,
+      })),
+    });
+    try {
+      expect(() => issueAuthorizationCode(
+        current.authority,
+        current.authorization,
+      )).toThrow(/stale|writer|authorization|grant/i);
+    } finally {
+      x.s.resetCurrentWriterPolicy();
+    }
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local cached retry returns the same issued grant without minting twice", async () => {
+    // BLUE TEAM VALIDATION: synthetic/local replays one exact in-memory idempotency key through a process-local CAS store and performs no external delivery.
+    let trustedNow = x.s.now + 69;
+    const harness = x.s.makeClaimAuthorizationHarness({
+      load_state: () => x.preMintState,
+      trusted_now: () => trustedNow,
+    });
+    const effect = () => ({ status: "completed" as const, result: { executed: true } });
+    const input = {
+      request: x.request,
+      idempotency_key: "synthetic-local-oidc-artifact-cached-retry-0001",
+      purpose: "authorization_code" as const,
+      authorization_validity_seconds: 300,
+      effect,
+    };
+    const first = await authorizeAuthorizationRequestEffect(harness.authority, input);
+    trustedNow += 1;
+    const second = await authorizeAuthorizationRequestEffect(harness.authority, input);
+    if (first.verdict !== "accept" || second.verdict !== "accept") {
+      throw new Error("synthetic cached OIDC authorization failed");
+    }
+    expect(first.disposition).toBe("executed");
+    expect(second.disposition).toBe("cached");
+    const firstCode = issueAuthorizationCode(harness.authority, first.authorization);
+    const secondCode = issueAuthorizationCode(harness.authority, second.authorization);
+    expect(secondCode).toEqual(firstCode);
+    expect(() => issueAuthorizationCode(
+      harness.authority,
+      second.authorization,
+    )).toThrow(/consumed|replay|authorization/i);
   });
 
   it("derives pairwise subjects only from the exact lowercase typed-subject JCS digest", () => {
@@ -423,8 +617,12 @@ describe("evidence-bound release and OAuth state machines", () => {
     }
   });
 
-  it("enforces S256, client, redirect, expiry and one-time authorization-code redemption", () => {
-    const code = issueAuthorizationCode(x.releaseAuthorization.authorization, x.issuance.issued_at);
+  it("enforces S256, client, redirect, expiry and one-time authorization-code redemption", async () => {
+    const authorization = await durableAuthorizationRecord(
+      x.request,
+      "synthetic-local-authorization-code-redemption-0001",
+    );
+    const code = issueAuthorizationCode(authorization.authority, authorization.authorization);
     expect(code).toMatchObject(x.preMintState.credential_ledger);
     const consumed = new Set<string>();
     const redeem = (overrides = {}) => redeemAuthorizationCode(code, {
@@ -447,15 +645,15 @@ describe("evidence-bound release and OAuth state machines", () => {
       ...x.preMintState.credential_ledger,
       credential_ledger_generation: x.preMintState.credential_ledger.credential_ledger_generation + 1,
     } })).toMatchObject({ allowed: false });
-    expect(() => issueAuthorizationCode({} as never, x.issuance.issued_at))
+    expect(() => issueAuthorizationCode(authorization.authority, {} as never))
       .toThrow(/durable|authorization|grant/i);
   });
 
   it("executes RFC 8628 pending, slow_down, denial, expiry and success states", async () => {
     const request = { ...x.request, flow: "device_authorization", grant_type: "urn:ietf:params:oauth:grant-type:device_code",
       response_type: undefined, redirect_uri: undefined, code_challenge: undefined, code_challenge_method: undefined } as OidcAuthorizationRequest;
-    const authorization = await durableAuthorization(request, "synthetic-local-device-authorization-0001");
-    let record = issueDeviceAuthorization(authorization, x.issuance.issued_at);
+    const authorization = await durableAuthorizationRecord(request, "synthetic-local-device-authorization-0001");
+    let record = issueDeviceAuthorization(authorization.authority, authorization.authorization);
     expect(record).toMatchObject(x.preMintState.credential_ledger);
     const current = x.preMintState.credential_ledger;
     const pending = redeemDeviceCode(record, { device_code: record.device_code, client_id: record.client_id,
@@ -470,12 +668,20 @@ describe("evidence-bound release and OAuth state machines", () => {
     expect(success.result).toBe("success");
     expect(redeemDeviceCode(success.record, { device_code: record.device_code, client_id: record.client_id,
       now: x.issuance.issued_at + 21, credential_ledger: current }).result).toBe("expired_token");
-    const denied = decideDeviceAuthorization(issueDeviceAuthorization(authorization, x.issuance.issued_at), "deny",
+    const deniedAuthorization = await durableAuthorizationRecord(request, "synthetic-local-device-denied-0001");
+    const denied = decideDeviceAuthorization(issueDeviceAuthorization(
+      deniedAuthorization.authority,
+      deniedAuthorization.authorization,
+    ), "deny",
       x.issuance.issued_at + 1, current);
     expect(redeemDeviceCode(denied, { device_code: denied.device_code, client_id: denied.client_id,
       now: x.issuance.issued_at + 2, credential_ledger: current }).result).toBe("access_denied");
     const stale = { ...current, credential_ledger_generation: current.credential_ledger_generation + 1 };
-    expect(() => decideDeviceAuthorization(issueDeviceAuthorization(authorization, x.issuance.issued_at), "approve",
+    const staleAuthorization = await durableAuthorizationRecord(request, "synthetic-local-device-stale-0001");
+    expect(() => decideDeviceAuthorization(issueDeviceAuthorization(
+      staleAuthorization.authority,
+      staleAuthorization.authorization,
+    ), "approve",
       x.issuance.issued_at + 1, stale)).toThrow(/credential_generation_stale/);
   });
 
@@ -489,26 +695,41 @@ describe("evidence-bound release and OAuth state machines", () => {
       code_challenge: undefined,
       code_challenge_method: undefined,
     } as OidcAuthorizationRequest;
-    const deviceAuthorization = await durableAuthorization(
+    const pendingAuthorization = await durableAuthorizationRecord(
       deviceRequest,
-      "synthetic-local-device-authorization-reset-0001",
+      "synthetic-local-device-authorization-reset-pending-0001",
+    );
+    const approvedAuthorization = await durableAuthorizationRecord(
+      deviceRequest,
+      "synthetic-local-device-authorization-reset-approved-0001",
+    );
+    const deniedAuthorization = await durableAuthorizationRecord(
+      deviceRequest,
+      "synthetic-local-device-authorization-reset-denied-0001",
+    );
+    const codeAuthorization = await durableAuthorizationRecord(
+      x.request,
+      "synthetic-local-code-authorization-reset-0001",
     );
     const current = x.preMintState.credential_ledger;
-    const pending = issueDeviceAuthorization(deviceAuthorization, x.issuance.issued_at);
+    const pending = issueDeviceAuthorization(
+      pendingAuthorization.authority,
+      pendingAuthorization.authorization,
+    );
     const approved = decideDeviceAuthorization(
-      issueDeviceAuthorization(deviceAuthorization, x.issuance.issued_at + 1),
+      issueDeviceAuthorization(approvedAuthorization.authority, approvedAuthorization.authorization),
       "approve",
       x.issuance.issued_at + 2,
       current,
     );
     const denied = decideDeviceAuthorization(
-      issueDeviceAuthorization(deviceAuthorization, x.issuance.issued_at + 2),
+      issueDeviceAuthorization(deniedAuthorization.authority, deniedAuthorization.authorization),
       "deny",
       x.issuance.issued_at + 3,
       current,
     );
     const result = purgeOidcTransactionsForCredentialReset(
-      [issueAuthorizationCode(x.releaseAuthorization.authorization, x.issuance.issued_at)],
+      [issueAuthorizationCode(codeAuthorization.authority, codeAuthorization.authorization)],
       [pending, approved, denied],
       { ...current, credential_ledger_generation: current.credential_ledger_generation + 1 },
     );

@@ -1854,6 +1854,18 @@ opaque durable authorization artifact (or execute inside that authorized
 effect); inspection results remain display-only and MUST NOT be accepted by
 those token-producing interfaces.
 
+Each durable OIDC artifact MUST be process-private, purpose-specific, bound to
+the exact claim-effect authority and authorization binding, bound to an exact
+trusted authorization time, exclusive expiry, and current-view fingerprint,
+and atomically one-shot. Code, device, and JWT purposes are not
+interchangeable. A consumer-supplied time MUST NOT refresh authorization;
+expiry and issuance time come from the bound trusted authority. Direct reuse,
+simultaneous reuse, cross-authority use, cross-binding use, use after expiry,
+and use after a current-view change MUST fail closed. An exact durable-effect
+retry that reads the committed Task 6 terminal result MAY return a new
+one-shot handle to the same already determined issuance output, but MUST NOT
+mint a second grant.
+
 `local-subject` is exactly 64 lowercase hexadecimal characters encoding
 SHA-256 over the RFC 8785 JCS bytes of the exact typed-key subject. The
 pairwise identifier uses HMAC-SHA-256 under the persona's repository-private

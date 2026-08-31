@@ -221,6 +221,8 @@ export async function buildLiveOidcScenario(
     {
       request,
       idempotency_key: "synthetic-local-oidc-release-0001",
+      purpose: "jwt_projection",
+      authorization_validity_seconds: 300,
       effect: () => {
         releaseEffects += 1;
         return { status: "completed", result: { executed: true } };
@@ -290,6 +292,31 @@ export async function buildLiveOidcScenario(
     issuedRepository.checkpoint,
     issuedContext,
   );
+  const projectionAuthorizations: Array<Readonly<{
+    authority: typeof releaseHarness.authority;
+    authorization: typeof releaseAuthorization.authorization;
+  }>> = [];
+  for (let index = 0; index < 32; index += 1) {
+    const harness = s.makeClaimAuthorizationHarness({
+      load_state: () => preMintState,
+      trusted_now: () => s.now + 69,
+    });
+    const authorized = await authorizeAuthorizationRequestEffect(harness.authority, {
+      request,
+      idempotency_key: `synthetic-local-oidc-projection-${String(index).padStart(4, "0")}`,
+      purpose: "jwt_projection",
+      authorization_validity_seconds: 300,
+      effect: () => ({ status: "completed", result: { executed: true } }),
+    });
+    if (authorized.verdict !== "accept") {
+      throw new Error(`OIDC projection authorization failed: ${authorized.reason_code}`);
+    }
+    projectionAuthorizations.push(Object.freeze({
+      authority: harness.authority,
+      authorization: authorized.authorization,
+    }));
+  }
+  let pendingProjectionAuthorization: (typeof projectionAuthorizations)[number] | undefined;
   const projection: JwtProjectionInput = {
     issuer: metadata.issuer,
     client_id: CLIENT.client_id,
@@ -300,7 +327,21 @@ export async function buildLiveOidcScenario(
     expires_at: issuance.expires_at,
     issuance_record_id: issuanceRecord.record_id,
     state: issuedState,
-    authorization: releaseAuthorization.authorization,
+    get authorization_authority() {
+      pendingProjectionAuthorization = projectionAuthorizations.shift();
+      if (pendingProjectionAuthorization === undefined) {
+        throw new Error("synthetic OIDC projection authorization pool exhausted");
+      }
+      return pendingProjectionAuthorization.authority;
+    },
+    get authorization() {
+      const selected = pendingProjectionAuthorization ?? projectionAuthorizations.shift();
+      pendingProjectionAuthorization = undefined;
+      if (selected === undefined) {
+        throw new Error("synthetic OIDC projection authorization pool exhausted");
+      }
+      return selected.authorization;
+    },
     issuer_envelope: s.issuerKeyEnvelopeOne,
     issuer_audience_key: s.issuerAudienceKeyOne,
     issuer_writer_nid: s.writerOne.did_key,

@@ -2,6 +2,8 @@ import { createHash, createHmac, createPrivateKey, createPublicKey, sign, verify
 import { types as utilTypes } from "node:util";
 import { nip19 } from "nostr-tools";
 import {
+  claimArtifactBindingDigest,
+  claimRevocationArtifactBindingDigest,
   inspectVerifiedClaim,
   type AuthorizationDecision,
   type ClaimVerificationContext,
@@ -9,6 +11,7 @@ import {
 } from "./claims.js";
 import {
   authorizeClaimEffect,
+  revalidateAcceptedClaimEffect,
   type ClaimAuthorizationAuthority,
   type ClaimEffectAuthorizationResult,
   type ClaimEffectOutcome,
@@ -81,6 +84,7 @@ export type JwtProjectionInput = {
   expires_at: number;
   issuance_record_id: string;
   state: LedgerMergeResult;
+  authorization_authority: ClaimAuthorizationAuthority;
   authorization: OidcAuthorizedRelease;
   issuer_envelope: IssuerKeyEnvelope;
   issuer_audience_key: Uint8Array;
@@ -137,14 +141,27 @@ export type OidcAuthorizationDecision = AuthorizationDecision & {
 
 declare const oidcAuthorizedReleaseBrand: unique symbol;
 
+export type OidcAuthorizationPurpose =
+  | "authorization_code"
+  | "device_authorization"
+  | "jwt_projection";
+
 export type OidcAuthorizedRelease = Readonly<{
   readonly [oidcAuthorizedReleaseBrand]: true;
 }>;
 
-type AuthorizedReleaseRecord = Readonly<{
+type AuthorizedReleaseRecord = {
+  authority: ClaimAuthorizationAuthority;
+  effect_result: ClaimEffectAuthorizationResult<unknown>;
+  purpose: OidcAuthorizationPurpose;
+  idempotency_key: string;
+  authorized_at: number;
+  expires_at: number;
+  view_fingerprint: string;
+  consumed: boolean;
   request: OidcAuthorizationRequest;
   release: CompleteOidcAuthorizationRelease;
-}>;
+};
 
 type CompleteOidcAuthorizationRelease = OidcAuthorizationDecision & Required<Pick<
   OidcAuthorizationDecision,
@@ -161,13 +178,24 @@ type CompleteOidcAuthorizationRelease = OidcAuthorizationDecision & Required<Pic
 type CapturedAuthorizationEffectInput<T> = Readonly<{
   request: OidcAuthorizationRequest;
   idempotency_key: string;
+  purpose: OidcAuthorizationPurpose;
+  authorization_validity_seconds: number;
   effect(
     release: OidcAuthorizationDecision,
     executionToken: string,
   ): ClaimEffectOutcome<T> | Promise<ClaimEffectOutcome<T>>;
 }>;
 
+type OidcAuthorizationSession = {
+  exact_input_digest: string;
+  authorized_at?: number;
+  expires_at?: number;
+  view_fingerprint?: string;
+};
+
 const AUTHORIZED_RELEASES = new WeakMap<object, AuthorizedReleaseRecord>();
+const ISSUED_GRANTS = new WeakMap<object, Map<string, unknown>>();
+const AUTHORIZATION_SESSIONS = new WeakMap<object, Map<string, OidcAuthorizationSession>>();
 
 export type OidcAuthorizationEffectResult<T> =
   | (Extract<ClaimEffectAuthorizationResult<T>, { verdict: "accept" }> & Readonly<{
@@ -225,11 +253,17 @@ export type DeviceAuthorizationRecord = CredentialLedgerBinding & {
 };
 
 export function issueAuthorizationCode(
+  authority: ClaimAuthorizationAuthority,
   authorization: OidcAuthorizedRelease,
-  now: number,
   lifetimeSeconds = 300,
 ): AuthorizationCodeRecord {
-  const { request, release: decision } = requireAuthorizedRelease(authorization);
+  const { retained } = consumeAuthorizedRelease(
+    authority,
+    authorization,
+    "authorization_code",
+  );
+  const now = retained.authorized_at;
+  const { request, release: decision } = retained;
   if (decision.release_digest === undefined || request.flow !== "authorization_code" ||
       request.redirect_uri === undefined || !canonicalPkceValue(request.code_challenge) ||
       !Number.isSafeInteger(now) || !Number.isSafeInteger(lifetimeSeconds) || lifetimeSeconds < 1 || lifetimeSeconds > 600) {
@@ -239,7 +273,10 @@ export function issueAuthorizationCode(
     client_id: request.client_id, redirect_uri: request.redirect_uri,
     code_challenge: request.code_challenge, issued_at: now, expires_at: now + lifetimeSeconds,
     release_digest: decision.release_digest };
-  return { code: createHash("sha256").update(`heterodyne-authorization-code-v1\0${jcsCanonicalize(core)}`).digest("base64url"), ...core };
+  return issuedGrant(retained, "authorization-code", () => ({
+    code: createHash("sha256").update(`heterodyne-authorization-code-v1\0${jcsCanonicalize(core)}`).digest("base64url"),
+    ...core,
+  }));
 }
 
 export function redeemAuthorizationCode(
@@ -274,12 +311,18 @@ export function redeemAuthorizationCode(
 }
 
 export function issueDeviceAuthorization(
+  authority: ClaimAuthorizationAuthority,
   authorization: OidcAuthorizedRelease,
-  now: number,
   lifetimeSeconds = 600,
   interval = 5,
 ): DeviceAuthorizationRecord {
-  const { request, release: decision } = requireAuthorizedRelease(authorization);
+  const { retained } = consumeAuthorizedRelease(
+    authority,
+    authorization,
+    "device_authorization",
+  );
+  const now = retained.authorized_at;
+  const { request, release: decision } = retained;
   if (decision.release_digest === undefined || request.flow !== "device_authorization" ||
       !Number.isSafeInteger(now) || !Number.isSafeInteger(lifetimeSeconds) || lifetimeSeconds < 1 ||
       !Number.isSafeInteger(interval) || interval < 1) throw new Error("oidc-grant-prohibited: device authorization prerequisites failed");
@@ -287,8 +330,13 @@ export function issueDeviceAuthorization(
     client_id: request.client_id, scopes: uniqueSorted(decision.scopes ?? []), issued_at: now,
     expires_at: now + lifetimeSeconds, interval, release_digest: decision.release_digest };
   const digest = createHash("sha256").update(`heterodyne-device-code-v1\0${jcsCanonicalize(core)}`).digest();
-  return { device_code: digest.toString("base64url"), user_code: digest.subarray(0, 5).toString("hex").toUpperCase(),
-    ...core, last_poll_at: null, status: "pending" };
+  return issuedGrant(retained, "device-authorization", () => ({
+    device_code: digest.toString("base64url"),
+    user_code: digest.subarray(0, 5).toString("hex").toUpperCase(),
+    ...core,
+    last_poll_at: null,
+    status: "pending" as const,
+  }));
 }
 
 export function decideDeviceAuthorization(
@@ -646,6 +694,8 @@ export async function authorizeAuthorizationRequestEffect<T>(
   input: Readonly<{
     request: OidcAuthorizationRequest;
     idempotency_key: string;
+    purpose: OidcAuthorizationPurpose;
+    authorization_validity_seconds: number;
     effect(
       release: OidcAuthorizationDecision,
       executionToken: string,
@@ -664,12 +714,24 @@ export async function authorizeAuthorizationRequestEffect<T>(
     });
   }
   const preparedRelease = validateAuthorizationRequest(captured.request);
-  if (!completeAuthorizedRelease(preparedRelease)) return Object.freeze({
+  if (!completeAuthorizedRelease(preparedRelease) ||
+      !purposeMatchesRequest(captured.purpose, captured.request)) return Object.freeze({
     verdict: "reject" as const,
     allowed: false as const,
     state: "invalid" as const,
     reason_code: preparedRelease.reason_code ?? "oidc-claim-release-denied",
   });
+  let session: OidcAuthorizationSession;
+  try {
+    session = authorizationSession(authority, captured, preparedRelease);
+  } catch {
+    return Object.freeze({
+      verdict: "reject" as const,
+      allowed: false as const,
+      state: "invalid" as const,
+      reason_code: "oidc-claim-release-denied",
+    });
+  }
   let consent: ReturnType<typeof replayConfirmedClaimForAuthorization>;
   try {
     consent = replayConfirmedClaimForAuthorization({
@@ -709,6 +771,8 @@ export async function authorizeAuthorizationRequestEffect<T>(
       domain: "heterodyne-oidc-durable-release-effect-v1",
       request_digest: preparedRelease.request_digest,
       release_digest: preparedRelease.release_digest,
+      purpose: captured.purpose,
+      authorization_validity_seconds: captured.authorization_validity_seconds,
     }),
     current_effect_binding: (view) => {
       const currentRequest = authorizationRequestAtView(captured.request, view);
@@ -716,13 +780,37 @@ export async function authorizeAuthorizationRequestEffect<T>(
       if (!completeAuthorizedRelease(release) || !releaseSourcesAreCurrent(release, view)) {
         throw new Error("oidc-claim-release-denied: current release evidence is incomplete");
       }
-      effectTime = Object.freeze({
+      const currentFingerprint = oidcCurrentViewFingerprint(view);
+      if (session.authorized_at === undefined) {
+        session.authorized_at = view.trusted_now;
+        session.expires_at = view.trusted_now + captured.authorization_validity_seconds;
+        session.view_fingerprint = currentFingerprint;
+      }
+      if (session.authorized_at === undefined || session.expires_at === undefined ||
+          session.view_fingerprint === undefined ||
+          view.trusted_now < session.authorized_at || view.trusted_now >= session.expires_at ||
+          currentFingerprint !== session.view_fingerprint) {
+        throw new Error("oidc-claim-release-denied: durable authorization is stale");
+      }
+      effectTime = {
+        authority,
+        effect_result: undefined as never,
+        purpose: captured.purpose,
+        idempotency_key: captured.idempotency_key,
+        authorized_at: session.authorized_at,
+        expires_at: session.expires_at,
+        view_fingerprint: session.view_fingerprint,
+        consumed: false,
         request: currentRequest,
         release: snapshotClosedDataTree(release, "OIDC effect-time release"),
-      });
+      };
       return Object.freeze({
         request_digest: release.request_digest,
         release_digest: release.release_digest,
+        purpose: captured.purpose,
+        authorized_at: session.authorized_at,
+        expires_at: session.expires_at,
+        current_view_fingerprint: session.view_fingerprint,
       });
     },
     effect: (executionToken) => {
@@ -750,6 +838,7 @@ export async function authorizeAuthorizationRequestEffect<T>(
     reason_code: "oidc-claim-release-denied",
   });
   const authorization = Object.freeze({}) as OidcAuthorizedRelease;
+  effectTime.effect_result = result as ClaimEffectAuthorizationResult<unknown>;
   AUTHORIZED_RELEASES.set(authorization, effectTime);
   return Object.freeze({ ...result, authorization });
 }
@@ -1003,7 +1092,12 @@ function validateProjectionInput(input: JwtProjectionInput): {
   release: OidcAuthorizationDecision & Required<Pick<OidcAuthorizationDecision, "pairwise_sub" | "scopes" | "audience" | "released_claims" | "source_claim_ids" | "checkpoint">>;
   private_jwk: JsonValue;
 } {
-  const authorization = requireAuthorizedRelease(input.authorization);
+  const consumed = consumeAuthorizedRelease(
+    input.authorization_authority,
+    input.authorization,
+    "jwt_projection",
+  );
+  const authorization = consumed.retained;
   const authorizationRequest = authorization.request;
   const currentCheckpoint = canonicalValidatedCheckpoint(input.state);
   const releaseCheckpoint = canonicalValidatedCheckpoint(authorizationRequest.state);
@@ -1132,6 +1226,8 @@ function captureAuthorizationEffectInput<T>(
   const members = captureExactDataObject(value, [[
     "request",
     "idempotency_key",
+    "purpose",
+    "authorization_validity_seconds",
     "effect",
   ]], "OIDC authorization effect request");
   const idempotencyKey = members.idempotency_key;
@@ -1142,9 +1238,19 @@ function captureAuthorizationEffectInput<T>(
   if (typeof effect !== "function" || utilTypes.isProxy(effect)) {
     throw new Error("oidc-claim-release-denied: invalid effect callback");
   }
+  if ((members.purpose !== "authorization_code" &&
+      members.purpose !== "device_authorization" &&
+      members.purpose !== "jwt_projection") ||
+      !Number.isSafeInteger(members.authorization_validity_seconds) ||
+      (members.authorization_validity_seconds as number) < 1 ||
+      (members.authorization_validity_seconds as number) > 600) {
+    throw new Error("oidc-claim-release-denied: invalid durable authorization purpose or validity");
+  }
   return Object.freeze({
     request: captureAuthorizationRequest(members.request),
     idempotency_key: idempotencyKey,
+    purpose: members.purpose,
+    authorization_validity_seconds: members.authorization_validity_seconds as number,
     effect: effect as CapturedAuthorizationEffectInput<T>["effect"],
   });
 }
@@ -1328,6 +1434,105 @@ function authorizationRequestAtView(
     consent: evidenceAtCurrentTime(request.consent),
     source_claims: Object.freeze(request.source_claims.map(evidenceAtCurrentTime)) as OidcClaimEvidence[],
   });
+}
+
+function purposeMatchesRequest(
+  purpose: OidcAuthorizationPurpose,
+  request: OidcAuthorizationRequest,
+): boolean {
+  return purpose === "jwt_projection" ||
+    (purpose === "authorization_code" && request.flow === "authorization_code") ||
+    (purpose === "device_authorization" && request.flow === "device_authorization");
+}
+
+function authorizationSession<T>(
+  authority: ClaimAuthorizationAuthority,
+  input: CapturedAuthorizationEffectInput<T>,
+  release: CompleteOidcAuthorizationRelease,
+): OidcAuthorizationSession {
+  let sessions = AUTHORIZATION_SESSIONS.get(authority);
+  if (sessions === undefined) {
+    sessions = new Map<string, OidcAuthorizationSession>();
+    AUTHORIZATION_SESSIONS.set(authority, sessions);
+  }
+  const exactInputDigest = jsonDigest({
+    purpose: input.purpose,
+    authorization_validity_seconds: input.authorization_validity_seconds,
+    request_digest: release.request_digest,
+    release_digest: release.release_digest,
+  });
+  const existing = sessions.get(input.idempotency_key);
+  if (existing !== undefined) {
+    if (existing.exact_input_digest !== exactInputDigest) {
+      throw new Error("oidc-claim-release-denied: idempotency binding conflict");
+    }
+    return existing;
+  }
+  const created: OidcAuthorizationSession = { exact_input_digest: exactInputDigest };
+  sessions.set(input.idempotency_key, created);
+  return created;
+}
+
+function oidcCurrentViewFingerprint(view: CurrentClaimEffectBindingView): string {
+  return jsonDigest({
+    credential_ledger: view.credential_ledger,
+    checkpoint_digest: view.checkpoint_digest,
+    repository_revision: view.repository_revision,
+    claims: view.claims.map((artifact) => Object.freeze({
+      claim_id: inspectVerifiedClaim(artifact).claim_id,
+      binding_digest: claimArtifactBindingDigest(artifact),
+    })).sort((left, right) => left.claim_id.localeCompare(right.claim_id)),
+    revocations: view.revocations.map(claimRevocationArtifactBindingDigest).sort(),
+    conflicted_claim_ids: [...view.conflicted_claim_ids].sort(),
+  });
+}
+
+function consumeAuthorizedRelease(
+  authority: ClaimAuthorizationAuthority,
+  authorization: OidcAuthorizedRelease,
+  purpose: OidcAuthorizationPurpose,
+): Readonly<{ retained: AuthorizedReleaseRecord; trusted_now: number }> {
+  const retained = requireAuthorizedRelease(authorization);
+  if (retained.consumed) {
+    throw new Error("oidc-grant-prohibited: durable authorization already consumed");
+  }
+  retained.consumed = true;
+  if (retained.authority !== authority || retained.purpose !== purpose) {
+    throw new Error("oidc-grant-prohibited: durable authorization authority or purpose mismatch");
+  }
+  const revalidated = revalidateAcceptedClaimEffect(authority, retained.effect_result);
+  if (revalidated.verdict !== "accept" ||
+      revalidated.trusted_now < retained.authorized_at ||
+      revalidated.trusted_now >= retained.expires_at) {
+    throw new Error("oidc-grant-prohibited: durable authorization is stale");
+  }
+  return Object.freeze({ retained, trusted_now: revalidated.trusted_now });
+}
+
+function issuedGrant<T>(
+  retained: AuthorizedReleaseRecord,
+  kind: string,
+  issue: () => T,
+): T {
+  let grants = ISSUED_GRANTS.get(retained.authority);
+  if (grants === undefined) {
+    grants = new Map<string, unknown>();
+    ISSUED_GRANTS.set(retained.authority, grants);
+  }
+  const key = jsonDigest({
+    kind,
+    purpose: retained.purpose,
+    idempotency_key: retained.idempotency_key,
+    authorized_at: retained.authorized_at,
+    expires_at: retained.expires_at,
+    view_fingerprint: retained.view_fingerprint,
+    request_digest: retained.release.request_digest,
+    release_digest: retained.release.release_digest,
+  });
+  if (grants.has(key)) return grants.get(key) as T;
+  const issued = issue();
+  grants.set(key, issued);
+  return issued;
 }
 
 function requireAuthorizedRelease(authorization: unknown): AuthorizedReleaseRecord {

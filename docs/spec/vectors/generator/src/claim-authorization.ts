@@ -194,7 +194,15 @@ type CapturedView = Readonly<{
   writer_fingerprints: readonly string[];
 }>;
 
+type AcceptedEffectAuthority = Readonly<{
+  authority: ClaimAuthorizationAuthority;
+  captured: CapturedEffect<unknown>;
+  binding_digest: string;
+  single_use_key: string;
+}>;
+
 const AUTHORITIES = new WeakMap<object, AuthorityRecord>();
+const ACCEPTED_EFFECT_AUTHORITIES = new WeakMap<object, AcceptedEffectAuthority>();
 const LOWER_HEX_32 = /^[0-9a-f]{64}$/u;
 const MAX_COLLECTION = 256;
 const MAX_CHAIN = 9;
@@ -257,18 +265,11 @@ export async function authorizeClaimEffect<T>(
     const current = evaluateCurrent(captured, retained, currentView, currentNow);
     if (current.state !== "active") return rejectedDecision(current);
 
-    const currentEffectBinding = captured.current_effect_binding === undefined
-      ? null
-      : jsonSnapshot(captured.current_effect_binding(Object.freeze({
-        trusted_now: currentNow,
-        credential_ledger: currentView.credential_ledger,
-        checkpoint_digest: currentView.checkpoint_digest,
-        repository_revision: currentView.repository_revision,
-        claims: currentView.claims,
-        revocations: currentView.revocations,
-        conflicted_claim_ids: currentView.conflicted_claim_ids,
-        ledger_state: currentView.ledger_state,
-      })), "current_effect_binding");
+    const currentEffectBinding = captureCurrentEffectBinding(
+      captured,
+      currentView,
+      currentNow,
+    );
 
     const writerRevalidation = revalidateLedgerWriterAuthorities(
       currentView.ledger_state,
@@ -285,6 +286,12 @@ export async function authorizeClaimEffect<T>(
       currentView,
       currentEffectBinding,
     );
+    const acceptedAuthority = Object.freeze({
+      authority,
+      captured: captured as CapturedEffect<unknown>,
+      binding_digest: binding.binding_digest,
+      single_use_key: binding.single_use_key,
+    });
     const executionToken = randomBytes(32).toString("hex");
     let acquisition: unknown;
     try {
@@ -301,11 +308,17 @@ export async function authorizeClaimEffect<T>(
         retained,
         binding.single_use_key,
         binding.binding_digest,
+        acceptedAuthority,
       );
     }
     if (acquisition === "conflict") return replayRejected();
     if (acquisition === "replay") {
-      return cachedTerminal<T>(retained, binding.single_use_key, binding.binding_digest);
+      return cachedTerminal<T>(
+        retained,
+        binding.single_use_key,
+        binding.binding_digest,
+        acceptedAuthority,
+      );
     }
     if (acquisition !== "acquired") return replayRejected();
     if (!hasExactExecutingRecord(
@@ -415,13 +428,13 @@ export async function authorizeClaimEffect<T>(
         record.cached_result !== undefined &&
         digest("heterodyne-claim-effect-result-v1", record.cached_result) === resultDigest
       ) {
-        return Object.freeze({
+        return acceptedEffectResult({
           verdict: "accept",
           allowed: true,
           state: "active",
           disposition: "executed" as const,
           result: jsonSnapshot(record.cached_result, "cached_result") as T,
-        });
+        }, acceptedAuthority);
       }
     }
     return persistIndeterminate(
@@ -433,6 +446,58 @@ export async function authorizeClaimEffect<T>(
     );
   } catch (error) {
     return rejectedResult(error);
+  }
+}
+
+export function revalidateAcceptedClaimEffect(
+  authority: ClaimAuthorizationAuthority,
+  result: ClaimEffectAuthorizationResult<unknown>,
+): Readonly<
+  | { verdict: "accept"; trusted_now: number }
+  | { verdict: "reject"; reason_code: string }
+> {
+  try {
+    if (result === null || typeof result !== "object" || utilTypes.isProxy(result)) {
+      throw new Error("claim-issuer-authority-invalid: accepted effect result required");
+    }
+    const accepted = ACCEPTED_EFFECT_AUTHORITIES.get(result);
+    if (accepted === undefined || accepted.authority !== authority) {
+      throw new Error("claim-issuer-authority-invalid: effect authority mismatch");
+    }
+    const retained = requireAuthority(authority);
+    const view = loadView(retained);
+    const now = trustedNow(retained);
+    const current = evaluateCurrent(accepted.captured, retained, view, now);
+    if (current.state !== "active") {
+      return Object.freeze({
+        verdict: "reject" as const,
+        reason_code: current.reason_code ?? "claim-issuer-authority-invalid",
+      });
+    }
+    const currentEffectBinding = captureCurrentEffectBinding(
+      accepted.captured,
+      view,
+      now,
+    );
+    const writerRevalidation = revalidateLedgerWriterAuthorities(view.ledger_state);
+    if (writerRevalidation.verdict !== "accept" ||
+        jcsCanonicalize(writerRevalidation.writer_fingerprints) !==
+          jcsCanonicalize(view.writer_fingerprints)) {
+      throw new Error("claim-ledger-writer-unauthorized: current writer authority changed");
+    }
+    const rebound = authorizationBinding(
+      accepted.captured,
+      retained,
+      view,
+      currentEffectBinding,
+    );
+    if (rebound.binding_digest !== accepted.binding_digest ||
+        rebound.single_use_key !== accepted.single_use_key) {
+      throw new Error("claim-subject-proof-replayed: current effect binding changed");
+    }
+    return Object.freeze({ verdict: "accept" as const, trusted_now: now });
+  } catch (error) {
+    return Object.freeze({ verdict: "reject" as const, reason_code: reasonFrom(error) });
   }
 }
 
@@ -788,10 +853,39 @@ function authorizationBinding(
   return Object.freeze({ single_use_key: singleUseKey, binding_digest: bindingDigest });
 }
 
+function captureCurrentEffectBinding(
+  captured: CapturedEffect<unknown>,
+  view: CapturedView,
+  trustedNowValue: number,
+): unknown {
+  return captured.current_effect_binding === undefined
+    ? null
+    : jsonSnapshot(captured.current_effect_binding(Object.freeze({
+      trusted_now: trustedNowValue,
+      credential_ledger: view.credential_ledger,
+      checkpoint_digest: view.checkpoint_digest,
+      repository_revision: view.repository_revision,
+      claims: view.claims,
+      revocations: view.revocations,
+      conflicted_claim_ids: view.conflicted_claim_ids,
+      ledger_state: view.ledger_state,
+    })), "current_effect_binding");
+}
+
+function acceptedEffectResult<T>(
+  members: Extract<ClaimEffectAuthorizationResult<T>, { verdict: "accept" }>,
+  authority: AcceptedEffectAuthority,
+): Extract<ClaimEffectAuthorizationResult<T>, { verdict: "accept" }> {
+  const result = Object.freeze(members);
+  ACCEPTED_EFFECT_AUTHORITIES.set(result, authority);
+  return result;
+}
+
 function cachedTerminal<T>(
   authority: AuthorityRecord,
   singleUseKey: string,
   bindingDigest: string,
+  acceptedAuthority: AcceptedEffectAuthority,
 ): ClaimEffectAuthorizationResult<T> {
   let record: ClaimEffectRecord | null;
   try {
@@ -808,13 +902,13 @@ function cachedTerminal<T>(
       record.result_digest === undefined ||
       digest("heterodyne-claim-effect-result-v1", result) !== record.result_digest
     ) return replayRejected();
-    return Object.freeze({
+    return acceptedEffectResult({
       verdict: "accept",
       allowed: true,
       state: "active",
       disposition: "cached" as const,
       result: jsonSnapshot(result, "cached_result") as T,
-    });
+    }, acceptedAuthority);
   }
   if (record.state === "indeterminate" && record.reconciliation_digest !== undefined) {
     return Object.freeze({
