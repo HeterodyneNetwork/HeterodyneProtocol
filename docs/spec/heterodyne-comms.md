@@ -1842,6 +1842,18 @@ current ledger/revocation view, and current writer revalidation. A validated
 request object, public semantic body, or prior inspection decision alone MUST
 NOT authorize a release or token-producing effect.
 
+Immediately before durable effect acquisition, the implementation MUST
+recompute client registration, consent, and every released source claim from
+the effect-time current view and trusted time. It MUST bind the exact request
+digest and recomputed release digest inside the durable authorization binding;
+a caller-supplied effect digest or earlier release object is not authority.
+Current writer revalidation remains immediately adjacent to acquisition, and
+the effect executes only the captured recomputed release. Authorization-code
+creation, device-code creation, and JWT projection MUST consume the resulting
+opaque durable authorization artifact (or execute inside that authorized
+effect); inspection results remain display-only and MUST NOT be accepted by
+those token-producing interfaces.
+
 `local-subject` is exactly 64 lowercase hexadecimal characters encoding
 SHA-256 over the RFC 8785 JCS bytes of the exact typed-key subject. The
 pairwise identifier uses HMAC-SHA-256 under the persona's repository-private

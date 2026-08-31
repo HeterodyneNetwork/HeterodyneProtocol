@@ -1,12 +1,20 @@
 import { createHash, createHmac, createPrivateKey, createPublicKey, sign, verify, type JsonWebKey } from "node:crypto";
+import { types as utilTypes } from "node:util";
 import { nip19 } from "nostr-tools";
-import type { AuthorizationDecision, ClaimVerificationContext, JsonValue } from "./claims.js";
+import {
+  inspectVerifiedClaim,
+  type AuthorizationDecision,
+  type ClaimVerificationContext,
+  type JsonValue,
+} from "./claims.js";
 import {
   authorizeClaimEffect,
   type ClaimAuthorizationAuthority,
   type ClaimEffectAuthorizationResult,
   type ClaimEffectOutcome,
+  type CurrentClaimEffectBindingView,
 } from "./claim-authorization.js";
+import { captureExactDataObject, snapshotClosedDataTree } from "./closed-data.js";
 import { jcsCanonicalize } from "./jcs.js";
 import {
   activeCanonicalClaimSemanticsAt,
@@ -73,7 +81,7 @@ export type JwtProjectionInput = {
   expires_at: number;
   issuance_record_id: string;
   state: LedgerMergeResult;
-  authorization_request: OidcAuthorizationRequest;
+  authorization: OidcAuthorizedRelease;
   issuer_envelope: IssuerKeyEnvelope;
   issuer_audience_key: Uint8Array;
   issuer_writer_nid: string;
@@ -127,6 +135,46 @@ export type OidcAuthorizationDecision = AuthorizationDecision & {
   sender_constraint?: "none" | "dpop" | "mtls";
 };
 
+declare const oidcAuthorizedReleaseBrand: unique symbol;
+
+export type OidcAuthorizedRelease = Readonly<{
+  readonly [oidcAuthorizedReleaseBrand]: true;
+}>;
+
+type AuthorizedReleaseRecord = Readonly<{
+  request: OidcAuthorizationRequest;
+  release: CompleteOidcAuthorizationRelease;
+}>;
+
+type CompleteOidcAuthorizationRelease = OidcAuthorizationDecision & Required<Pick<
+  OidcAuthorizationDecision,
+  | "pairwise_sub"
+  | "scopes"
+  | "audience"
+  | "released_claims"
+  | "source_claim_ids"
+  | "checkpoint"
+  | "request_digest"
+  | "release_digest"
+>>;
+
+type CapturedAuthorizationEffectInput<T> = Readonly<{
+  request: OidcAuthorizationRequest;
+  idempotency_key: string;
+  effect(
+    release: OidcAuthorizationDecision,
+    executionToken: string,
+  ): ClaimEffectOutcome<T> | Promise<ClaimEffectOutcome<T>>;
+}>;
+
+const AUTHORIZED_RELEASES = new WeakMap<object, AuthorizedReleaseRecord>();
+
+export type OidcAuthorizationEffectResult<T> =
+  | (Extract<ClaimEffectAuthorizationResult<T>, { verdict: "accept" }> & Readonly<{
+      authorization: OidcAuthorizedRelease;
+    }>)
+  | Exclude<ClaimEffectAuthorizationResult<T>, { verdict: "accept" }>;
+
 export type OidcClaimEvidence = {
   claim_record_id: string;
   verification_context: ClaimVerificationContext;
@@ -177,12 +225,12 @@ export type DeviceAuthorizationRecord = CredentialLedgerBinding & {
 };
 
 export function issueAuthorizationCode(
-  request: OidcAuthorizationRequest,
+  authorization: OidcAuthorizedRelease,
   now: number,
   lifetimeSeconds = 300,
 ): AuthorizationCodeRecord {
-  const decision = validateAuthorizationRequest(request);
-  if (!decision.allowed || decision.release_digest === undefined || request.flow !== "authorization_code" ||
+  const { request, release: decision } = requireAuthorizedRelease(authorization);
+  if (decision.release_digest === undefined || request.flow !== "authorization_code" ||
       request.redirect_uri === undefined || !canonicalPkceValue(request.code_challenge) ||
       !Number.isSafeInteger(now) || !Number.isSafeInteger(lifetimeSeconds) || lifetimeSeconds < 1 || lifetimeSeconds > 600) {
     throw new Error("oidc-grant-prohibited: authorization code prerequisites failed");
@@ -226,13 +274,13 @@ export function redeemAuthorizationCode(
 }
 
 export function issueDeviceAuthorization(
-  request: OidcAuthorizationRequest,
+  authorization: OidcAuthorizedRelease,
   now: number,
   lifetimeSeconds = 600,
   interval = 5,
 ): DeviceAuthorizationRecord {
-  const decision = validateAuthorizationRequest(request);
-  if (!decision.allowed || decision.release_digest === undefined || request.flow !== "device_authorization" ||
+  const { request, release: decision } = requireAuthorizedRelease(authorization);
+  if (decision.release_digest === undefined || request.flow !== "device_authorization" ||
       !Number.isSafeInteger(now) || !Number.isSafeInteger(lifetimeSeconds) || lifetimeSeconds < 1 ||
       !Number.isSafeInteger(interval) || interval < 1) throw new Error("oidc-grant-prohibited: device authorization prerequisites failed");
   const core = { ...request.state.credential_ledger,
@@ -598,28 +646,36 @@ export async function authorizeAuthorizationRequestEffect<T>(
   input: Readonly<{
     request: OidcAuthorizationRequest;
     idempotency_key: string;
-    effect_digest: string;
     effect(
       release: OidcAuthorizationDecision,
       executionToken: string,
     ): ClaimEffectOutcome<T> | Promise<ClaimEffectOutcome<T>>;
   }>,
-): Promise<ClaimEffectAuthorizationResult<T>> {
-  const release = validateAuthorizationRequest(input.request);
-  if (!release.allowed) {
+): Promise<OidcAuthorizationEffectResult<T>> {
+  let captured: CapturedAuthorizationEffectInput<T>;
+  try {
+    captured = captureAuthorizationEffectInput(input);
+  } catch {
     return Object.freeze({
       verdict: "reject" as const,
       allowed: false as const,
       state: "invalid" as const,
-      reason_code: release.reason_code ?? "oidc-claim-release-denied",
+      reason_code: "oidc-claim-release-denied",
     });
   }
+  const preparedRelease = validateAuthorizationRequest(captured.request);
+  if (!completeAuthorizedRelease(preparedRelease)) return Object.freeze({
+    verdict: "reject" as const,
+    allowed: false as const,
+    state: "invalid" as const,
+    reason_code: preparedRelease.reason_code ?? "oidc-claim-release-denied",
+  });
   let consent: ReturnType<typeof replayConfirmedClaimForAuthorization>;
   try {
     consent = replayConfirmedClaimForAuthorization({
-      state: input.request.state,
-      claim_record_id: input.request.consent.claim_record_id,
-      verification_context: input.request.consent.verification_context,
+      state: captured.request.state,
+      claim_record_id: captured.request.consent.claim_record_id,
+      verification_context: captured.request.consent.verification_context,
     });
   } catch {
     return Object.freeze({
@@ -637,8 +693,9 @@ export async function authorizeAuthorizationRequestEffect<T>(
       reason_code: consent.decision.reason_code ?? "oidc-claim-release-denied",
     });
   }
-  const verification = input.request.consent.verification_context;
-  return authorizeClaimEffect(authority, {
+  const verification = captured.request.consent.verification_context;
+  let effectTime: AuthorizedReleaseRecord | undefined;
+  const result = await authorizeClaimEffect(authority, {
     leaf: consent.verified_claim,
     chain: consent.chain,
     audience: verification.audience,
@@ -647,10 +704,63 @@ export async function authorizeAuthorizationRequestEffect<T>(
     operation: verification.requested_operation,
     nonce: verification.expected_nonce,
     subject_proof: verification.subject_proof,
-    idempotency_key: input.idempotency_key,
-    effect_digest: input.effect_digest,
-    effect: (executionToken) => input.effect(release, executionToken),
+    idempotency_key: captured.idempotency_key,
+    effect_digest: jsonDigest({
+      domain: "heterodyne-oidc-durable-release-effect-v1",
+      request_digest: preparedRelease.request_digest,
+      release_digest: preparedRelease.release_digest,
+    }),
+    current_effect_binding: (view) => {
+      const currentRequest = authorizationRequestAtView(captured.request, view);
+      const release = validateAuthorizationRequest(currentRequest);
+      if (!completeAuthorizedRelease(release) || !releaseSourcesAreCurrent(release, view)) {
+        throw new Error("oidc-claim-release-denied: current release evidence is incomplete");
+      }
+      effectTime = Object.freeze({
+        request: currentRequest,
+        release: snapshotClosedDataTree(release, "OIDC effect-time release"),
+      });
+      return Object.freeze({
+        request_digest: release.request_digest,
+        release_digest: release.release_digest,
+      });
+    },
+    effect: (executionToken) => {
+      if (effectTime === undefined) {
+        throw new Error("oidc-claim-release-denied: effect-time release was not captured");
+      }
+      return captured.effect(effectTime.release, executionToken);
+    },
   });
+  if (result.verdict !== "accept") {
+    if (result.verdict === "reject" &&
+        (result.reason_code === "claim-release-denied" ||
+          result.reason_code === "claim-issuer-authority-invalid")) {
+      return Object.freeze({
+        ...result,
+        reason_code: "oidc-claim-release-denied",
+      });
+    }
+    return result;
+  }
+  if (effectTime === undefined) return Object.freeze({
+    verdict: "reject" as const,
+    allowed: false as const,
+    state: "invalid" as const,
+    reason_code: "oidc-claim-release-denied",
+  });
+  const authorization = Object.freeze({}) as OidcAuthorizedRelease;
+  AUTHORIZED_RELEASES.set(authorization, effectTime);
+  return Object.freeze({ ...result, authorization });
+}
+
+export function inspectOidcAuthorizedRelease(
+  authorization: OidcAuthorizedRelease,
+): OidcAuthorizationDecision {
+  return snapshotClosedDataTree(
+    requireAuthorizedRelease(authorization).release,
+    "OIDC authorized release inspection",
+  );
 }
 
 export function projectIdToken(input: JwtProjectionInput): ProjectedJwt {
@@ -893,8 +1003,10 @@ function validateProjectionInput(input: JwtProjectionInput): {
   release: OidcAuthorizationDecision & Required<Pick<OidcAuthorizationDecision, "pairwise_sub" | "scopes" | "audience" | "released_claims" | "source_claim_ids" | "checkpoint">>;
   private_jwk: JsonValue;
 } {
+  const authorization = requireAuthorizedRelease(input.authorization);
+  const authorizationRequest = authorization.request;
   const currentCheckpoint = canonicalValidatedCheckpoint(input.state);
-  const releaseCheckpoint = canonicalValidatedCheckpoint(input.authorization_request.state);
+  const releaseCheckpoint = canonicalValidatedCheckpoint(authorizationRequest.state);
   const record = input.state.records.find(({ record_id }) => record_id === input.issuance_record_id);
   if (record?.record_type !== "issuance-reservation" ||
       !(input.state.repository_confirmed_record_ids ?? []).includes(input.issuance_record_id)) {
@@ -902,9 +1014,9 @@ function validateProjectionInput(input: JwtProjectionInput): {
   }
   const issuance = record.payload as unknown as IssuanceRecord;
   validateIssuanceRecordOrThrow(issuance, input.state.credential_ledger);
-  const release = validateAuthorizationRequest(input.authorization_request);
+  const release = authorization.release;
   const mint = evaluateMintingAttempt({ now: input.now, manifest_max_age_seconds: issuance.manifest_max_age_seconds,
-    writer_nid: input.issuer_writer_nid, state: input.authorization_request.state, envelope: input.issuer_envelope,
+    writer_nid: input.issuer_writer_nid, state: authorizationRequest.state, envelope: input.issuer_envelope,
     audience_key: input.issuer_audience_key });
   const currentReturn = canReturnToken(
     input.issuance_record_id, input.state, input.issuer_envelope, input.issuer_audience_key,
@@ -920,7 +1032,7 @@ function validateProjectionInput(input: JwtProjectionInput): {
       input.now !== issuance.issued_at || input.expires_at !== issuance.expires_at ||
       input.expires_at <= input.now || input.audience.length === 0 || input.scopes.length === 0 ||
       !input.scopes.every(nonempty) || !input.audience.every(exactHttpsResource) ||
-      !nonempty(input.client_id) || input.client_id !== input.authorization_request.client_id ||
+      !nonempty(input.client_id) || input.client_id !== authorizationRequest.client_id ||
       !/^[A-Za-z0-9._~-]{16,255}$/.test(input.pairwise_sub) ||
       !validStatusMirror(input.status_mirror) || input.status_mirror.repository_rid !== issuance.checkpoint.repository_rid ||
       releaseCheckpoint.repository_rid !== issuance.checkpoint.repository_rid ||
@@ -948,7 +1060,7 @@ function validateProjectionInput(input: JwtProjectionInput): {
       !validatePersonaBinding(root, input.identity).allowed ||
       issuerUrl(parsed.origin, root, input.identity) !== input.issuer || rootPersona !== input.issuer_envelope.persona ||
       input.state.records.some(({ persona }) => persona !== rootPersona) ||
-      input.authorization_request.state.records.some(({ persona }) => persona !== rootPersona)) {
+      authorizationRequest.state.records.some(({ persona }) => persona !== rootPersona)) {
     throw new Error("oidc-issuer-mismatch: exact HTTPS issuer is required");
   }
   const expectedStatusPath = `.well-known/${root}/${issuance.reservation.uri}`;
@@ -1012,6 +1124,221 @@ function canonicalPkceValue(value: unknown): value is string {
   if (typeof value !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(value)) return false;
   const decoded = Buffer.from(value, "base64url");
   return decoded.length === 32 && decoded.toString("base64url") === value;
+}
+
+function captureAuthorizationEffectInput<T>(
+  value: unknown,
+): CapturedAuthorizationEffectInput<T> {
+  const members = captureExactDataObject(value, [[
+    "request",
+    "idempotency_key",
+    "effect",
+  ]], "OIDC authorization effect request");
+  const idempotencyKey = members.idempotency_key;
+  if (typeof idempotencyKey !== "string" || idempotencyKey.length === 0 || idempotencyKey.length > 4_096) {
+    throw new Error("oidc-claim-release-denied: invalid idempotency key");
+  }
+  const effect = members.effect;
+  if (typeof effect !== "function" || utilTypes.isProxy(effect)) {
+    throw new Error("oidc-claim-release-denied: invalid effect callback");
+  }
+  return Object.freeze({
+    request: captureAuthorizationRequest(members.request),
+    idempotency_key: idempotencyKey,
+    effect: effect as CapturedAuthorizationEffectInput<T>["effect"],
+  });
+}
+
+function captureAuthorizationRequest(value: unknown): OidcAuthorizationRequest {
+  const required = [
+    "flow", "grant_type", "client_id", "requested_scopes", "requested_audiences",
+    "requested_claims", "pairwise_secret", "state", "registration", "consent",
+    "source_claims", "nonce", "sender_constraint",
+  ];
+  const optional = ["response_type", "redirect_uri", "code_challenge", "code_challenge_method", "cnf"];
+  const keySets = Array.from({ length: 1 << optional.length }, (_, mask) => [
+    ...required,
+    ...optional.filter((_, index) => (mask & (1 << index)) !== 0),
+  ]);
+  const members = captureExactDataObject(value, keySets, "OIDC authorization request");
+  if (members.state === null || typeof members.state !== "object" || utilTypes.isProxy(members.state)) {
+    throw new Error("OIDC authorization state must be an opaque local ledger result");
+  }
+  const registration = captureClaimEvidence(members.registration, "OIDC registration evidence");
+  const consent = captureClaimEvidence(members.consent, "OIDC consent evidence");
+  const sources = captureOrdinaryArray(members.source_claims, "OIDC source claims", 256)
+    .map((entry, index) => captureClaimEvidence(entry, `OIDC source claim ${index}`));
+  const stringArray = (member: unknown, label: string): string[] =>
+    captureOrdinaryArray(member, label, 256).map((entry) => {
+      if (typeof entry !== "string" || entry.length > 4_096) {
+        throw new Error(`${label} must contain bounded strings`);
+      }
+      return entry;
+    });
+  return Object.freeze({
+    flow: members.flow as OidcAuthorizationRequest["flow"],
+    grant_type: members.grant_type as OidcAuthorizationRequest["grant_type"],
+    ...(members.response_type === undefined ? {} : { response_type: members.response_type as "code" }),
+    client_id: members.client_id as string,
+    ...(members.redirect_uri === undefined ? {} : { redirect_uri: members.redirect_uri as string }),
+    ...(members.code_challenge === undefined ? {} : { code_challenge: members.code_challenge as string }),
+    ...(members.code_challenge_method === undefined ? {} : {
+      code_challenge_method: members.code_challenge_method as "S256",
+    }),
+    requested_scopes: Object.freeze(stringArray(members.requested_scopes, "OIDC requested scopes")) as string[],
+    requested_audiences: Object.freeze(stringArray(members.requested_audiences, "OIDC requested audiences")) as string[],
+    requested_claims: Object.freeze(stringArray(members.requested_claims, "OIDC requested claims")) as string[],
+    pairwise_secret: members.pairwise_secret as string,
+    state: members.state as LedgerMergeResult,
+    registration,
+    consent,
+    source_claims: Object.freeze(sources) as OidcClaimEvidence[],
+    nonce: members.nonce as string,
+    ...(members.cnf === undefined ? {} : {
+      cnf: snapshotClosedDataTree(members.cnf, "OIDC confirmation") as Record<string, JsonValue>,
+    }),
+    sender_constraint: members.sender_constraint as OidcAuthorizationRequest["sender_constraint"],
+  });
+}
+
+function captureClaimEvidence(value: unknown, label: string): OidcClaimEvidence {
+  const members = captureExactDataObject(value, [[
+    "claim_record_id",
+    "verification_context",
+  ]], label);
+  if (typeof members.claim_record_id !== "string" || !/^[0-9a-f]{64}$/u.test(members.claim_record_id)) {
+    throw new Error(`${label} has an invalid record ID`);
+  }
+  return Object.freeze({
+    claim_record_id: members.claim_record_id,
+    verification_context: captureClaimVerificationContext(members.verification_context),
+  });
+}
+
+function captureClaimVerificationContext(value: unknown): ClaimVerificationContext {
+  const members = captureExactDataObject(value, [[
+    "now", "audience", "resource", "requested_namespace", "requested_operation",
+    "expected_nonce", "used_nonces", "trusted_issuers", "credential_ledger",
+    "repository_confirmed", "repository_conflicted", "revocations", "subject_proof",
+  ]], "OIDC claim verification context");
+  return Object.freeze({
+    now: members.now as number,
+    audience: members.audience as string,
+    resource: members.resource as string,
+    requested_namespace: members.requested_namespace as string,
+    requested_operation: members.requested_operation as string,
+    expected_nonce: members.expected_nonce as string,
+    used_nonces: captureStringSet(members.used_nonces, "OIDC used nonces"),
+    trusted_issuers: snapshotClosedDataTree(
+      members.trusted_issuers,
+      "OIDC trusted issuers",
+    ) as ClaimVerificationContext["trusted_issuers"],
+    credential_ledger: snapshotClosedDataTree(
+      members.credential_ledger,
+      "OIDC credential ledger",
+    ) as ClaimVerificationContext["credential_ledger"],
+    repository_confirmed: captureStringSet(
+      members.repository_confirmed,
+      "OIDC confirmed claims",
+    ),
+    repository_conflicted: captureStringSet(
+      members.repository_conflicted,
+      "OIDC conflicted claims",
+    ),
+    revocations: Object.freeze(captureOrdinaryArray(
+      members.revocations,
+      "OIDC revocations",
+      256,
+    )),
+    subject_proof: members.subject_proof === null
+      ? null
+      : snapshotClosedDataTree(members.subject_proof, "OIDC subject proof") as NonNullable<
+          ClaimVerificationContext["subject_proof"]
+        >,
+  });
+}
+
+function captureOrdinaryArray(value: unknown, label: string, maximum: number): unknown[] {
+  if (!Array.isArray(value) || utilTypes.isProxy(value) || Object.getPrototypeOf(value) !== Array.prototype) {
+    throw new Error(`${label} must be an ordinary array`);
+  }
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const lengthDescriptor = Reflect.get(descriptors, "length") as PropertyDescriptor | undefined;
+  const length = lengthDescriptor?.value;
+  if (!Number.isSafeInteger(length) || length < 0 || length > maximum ||
+      Reflect.ownKeys(descriptors).map(String).sort().join("\0") !==
+        ["length", ...Array.from({ length }, (_, index) => String(index))].sort().join("\0")) {
+    throw new Error(`${label} must be a bounded dense array`);
+  }
+  return Array.from({ length }, (_, index) => {
+    const descriptor = descriptors[String(index)];
+    if (descriptor === undefined || descriptor.enumerable !== true || !("value" in descriptor)) {
+      throw new Error(`${label} must use data descriptors`);
+    }
+    return descriptor.value;
+  });
+}
+
+function captureStringSet(value: unknown, label: string): Set<string> {
+  if (value === null || typeof value !== "object" || utilTypes.isProxy(value) ||
+      !(value instanceof Set) || Object.getPrototypeOf(value) !== Set.prototype || value.size > 256) {
+    throw new Error(`${label} must be an ordinary bounded set`);
+  }
+  const captured = new Set<string>();
+  for (const entry of Set.prototype.values.call(value) as SetIterator<unknown>) {
+    if (typeof entry !== "string" || entry.length > 4_096) throw new Error(`${label} contains an invalid member`);
+    captured.add(entry);
+  }
+  return captured;
+}
+
+function completeAuthorizedRelease(
+  release: OidcAuthorizationDecision,
+): release is CompleteOidcAuthorizationRelease {
+  return release.allowed === true && release.state === "active" &&
+    typeof release.pairwise_sub === "string" && Array.isArray(release.scopes) &&
+    Array.isArray(release.audience) && release.released_claims !== undefined &&
+    Array.isArray(release.source_claim_ids) && release.checkpoint !== undefined &&
+    typeof release.request_digest === "string" && typeof release.release_digest === "string";
+}
+
+function releaseSourcesAreCurrent(
+  release: CompleteOidcAuthorizationRelease,
+  view: CurrentClaimEffectBindingView,
+): boolean {
+  const current = new Set(view.claims.map((artifact) => inspectVerifiedClaim(artifact).claim_id));
+  return release.source_claim_ids.every((claimId) => current.has(claimId));
+}
+
+function authorizationRequestAtView(
+  request: OidcAuthorizationRequest,
+  view: CurrentClaimEffectBindingView,
+): OidcAuthorizationRequest {
+  const evidenceAtCurrentTime = (evidence: OidcClaimEvidence): OidcClaimEvidence => Object.freeze({
+    claim_record_id: evidence.claim_record_id,
+    verification_context: Object.freeze({
+      ...evidence.verification_context,
+      now: view.trusted_now,
+    }),
+  });
+  return Object.freeze({
+    ...request,
+    state: view.ledger_state,
+    registration: evidenceAtCurrentTime(request.registration),
+    consent: evidenceAtCurrentTime(request.consent),
+    source_claims: Object.freeze(request.source_claims.map(evidenceAtCurrentTime)) as OidcClaimEvidence[],
+  });
+}
+
+function requireAuthorizedRelease(authorization: unknown): AuthorizedReleaseRecord {
+  if (authorization === null || typeof authorization !== "object" || utilTypes.isProxy(authorization)) {
+    throw new Error("oidc-grant-prohibited: durable authorization is required");
+  }
+  const retained = AUTHORIZED_RELEASES.get(authorization);
+  if (retained === undefined) {
+    throw new Error("oidc-grant-prohibited: durable authorization is required");
+  }
+  return retained;
 }
 
 function jsonDigest(value: unknown): string {

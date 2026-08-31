@@ -16,6 +16,7 @@ import { bytesToHex, hexToBytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
 import {
   authorizeAuthorizationRequestEffect,
+  inspectOidcAuthorizedRelease,
   issuerMetadata,
   type JwtProjectionInput,
   type OidcAuthorizationRequest,
@@ -220,21 +221,16 @@ export async function buildLiveOidcScenario(
     {
       request,
       idempotency_key: "synthetic-local-oidc-release-0001",
-      effect_digest: "81".repeat(32),
-      effect: (inspectedRelease) => {
+      effect: () => {
         releaseEffects += 1;
-        return { status: "completed", result: inspectedRelease };
+        return { status: "completed", result: { executed: true } };
       },
     },
   );
   if (releaseAuthorization.verdict !== "accept") {
     throw new Error(`OIDC scenario release failed: ${releaseAuthorization.reason_code}`);
   }
-  if (releaseAuthorization.result.request_digest === undefined ||
-      releaseAuthorization.result.release_digest === undefined) {
-    throw new Error("OIDC scenario release failed: incomplete release result");
-  }
-  const release = releaseAuthorization.result;
+  const release = inspectOidcAuthorizedRelease(releaseAuthorization.authorization);
   const sourceClaimIds = [
     registrationClaim.artifact.semantic.claim_id,
     consentClaim.artifact.semantic.claim_id,
@@ -304,7 +300,7 @@ export async function buildLiveOidcScenario(
     expires_at: issuance.expires_at,
     issuance_record_id: issuanceRecord.record_id,
     state: issuedState,
-    authorization_request: request,
+    authorization: releaseAuthorization.authorization,
     issuer_envelope: s.issuerKeyEnvelopeOne,
     issuer_audience_key: s.issuerAudienceKeyOne,
     issuer_writer_nid: s.writerOne.did_key,

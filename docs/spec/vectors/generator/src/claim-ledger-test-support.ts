@@ -21,6 +21,7 @@ import {
 } from "./claim-ledger.js";
 import {
   createClaimAuthorizationAuthority,
+  type CurrentClaimAuthorizationView,
   type ClaimEffectRecord,
   type ClaimEffectStore,
 } from "./claim-authorization.js";
@@ -128,6 +129,7 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
   const makeClaimAuthorizationHarness = (options: Readonly<{
     load_state: () => ReturnType<typeof mergeClaimLedger>;
     trusted_now?: () => number;
+    transform_view?: (view: CurrentClaimAuthorizationView) => CurrentClaimAuthorizationView;
   }>) => {
     const records = new Map<string, ClaimEffectRecord>();
     const calls = { load: 0, acquire: 0, commit: 0, mark: 0 };
@@ -178,7 +180,10 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
       authority_id: "synthetic-local-claim-ledger-effect-authority",
       trusted_now: options.trusted_now ?? (() => options.load_state().checkpoint.observed_at),
       trusted_issuers: [{ type: "nostr-secp256k1", value: persona }],
-      load_current_view: () => currentClaimAuthorizationView(options.load_state()),
+      load_current_view: () => {
+        const view = currentClaimAuthorizationView(options.load_state());
+        return options.transform_view?.(view) ?? view;
+      },
       store,
       effect_timeout_ms: 60_000,
       schedule_effect_deadline: { schedule: () => () => {} },

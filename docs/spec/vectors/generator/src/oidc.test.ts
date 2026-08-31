@@ -21,11 +21,13 @@ import {
   validateIssuerMetadata,
   validatePersonaBinding,
   validateProjectedJwt,
+  type OidcAuthorizedRelease,
   type JwtValidationOptions,
   type OidcAuthorizationRequest,
 } from "./oidc.js";
 import { OIDC_RSA_ONE } from "./oidc-rsa-fixtures.js";
 import { buildLiveOidcScenario } from "./oidc-test-support.js";
+import { inspectVerifiedClaim } from "./claims.js";
 import { buildLedgerRepositoryEvidence, mergeClaimLedger } from "./claim-ledger.js";
 import { jcsCanonicalize } from "./jcs.js";
 
@@ -49,6 +51,23 @@ function resignJwt(jwt: string, mutate: (claims: Record<string, unknown>) => voi
   const signingInput = `${header}.${encodedClaims}`;
   const privateKey = createPrivateKey({ key: OIDC_RSA_ONE.private_jwk as JsonWebKey, format: "jwk" });
   return `${signingInput}.${sign("RSA-SHA256", Buffer.from(signingInput), privateKey).toString("base64url")}`;
+}
+
+async function durableAuthorization(
+  request: OidcAuthorizationRequest,
+  idempotencyKey: string,
+): Promise<OidcAuthorizedRelease> {
+  const harness = x.s.makeClaimAuthorizationHarness({
+    load_state: () => x.preMintState,
+    trusted_now: () => x.s.now + 69,
+  });
+  const result = await authorizeAuthorizationRequestEffect(harness.authority, {
+    request,
+    idempotency_key: idempotencyKey,
+    effect: () => ({ status: "completed", result: { executed: true } }),
+  });
+  if (result.verdict !== "accept") throw new Error(`synthetic OIDC authorization failed: ${result.reason_code}`);
+  return result.authorization;
 }
 
 describe("active-persona issuer and exact origin identity", () => {
@@ -92,6 +111,25 @@ describe("active-persona issuer and exact origin identity", () => {
 });
 
 describe("evidence-bound release and OAuth state machines", () => {
+  it("executes an ordinary captured async effect through durable authorization", async () => {
+    const harness = x.s.makeClaimAuthorizationHarness({
+      trusted_now: () => x.s.now + 69,
+      load_state: () => x.preMintState,
+    });
+    await expect(authorizeAuthorizationRequestEffect(harness.authority, {
+      request: x.request,
+      idempotency_key: "synthetic-local-oidc-async-effect-0001",
+      effect: async (release) => ({
+        status: "completed",
+        result: { release_digest: release.release_digest },
+      }),
+    })).resolves.toMatchObject({
+      verdict: "accept",
+      allowed: true,
+      result: { release_digest: x.release.release_digest },
+    });
+  });
+
   it("BLUE TEAM VALIDATION: synthetic/local executes an active OIDC release once and rejects writer removal before acquire", async () => {
     // BLUE TEAM VALIDATION: synthetic/local uses deterministic opaque claims, one in-memory CAS store, and bounded effect counters only.
     expect(x.releaseAuthorization).toMatchObject({
@@ -124,7 +162,6 @@ describe("evidence-bound release and OAuth state machines", () => {
       await expect(authorizeAuthorizationRequestEffect(harness.authority, {
         request: x.request,
         idempotency_key: "synthetic-local-oidc-writer-removed-0001",
-        effect_digest: "82".repeat(32),
         effect: () => {
           effects += 1;
           return { status: "completed", result: { release: "unexpected" } };
@@ -139,6 +176,140 @@ describe("evidence-bound release and OAuth state machines", () => {
     } finally {
       x.s.resetCurrentWriterPolicy();
     }
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects a release when an effect-time source claim disappears", async () => {
+    // BLUE TEAM VALIDATION: synthetic/local removes one deterministic opaque claim from an in-memory current view and invokes no external effect.
+    let loads = 0;
+    let effects = 0;
+    const harness = x.s.makeClaimAuthorizationHarness({
+      trusted_now: () => x.s.now + 69,
+      load_state: () => x.preMintState,
+      transform_view: (view) => {
+        loads += 1;
+        return loads === 1 ? view : Object.freeze({
+          ...view,
+          claims: Object.freeze(view.claims.filter((artifact) =>
+            inspectVerifiedClaim(artifact).claim_id !== x.dataClaim.artifact.semantic.claim_id)),
+        });
+      },
+    });
+    await expect(authorizeAuthorizationRequestEffect(harness.authority, {
+      request: x.request,
+      idempotency_key: "synthetic-local-oidc-source-removed-0001",
+      effect: () => {
+        effects += 1;
+        return { status: "completed", result: { release: "unexpected" } };
+      },
+    })).resolves.toMatchObject({ verdict: "reject", allowed: false });
+    expect(harness.calls.acquire).toBe(0);
+    expect(effects).toBe(0);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects accessor/proxy effect inputs without trap invocation", async () => {
+    // BLUE TEAM VALIDATION: synthetic/local trap counters are bounded inert fixtures and never access a live identity, repository, or client.
+    const harness = x.s.makeClaimAuthorizationHarness({
+      load_state: () => x.preMintState,
+      trusted_now: () => x.s.now + 69,
+    });
+    let reads = 0;
+    const hostile = {
+      request: x.request,
+      idempotency_key: "synthetic-local-oidc-accessor-0001",
+    } as Record<string, unknown>;
+    Object.defineProperty(hostile, "effect", {
+      enumerable: true,
+      get() {
+        reads += 1;
+        return () => ({ status: "completed", result: {} });
+      },
+    });
+    await expect(authorizeAuthorizationRequestEffect(
+      harness.authority,
+      hostile as never,
+    )).resolves.toMatchObject({ verdict: "reject", allowed: false });
+    expect(reads).toBe(0);
+
+    let calls = 0;
+    const proxy = new Proxy({
+      request: x.request,
+      idempotency_key: "synthetic-local-oidc-proxy-0001",
+      effect: () => ({ status: "completed" as const, result: {} }),
+    }, {
+      get(target, property, receiver) {
+        calls += 1;
+        return Reflect.get(target, property, receiver);
+      },
+    });
+    await expect(authorizeAuthorizationRequestEffect(
+      harness.authority,
+      proxy,
+    )).resolves.toMatchObject({ verdict: "reject", allowed: false });
+    expect(calls).toBe(0);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local captures nested request data before loaders can mutate it", async () => {
+    // BLUE TEAM VALIDATION: synthetic/local mutates only detached in-memory arrays and counts inert proxy traps; no external target or deployable payload is used.
+    const request: OidcAuthorizationRequest = {
+      ...x.request,
+      requested_claims: [...x.request.requested_claims],
+      source_claims: [...x.request.source_claims],
+    };
+    let loads = 0;
+    const harness = x.s.makeClaimAuthorizationHarness({
+      load_state: () => x.preMintState,
+      trusted_now: () => x.s.now + 69,
+      transform_view: (view) => {
+        loads += 1;
+        if (loads === 1) {
+          request.requested_claims.length = 0;
+          request.source_claims.length = 0;
+        }
+        return view;
+      },
+    });
+    await expect(authorizeAuthorizationRequestEffect(harness.authority, {
+      request,
+      idempotency_key: "synthetic-local-oidc-request-mutation-0001",
+      effect: (release) => ({
+        status: "completed",
+        result: { name: release.released_claims?.name },
+      }),
+    })).resolves.toMatchObject({
+      verdict: "accept",
+      allowed: true,
+      result: { name: "Alice" },
+    });
+
+    let traps = 0;
+    const proxiedClaims = new Proxy([...x.request.requested_claims], {
+      get(target, property, receiver) {
+        traps += 1;
+        return Reflect.get(target, property, receiver);
+      },
+    });
+    await expect(authorizeAuthorizationRequestEffect(harness.authority, {
+      request: { ...x.request, requested_claims: proxiedClaims },
+      idempotency_key: "synthetic-local-oidc-request-proxy-0001",
+      effect: () => ({ status: "completed", result: {} }),
+    })).resolves.toMatchObject({ verdict: "reject", allowed: false });
+    expect(traps).toBe(0);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local public issuance and projection reject inspection-only requests", () => {
+    // BLUE TEAM VALIDATION: synthetic/local uses one deterministic request object and performs no code delivery, token delivery, or external transaction.
+    expect(() => issueAuthorizationCode(
+      x.request as never,
+      x.issuance.issued_at,
+    )).toThrow(/durable|authorization|grant/i);
+    expect(() => issueDeviceAuthorization(
+      x.request as never,
+      x.issuance.issued_at,
+    )).toThrow(/durable|authorization|grant/i);
+    expect(() => projectAccessToken({
+      ...x.projection,
+      authorization: x.request as never,
+    })).toThrow(/durable|authorization|grant/i);
   });
 
   it("derives pairwise subjects only from the exact lowercase typed-subject JCS digest", () => {
@@ -253,7 +424,7 @@ describe("evidence-bound release and OAuth state machines", () => {
   });
 
   it("enforces S256, client, redirect, expiry and one-time authorization-code redemption", () => {
-    const code = issueAuthorizationCode(x.request, x.issuance.issued_at);
+    const code = issueAuthorizationCode(x.releaseAuthorization.authorization, x.issuance.issued_at);
     expect(code).toMatchObject(x.preMintState.credential_ledger);
     const consumed = new Set<string>();
     const redeem = (overrides = {}) => redeemAuthorizationCode(code, {
@@ -276,14 +447,15 @@ describe("evidence-bound release and OAuth state machines", () => {
       ...x.preMintState.credential_ledger,
       credential_ledger_generation: x.preMintState.credential_ledger.credential_ledger_generation + 1,
     } })).toMatchObject({ allowed: false });
-    expect(() => issueAuthorizationCode({ ...x.request, client_id: "attacker" }, x.issuance.issued_at))
-      .toThrow(/prerequisites|grant/i);
+    expect(() => issueAuthorizationCode({} as never, x.issuance.issued_at))
+      .toThrow(/durable|authorization|grant/i);
   });
 
-  it("executes RFC 8628 pending, slow_down, denial, expiry and success states", () => {
+  it("executes RFC 8628 pending, slow_down, denial, expiry and success states", async () => {
     const request = { ...x.request, flow: "device_authorization", grant_type: "urn:ietf:params:oauth:grant-type:device_code",
       response_type: undefined, redirect_uri: undefined, code_challenge: undefined, code_challenge_method: undefined } as OidcAuthorizationRequest;
-    let record = issueDeviceAuthorization(request, x.issuance.issued_at);
+    const authorization = await durableAuthorization(request, "synthetic-local-device-authorization-0001");
+    let record = issueDeviceAuthorization(authorization, x.issuance.issued_at);
     expect(record).toMatchObject(x.preMintState.credential_ledger);
     const current = x.preMintState.credential_ledger;
     const pending = redeemDeviceCode(record, { device_code: record.device_code, client_id: record.client_id,
@@ -298,16 +470,16 @@ describe("evidence-bound release and OAuth state machines", () => {
     expect(success.result).toBe("success");
     expect(redeemDeviceCode(success.record, { device_code: record.device_code, client_id: record.client_id,
       now: x.issuance.issued_at + 21, credential_ledger: current }).result).toBe("expired_token");
-    const denied = decideDeviceAuthorization(issueDeviceAuthorization(request, x.issuance.issued_at), "deny",
+    const denied = decideDeviceAuthorization(issueDeviceAuthorization(authorization, x.issuance.issued_at), "deny",
       x.issuance.issued_at + 1, current);
     expect(redeemDeviceCode(denied, { device_code: denied.device_code, client_id: denied.client_id,
       now: x.issuance.issued_at + 2, credential_ledger: current }).result).toBe("access_denied");
     const stale = { ...current, credential_ledger_generation: current.credential_ledger_generation + 1 };
-    expect(() => decideDeviceAuthorization(issueDeviceAuthorization(request, x.issuance.issued_at), "approve",
+    expect(() => decideDeviceAuthorization(issueDeviceAuthorization(authorization, x.issuance.issued_at), "approve",
       x.issuance.issued_at + 1, stale)).toThrow(/credential_generation_stale/);
   });
 
-  it("purges every prior-generation OAuth transaction when credential authority resets", () => {
+  it("purges every prior-generation OAuth transaction when credential authority resets", async () => {
     const deviceRequest = {
       ...x.request,
       flow: "device_authorization",
@@ -317,22 +489,26 @@ describe("evidence-bound release and OAuth state machines", () => {
       code_challenge: undefined,
       code_challenge_method: undefined,
     } as OidcAuthorizationRequest;
+    const deviceAuthorization = await durableAuthorization(
+      deviceRequest,
+      "synthetic-local-device-authorization-reset-0001",
+    );
     const current = x.preMintState.credential_ledger;
-    const pending = issueDeviceAuthorization(deviceRequest, x.issuance.issued_at);
+    const pending = issueDeviceAuthorization(deviceAuthorization, x.issuance.issued_at);
     const approved = decideDeviceAuthorization(
-      issueDeviceAuthorization(deviceRequest, x.issuance.issued_at + 1),
+      issueDeviceAuthorization(deviceAuthorization, x.issuance.issued_at + 1),
       "approve",
       x.issuance.issued_at + 2,
       current,
     );
     const denied = decideDeviceAuthorization(
-      issueDeviceAuthorization(deviceRequest, x.issuance.issued_at + 2),
+      issueDeviceAuthorization(deviceAuthorization, x.issuance.issued_at + 2),
       "deny",
       x.issuance.issued_at + 3,
       current,
     );
     const result = purgeOidcTransactionsForCredentialReset(
-      [issueAuthorizationCode(x.request, x.issuance.issued_at)],
+      [issueAuthorizationCode(x.releaseAuthorization.authorization, x.issuance.issued_at)],
       [pending, approved, denied],
       { ...current, credential_ledger_generation: current.credential_ledger_generation + 1 },
     );
@@ -392,9 +568,9 @@ describe("evidence-derived strict JOSE projection", () => {
     expect(() => projectIdToken({ ...x.projection, client_id: "caller-substitution" })).toThrow(/projection|token/i);
     expect(() => projectIdToken({ ...x.projection, issuance_record_id: x.registrationRecord.record_id })).toThrow(/issuance/i);
     expect(() => projectIdToken({ ...x.projection,
-      authorization_request: { ...x.request, requested_claims: [] } })).toThrow(/projection|authorization/i);
+      authorization: { ...x.request, requested_claims: [] } as never })).toThrow(/projection|authorization|grant/i);
     expect(() => projectIdToken({ ...x.projection,
-      authorization_request: { ...x.request, nonce: "substituted-nonce" } })).toThrow(/projection|token/i);
+      authorization: { ...x.request, nonce: "substituted-nonce" } as never })).toThrow(/projection|token|authorization|grant/i);
     const otherKey = fixtures.personas.carol.epoch_keys.epoch_1.pubkey;
     const otherIdentity = {
       persona_key: otherKey,
@@ -403,8 +579,8 @@ describe("evidence-derived strict JOSE projection", () => {
     expect(() => projectIdToken({ ...x.projection, identity: otherIdentity,
       issuer: `https://node.example/oidc/${otherIdentity.persona_npub}` })).toThrow(/issuer/i);
     expect(() => projectJwtAssertion({ ...x.projection,
-      authorization_request: { ...x.request, registration: x.request.consent } }, "urn:example:jwt-assertion:v1"))
-      .toThrow(/registered|authorization|token/i);
+      authorization: { ...x.request, registration: x.request.consent } as never }, "urn:example:jwt-assertion:v1"))
+      .toThrow(/registered|authorization|token|grant/i);
   });
 
   it("requires closed JWKS and exact RSA public-key metadata", () => {
@@ -434,8 +610,8 @@ describe("evidence-derived strict JOSE projection", () => {
       options("id_token", { nonce: "oidc-vector-nonce" }))).toMatchObject({ allowed: false });
     const invalidCnf = { jkt: "Q".repeat(42) };
     expect(() => projectAccessToken({ ...x.projection,
-      authorization_request: { ...x.request, cnf: invalidCnf, sender_constraint: "dpop" } }))
-      .toThrow(/cnf|evidence/i);
+      authorization: { ...x.request, cnf: invalidCnf, sender_constraint: "dpop" } as never }))
+      .toThrow(/cnf|evidence|authorization|grant/i);
   });
 
   it.each([

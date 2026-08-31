@@ -100,9 +100,21 @@ export type ClaimEffectOutcome<T> =
   | Readonly<{ status: "completed"; result: T }>
   | Readonly<{ status: "unknown" }>;
 
+export type CurrentClaimEffectBindingView = Readonly<{
+  trusted_now: number;
+  credential_ledger: CredentialLedgerBinding;
+  checkpoint_digest: string;
+  repository_revision: number;
+  claims: readonly VerifiedClaimArtifact[];
+  revocations: readonly VerifiedClaimRevocationArtifact[];
+  conflicted_claim_ids: readonly string[];
+  ledger_state: LedgerMergeResult;
+}>;
+
 export type ClaimAuthorizationEffectInput<T> = ClaimAuthorizationInspectionInput & Readonly<{
   idempotency_key: string;
   effect_digest: string;
+  current_effect_binding?(view: CurrentClaimEffectBindingView): unknown;
   effect(executionToken: string): ClaimEffectOutcome<T> | Promise<ClaimEffectOutcome<T>>;
 }>;
 
@@ -165,6 +177,7 @@ type CapturedInspection = Readonly<{
 type CapturedEffect<T> = CapturedInspection & Readonly<{
   idempotency_key: string;
   effect_digest: string;
+  current_effect_binding?: NonNullable<ClaimAuthorizationEffectInput<T>["current_effect_binding"]>;
   effect: ClaimAuthorizationEffectInput<T>["effect"];
 }>;
 
@@ -244,6 +257,19 @@ export async function authorizeClaimEffect<T>(
     const current = evaluateCurrent(captured, retained, currentView, currentNow);
     if (current.state !== "active") return rejectedDecision(current);
 
+    const currentEffectBinding = captured.current_effect_binding === undefined
+      ? null
+      : jsonSnapshot(captured.current_effect_binding(Object.freeze({
+        trusted_now: currentNow,
+        credential_ledger: currentView.credential_ledger,
+        checkpoint_digest: currentView.checkpoint_digest,
+        repository_revision: currentView.repository_revision,
+        claims: currentView.claims,
+        revocations: currentView.revocations,
+        conflicted_claim_ids: currentView.conflicted_claim_ids,
+        ledger_state: currentView.ledger_state,
+      })), "current_effect_binding");
+
     const writerRevalidation = revalidateLedgerWriterAuthorities(
       currentView.ledger_state,
     );
@@ -253,7 +279,12 @@ export async function authorizeClaimEffect<T>(
       throw new Error("claim-ledger-writer-unauthorized: current writer authority changed before acquire");
     }
 
-    const binding = authorizationBinding(captured, retained, currentView);
+    const binding = authorizationBinding(
+      captured,
+      retained,
+      currentView,
+      currentEffectBinding,
+    );
     const executionToken = randomBytes(32).toString("hex");
     let acquisition: unknown;
     try {
@@ -522,9 +553,10 @@ function captureInspection(value: unknown, allowEffectMembers: boolean): Capture
     "subject_proof",
   ];
   const effectKeys = [...inspectionKeys, "idempotency_key", "effect_digest", "effect"];
+  const boundEffectKeys = [...effectKeys, "current_effect_binding"];
   const descriptors = exactDataDescriptors(
     value,
-    allowEffectMembers ? [inspectionKeys, effectKeys] : [inspectionKeys],
+    allowEffectMembers ? [inspectionKeys, effectKeys, boundEffectKeys] : [inspectionKeys],
     "claim authorization request",
   );
   const leaf = descriptors.leaf.value as VerifiedClaimArtifact;
@@ -563,7 +595,7 @@ function captureInspection(value: unknown, allowEffectMembers: boolean): Capture
 
 function captureEffect<T>(value: unknown): CapturedEffect<T> {
   const common = captureInspection(value, true);
-  const descriptors = exactDataDescriptors(value, [[
+  const baseKeys = [
     "leaf",
     "chain",
     "audience",
@@ -575,7 +607,11 @@ function captureEffect<T>(value: unknown): CapturedEffect<T> {
     "idempotency_key",
     "effect_digest",
     "effect",
-  ]], "claim effect request");
+  ];
+  const descriptors = exactDataDescriptors(value, [
+    baseKeys,
+    [...baseKeys, "current_effect_binding"],
+  ], "claim effect request");
   const effectDigest = descriptors.effect_digest.value;
   if (typeof effectDigest !== "string" || !LOWER_HEX_32.test(effectDigest)) {
     throw new Error("claim-issuer-authority-invalid: effect_digest must be lowercase 32-byte hex");
@@ -584,6 +620,12 @@ function captureEffect<T>(value: unknown): CapturedEffect<T> {
     ...common,
     idempotency_key: boundedString(descriptors.idempotency_key.value, "idempotency_key"),
     effect_digest: effectDigest,
+    ...(descriptors.current_effect_binding === undefined ? {} : {
+      current_effect_binding: safeCallback(
+        descriptors.current_effect_binding.value,
+        "current_effect_binding",
+      ) as NonNullable<CapturedEffect<T>["current_effect_binding"]>,
+    }),
     effect: safeCallback(descriptors.effect.value, "effect") as CapturedEffect<T>["effect"],
   });
 }
@@ -703,6 +745,7 @@ function authorizationBinding(
   input: CapturedEffect<unknown>,
   authority: AuthorityRecord,
   view: CapturedView,
+  currentEffectBinding: unknown,
 ): Readonly<{ single_use_key: string; binding_digest: string }> {
   const leaf = inspectVerifiedClaim(input.leaf);
   const singleUseMembers = {
@@ -738,6 +781,7 @@ function authorizationBinding(
       requested_namespace: input.requested_namespace,
     },
     effect_digest: input.effect_digest,
+    current_effect_binding: currentEffectBinding,
     authority_id: authority.authority_id,
     idempotency_key: input.idempotency_key,
   });
