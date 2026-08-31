@@ -20,6 +20,7 @@ import {
   issuerMetadata,
   type JwtProjectionInput,
   type OidcAuthorizationRequest,
+  type OidcProjectionSubtype,
   type PersonaIdentityState,
   type RegisteredClient,
 } from "./oidc.js";
@@ -222,6 +223,8 @@ export async function buildLiveOidcScenario(
       request,
       idempotency_key: "synthetic-local-oidc-release-0001",
       purpose: "jwt_projection",
+      projection_subtype: "access_token",
+      assertion_profile: null,
       authorization_validity_seconds: 300,
       effect: () => {
         releaseEffects += 1;
@@ -295,8 +298,18 @@ export async function buildLiveOidcScenario(
   const projectionAuthorizations: Array<Readonly<{
     authority: typeof releaseHarness.authority;
     authorization: typeof releaseAuthorization.authorization;
+    projection_subtype: OidcProjectionSubtype;
+    assertion_profile: string | null;
   }>> = [];
-  for (let index = 0; index < 32; index += 1) {
+  const projectionProfiles = Array.from({ length: 16 }, () => [
+    { projection_subtype: "id_token" as const, assertion_profile: null },
+    { projection_subtype: "access_token" as const, assertion_profile: null },
+    {
+      projection_subtype: "jwt_assertion" as const,
+      assertion_profile: "urn:example:jwt-assertion:v1",
+    },
+  ]).flat();
+  for (const [index, profile] of projectionProfiles.entries()) {
     const harness = s.makeClaimAuthorizationHarness({
       load_state: () => preMintState,
       trusted_now: () => s.now + 69,
@@ -305,6 +318,8 @@ export async function buildLiveOidcScenario(
       request,
       idempotency_key: `synthetic-local-oidc-projection-${String(index).padStart(4, "0")}`,
       purpose: "jwt_projection",
+      projection_subtype: profile.projection_subtype,
+      assertion_profile: profile.assertion_profile,
       authorization_validity_seconds: 300,
       effect: () => ({ status: "completed", result: { executed: true } }),
     });
@@ -314,10 +329,10 @@ export async function buildLiveOidcScenario(
     projectionAuthorizations.push(Object.freeze({
       authority: harness.authority,
       authorization: authorized.authorization,
+      ...profile,
     }));
   }
-  let pendingProjectionAuthorization: (typeof projectionAuthorizations)[number] | undefined;
-  const projection: JwtProjectionInput = {
+  const projectionContext: Omit<JwtProjectionInput, "authorization_authority" | "authorization"> = Object.freeze({
     issuer: metadata.issuer,
     client_id: CLIENT.client_id,
     audience: release.audience!,
@@ -327,31 +342,35 @@ export async function buildLiveOidcScenario(
     expires_at: issuance.expires_at,
     issuance_record_id: issuanceRecord.record_id,
     state: issuedState,
-    get authorization_authority() {
-      pendingProjectionAuthorization = projectionAuthorizations.shift();
-      if (pendingProjectionAuthorization === undefined) {
-        throw new Error("synthetic OIDC projection authorization pool exhausted");
-      }
-      return pendingProjectionAuthorization.authority;
-    },
-    get authorization() {
-      const selected = pendingProjectionAuthorization ?? projectionAuthorizations.shift();
-      pendingProjectionAuthorization = undefined;
-      if (selected === undefined) {
-        throw new Error("synthetic OIDC projection authorization pool exhausted");
-      }
-      return selected.authorization;
-    },
     issuer_envelope: s.issuerKeyEnvelopeOne,
     issuer_audience_key: s.issuerAudienceKeyOne,
     issuer_writer_nid: s.writerOne.did_key,
     identity,
     status_mirror: {
       repository_rid: s.rid,
-      branch: "main",
+      branch: "main" as const,
       path: `.well-known/${personaNpub}/${issuance.reservation.uri}`,
       sha256: "33".repeat(32),
     },
+  });
+  const projection = (
+    projectionSubtype: OidcProjectionSubtype,
+    assertionProfile: string | null = projectionSubtype === "jwt_assertion"
+      ? "urn:example:jwt-assertion:v1"
+      : null,
+  ): JwtProjectionInput => {
+    const selectedIndex = projectionAuthorizations.findIndex((entry) =>
+      entry.projection_subtype === projectionSubtype &&
+      entry.assertion_profile === assertionProfile);
+    if (selectedIndex < 0) {
+      throw new Error("synthetic OIDC projection authorization pool exhausted");
+    }
+    const [selected] = projectionAuthorizations.splice(selectedIndex, 1);
+    return {
+      ...projectionContext,
+      authorization_authority: selected.authority,
+      authorization: selected.authorization,
+    };
   };
   return {
     s,
@@ -379,6 +398,7 @@ export async function buildLiveOidcScenario(
     releaseHarness,
     releaseEffects,
     projection,
+    projectionContext,
     dataClaim,
     allClaims,
     evidenceFor,

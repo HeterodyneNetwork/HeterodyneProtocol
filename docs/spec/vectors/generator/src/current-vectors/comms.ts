@@ -300,9 +300,9 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
     })();
     const oidc = await buildLiveOidcScenario(fixtures);
     const oidcRelease = validateAuthorizationRequest(oidc.request);
-    const accessToken = projectAccessToken(oidc.projection);
+    const accessToken = projectAccessToken(oidc.projection("access_token"));
     const accessValidation = validateProjectedJwt(accessToken.compact, oidc.metadata.issuer, "https://api.example", { keys: [OIDC_RSA_ONE.public_jwk] }, {
-        now: oidc.projection.now,
+        now: oidc.projectionContext.now,
         token_use: "access_token",
         client_id: oidc.request.client_id,
         sender_constraint: "none",
@@ -328,7 +328,7 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
     });
     const issuerMismatchDecision = validateIssuerMetadata(oidc.metadata, "https://other.example/oidc/npub1other", oidc.metadata.jwks_uri);
     const tokenTypeDecision = validateProjectedJwt(accessToken.compact, oidc.metadata.issuer, "registered-client", { keys: [OIDC_RSA_ONE.public_jwk] }, {
-        now: oidc.projection.now,
+        now: oidc.projectionContext.now,
         token_use: "id_token",
         client_id: oidc.request.client_id,
         nonce: oidc.request.nonce,
@@ -337,7 +337,7 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
         credential_ledger: oidc.issuedState.credential_ledger,
     });
     const audienceInvalidDecision = validateProjectedJwt(accessToken.compact, oidc.metadata.issuer, "https://api.example", { keys: [OIDC_RSA_ONE.public_jwk] }, {
-        now: oidc.projection.now,
+        now: oidc.projectionContext.now,
         token_use: "access_token",
         client_id: oidc.request.client_id,
         sender_constraint: "none",
@@ -1009,7 +1009,7 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
                 "registered-client",
                 { keys: [OIDC_RSA_ONE.public_jwk] },
                 {
-                    now: oidc.projection.now,
+                    now: oidc.projectionContext.now,
                     token_use: "id_token",
                     client_id: oidc.request.client_id,
                     nonce: oidc.request.nonce,
@@ -1024,7 +1024,7 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
                 "https://api.example",
                 { keys: [OIDC_RSA_ONE.public_jwk] },
                 {
-                    now: oidc.projection.now,
+                    now: oidc.projectionContext.now,
                     token_use: "access_token",
                     client_id: oidc.request.client_id,
                     sender_constraint: "none",
@@ -1126,12 +1126,12 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
             ]],
         ["comms/oidc-claim-release", [oidc.request]],
         ["comms/oidc-access-token-validated", [
-                oidc.projection,
+                oidc.projection("access_token"),
                 oidc.metadata.issuer,
                 "https://api.example",
                 { keys: [OIDC_RSA_ONE.public_jwk] },
                 {
-                    now: oidc.projection.now,
+                    now: oidc.projectionContext.now,
                     token_use: "access_token",
                     client_id: oidc.request.client_id,
                     sender_constraint: "none",

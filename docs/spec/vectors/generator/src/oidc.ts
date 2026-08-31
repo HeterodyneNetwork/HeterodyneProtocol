@@ -146,6 +146,8 @@ export type OidcAuthorizationPurpose =
   | "device_authorization"
   | "jwt_projection";
 
+export type OidcProjectionSubtype = "id_token" | "access_token" | "jwt_assertion";
+
 export type OidcAuthorizedRelease = Readonly<{
   readonly [oidcAuthorizedReleaseBrand]: true;
 }>;
@@ -154,6 +156,8 @@ type AuthorizedReleaseRecord = {
   authority: ClaimAuthorizationAuthority;
   effect_result: ClaimEffectAuthorizationResult<unknown>;
   purpose: OidcAuthorizationPurpose;
+  projection_subtype: OidcProjectionSubtype | null;
+  assertion_profile: string | null;
   idempotency_key: string;
   authorized_at: number;
   expires_at: number;
@@ -179,6 +183,8 @@ type CapturedAuthorizationEffectInput<T> = Readonly<{
   request: OidcAuthorizationRequest;
   idempotency_key: string;
   purpose: OidcAuthorizationPurpose;
+  projection_subtype: OidcProjectionSubtype | null;
+  assertion_profile: string | null;
   authorization_validity_seconds: number;
   effect(
     release: OidcAuthorizationDecision,
@@ -273,7 +279,7 @@ export function issueAuthorizationCode(
     client_id: request.client_id, redirect_uri: request.redirect_uri,
     code_challenge: request.code_challenge, issued_at: now, expires_at: now + lifetimeSeconds,
     release_digest: decision.release_digest };
-  return issuedGrant(retained, "authorization-code", () => ({
+  return issuedGrant(retained, "authorization-code", jsonDigest(core), () => ({
     code: createHash("sha256").update(`heterodyne-authorization-code-v1\0${jcsCanonicalize(core)}`).digest("base64url"),
     ...core,
   }));
@@ -330,7 +336,7 @@ export function issueDeviceAuthorization(
     client_id: request.client_id, scopes: uniqueSorted(decision.scopes ?? []), issued_at: now,
     expires_at: now + lifetimeSeconds, interval, release_digest: decision.release_digest };
   const digest = createHash("sha256").update(`heterodyne-device-code-v1\0${jcsCanonicalize(core)}`).digest();
-  return issuedGrant(retained, "device-authorization", () => ({
+  return issuedGrant(retained, "device-authorization", jsonDigest(core), () => ({
     device_code: digest.toString("base64url"),
     user_code: digest.subarray(0, 5).toString("hex").toUpperCase(),
     ...core,
@@ -695,6 +701,8 @@ export async function authorizeAuthorizationRequestEffect<T>(
     request: OidcAuthorizationRequest;
     idempotency_key: string;
     purpose: OidcAuthorizationPurpose;
+    projection_subtype: OidcProjectionSubtype | null;
+    assertion_profile: string | null;
     authorization_validity_seconds: number;
     effect(
       release: OidcAuthorizationDecision,
@@ -772,6 +780,8 @@ export async function authorizeAuthorizationRequestEffect<T>(
       request_digest: preparedRelease.request_digest,
       release_digest: preparedRelease.release_digest,
       purpose: captured.purpose,
+      projection_subtype: captured.projection_subtype,
+      assertion_profile: captured.assertion_profile,
       authorization_validity_seconds: captured.authorization_validity_seconds,
     }),
     current_effect_binding: (view) => {
@@ -796,6 +806,8 @@ export async function authorizeAuthorizationRequestEffect<T>(
         authority,
         effect_result: undefined as never,
         purpose: captured.purpose,
+        projection_subtype: captured.projection_subtype,
+        assertion_profile: captured.assertion_profile,
         idempotency_key: captured.idempotency_key,
         authorized_at: session.authorized_at,
         expires_at: session.expires_at,
@@ -808,6 +820,8 @@ export async function authorizeAuthorizationRequestEffect<T>(
         request_digest: release.request_digest,
         release_digest: release.release_digest,
         purpose: captured.purpose,
+        projection_subtype: captured.projection_subtype,
+        assertion_profile: captured.assertion_profile,
         authorized_at: session.authorized_at,
         expires_at: session.expires_at,
         current_view_fingerprint: session.view_fingerprint,
@@ -1033,7 +1047,20 @@ function project(
   typ: "JWT" | "at+jwt" | "heterodyne-assertion+jwt",
   extraClaims: Record<string, JsonValue>,
 ): ProjectedJwt {
-  const { issuance, release, private_jwk } = validateProjectionInput(input);
+  const projectionSubtype: OidcProjectionSubtype = typ === "JWT"
+    ? "id_token"
+    : typ === "at+jwt"
+      ? "access_token"
+      : "jwt_assertion";
+  const assertionProfile = projectionSubtype === "jwt_assertion" &&
+      typeof extraClaims.assertion_profile === "string"
+    ? extraClaims.assertion_profile
+    : null;
+  const { issuance, release, private_jwk, authorization } = validateProjectionInput(
+    input,
+    projectionSubtype,
+    assertionProfile,
+  );
   if (typ === "JWT") {
     if (typeof release.nonce !== "string" || release.nonce.length === 0) {
       throw new Error("oidc-token-type-invalid: signed authorization request nonce is required");
@@ -1079,23 +1106,43 @@ function project(
   const encodedHeader = base64url(Buffer.from(JSON.stringify(protected_header)));
   const encodedClaims = base64url(Buffer.from(JSON.stringify(claims)));
   const signingInput = `${encodedHeader}.${encodedClaims}`;
-  const key = createPrivateKey({ key: privateJwk as JsonWebKey, format: "jwk" });
-  if ((key.asymmetricKeyDetails?.modulusLength ?? 0) < 2048) {
-    throw new Error("RS256 signing key must have a modulus of at least 2048 bits");
-  }
-  const signature = sign("RSA-SHA256", Buffer.from(signingInput), key);
-  return { protected_header, claims, compact: `${signingInput}.${base64url(signature)}` };
+  const projectionDigest = exactProjectionInputDigest(
+    input,
+    issuance,
+    release,
+    projectionSubtype,
+    assertionProfile,
+  );
+  return issuedGrant(authorization, "jwt-projection", projectionDigest, () => {
+    const key = createPrivateKey({ key: privateJwk as JsonWebKey, format: "jwk" });
+    if ((key.asymmetricKeyDetails?.modulusLength ?? 0) < 2048) {
+      throw new Error("RS256 signing key must have a modulus of at least 2048 bits");
+    }
+    const signature = sign("RSA-SHA256", Buffer.from(signingInput), key);
+    return {
+      protected_header,
+      claims,
+      compact: `${signingInput}.${base64url(signature)}`,
+    };
+  });
 }
 
-function validateProjectionInput(input: JwtProjectionInput): {
+function validateProjectionInput(
+  input: JwtProjectionInput,
+  projectionSubtype: OidcProjectionSubtype,
+  assertionProfile: string | null,
+): {
   issuance: IssuanceRecord;
-  release: OidcAuthorizationDecision & Required<Pick<OidcAuthorizationDecision, "pairwise_sub" | "scopes" | "audience" | "released_claims" | "source_claim_ids" | "checkpoint">>;
+  release: CompleteOidcAuthorizationRelease;
   private_jwk: JsonValue;
+  authorization: AuthorizedReleaseRecord;
 } {
   const consumed = consumeAuthorizedRelease(
     input.authorization_authority,
     input.authorization,
     "jwt_projection",
+    projectionSubtype,
+    assertionProfile,
   );
   const authorization = consumed.retained;
   const authorizationRequest = authorization.request;
@@ -1173,7 +1220,7 @@ function validateProjectionInput(input: JwtProjectionInput): {
   if (Object.values(release.released_claims).some((value) => containsForbiddenField(value, reserved))) {
     throw new Error("oidc-claim-release-denied: private claim provenance cannot be projected");
   }
-  return { issuance, release: release as never, private_jwk };
+  return { issuance, release, private_jwk, authorization };
 }
 
 function exactHttpsOrigin(origin: string): string {
@@ -1227,6 +1274,8 @@ function captureAuthorizationEffectInput<T>(
     "request",
     "idempotency_key",
     "purpose",
+    "projection_subtype",
+    "assertion_profile",
     "authorization_validity_seconds",
     "effect",
   ]], "OIDC authorization effect request");
@@ -1246,10 +1295,22 @@ function captureAuthorizationEffectInput<T>(
       (members.authorization_validity_seconds as number) > 600) {
     throw new Error("oidc-claim-release-denied: invalid durable authorization purpose or validity");
   }
+  const projectionSubtype = members.projection_subtype;
+  const assertionProfile = members.assertion_profile;
+  if ((projectionSubtype !== null && projectionSubtype !== "id_token" &&
+      projectionSubtype !== "access_token" && projectionSubtype !== "jwt_assertion") ||
+      (assertionProfile !== null && (typeof assertionProfile !== "string" || assertionProfile.length === 0 ||
+        assertionProfile.length > 4_096)) ||
+      (members.purpose === "jwt_projection") !== (projectionSubtype !== null) ||
+      (projectionSubtype === "jwt_assertion") !== (assertionProfile !== null)) {
+    throw new Error("oidc-claim-release-denied: invalid durable projection subtype");
+  }
   return Object.freeze({
     request: captureAuthorizationRequest(members.request),
     idempotency_key: idempotencyKey,
     purpose: members.purpose,
+    projection_subtype: projectionSubtype as OidcProjectionSubtype | null,
+    assertion_profile: assertionProfile as string | null,
     authorization_validity_seconds: members.authorization_validity_seconds as number,
     effect: effect as CapturedAuthorizationEffectInput<T>["effect"],
   });
@@ -1457,6 +1518,8 @@ function authorizationSession<T>(
   }
   const exactInputDigest = jsonDigest({
     purpose: input.purpose,
+    projection_subtype: input.projection_subtype,
+    assertion_profile: input.assertion_profile,
     authorization_validity_seconds: input.authorization_validity_seconds,
     request_digest: release.request_digest,
     release_digest: release.release_digest,
@@ -1487,17 +1550,53 @@ function oidcCurrentViewFingerprint(view: CurrentClaimEffectBindingView): string
   });
 }
 
+function exactProjectionInputDigest(
+  input: JwtProjectionInput,
+  issuance: IssuanceRecord,
+  release: CompleteOidcAuthorizationRelease,
+  projectionSubtype: OidcProjectionSubtype,
+  assertionProfile: string | null,
+): string {
+  return jsonDigest({
+    projection_subtype: projectionSubtype,
+    assertion_profile: assertionProfile,
+    issuer: input.issuer,
+    client_id: input.client_id,
+    audience: input.audience,
+    pairwise_sub: input.pairwise_sub,
+    scopes: input.scopes,
+    now: input.now,
+    expires_at: input.expires_at,
+    issuance_record_id: input.issuance_record_id,
+    current_checkpoint: canonicalValidatedCheckpoint(input.state),
+    current_credential_ledger: input.state.credential_ledger,
+    issuance,
+    release,
+    issuer_envelope: input.issuer_envelope,
+    issuer_audience_key_digest: createHash("sha256")
+      .update(input.issuer_audience_key)
+      .digest("hex"),
+    issuer_writer_nid: input.issuer_writer_nid,
+    identity: input.identity,
+    status_mirror: input.status_mirror,
+  });
+}
+
 function consumeAuthorizedRelease(
   authority: ClaimAuthorizationAuthority,
   authorization: OidcAuthorizedRelease,
   purpose: OidcAuthorizationPurpose,
+  projectionSubtype: OidcProjectionSubtype | null = null,
+  assertionProfile: string | null = null,
 ): Readonly<{ retained: AuthorizedReleaseRecord; trusted_now: number }> {
   const retained = requireAuthorizedRelease(authorization);
   if (retained.consumed) {
     throw new Error("oidc-grant-prohibited: durable authorization already consumed");
   }
   retained.consumed = true;
-  if (retained.authority !== authority || retained.purpose !== purpose) {
+  if (retained.authority !== authority || retained.purpose !== purpose ||
+      retained.projection_subtype !== projectionSubtype ||
+      retained.assertion_profile !== assertionProfile) {
     throw new Error("oidc-grant-prohibited: durable authorization authority or purpose mismatch");
   }
   const revalidated = revalidateAcceptedClaimEffect(authority, retained.effect_result);
@@ -1512,6 +1611,7 @@ function consumeAuthorizedRelease(
 function issuedGrant<T>(
   retained: AuthorizedReleaseRecord,
   kind: string,
+  exactInputDigest: string,
   issue: () => T,
 ): T {
   let grants = ISSUED_GRANTS.get(retained.authority);
@@ -1522,6 +1622,8 @@ function issuedGrant<T>(
   const key = jsonDigest({
     kind,
     purpose: retained.purpose,
+    projection_subtype: retained.projection_subtype,
+    assertion_profile: retained.assertion_profile,
     idempotency_key: retained.idempotency_key,
     authorized_at: retained.authorized_at,
     expires_at: retained.expires_at,
@@ -1529,9 +1631,15 @@ function issuedGrant<T>(
     request_digest: retained.release.request_digest,
     release_digest: retained.release.release_digest,
   });
-  if (grants.has(key)) return grants.get(key) as T;
-  const issued = issue();
-  grants.set(key, issued);
+  const existing = grants.get(key) as Readonly<{ input_digest: string; output: T }> | undefined;
+  if (existing !== undefined) {
+    if (existing.input_digest !== exactInputDigest) {
+      throw new Error("oidc-grant-prohibited: cached issuance input mismatch");
+    }
+    return existing.output;
+  }
+  const issued = snapshotClosedDataTree(issue(), "OIDC issued output") as T;
+  grants.set(key, Object.freeze({ input_digest: exactInputDigest, output: issued }));
   return issued;
 }
 

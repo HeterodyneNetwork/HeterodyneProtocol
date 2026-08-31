@@ -68,6 +68,8 @@ async function durableAuthorization(
     request,
     idempotency_key: idempotencyKey,
     purpose,
+    projection_subtype: purpose === "jwt_projection" ? "access_token" : null,
+    assertion_profile: null,
     authorization_validity_seconds: 300,
     effect: () => ({ status: "completed", result: { executed: true } }),
   });
@@ -92,6 +94,8 @@ async function durableAuthorizationRecord(
     request,
     idempotency_key: idempotencyKey,
     purpose,
+    projection_subtype: purpose === "jwt_projection" ? "access_token" : null,
+    assertion_profile: null,
     authorization_validity_seconds: 300,
     effect: () => ({ status: "completed", result: { executed: true } }),
   });
@@ -149,6 +153,8 @@ describe("evidence-bound release and OAuth state machines", () => {
       request: x.request,
       idempotency_key: "synthetic-local-oidc-async-effect-0001",
       purpose: "jwt_projection",
+      projection_subtype: "access_token",
+      assertion_profile: null,
       authorization_validity_seconds: 300,
       effect: async (release) => ({
         status: "completed",
@@ -194,6 +200,8 @@ describe("evidence-bound release and OAuth state machines", () => {
         request: x.request,
         idempotency_key: "synthetic-local-oidc-writer-removed-0001",
         purpose: "jwt_projection",
+        projection_subtype: "access_token",
+        assertion_profile: null,
         authorization_validity_seconds: 300,
         effect: () => {
           effects += 1;
@@ -231,6 +239,8 @@ describe("evidence-bound release and OAuth state machines", () => {
       request: x.request,
       idempotency_key: "synthetic-local-oidc-source-removed-0001",
       purpose: "jwt_projection",
+      projection_subtype: "access_token",
+      assertion_profile: null,
       authorization_validity_seconds: 300,
       effect: () => {
         effects += 1;
@@ -252,6 +262,8 @@ describe("evidence-bound release and OAuth state machines", () => {
       request: x.request,
       idempotency_key: "synthetic-local-oidc-accessor-0001",
       purpose: "jwt_projection",
+      projection_subtype: "access_token",
+      assertion_profile: null,
       authorization_validity_seconds: 300,
     } as Record<string, unknown>;
     Object.defineProperty(hostile, "effect", {
@@ -272,6 +284,8 @@ describe("evidence-bound release and OAuth state machines", () => {
       request: x.request,
       idempotency_key: "synthetic-local-oidc-proxy-0001",
       purpose: "jwt_projection" as const,
+      projection_subtype: "access_token" as const,
+      assertion_profile: null,
       authorization_validity_seconds: 300,
       effect: () => ({ status: "completed" as const, result: {} }),
     }, {
@@ -311,6 +325,8 @@ describe("evidence-bound release and OAuth state machines", () => {
       request,
       idempotency_key: "synthetic-local-oidc-request-mutation-0001",
       purpose: "jwt_projection",
+      projection_subtype: "access_token",
+      assertion_profile: null,
       authorization_validity_seconds: 300,
       effect: (release) => ({
         status: "completed",
@@ -333,6 +349,8 @@ describe("evidence-bound release and OAuth state machines", () => {
       request: { ...x.request, requested_claims: proxiedClaims },
       idempotency_key: "synthetic-local-oidc-request-proxy-0001",
       purpose: "jwt_projection",
+      projection_subtype: "access_token",
+      assertion_profile: null,
       authorization_validity_seconds: 300,
       effect: () => ({ status: "completed", result: {} }),
     })).resolves.toMatchObject({ verdict: "reject", allowed: false });
@@ -350,7 +368,7 @@ describe("evidence-bound release and OAuth state machines", () => {
       x.request as never,
     )).toThrow(/durable|authorization|grant/i);
     expect(() => projectAccessToken({
-      ...x.projection,
+      ...x.projection("access_token"),
       authorization: x.request as never,
     })).toThrow(/durable|authorization|grant/i);
   });
@@ -394,7 +412,7 @@ describe("evidence-bound release and OAuth state machines", () => {
       "synthetic-local-oidc-artifact-jwt-purpose-0001",
     );
     expect(() => projectAccessToken({
-      ...x.projection,
+      ...x.projection("access_token"),
       authorization_authority: jwtSubstitution.authority,
       authorization: jwtSubstitution.authorization,
     })).toThrow(/purpose|authorization|grant/i);
@@ -408,6 +426,8 @@ describe("evidence-bound release and OAuth state machines", () => {
       request: x.request,
       idempotency_key: "synthetic-local-oidc-artifact-later-time-0001",
       purpose: "authorization_code",
+      projection_subtype: null,
+      assertion_profile: null,
       authorization_validity_seconds: 2,
       effect: () => ({ status: "completed", result: { executed: true } }),
     });
@@ -447,10 +467,14 @@ describe("evidence-bound release and OAuth state machines", () => {
     await expect(authorizeAuthorizationRequestEffect(bindingHarness.authority, {
       ...bindingInput,
       purpose: "authorization_code",
+      projection_subtype: null,
+      assertion_profile: null,
     })).resolves.toMatchObject({ verdict: "accept", allowed: true });
     await expect(authorizeAuthorizationRequestEffect(bindingHarness.authority, {
       ...bindingInput,
       purpose: "jwt_projection",
+      projection_subtype: "access_token",
+      assertion_profile: null,
     })).resolves.toMatchObject({ verdict: "reject", allowed: false });
 
     const current = await durableAuthorizationRecord(
@@ -486,6 +510,8 @@ describe("evidence-bound release and OAuth state machines", () => {
       request: x.request,
       idempotency_key: "synthetic-local-oidc-artifact-cached-retry-0001",
       purpose: "authorization_code" as const,
+      projection_subtype: null,
+      assertion_profile: null,
       authorization_validity_seconds: 300,
       effect,
     };
@@ -504,6 +530,85 @@ describe("evidence-bound release and OAuth state machines", () => {
       harness.authority,
       second.authorization,
     )).toThrow(/consumed|replay|authorization/i);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local cached JWT retry cannot select a second projection subtype", async () => {
+    // BLUE TEAM VALIDATION: synthetic/local signs only deterministic fixture JWTs with repository test keys and performs no token delivery or external request.
+    const harness = x.s.makeClaimAuthorizationHarness({
+      load_state: () => x.preMintState,
+      trusted_now: () => x.s.now + 69,
+    });
+    const input = {
+      request: x.request,
+      idempotency_key: "synthetic-local-oidc-jwt-cached-retry-0001",
+      purpose: "jwt_projection" as const,
+      projection_subtype: "id_token" as const,
+      assertion_profile: null,
+      authorization_validity_seconds: 300,
+      effect: () => ({ status: "completed" as const, result: { executed: true } }),
+    };
+    const first = await authorizeAuthorizationRequestEffect(harness.authority, input);
+    const second = await authorizeAuthorizationRequestEffect(harness.authority, input);
+    const third = await authorizeAuthorizationRequestEffect(harness.authority, input);
+    if (first.verdict !== "accept" || second.verdict !== "accept" || third.verdict !== "accept") {
+      throw new Error("synthetic cached JWT authorization failed");
+    }
+    const projection = { ...x.projectionContext, authorization_authority: harness.authority };
+    const idToken = projectIdToken({ ...projection, authorization: first.authorization });
+    expect(() => projectAccessToken({
+      ...projection,
+      authorization: second.authorization,
+    })).toThrow(/subtype|purpose|authorization|grant/i);
+    const retryIdToken = projectIdToken({ ...projection, authorization: third.authorization });
+    expect(retryIdToken.compact).toBe(idToken.compact);
+    expect(retryIdToken).toBe(idToken);
+    expect(Object.isFrozen(retryIdToken)).toBe(true);
+    expect(Object.isFrozen(retryIdToken.claims)).toBe(true);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local cached JWT retry rejects changed projection input and signing authority", async () => {
+    // BLUE TEAM VALIDATION: synthetic/local varies only closed fixture time, mirror, and test-key bytes; it never signs for or contacts an external target.
+    const harness = x.s.makeClaimAuthorizationHarness({
+      load_state: () => x.preMintState,
+      trusted_now: () => x.s.now + 69,
+    });
+    const input = {
+      request: x.request,
+      idempotency_key: "synthetic-local-oidc-jwt-input-binding-0001",
+      purpose: "jwt_projection" as const,
+      projection_subtype: "access_token" as const,
+      assertion_profile: null,
+      authorization_validity_seconds: 300,
+      effect: () => ({ status: "completed" as const, result: { executed: true } }),
+    };
+    const results = [];
+    for (let index = 0; index < 4; index += 1) {
+      results.push(await authorizeAuthorizationRequestEffect(harness.authority, input));
+    }
+    if (results.some((result) => result.verdict !== "accept")) {
+      throw new Error("synthetic cached JWT input authorization failed");
+    }
+    const [first, mirrorChanged, timeChanged, signerChanged] = results as Array<
+      Extract<(typeof results)[number], { verdict: "accept" }>
+    >;
+    const projection = { ...x.projectionContext, authorization_authority: harness.authority };
+    projectAccessToken({ ...projection, authorization: first.authorization });
+    expect(() => projectAccessToken({
+      ...projection,
+      authorization: mirrorChanged.authorization,
+      status_mirror: { ...projection.status_mirror, sha256: "44".repeat(32) },
+    })).toThrow(/input|authorization|grant/i);
+    expect(() => projectAccessToken({
+      ...projection,
+      authorization: timeChanged.authorization,
+      now: projection.now + 1,
+    })).toThrow(/projection|token|authorization|grant/i);
+    expect(() => projectAccessToken({
+      ...projection,
+      authorization: signerChanged.authorization,
+      issuer_audience_key: Uint8Array.from(projection.issuer_audience_key, (byte, index) =>
+        index === 0 ? byte ^ 1 : byte),
+    })).toThrow(/signing|key|authority|authorization|grant/i);
   });
 
   it("derives pairwise subjects only from the exact lowercase typed-subject JCS digest", () => {
@@ -746,7 +851,7 @@ describe("evidence-bound release and OAuth state machines", () => {
 
 describe("evidence-derived strict JOSE projection", () => {
   it("unwraps the exact Task5 key and projects a strict ID Token", () => {
-    const token = projectIdToken(x.projection);
+    const token = projectIdToken(x.projection("id_token"));
     expect(token.protected_header).toEqual({ alg: "RS256", kid: OIDC_RSA_ONE.key_id, typ: "JWT" });
     expect(token.claims.aud).toEqual(["registered-client"]);
     expect(token.claims).toMatchObject(x.issuedState.credential_ledger);
@@ -755,7 +860,7 @@ describe("evidence-derived strict JOSE projection", () => {
   });
 
   it("rejects an empty expected or presented ID Token nonce even when they match", () => {
-    const token = projectIdToken(x.projection);
+    const token = projectIdToken(x.projection("id_token"));
     const emptyNonce = resignJwt(token.compact, (claims) => {
       claims.nonce = "";
     });
@@ -769,7 +874,7 @@ describe("evidence-derived strict JOSE projection", () => {
   });
 
   it("requires the exact current credential-ledger binding in every projected JWT", () => {
-    const access = projectAccessToken(x.projection);
+    const access = projectAccessToken(x.projection("access_token"));
     const missing = resignJwt(access.compact, (claims) => {
       delete claims.credential_ledger_generation;
     });
@@ -786,26 +891,26 @@ describe("evidence-derived strict JOSE projection", () => {
   });
 
   it("recomputes release, mint eligibility, returnability and full checkpoint", () => {
-    expect(() => projectIdToken({ ...x.projection, client_id: "caller-substitution" })).toThrow(/projection|token/i);
-    expect(() => projectIdToken({ ...x.projection, issuance_record_id: x.registrationRecord.record_id })).toThrow(/issuance/i);
-    expect(() => projectIdToken({ ...x.projection,
+    expect(() => projectIdToken({ ...x.projection("id_token"), client_id: "caller-substitution" })).toThrow(/projection|token/i);
+    expect(() => projectIdToken({ ...x.projection("id_token"), issuance_record_id: x.registrationRecord.record_id })).toThrow(/issuance/i);
+    expect(() => projectIdToken({ ...x.projection("id_token"),
       authorization: { ...x.request, requested_claims: [] } as never })).toThrow(/projection|authorization|grant/i);
-    expect(() => projectIdToken({ ...x.projection,
+    expect(() => projectIdToken({ ...x.projection("id_token"),
       authorization: { ...x.request, nonce: "substituted-nonce" } as never })).toThrow(/projection|token|authorization|grant/i);
     const otherKey = fixtures.personas.carol.epoch_keys.epoch_1.pubkey;
     const otherIdentity = {
       persona_key: otherKey,
       persona_npub: nip19.npubEncode(otherKey),
     };
-    expect(() => projectIdToken({ ...x.projection, identity: otherIdentity,
+    expect(() => projectIdToken({ ...x.projection("id_token"), identity: otherIdentity,
       issuer: `https://node.example/oidc/${otherIdentity.persona_npub}` })).toThrow(/issuer/i);
-    expect(() => projectJwtAssertion({ ...x.projection,
+    expect(() => projectJwtAssertion({ ...x.projection("jwt_assertion"),
       authorization: { ...x.request, registration: x.request.consent } as never }, "urn:example:jwt-assertion:v1"))
       .toThrow(/registered|authorization|token|grant/i);
   });
 
   it("requires closed JWKS and exact RSA public-key metadata", () => {
-    const token = projectIdToken(x.projection);
+    const token = projectIdToken(x.projection("id_token"));
     const common = options("id_token", { nonce: "oidc-vector-nonce" });
     for (const jwks of [
       { keys: [OIDC_RSA_ONE.public_jwk], extra: true },
@@ -821,7 +926,7 @@ describe("evidence-derived strict JOSE projection", () => {
   });
 
   it("enforces exact access audience sets, token types, and canonical 32-byte cnf", () => {
-    const access = projectAccessToken(x.projection);
+    const access = projectAccessToken(x.projection("access_token"));
     expect(validateProjectedJwt(access.compact, x.metadata.issuer, "https://api.example", { keys: [OIDC_RSA_ONE.public_jwk] },
       options("access_token"))).toMatchObject({ allowed: true });
     expect(validateProjectedJwt(access.compact, x.metadata.issuer, "https://api.example", { keys: [OIDC_RSA_ONE.public_jwk] },
@@ -830,7 +935,7 @@ describe("evidence-derived strict JOSE projection", () => {
     expect(validateProjectedJwt(access.compact, x.metadata.issuer, "registered-client", { keys: [OIDC_RSA_ONE.public_jwk] },
       options("id_token", { nonce: "oidc-vector-nonce" }))).toMatchObject({ allowed: false });
     const invalidCnf = { jkt: "Q".repeat(42) };
-    expect(() => projectAccessToken({ ...x.projection,
+    expect(() => projectAccessToken({ ...x.projection("access_token"),
       authorization: { ...x.request, cnf: invalidCnf, sender_constraint: "dpop" } as never }))
       .toThrow(/cnf|evidence|authorization|grant/i);
   });
@@ -840,7 +945,7 @@ describe("evidence-derived strict JOSE projection", () => {
     ["short jti", (claims: Record<string, unknown>) => { claims.jti = "short"; }],
     ["duplicate unsorted scope", (claims: Record<string, unknown>) => { claims.scope = "profile openid profile"; }],
   ])("rejects a correctly re-signed JWT with %s", (_label, mutate) => {
-    const access = projectAccessToken(x.projection);
+    const access = projectAccessToken(x.projection("access_token"));
     const malformed = resignJwt(access.compact, mutate);
     expect(validateProjectedJwt(malformed, x.metadata.issuer, "https://api.example",
       { keys: [OIDC_RSA_ONE.public_jwk] }, options("access_token")))

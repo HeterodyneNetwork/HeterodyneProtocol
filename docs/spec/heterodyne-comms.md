@@ -1866,6 +1866,19 @@ retry that reads the committed Task 6 terminal result MAY return a new
 one-shot handle to the same already determined issuance output, but MUST NOT
 mint a second grant.
 
+A JWT-projection authorization MUST additionally bind exactly one projection
+subtype: ID Token, access token, or a JWT assertion with its exact registered
+assertion profile. The complete closed projection input, including release,
+issuance reservation, current checkpoint and credential generation, issuer
+signing envelope and audience-key binding, client, audiences, scopes, times,
+identity, and status-mirror binding, MUST determine the private durable output
+key. Signing occurs at most once for that key and the immutable exact signed
+output is retained. An exact committed retry returns that same byte-identical
+output. A different subtype, assertion profile, projection input, signing
+authority, released claims, or time MUST fail closed and MUST NOT mint another
+token. A coarse JWT-projection artifact MUST NOT allow its consumer to choose
+the token subtype or assertion profile after authorization.
+
 `local-subject` is exactly 64 lowercase hexadecimal characters encoding
 SHA-256 over the RFC 8785 JCS bytes of the exact typed-key subject. The
 pairwise identifier uses HMAC-SHA-256 under the persona's repository-private

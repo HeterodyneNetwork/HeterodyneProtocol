@@ -117,7 +117,7 @@ function manifestBodyFor(
     retiring_signing_key_ids: [],
     retiring_jwks_sha256: [],
     status_lists: [{
-      path: x.projection.status_mirror.path,
+      path: x.projectionContext.status_mirror.path,
       sha256: sha256(token.compact),
       issuer: x.metadata.issuer,
       uri: token.claims.sub,
@@ -168,9 +168,9 @@ function continuityChain(token: ReturnType<typeof generateStatusListToken>) {
 function validatedAccessContext(token: ReturnType<typeof generateStatusListToken>) {
   const manifest = signedManifest(manifestBodyFor(token));
   const projection = {
-    ...x.projection,
+    ...x.projection("access_token"),
     status_mirror: {
-      ...x.projection.status_mirror,
+      ...x.projectionContext.status_mirror,
       sha256: continuityManifestDigest(manifest),
     },
   };
@@ -398,9 +398,9 @@ describe("live one-bit status-list semantics", () => {
     const token = generateToken();
     const manifest = signedManifest(manifestBodyFor(token));
     const projected = projectAccessToken({
-      ...x.projection,
+      ...x.projection("access_token"),
       status_mirror: {
-        ...x.projection.status_mirror,
+        ...x.projectionContext.status_mirror,
         sha256: continuityManifestDigest(manifest),
       },
     });
