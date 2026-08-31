@@ -12,7 +12,6 @@ import {
   computeJwkThumbprint,
   revocationProofPayload,
   type ClaimRevocation,
-  type ClaimSemanticBody,
   type ClaimVerificationContext,
   type JsonValue,
   type VerifiedClaimArtifact,
@@ -74,7 +73,7 @@ async function signedArtifact(
 function withRevocationEvidence(
   context: LedgerValidationContext,
   record: LedgerRecord,
-  claimsById: ReadonlyMap<string, ClaimSemanticBody>,
+  claimsById: ReadonlyMap<string, unknown>,
   verification: ClaimVerificationContext,
 ): LedgerValidationContext {
   context.record_evidence.set(record.record_id, {
@@ -227,7 +226,7 @@ async function jwkRevocationFixture(
   verification.now = repository.checkpoint.observed_at;
   verification.repository_confirmed = new Set([target.artifact.semantic.claim_id]);
   const claimsById = new Map([
-    [target.artifact.semantic.claim_id, target.artifact.semantic],
+    [target.artifact.semantic.claim_id, target.verified_artifact],
   ]);
   const context = ledger.makeContext(repository.repository);
   context.record_evidence.set(targetRecord.record_id, {
@@ -240,7 +239,7 @@ async function jwkRevocationFixture(
         credential_ledger_generation: 0,
       },
     },
-    claims_by_id: claimsById,
+    claims_by_id: new Map(),
     claim_verification_context: verification,
   });
   withRevocationEvidence(

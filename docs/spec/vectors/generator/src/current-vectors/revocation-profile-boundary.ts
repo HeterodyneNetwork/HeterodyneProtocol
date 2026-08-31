@@ -11,7 +11,7 @@ import type {
 } from "./revocation-profile-fixtures.js";
 
 type RevocationArtifact = Readonly<{
-  event: Parameters<typeof claims.validateClaimRevocationEnvelope>[0];
+  event: Parameters<typeof claims.verifyClaimRevocationEnvelope>[0];
   semantic: claims.ClaimRevocation;
 }>;
 

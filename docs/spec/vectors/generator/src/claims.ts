@@ -168,6 +168,14 @@ const PRIVATE_JWK_MEMBERS = new Set(["d", "k", "p", "q", "dp", "dq", "qi", "oth"
 const REMOTE_JWK_MEMBERS = new Set(["jku", "x5u"]);
 const NIP01_SIGNED_EVENT_FIELDS = ["content", "created_at", "id", "kind", "pubkey", "sig", "tags"];
 const CLAIM_VERIFIER_IDENTITY = Object.freeze({});
+const MAX_CLAIM_ARTIFACT_MAP_SIZE = 256;
+const MAX_CLAIM_CHAIN_LENGTH = 9;
+const MAX_REVOCATION_ARTIFACTS = 256;
+const MAP_ENTRIES = Map.prototype.entries;
+const MAP_SIZE_GETTER = Object.getOwnPropertyDescriptor(Map.prototype, "size")!.get!;
+const MAP_ITERATOR_NEXT = Object.getPrototypeOf(new Map().entries()).next as (
+  this: MapIterator<unknown>,
+) => IteratorResult<unknown>;
 
 type VerifiedClaimRecord = Readonly<{
   verifier: object;
@@ -199,10 +207,6 @@ type VerifiedClaimRevocationRecord = Readonly<{
 
 const VERIFIED_CLAIMS = new WeakMap<object, VerifiedClaimRecord>();
 const VERIFIED_CLAIM_REVOCATIONS = new WeakMap<object, VerifiedClaimRevocationRecord>();
-// Compatibility for the ledger runtime until Task 7 consumes opaque artifacts.
-// These objects are verifier-minted immutable snapshots, never caller-shaped values.
-const LEGACY_VERIFIED_CLAIMS = new WeakMap<object, VerifiedClaimRecord>();
-const LEGACY_VERIFIED_REVOCATIONS = new WeakMap<object, VerifiedClaimRevocationRecord>();
 
 export function computeClaimId(body: Omit<ClaimSemanticBody, "claim_id">): string {
   const { claim_id: _omitted, ...semantic } = body as Omit<ClaimSemanticBody, "claim_id"> & {
@@ -224,23 +228,17 @@ export function verifyClaimEnvelope(
   sourceEvent: NostrSignedEvent,
   context: ClaimEnvelopeContext,
 ): VerifiedClaimArtifact {
-  const record = verifyClaimRecord(sourceEvent, context, true);
+  const record = verifyClaimRecord(sourceEvent, context);
   const artifact = Object.freeze({}) as VerifiedClaimArtifact;
   VERIFIED_CLAIMS.set(artifact, record);
   return artifact;
 }
 
-/**
- * Parsing compatibility for the claim-ledger runtime. The returned frozen
- * semantic snapshot is not accepted by the public artifact authorization path.
- */
 export function validateClaimEnvelope(
   sourceEvent: NostrSignedEvent,
   context: ClaimEnvelopeContext,
-): ClaimSemanticBody {
-  const record = verifyClaimRecord(sourceEvent, context, false);
-  LEGACY_VERIFIED_CLAIMS.set(record.semantic, record);
-  return record.semantic;
+): VerifiedClaimArtifact {
+  return verifyClaimEnvelope(sourceEvent, context);
 }
 
 export function inspectVerifiedClaim(artifact: VerifiedClaimArtifact): ClaimSemanticBody {
@@ -265,10 +263,9 @@ export function verifyLedgerClaimArtifact(
 function verifyClaimRecord(
   sourceEvent: NostrSignedEvent,
   context: ClaimEnvelopeContext,
-  strictContext: boolean,
 ): VerifiedClaimRecord {
   const event = requireVerifiedClaimEvent(sourceEvent);
-  const capturedContext = captureClaimEnvelopeContext(context, strictContext);
+  const capturedContext = captureClaimEnvelopeContext(context);
   assertAddressedCommsEvent(event, CLAIM_KIND);
   const parsed = parseCanonicalContent(event.content, "claim") as unknown;
   if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed) &&
@@ -287,9 +284,6 @@ function verifyClaimRecord(
   assertSingleAddress(event, body.claim_id);
   if (capturedContext.profile_revision !== 2 || body.profile_revision !== capturedContext.profile_revision) {
     throw new Error("claim-schema-invalid: registry revision does not match the supplied context");
-  }
-  if (body.issued_at !== event.created_at) {
-    throw new Error("claim-issuer-authority-invalid: signed event time must equal claim issued_at");
   }
   if (body.claim_class === "authorization") {
     const generation = evaluateCredentialGeneration(body, capturedContext.credential_ledger);
@@ -375,12 +369,10 @@ export function verifyLedgerClaimRevocationArtifact(
   return artifact;
 }
 
-/** Parsing compatibility for ledger replay pending its Task 7 migration. */
-export function validateClaimRevocationEnvelope(sourceEvent: NostrSignedEvent): VerifiedRevocation {
-  const record = verifyClaimRevocationRecord(sourceEvent);
-  const verified = inspectedRevocation(record);
-  LEGACY_VERIFIED_REVOCATIONS.set(verified, record);
-  return verified;
+export function validateClaimRevocationEnvelope(
+  sourceEvent: NostrSignedEvent,
+): VerifiedClaimRevocationArtifact {
+  return verifyClaimRevocationEnvelope(sourceEvent);
 }
 
 function verifyClaimRevocationRecord(
@@ -456,26 +448,14 @@ export function validateKeyRef(key: KeyRef): void {
 export function verifyClaimChain(
   leaf: VerifiedClaimArtifact,
   claimsById: ReadonlyMap<string, VerifiedClaimArtifact>,
-): VerifiedClaimArtifact[];
-/** @deprecated Task 7 ledger-only verifier-minted semantic compatibility. */
-export function verifyClaimChain(
-  leaf: ClaimSemanticBody,
-  claimsById: ReadonlyMap<string, ClaimSemanticBody>,
-): ClaimSemanticBody[];
-export function verifyClaimChain(
-  leaf: VerifiedClaimArtifact | ClaimSemanticBody,
-  claimsById: ReadonlyMap<string, VerifiedClaimArtifact | ClaimSemanticBody>,
-): VerifiedClaimArtifact[] | ClaimSemanticBody[] {
-  const secure = VERIFIED_CLAIMS.has(leaf as object);
-  const leafRecord = secure
-    ? requireVerifiedClaimRecord(leaf)
-    : requireLegacyVerifiedClaimRecord(leaf);
-  const captured = captureClaimArtifactMap(claimsById, secure);
+): readonly VerifiedClaimArtifact[] {
+  const leafRecord = requireVerifiedClaimRecord(leaf);
+  const captured = captureClaimArtifactMap(claimsById);
   const mappedLeaf = captured.get(leafRecord.claim_id);
   if (mappedLeaf !== undefined && mappedLeaf.value !== leaf) {
     throw new Error("claim-issuer-authority-invalid: leaf artifact identity differs from artifact map");
   }
-  const reversed: Array<VerifiedClaimArtifact | ClaimSemanticBody> = [];
+  const reversed: VerifiedClaimArtifact[] = [];
   const reversedRecords: VerifiedClaimRecord[] = [];
   const seen = new Set<string>();
   let current = leaf;
@@ -506,7 +486,7 @@ export function verifyClaimChain(
   if (records[records.length - 1] !== leafRecord || chain[chain.length - 1] !== leaf) {
     throw new Error("claim-delegation-not-authorized: chain identity does not terminate at leaf artifact");
   }
-  return Object.freeze(chain) as VerifiedClaimArtifact[] | ClaimSemanticBody[];
+  return Object.freeze(chain);
 }
 
 export function subjectProofPayload(
@@ -520,17 +500,6 @@ export function resolveClaimState(
   leaf: VerifiedClaimArtifact,
   chain: readonly VerifiedClaimArtifact[],
   context: ClaimVerificationContext,
-): ClaimState;
-/** @deprecated Task 7 ledger-only verifier-minted semantic compatibility. */
-export function resolveClaimState(
-  leaf: ClaimSemanticBody,
-  chain: readonly ClaimSemanticBody[],
-  context: ClaimVerificationContext,
-): ClaimState;
-export function resolveClaimState(
-  leaf: unknown,
-  chain: readonly unknown[],
-  context: ClaimVerificationContext,
 ): ClaimState {
   return evaluateClaim(leaf, chain, context).state;
 }
@@ -538,17 +507,6 @@ export function resolveClaimState(
 export function authorizeWithClaim(
   leaf: VerifiedClaimArtifact,
   chain: readonly VerifiedClaimArtifact[],
-  context: ClaimVerificationContext,
-): AuthorizationDecision;
-/** @deprecated Task 7 ledger-only verifier-minted semantic compatibility. */
-export function authorizeWithClaim(
-  leaf: ClaimSemanticBody,
-  chain: readonly ClaimSemanticBody[],
-  context: ClaimVerificationContext,
-): AuthorizationDecision;
-export function authorizeWithClaim(
-  leaf: unknown,
-  chain: readonly unknown[],
   context: ClaimVerificationContext,
 ): AuthorizationDecision {
   const result = evaluateClaim(leaf, chain, context);
@@ -558,6 +516,34 @@ export function authorizeWithClaim(
     state: result.state,
     reason_code: result.reason_code,
   };
+}
+
+export function isClaimRevocationAuthorized(
+  target: VerifiedClaimArtifact,
+  chain: readonly VerifiedClaimArtifact[],
+  candidate: VerifiedClaimRevocationArtifact,
+  context: ClaimVerificationContext,
+): boolean {
+  try {
+    const targetRecord = requireVerifiedClaimRecord(target);
+    const chainRecords = captureClaimArtifactArray(chain);
+    if (chainRecords.length === 0 || chainRecords[chainRecords.length - 1] !== targetRecord) return false;
+    validateResolvedChain(targetRecord.semantic, chainRecords.map(({ semantic }) => semantic));
+    const candidateRecord = requireVerifiedClaimRevocationRecord(candidate);
+    const prior = captureRevocationArtifactArray(readContextDataMember(context, "revocations"));
+    const revocations = prior.includes(candidateRecord) ? prior : [...prior, candidateRecord];
+    return revocationAuthorizedForTarget(
+      chainRecords.length - 1,
+      candidateRecord,
+      chainRecords,
+      revocations,
+      context,
+      context.now,
+      new Set<string>(),
+    );
+  } catch {
+    return false;
+  }
 }
 
 type ClaimEvaluation = Pick<AuthorizationDecision, "state" | "reason_code">;
@@ -570,9 +556,11 @@ function evaluateClaim(
 ): ClaimEvaluation {
   let leafRecord: VerifiedClaimRecord;
   let chainRecords: VerifiedClaimRecord[];
+  let revocationRecords: VerifiedClaimRevocationRecord[];
   try {
-    leafRecord = anyVerifiedClaimRecord(leafArtifact);
-    chainRecords = chainArtifacts.map(anyVerifiedClaimRecord);
+    leafRecord = requireVerifiedClaimRecord(leafArtifact);
+    chainRecords = captureClaimArtifactArray(chainArtifacts);
+    revocationRecords = captureRevocationArtifactArray(readContextDataMember(context, "revocations"));
     if (
       chainRecords.length === 0 ||
       chainRecords[chainRecords.length - 1] !== leafRecord
@@ -659,7 +647,7 @@ function evaluateClaim(
   }
 
   // 6. Authenticated monotonic reductions win before repository confirmation.
-  if (isRevoked(chainRecords, context)) {
+  if (isRevoked(chainRecords, revocationRecords, context)) {
     return { state: "revoked", reason_code: "claim-revoked" };
   }
   if (chain.some((claim) => context.repository_conflicted.has(claim.claim_id))) {
@@ -818,50 +806,114 @@ function verifySubjectProof(leaf: ClaimSemanticBody, context: ClaimVerificationC
   verifyDetachedJws(presented.proof, payload);
 }
 
-function isRevoked(chainRecords: VerifiedClaimRecord[], context: ClaimVerificationContext): boolean {
-  const chain = chainRecords.map(({ semantic }) => semantic);
-  for (let targetIndex = 0; targetIndex < chain.length; targetIndex += 1) {
-    const target = chain[targetIndex];
-    for (const candidate of context.revocations) {
-      let revocationRecord: VerifiedClaimRevocationRecord;
-      try {
-        revocationRecord = anyVerifiedClaimRevocationRecord(candidate);
-      } catch {
-        continue;
-      }
-      const revocation = inspectedRevocation(revocationRecord);
-      if (
-        revocation.claim_id !== target.claim_id ||
-        revocation.event_created_at !== revocation.revoked_at ||
-        revocation.revoked_at > context.now ||
-        revocation.revoked_at < target.issued_at ||
-        !sameKeyRef(revocation.revoker, revocation.signer)
-      ) continue;
-      const directIssuer = sameKeyRef(target.issuer, revocation.signer);
-      const superiorClaims = chain.slice(0, targetIndex);
-      const superior = superiorClaims.find((claim) => sameKeyRef(claim.issuer, revocation.signer));
-      const superiorAuthorized = superior !== undefined;
-      const personaAuthorized = target.claim_class === "authorization" &&
-        target.credential_ledger_persona !== null &&
-        revocation.signer.type === "nostr-secp256k1" &&
-        revocation.signer.value === target.credential_ledger_persona &&
-        context.credential_ledger.credential_ledger_persona === target.credential_ledger_persona &&
-        context.credential_ledger.credential_ledger_generation === target.credential_ledger_generation;
-      if (target.claim_class === "authorization") {
-        if (
-          sameKeyRef(revocation.signer, target.subject) ||
-          directIssuer ||
-          superiorAuthorized ||
-          personaAuthorized
-        ) return true;
-      } else if (
-        directIssuer ||
-        superiorAuthorized ||
-        (target.revokers ?? []).some((revoker) => sameKeyRef(revoker, revocation.signer))
-      ) return true;
+function isRevoked(
+  chainRecords: VerifiedClaimRecord[],
+  revocations: VerifiedClaimRevocationRecord[],
+  context: ClaimVerificationContext,
+): boolean {
+  for (let targetIndex = 0; targetIndex < chainRecords.length; targetIndex += 1) {
+    for (const candidate of revocations) {
+      if (revocationAuthorizedForTarget(
+        targetIndex,
+        candidate,
+        chainRecords,
+        revocations,
+        context,
+        context.now,
+        new Set<string>(),
+      )) return true;
     }
   }
   return false;
+}
+
+function revocationAuthorizedForTarget(
+  targetIndex: number,
+  candidate: VerifiedClaimRevocationRecord,
+  chainRecords: VerifiedClaimRecord[],
+  revocations: VerifiedClaimRevocationRecord[],
+  context: ClaimVerificationContext,
+  evaluationTime: number,
+  resolving: Set<string>,
+): boolean {
+  const target = chainRecords[targetIndex].semantic;
+  const revocation = candidate.semantic;
+  if (
+    revocation.claim_id !== target.claim_id ||
+    candidate.event.created_at !== revocation.revoked_at ||
+    revocation.revoked_at > evaluationTime ||
+    revocation.revoked_at < target.issued_at ||
+    !sameKeyRef(revocation.revoker, candidate.signer)
+  ) return false;
+  const resolutionKey = `${target.claim_id}:${candidate.event_id}`;
+  if (resolving.has(resolutionKey)) return false;
+  resolving.add(resolutionKey);
+  try {
+    const directIssuer = sameKeyRef(target.issuer, candidate.signer);
+    const personaAuthorized = target.claim_class === "authorization" &&
+      target.credential_ledger_persona !== null &&
+      candidate.signer.type === "nostr-secp256k1" &&
+      candidate.signer.value === target.credential_ledger_persona &&
+      context.credential_ledger.credential_ledger_persona === target.credential_ledger_persona &&
+      context.credential_ledger.credential_ledger_generation === target.credential_ledger_generation;
+    if (
+      directIssuer || personaAuthorized ||
+      target.claim_class === "authorization" && sameKeyRef(candidate.signer, target.subject) ||
+      target.claim_class === "descriptive" &&
+        (target.revokers ?? []).some((revoker) => sameKeyRef(revoker, candidate.signer))
+    ) return true;
+    for (let superiorIndex = 0; superiorIndex < targetIndex; superiorIndex += 1) {
+      if (
+        sameKeyRef(chainRecords[superiorIndex].semantic.issuer, candidate.signer) &&
+        claimWasActiveAt(
+          superiorIndex,
+          revocation.revoked_at,
+          chainRecords,
+          revocations,
+          context,
+          resolving,
+        )
+      ) return true;
+    }
+    return false;
+  } finally {
+    resolving.delete(resolutionKey);
+  }
+}
+
+function claimWasActiveAt(
+  claimIndex: number,
+  evaluationTime: number,
+  chainRecords: VerifiedClaimRecord[],
+  revocations: VerifiedClaimRevocationRecord[],
+  context: ClaimVerificationContext,
+  resolving: Set<string>,
+): boolean {
+  const claim = chainRecords[claimIndex].semantic;
+  if (
+    evaluationTime < claim.not_before ||
+    (claim.expires_at !== undefined && evaluationTime >= claim.expires_at) ||
+    context.repository_conflicted.has(claim.claim_id) ||
+    (claim.claim_class === "authorization" && !context.repository_confirmed.has(claim.claim_id))
+  ) return false;
+  if (claim.claim_class === "authorization") {
+    const generation = evaluateCredentialGeneration(claim, context.credential_ledger);
+    if (!generation.valid) return false;
+  }
+  const trustAnchor = chainRecords[0].semantic.issuer;
+  if (!context.trusted_issuers.some((candidate) => sameKeyRef(candidate, trustAnchor))) return false;
+  for (const revocation of revocations) {
+    if (revocationAuthorizedForTarget(
+      claimIndex,
+      revocation,
+      chainRecords,
+      revocations,
+      context,
+      evaluationTime,
+      resolving,
+    )) return false;
+  }
+  return true;
 }
 
 function matchesRestriction(restriction: string[] | undefined, value: string): boolean {
@@ -900,24 +952,6 @@ function requireVerifiedClaimRecord(value: unknown): VerifiedClaimRecord {
   return record;
 }
 
-function requireLegacyVerifiedClaimRecord(value: unknown): VerifiedClaimRecord {
-  if (value === null || typeof value !== "object") {
-    throw new Error("claim-issuer-authority-invalid: verified claim artifact required");
-  }
-  const record = LEGACY_VERIFIED_CLAIMS.get(value);
-  if (record === undefined || record.semantic !== value) {
-    throw new Error("claim-issuer-authority-invalid: verified claim artifact required");
-  }
-  return record;
-}
-
-function anyVerifiedClaimRecord(value: unknown): VerifiedClaimRecord {
-  if (value === null || typeof value !== "object") {
-    throw new Error("claim-issuer-authority-invalid: verified claim artifact required");
-  }
-  return VERIFIED_CLAIMS.get(value) ?? requireLegacyVerifiedClaimRecord(value);
-}
-
 function requireVerifiedClaimRevocationRecord(
   value: unknown,
 ): VerifiedClaimRevocationRecord {
@@ -931,53 +965,106 @@ function requireVerifiedClaimRevocationRecord(
   return record;
 }
 
-function anyVerifiedClaimRevocationRecord(
-  value: unknown,
-): VerifiedClaimRevocationRecord {
-  if (value === null || typeof value !== "object") {
-    throw new Error("claim-revoker-unauthorized: verified claim revocation artifact required");
-  }
-  const record = VERIFIED_CLAIM_REVOCATIONS.get(value)
-    ?? LEGACY_VERIFIED_REVOCATIONS.get(value);
-  if (record === undefined) {
-    throw new Error("claim-revoker-unauthorized: verified claim revocation artifact required");
-  }
-  return record;
-}
-
 function captureClaimArtifactMap(
-  value: ReadonlyMap<string, VerifiedClaimArtifact | ClaimSemanticBody>,
-  secure: boolean,
+  value: ReadonlyMap<string, VerifiedClaimArtifact>,
 ): Map<string, Readonly<{
-  value: VerifiedClaimArtifact | ClaimSemanticBody;
+  value: VerifiedClaimArtifact;
   record: VerifiedClaimRecord;
 }>> {
   if (
     utilTypes.isProxy(value) ||
-    Object.getPrototypeOf(value) !== Map.prototype
+    Object.getPrototypeOf(value) !== Map.prototype ||
+    Reflect.ownKeys(value).length !== 0
   ) throw new Error("claim-issuer-authority-invalid: ordinary verified artifact map required");
+  const size = MAP_SIZE_GETTER.call(value) as number;
+  if (!Number.isSafeInteger(size) || size < 0 || size > MAX_CLAIM_ARTIFACT_MAP_SIZE) {
+    throw new Error("claim-issuer-authority-invalid: verified artifact map is oversized");
+  }
   const captured = new Map<string, Readonly<{
-    value: VerifiedClaimArtifact | ClaimSemanticBody;
+    value: VerifiedClaimArtifact;
     record: VerifiedClaimRecord;
   }>>();
-  for (const [claimId, artifact] of value) {
+  const iterator = MAP_ENTRIES.call(value);
+  for (let index = 0; index < size; index += 1) {
+    const step = MAP_ITERATOR_NEXT.call(iterator) as IteratorResult<[unknown, unknown]>;
+    if (step.done || !Array.isArray(step.value) || step.value.length !== 2) {
+      throw new Error("claim-issuer-authority-invalid: invalid verified artifact map iterator");
+    }
+    const [claimId, artifact] = step.value;
     if (typeof claimId !== "string" || captured.has(claimId)) {
       throw new Error("claim-issuer-authority-invalid: invalid verified artifact map key");
     }
-    const record = secure
-      ? requireVerifiedClaimRecord(artifact)
-      : requireLegacyVerifiedClaimRecord(artifact);
+    const record = requireVerifiedClaimRecord(artifact);
     if (record.claim_id !== claimId) {
       throw new Error("claim-issuer-authority-invalid: artifact map key does not match claim ID");
     }
-    captured.set(claimId, Object.freeze({ value: artifact, record }));
+    captured.set(claimId, Object.freeze({ value: artifact as VerifiedClaimArtifact, record }));
+  }
+  if (!MAP_ITERATOR_NEXT.call(iterator).done) {
+    throw new Error("claim-issuer-authority-invalid: verified artifact map changed during capture");
   }
   return captured;
 }
 
+function captureClaimArtifactArray(value: unknown): VerifiedClaimRecord[] {
+  return captureOrdinaryDenseArray(
+    value,
+    MAX_CLAIM_CHAIN_LENGTH,
+    "claim-issuer-authority-invalid: ordinary verified claim artifact chain required",
+  ).map(requireVerifiedClaimRecord);
+}
+
+function captureRevocationArtifactArray(value: unknown): VerifiedClaimRevocationRecord[] {
+  return captureOrdinaryDenseArray(
+    value,
+    MAX_REVOCATION_ARTIFACTS,
+    "claim-revoker-unauthorized: ordinary verified revocation artifact array required",
+  ).map(requireVerifiedClaimRevocationRecord);
+}
+
+function captureOrdinaryDenseArray(
+  value: unknown,
+  maximumLength: number,
+  errorMessage: string,
+): unknown[] {
+  if (
+    value === null || typeof value !== "object" || utilTypes.isProxy(value) ||
+    !Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype
+  ) throw new Error(errorMessage);
+  const descriptors = Object.getOwnPropertyDescriptors(value) as unknown as PropertyDescriptorMap;
+  const keys = Reflect.ownKeys(descriptors);
+  const lengthDescriptor = descriptors.length;
+  const length = lengthDescriptor !== undefined && "value" in lengthDescriptor
+    ? lengthDescriptor.value
+    : undefined;
+  if (typeof length !== "number" || !Number.isSafeInteger(length) || length < 0 ||
+      length > maximumLength || keys.length !== length + 1) {
+    throw new Error(errorMessage);
+  }
+  const captured: unknown[] = [];
+  for (let index = 0; index < length; index += 1) {
+    const descriptor = descriptors[String(index)];
+    if (descriptor === undefined || !("value" in descriptor) || !descriptor.enumerable) {
+      throw new Error(errorMessage);
+    }
+    captured.push(descriptor.value);
+  }
+  return captured;
+}
+
+function readContextDataMember(value: unknown, member: string): unknown {
+  if (value === null || typeof value !== "object" || utilTypes.isProxy(value)) {
+    throw new Error("claim-issuer-authority-invalid: ordinary claim verification context required");
+  }
+  const descriptor = Object.getOwnPropertyDescriptor(value, member);
+  if (descriptor === undefined || !("value" in descriptor) || !descriptor.enumerable) {
+    throw new Error("claim-issuer-authority-invalid: data-only claim verification context required");
+  }
+  return descriptor.value;
+}
+
 function captureClaimEnvelopeContext(
   value: unknown,
-  strict: boolean,
 ): Readonly<{
   profile_revision: 2;
   credential_ledger: CredentialLedgerBinding;
@@ -998,7 +1085,7 @@ function captureClaimEnvelopeContext(
   ]);
   if (
     keys.some((key) => typeof key !== "string") ||
-    strict && keys.some((key) => !allowed.has(key as string))
+    keys.some((key) => !allowed.has(key as string))
   ) throw new Error("claim-issuer-authority-invalid: closed verification context required");
   const read = (member: string): unknown => {
     const descriptor = descriptors[member];

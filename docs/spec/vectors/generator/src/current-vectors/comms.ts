@@ -843,8 +843,8 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
                     credential_ledger_generation: 0,
                 },
             ]],
-        ["comms/claim-active-authenticated", [claim, [claim], claimContext]],
-        ["comms/claim-repository-unconfirmed", [claim, [claim], {
+        ["comms/claim-active-authenticated", [claimArtifact, [claimArtifact], claimContext]],
+        ["comms/claim-repository-unconfirmed", [claimArtifact, [claimArtifact], {
                     ...claimContext,
                     repository_confirmed: new Set(),
                 }]],

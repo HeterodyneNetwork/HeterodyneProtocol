@@ -2,11 +2,15 @@ import { ed25519 } from "@noble/curves/ed25519";
 import { describe, expect, it } from "vitest";
 import {
   buildLedgerRepositoryEvidence,
+  evaluateReaderAccess,
   materializeLedgerLayout,
+  mergeClaimLedger,
   validateReaderOnboardingBundle,
   type LedgerValidationContext,
   type ReaderAccessRequest,
 } from "./claim-ledger.js";
+import { buildClaimLedgerScenario } from "./claim-ledger-test-support.js";
+import { inspectVerifiedClaim } from "./claims.js";
 import { buildFixtures } from "./fixtures.js";
 
 const fixtures = buildFixtures();
@@ -33,5 +37,29 @@ describe("claim-ledger remediation security contexts", () => {
   it("exposes an executable onboarding validator", () => {
     expect(typeof validateReaderOnboardingBundle).toBe("function");
     expect(ed25519.getPublicKey(fixtures.ed25519_nids.alice_device_1.private_key)).toHaveLength(32);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local ledger replay accepts only opaque claim artifacts", async () => {
+    // BLUE TEAM VALIDATION: synthetic/local replay uses deterministic non-deployable records only.
+    const scenario = await buildClaimLedgerScenario(fixtures);
+    const state = mergeClaimLedger(
+      [scenario.claimRecordOne, scenario.claimRecordTwo],
+      [],
+      scenario.baseRepository.checkpoint,
+      scenario.makeContext(scenario.baseRepository.repository),
+    );
+    const opaqueRequest = scenario.requestFor(scenario.claimRecordOne, scenario.claimOne);
+    opaqueRequest.verification_context.now = state.checkpoint.observed_at;
+    expect(evaluateReaderAccess(scenario.writerOne.did_key, state, opaqueRequest).state).toBe("active");
+
+    const inspection = inspectVerifiedClaim(scenario.claimOne.verified_artifact);
+    const formerPublicRequest = {
+      ...opaqueRequest,
+      claims_by_id: new Map([[inspection.claim_id, inspection]]),
+    } as unknown as typeof opaqueRequest;
+    expect(evaluateReaderAccess(scenario.writerOne.did_key, state, formerPublicRequest)).toMatchObject({
+      allowed: false,
+      state: "invalid",
+    });
   });
 });

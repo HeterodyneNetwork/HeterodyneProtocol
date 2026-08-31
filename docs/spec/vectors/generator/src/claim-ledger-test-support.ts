@@ -21,7 +21,6 @@ import {
   CLAIM_REVOCATION_PROFILE,
   computeClaimId,
   subjectProofPayload,
-  validateClaimEnvelope,
   verifyClaimEnvelope,
   verifyClaimRevocationEnvelope,
   type ClaimRevocation,
@@ -93,10 +92,9 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
         credential_ledger_generation: 0,
       },
     } as const;
-    const verifiedSemantic = validateClaimEnvelope(event, envelopeContext);
     const verifiedArtifact = verifyClaimEnvelope(event, envelopeContext);
     return {
-      artifact: { event, semantic: verifiedSemantic } satisfies ClaimArtifact,
+      artifact: { event, semantic } satisfies ClaimArtifact,
       verified_artifact: verifiedArtifact,
       reader,
     };
@@ -108,15 +106,15 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
   const issuerClaimTwo = await makeClaim(writerTwo, { name: "oidc-token-issuer", resources: [`${rid}#oidc-issuer`] });
   const alternateClaimOne = await makeClaim(writerOne, { expires_at: now + 1_800 });
   const temporalClaim = await makeClaim(writerOne, { not_before: now + 55, expires_at: now + 65 });
-  const allClaims = new Map([
-    [claimOne.artifact.semantic.claim_id, claimOne.artifact.semantic],
-    [claimTwo.artifact.semantic.claim_id, claimTwo.artifact.semantic],
-    [alternateClaimOne.artifact.semantic.claim_id, alternateClaimOne.artifact.semantic],
+  const allClaims = new Map<string, unknown>([
+    [claimOne.artifact.semantic.claim_id, claimOne.verified_artifact],
+    [claimTwo.artifact.semantic.claim_id, claimTwo.verified_artifact],
+    [alternateClaimOne.artifact.semantic.claim_id, alternateClaimOne.verified_artifact],
   ]);
-  const issuerClaimsById = new Map([
+  const issuerClaimsById = new Map<string, unknown>([
     ...allClaims,
-    [issuerClaimOne.artifact.semantic.claim_id, issuerClaimOne.artifact.semantic] as const,
-    [issuerClaimTwo.artifact.semantic.claim_id, issuerClaimTwo.artifact.semantic] as const,
+    [issuerClaimOne.artifact.semantic.claim_id, issuerClaimOne.verified_artifact] as const,
+    [issuerClaimTwo.artifact.semantic.claim_id, issuerClaimTwo.verified_artifact] as const,
   ]);
 
   const makeVerification = (
@@ -172,7 +170,7 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
         credential_ledger_generation: 0,
       },
     },
-    claims_by_id: new Map(allClaims),
+    claims_by_id: new Map(),
     verification_context: makeVerification(claim),
   });
 
@@ -271,7 +269,7 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
         credential_ledger_generation: 0,
       },
     },
-    claims_by_id: new Map(allClaims),
+    claims_by_id: new Map(),
     claim_verification_context: makeVerification(claim),
   });
   addClaimEvidence(claimRecordOne, claimOne);
@@ -290,7 +288,7 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
         credential_ledger_generation: 0,
       },
     },
-    claims_by_id: new Map([[temporalClaim.artifact.semantic.claim_id, temporalClaim.artifact.semantic]]),
+    claims_by_id: new Map(),
     claim_verification_context: temporalVerification,
   };
   const grantOnlyEvidence: LedgerRecordValidationEvidence = {
@@ -303,7 +301,7 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
         credential_ledger_generation: 0,
       },
     },
-    claims_by_id: new Map(allClaims),
+    claims_by_id: new Map(),
     claim_verification_context: makeVerification(claimOne),
   };
   const revocationVerification = makeVerification(claimOne);
@@ -356,7 +354,7 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
         credential_ledger_generation: 0,
       },
     },
-    claims_by_id: new Map(issuerClaimsById),
+    claims_by_id: new Map(),
     claim_verification_context: makeVerification(claim),
   });
   addIssuerEvidence(issuerClaimRecordOne, issuerClaimOne);

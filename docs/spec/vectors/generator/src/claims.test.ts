@@ -3,11 +3,11 @@ import { ed25519 } from "@noble/curves/ed25519";
 import { schnorr } from "@noble/curves/secp256k1";
 import { describe, expect, it } from "vitest";
 import {
-  authorizeWithClaim,
+  authorizeWithClaim as authorizeVerifiedClaim,
   CLAIM_REVOCATION_PROFILE,
   computeClaimId,
   computeJwkThumbprint,
-  resolveClaimState,
+  resolveClaimState as resolveVerifiedClaimState,
   revocationProofPayload,
   subjectProofPayload,
   validateClaimEnvelope,
@@ -18,9 +18,10 @@ import {
   verifyClaimRevocationEnvelope,
   inspectVerifiedClaim,
   inspectVerifiedClaimRevocation,
+  isClaimRevocationAuthorized,
   verifyLedgerClaimArtifact,
   verifyLedgerClaimRevocationArtifact,
-  verifyClaimChain,
+  verifyClaimChain as verifyVerifiedClaimChain,
   type ClaimVerificationContext,
   type ClaimRevocation,
   type ClaimSemanticBody,
@@ -28,7 +29,6 @@ import {
   type KeyProof,
   type KeyRef,
   type SubjectProofChallenge,
-  type VerifiedRevocation,
   type VerifiedClaimArtifact,
   type VerifiedClaimRevocationArtifact,
 } from "./claims.js";
@@ -69,6 +69,24 @@ function semanticBody(): ClaimSemanticBody {
   return { claim_id: computeClaimId(body), ...body };
 }
 
+function verificationContextForArtifact(body: ClaimSemanticBody): ClaimVerificationContext {
+  return {
+    now: body.not_before,
+    audience: body.audience?.[0] ?? epoch.pubkey,
+    resource: body.resources?.[0] ?? "rad:claims/device",
+    requested_namespace: body.namespace,
+    requested_operation: "read",
+    expected_nonce: "ab".repeat(16),
+    used_nonces: new Set(),
+    trusted_issuers: [body.issuer],
+    credential_ledger: credentialLedger,
+    repository_confirmed: new Set([body.claim_id]),
+    repository_conflicted: new Set(),
+    revocations: [],
+    subject_proof: null,
+  };
+}
+
 const addressTags = (claimId: string): string[][] => [["d", claimId]];
 
 describe("canonical key claims", () => {
@@ -96,10 +114,30 @@ describe("canonical key claims", () => {
       tags: addressTags(body.claim_id),
       content: jcsCanonicalize(body),
     });
-    expect(validateClaimEnvelope(event, {
+    const artifact = validateClaimEnvelope(event, {
       profile_revision: 2,
       credential_ledger: credentialLedger,
-    })).toEqual(body);
+    });
+    expect(artifact).toEqual({});
+    expect(inspectVerifiedClaim(artifact)).toEqual(body);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local keeps semantic issuance independent from the NIP-01 audit timestamp", async () => {
+    // BLUE TEAM VALIDATION: synthetic/local timing fixture is deterministic and non-deployable.
+    const body = semanticBody();
+    const event = await signEvent({
+      secretKey: epoch.private_key,
+      auxRand,
+      created_at: issuedAt + 37,
+      kind: 31013,
+      tags: addressTags(body.claim_id),
+      content: jcsCanonicalize(body),
+    });
+    const artifact = verifyClaimEnvelope(event, {
+      profile_revision: 2,
+      credential_ledger: credentialLedger,
+    });
+    expect(inspectVerifiedClaim(artifact)).toEqual(body);
   });
 
   it("BLUE TEAM VALIDATION: synthetic/local mints only opaque exact claim artifacts", async () => {
@@ -123,8 +161,8 @@ describe("canonical key claims", () => {
     expect(second).toEqual(body);
     expect(first).not.toBe(second);
     expect(Object.isFrozen(first)).toBe(true);
-    expect(verifyClaimChain(artifact, new Map([[body.claim_id, artifact]]))).toEqual([artifact]);
-    expect(() => verifyClaimChain(
+    expect(verifyVerifiedClaimChain(artifact, new Map([[body.claim_id, artifact]]))).toEqual([artifact]);
+    expect(() => verifyVerifiedClaimChain(
       first as unknown as VerifiedClaimArtifact,
       new Map([[body.claim_id, first as unknown as VerifiedClaimArtifact]]),
     )).toThrow(/verified claim artifact/i);
@@ -137,10 +175,10 @@ describe("canonical key claims", () => {
 
     const clone = structuredClone(artifact) as VerifiedClaimArtifact;
     expect(() => inspectVerifiedClaim(clone)).toThrow(/verified claim artifact/i);
-    expect(() => verifyClaimChain(clone, new Map([[body.claim_id, clone]])))
+    expect(() => verifyVerifiedClaimChain(clone, new Map([[body.claim_id, clone]])))
       .toThrow(/verified claim artifact/i);
     const secondArtifact = verifyClaimEnvelope(event, context);
-    expect(() => verifyClaimChain(artifact, new Map([[body.claim_id, secondArtifact]])))
+    expect(() => verifyVerifiedClaimChain(artifact, new Map([[body.claim_id, secondArtifact]])))
       .toThrow(/identity/i);
 
     expect(() => verifyClaimEnvelope(event, {
@@ -178,6 +216,130 @@ describe("canonical key claims", () => {
       event,
       semantic: { ...body, value: false },
     }, context)).toThrow(/semantic does not equal signed event content/i);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects hostile claim maps and chain containers without invoking user code", async () => {
+    // BLUE TEAM VALIDATION: synthetic/local containers contain no external target or reusable payload.
+    const body = semanticBody();
+    const event = await signEvent({
+      secretKey: epoch.private_key,
+      auxRand,
+      created_at: issuedAt,
+      kind: 31013,
+      tags: addressTags(body.claim_id),
+      content: jcsCanonicalize(body),
+    });
+    const artifact = verifyClaimEnvelope(event, {
+      profile_revision: 2,
+      credential_ledger: credentialLedger,
+    });
+
+    let iteratorCalls = 0;
+    const hostileMap = new Map([[body.claim_id, artifact]]) as Map<string, VerifiedClaimArtifact> & {
+      [Symbol.iterator]: () => IterableIterator<[string, VerifiedClaimArtifact]>;
+    };
+    Object.defineProperty(hostileMap, Symbol.iterator, {
+      enumerable: false,
+      value() {
+        iteratorCalls += 1;
+        return new Map([[body.claim_id, artifact]])[Symbol.iterator]();
+      },
+    });
+    expect(() => verifyVerifiedClaimChain(artifact, hostileMap)).toThrow(/ordinary|artifact map/i);
+    expect(iteratorCalls).toBe(0);
+
+    let proxyCalls = 0;
+    const proxyMap = new Proxy(new Map([[body.claim_id, artifact]]), {
+      get() {
+        proxyCalls += 1;
+        throw new Error("synthetic/local map proxy trap must not execute");
+      },
+    });
+    expect(() => verifyVerifiedClaimChain(artifact, proxyMap)).toThrow(/ordinary|artifact map/i);
+    expect(proxyCalls).toBe(0);
+
+    let subclassIteratorCalls = 0;
+    class HostileMap extends Map<string, VerifiedClaimArtifact> {
+      override [Symbol.iterator](): MapIterator<[string, VerifiedClaimArtifact]> {
+        subclassIteratorCalls += 1;
+        return super[Symbol.iterator]();
+      }
+    }
+    expect(() => verifyVerifiedClaimChain(
+      artifact,
+      new HostileMap([[body.claim_id, artifact]]),
+    )).toThrow(/ordinary|artifact map/i);
+    expect(subclassIteratorCalls).toBe(0);
+
+    const memberMap = new Map([[body.claim_id, artifact]]) as Map<string, VerifiedClaimArtifact> & {
+      extra?: boolean;
+    };
+    memberMap.extra = true;
+    expect(() => verifyVerifiedClaimChain(artifact, memberMap)).toThrow(/ordinary|artifact map/i);
+    const oversizedMap = new Map<string, VerifiedClaimArtifact>();
+    for (let index = 0; index < 257; index += 1) {
+      oversizedMap.set(index.toString(16).padStart(64, "0"), artifact);
+    }
+    expect(() => verifyVerifiedClaimChain(artifact, oversizedMap)).toThrow(/oversized/i);
+    const cyclicMap = new Map<string, VerifiedClaimArtifact>();
+    cyclicMap.set(body.claim_id, cyclicMap as unknown as VerifiedClaimArtifact);
+    expect(() => verifyVerifiedClaimChain(artifact, cyclicMap)).toThrow(/verified claim artifact/i);
+
+    let chainReads = 0;
+    const hostileChain = [artifact];
+    Object.defineProperty(hostileChain, "0", {
+      enumerable: true,
+      get() {
+        chainReads += 1;
+        return artifact;
+      },
+    });
+    const decision = authorizeVerifiedClaim(
+      artifact,
+      hostileChain,
+      verificationContextForArtifact(body),
+    );
+    expect(decision).toMatchObject({ state: "invalid" });
+    expect(chainReads).toBe(0);
+
+    let subclassMapCalls = 0;
+    class HostileChain extends Array<VerifiedClaimArtifact> {
+      override map<U>(): U[] {
+        subclassMapCalls += 1;
+        throw new Error("synthetic/local chain map must not execute");
+      }
+    }
+    const subclassChain = new HostileChain();
+    subclassChain.push(artifact);
+    expect(authorizeVerifiedClaim(
+      artifact,
+      subclassChain,
+      verificationContextForArtifact(body),
+    ).state).toBe("invalid");
+    expect(subclassMapCalls).toBe(0);
+
+    const symbolChain = [artifact] as VerifiedClaimArtifact[] & { [key: symbol]: boolean };
+    symbolChain[Symbol("unexpected")] = true;
+    expect(authorizeVerifiedClaim(artifact, symbolChain, verificationContextForArtifact(body)).state)
+      .toBe("invalid");
+    const memberChain = [artifact] as VerifiedClaimArtifact[] & { extra?: boolean };
+    memberChain.extra = true;
+    expect(authorizeVerifiedClaim(artifact, memberChain, verificationContextForArtifact(body)).state)
+      .toBe("invalid");
+    const cyclicChain: unknown[] = [];
+    cyclicChain.push(cyclicChain);
+    expect(authorizeVerifiedClaim(
+      artifact,
+      cyclicChain as VerifiedClaimArtifact[],
+      verificationContextForArtifact(body),
+    ).state).toBe("invalid");
+
+    const sparse = new Array<VerifiedClaimArtifact>(1);
+    expect(authorizeVerifiedClaim(artifact, sparse, verificationContextForArtifact(body)).state)
+      .toBe("invalid");
+    const oversized = Array.from({ length: 257 }, () => artifact);
+    expect(authorizeVerifiedClaim(artifact, oversized, verificationContextForArtifact(body)).state)
+      .toBe("invalid");
   });
 
   it("rejects non-canonical content, duplicate addresses, bad signatures, and failed Core authority", async () => {
@@ -228,11 +390,11 @@ describe("canonical key claims", () => {
       tags: addressTags(body.claim_id),
       content: jcsCanonicalize(body),
     });
-    expect(validateClaimEnvelope(event, {
+    expect(inspectVerifiedClaim(validateClaimEnvelope(event, {
       profile_revision: 2,
       credential_ledger: credentialLedger,
       existing_semantic_body: structuredClone(body),
-    })).toEqual(body);
+    }))).toEqual(body);
     expect(() => validateClaimEnvelope(event, {
       profile_revision: 2,
       credential_ledger: credentialLedger,
@@ -387,7 +549,7 @@ describe("claim revocation envelopes", () => {
       revoker: { type: "nostr-secp256k1", value: epoch.pubkey },
     };
     const event = await revocationEvent(revocation);
-    expect(validateClaimRevocationEnvelope(event)).toEqual({
+    expect(inspectVerifiedClaimRevocation(validateClaimRevocationEnvelope(event))).toEqual({
       ...revocation,
       signer: revocation.revoker,
       event_id: event.id,
@@ -428,7 +590,9 @@ describe("claim revocation envelopes", () => {
       reason_code: "claim-revoked",
       revoker: { type: "nostr-secp256k1", value: epoch.pubkey },
     };
-    expect(validateClaimRevocationEnvelope(await revocationEvent(revocation)).event_created_at)
+    expect(inspectVerifiedClaimRevocation(
+      validateClaimRevocationEnvelope(await revocationEvent(revocation)),
+    ).event_created_at)
       .toBe(revocation.revoked_at);
     const oneSecondLate = await revocationEvent(revocation, epoch.private_key, revocation.revoked_at + 1);
     const backdatedByTenMinutes = await revocationEvent(revocation, epoch.private_key, revocation.revoked_at + 600);
@@ -452,7 +616,8 @@ describe("claim revocation envelopes", () => {
       proof: { type: "radicle-ed25519", public_key: device.public_key, signature },
     };
     const event = await revocationEvent(revocation);
-    expect(validateClaimRevocationEnvelope(event).signer).toEqual(revocation.revoker);
+    expect(inspectVerifiedClaimRevocation(validateClaimRevocationEnvelope(event)).signer)
+      .toEqual(revocation.revoker);
     const wrongNid = { ...revocation, revoker: { type: "radicle-ed25519-nid" as const, value: fixtures.ed25519_nids.alice_device_2.did_key } };
     const wrongNidEvent = await revocationEvent(wrongNid);
     expect(() => validateClaimRevocationEnvelope(wrongNidEvent)).toThrow(/NID/);
@@ -483,7 +648,8 @@ describe("claim revocation envelopes", () => {
       proof: { type: "jwk-jws", jwk, protected: protectedHeader, signature },
     };
     const event = await revocationEvent(revocation);
-    expect(validateClaimRevocationEnvelope(event).signer).toEqual(revocation.revoker);
+    expect(inspectVerifiedClaimRevocation(validateClaimRevocationEnvelope(event)).signer)
+      .toEqual(revocation.revoker);
     const wrongThumbprintEvent = await revocationEvent({
       ...revocation,
       revoker: { type: "jwk-thumbprint", value: "A".repeat(43) },
@@ -601,7 +767,9 @@ describe("claim revocation envelopes", () => {
           signature: signature.toString("base64url"),
         },
       };
-      expect(validateClaimRevocationEnvelope(await revocationEvent(revocation)).signer).toEqual(revocation.revoker);
+      expect(inspectVerifiedClaimRevocation(
+        validateClaimRevocationEnvelope(await revocationEvent(revocation)),
+      ).signer).toEqual(revocation.revoker);
     }
   });
 
@@ -740,6 +908,7 @@ describe("claim trust, attenuation, and authorization state", () => {
     [fixtures.personas.carol.epoch_keys.epoch_1.pubkey,
       fixtures.personas.carol.epoch_keys.epoch_1.private_key],
   ]);
+  const artifactsBySemantic = new WeakMap<ClaimSemanticBody, VerifiedClaimArtifact>();
   const sameKey = (left: KeyRef, right: KeyRef) => left.type === right.type && left.value === right.value;
 
   function claim(overrides: Partial<Omit<ClaimSemanticBody, "claim_id">> = {}): ClaimSemanticBody {
@@ -787,10 +956,44 @@ describe("claim trust, attenuation, and authorization state", () => {
       id,
       sig: bytesToHex(schnorr.sign(id, hexToBytes(secretKey), auxRand)),
     };
-    return validateClaimEnvelope(event, {
+    const artifact = verifyClaimEnvelope(event, {
       profile_revision: 2,
       credential_ledger: credentialLedger,
     });
+    const inspected = inspectVerifiedClaim(artifact);
+    artifactsBySemantic.set(inspected, artifact);
+    return inspected;
+  }
+
+  function artifactFor(semantic: ClaimSemanticBody): VerifiedClaimArtifact {
+    const artifact = artifactsBySemantic.get(semantic);
+    if (artifact === undefined) throw new Error("claim-issuer-authority-invalid: verified claim artifact required");
+    return artifact;
+  }
+
+  function verifyClaimChain(
+    leaf: ClaimSemanticBody,
+    claimsById: ReadonlyMap<string, ClaimSemanticBody>,
+  ): ClaimSemanticBody[] {
+    const artifacts = new Map<string, VerifiedClaimArtifact>();
+    for (const [claimId, semantic] of claimsById) artifacts.set(claimId, artifactFor(semantic));
+    return verifyVerifiedClaimChain(artifactFor(leaf), artifacts).map(inspectVerifiedClaim);
+  }
+
+  function resolveClaimState(
+    leaf: ClaimSemanticBody,
+    chain: readonly ClaimSemanticBody[],
+    verification: ClaimVerificationContext,
+  ) {
+    return resolveVerifiedClaimState(artifactFor(leaf), chain.map(artifactFor), verification);
+  }
+
+  function authorizeWithClaim(
+    leaf: ClaimSemanticBody,
+    chain: readonly ClaimSemanticBody[],
+    verification: ClaimVerificationContext,
+  ) {
+    return authorizeVerifiedClaim(artifactFor(leaf), chain.map(artifactFor), verification);
   }
 
   function reissue(body: ClaimSemanticBody, overrides: Partial<Omit<ClaimSemanticBody, "claim_id">>): ClaimSemanticBody {
@@ -846,7 +1049,7 @@ describe("claim trust, attenuation, and authorization state", () => {
     target: ClaimSemanticBody,
     revoker: KeyRef,
     revokedAt = issuedAt + 10,
-  ): VerifiedRevocation {
+  ): VerifiedClaimRevocationArtifact {
     if (revoker.type !== "nostr-secp256k1") throw new Error("synthetic Nostr revoker required");
     const secretKey = issuerSecrets.get(revoker.value);
     if (secretKey === undefined) throw new Error("synthetic revoker key missing");
@@ -865,7 +1068,7 @@ describe("claim trust, attenuation, and authorization state", () => {
       content: jcsCanonicalize(semantic),
     };
     const id = getEventId(unsigned);
-    return validateClaimRevocationEnvelope({
+    return verifyClaimRevocationEnvelope({
       ...unsigned,
       id,
       sig: bytesToHex(schnorr.sign(id, hexToBytes(secretKey), auxRand)),
@@ -907,17 +1110,85 @@ describe("claim trust, attenuation, and authorization state", () => {
 
   it("BLUE TEAM VALIDATION: synthetic/local rejects bare semantic and shaped public authority evidence", () => {
     // BLUE TEAM VALIDATION: synthetic/local objects exercise only this local verifier boundary.
-    const bare = structuredClone(claim());
+    const formerPublicReturn = claim();
+    const formerContext = context(formerPublicReturn);
+    expect(authorizeVerifiedClaim(
+      formerPublicReturn as unknown as VerifiedClaimArtifact,
+      [formerPublicReturn as unknown as VerifiedClaimArtifact],
+      formerContext,
+    )).toEqual({
+      allowed: false,
+      state: "invalid",
+      reason_code: "claim-issuer-authority-invalid",
+    });
+    const revocationArtifact = nostrRevocation(formerPublicReturn, formerPublicReturn.issuer);
+    const formerRevocation = inspectVerifiedClaimRevocation(revocationArtifact);
+    expect(authorizeVerifiedClaim(artifactFor(formerPublicReturn), [artifactFor(formerPublicReturn)], context(formerPublicReturn, {
+      revocations: [formerRevocation as unknown as VerifiedClaimRevocationArtifact],
+    })).state).not.toBe("revoked");
+
+    const bare = structuredClone(formerPublicReturn);
     const shaped = context(bare);
     expect(() => verifyClaimChain(
       bare,
       new Map([[bare.claim_id, bare]]),
     )).toThrow(/verified claim artifact/i);
-    expect(authorizeWithClaim(bare, [bare], shaped)).toEqual({
+    expect(authorizeVerifiedClaim(
+      bare as unknown as VerifiedClaimArtifact,
+      [bare as unknown as VerifiedClaimArtifact],
+      shaped,
+    )).toEqual({
       allowed: false,
       state: "invalid",
       reason_code: "claim-issuer-authority-invalid",
     });
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects hostile revocation containers without invoking user code", () => {
+    // BLUE TEAM VALIDATION: synthetic/local container has no live target, credential, or external effect.
+    const active = claim();
+    const revocation = nostrRevocation(active, active.issuer);
+    let trapCalls = 0;
+    const hostile = new Proxy([revocation], {
+      get() {
+        trapCalls += 1;
+        throw new Error("synthetic/local revocation trap must not execute");
+      },
+    });
+    expect(authorizeVerifiedClaim(
+      artifactFor(active),
+      [artifactFor(active)],
+      context(active, { revocations: hostile }),
+    )).toMatchObject({ allowed: false, state: "invalid" });
+    expect(trapCalls).toBe(0);
+
+    let accessorReads = 0;
+    const accessor = [revocation];
+    Object.defineProperty(accessor, "0", {
+      enumerable: true,
+      get() {
+        accessorReads += 1;
+        return revocation;
+      },
+    });
+    expect(authorizeVerifiedClaim(
+      artifactFor(active),
+      [artifactFor(active)],
+      context(active, { revocations: accessor }),
+    ).state).toBe("invalid");
+    expect(accessorReads).toBe(0);
+
+    const sparse = new Array<VerifiedClaimRevocationArtifact>(1);
+    const oversized = Array.from({ length: 257 }, () => revocation);
+    const cyclic: unknown[] = [];
+    cyclic.push(cyclic);
+    for (const revocations of [sparse, oversized, cyclic]) {
+      expect(authorizeVerifiedClaim(
+        artifactFor(active),
+        [artifactFor(active)],
+        context(active, { revocations }),
+      ).state).toBe("invalid");
+    }
   });
 
   it("resolves a deterministic root-to-leaf chain and rejects missing parents or cycles", () => {
@@ -942,7 +1213,11 @@ describe("claim trust, attenuation, and authorization state", () => {
       reason_code: "claim-issuer-untrusted",
     });
     const clone = structuredClone(active);
-    expect(authorizeWithClaim(clone, [clone], valid)).toEqual({
+    expect(authorizeVerifiedClaim(
+      clone as unknown as VerifiedClaimArtifact,
+      [clone as unknown as VerifiedClaimArtifact],
+      valid,
+    )).toEqual({
       allowed: false,
       state: "invalid",
       reason_code: "claim-issuer-authority-invalid",
@@ -1069,7 +1344,11 @@ describe("claim trust, attenuation, and authorization state", () => {
     expect(resolveClaimState(active, [active], copied)).toBe("invalid");
     expect(authorizeWithClaim(active, [active], copied).reason_code).toBe("claim-subject-proof-invalid");
     const malformed = { ...active, claim_id: "00".repeat(32) };
-    expect(authorizeWithClaim(malformed, [malformed], context(malformed, { trusted_issuers: [] })))
+    expect(authorizeVerifiedClaim(
+      malformed as unknown as VerifiedClaimArtifact,
+      [malformed as unknown as VerifiedClaimArtifact],
+      context(malformed, { trusted_issuers: [] }),
+    ))
       .toEqual({ allowed: false, state: "invalid", reason_code: "claim-issuer-authority-invalid" });
   });
 
@@ -1158,6 +1437,104 @@ describe("claim trust, attenuation, and authorization state", () => {
     }).state).toBe("active");
   });
 
+  it("BLUE TEAM VALIDATION: synthetic/local requires superior revoker authority to be active at revoked_at", () => {
+    // BLUE TEAM VALIDATION: synthetic/local time windows are deterministic and non-deployable.
+    const threeLevelChain = (
+      middleOverrides: Partial<Omit<ClaimSemanticBody, "claim_id">> = {},
+    ) => {
+      const root = claim({
+        subject: delegatedIssuer,
+        constraints: {
+          namespaces: ["heterodyne.device"],
+          audiences: [epoch.pubkey, "https://rp.example"],
+          resources: ["rad:claims", "rad:claims/device"],
+          remaining_depth: 2,
+        },
+      });
+      const middle = claim({
+        issuer: delegatedIssuer,
+        subject,
+        parent_claim_id: root.claim_id,
+        not_before: issuedAt + 1,
+        expires_at: issuedAt + 400,
+        audience: [epoch.pubkey],
+        resources: ["rad:claims/device"],
+        constraints: {
+          namespaces: ["heterodyne.device"],
+          audiences: [epoch.pubkey],
+          resources: ["rad:claims/device"],
+          remaining_depth: 1,
+        },
+        ...middleOverrides,
+      });
+      const leaf = claim({
+        issuer: subject,
+        parent_claim_id: middle.claim_id,
+        not_before: middle.not_before,
+        expires_at: middle.expires_at,
+        audience: [epoch.pubkey],
+        resources: ["rad:claims/device"],
+      });
+      return { root, middle, leaf };
+    };
+
+    const future = threeLevelChain({ not_before: issuedAt + 20 });
+    const early = nostrRevocation(future.leaf, future.middle.issuer, issuedAt + 19);
+    expect(isClaimRevocationAuthorized(
+      artifactFor(future.leaf),
+      [artifactFor(future.root), artifactFor(future.middle), artifactFor(future.leaf)],
+      early,
+      context(future.leaf, {
+      now: issuedAt + 30,
+      repository_confirmed: new Set([future.root.claim_id, future.middle.claim_id, future.leaf.claim_id]),
+      }),
+    )).toBe(false);
+
+    const expired = threeLevelChain({
+      expires_at: issuedAt + 20,
+    });
+    const atExpiry = nostrRevocation(expired.leaf, expired.middle.issuer, issuedAt + 20);
+    expect(isClaimRevocationAuthorized(
+      artifactFor(expired.leaf),
+      [artifactFor(expired.root), artifactFor(expired.middle), artifactFor(expired.leaf)],
+      atExpiry,
+      context(expired.leaf, {
+        now: issuedAt + 30,
+        repository_confirmed: new Set([expired.root.claim_id, expired.middle.claim_id, expired.leaf.claim_id]),
+      }),
+    )).toBe(false);
+
+    const revoked = threeLevelChain();
+    const middleRevokedFirst = nostrRevocation(revoked.middle, revoked.middle.issuer, issuedAt + 9);
+    const leafRevokedLater = nostrRevocation(revoked.leaf, revoked.middle.issuer, issuedAt + 10);
+    expect(isClaimRevocationAuthorized(
+      artifactFor(revoked.leaf),
+      [artifactFor(revoked.root), artifactFor(revoked.middle), artifactFor(revoked.leaf)],
+      leafRevokedLater,
+      context(revoked.leaf, {
+        repository_confirmed: new Set([revoked.root.claim_id, revoked.middle.claim_id, revoked.leaf.claim_id]),
+        revocations: [middleRevokedFirst],
+      }),
+    )).toBe(false);
+
+    const boundaryChain = threeLevelChain({
+      not_before: issuedAt + 10,
+    });
+    const boundary = nostrRevocation(boundaryChain.leaf, boundaryChain.middle.issuer, issuedAt + 10);
+    expect(isClaimRevocationAuthorized(
+      artifactFor(boundaryChain.leaf),
+      [artifactFor(boundaryChain.root), artifactFor(boundaryChain.middle), artifactFor(boundaryChain.leaf)],
+      boundary,
+      context(boundaryChain.leaf, {
+        repository_confirmed: new Set([
+          boundaryChain.root.claim_id,
+          boundaryChain.middle.claim_id,
+          boundaryChain.leaf.claim_id,
+        ]),
+      }),
+    )).toBe(true);
+  });
+
   it("limits descriptive revocation to issuer, named revoker, or superior issuer", () => {
     const namedRevoker: KeyRef = {
       type: "nostr-secp256k1",
@@ -1187,6 +1564,7 @@ describe("claim trust, attenuation, and authorization state", () => {
       expect(resolveClaimState(descriptive, [descriptiveRoot, descriptive], context(descriptive, {
         trusted_issuers: [descriptiveRoot.issuer],
         subject_proof: null,
+        repository_confirmed: new Set([descriptiveRoot.claim_id, descriptive.claim_id]),
         revocations: [revocation],
       }))).toBe("revoked");
     }

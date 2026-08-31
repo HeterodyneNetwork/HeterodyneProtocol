@@ -6,8 +6,11 @@ import { base58 } from "@scure/base";
 import {
   authorizeWithClaim,
   computeJwkThumbprint,
-  validateClaimEnvelope,
-  validateClaimRevocationEnvelope,
+  inspectVerifiedClaim,
+  inspectVerifiedClaimRevocation,
+  isClaimRevocationAuthorized,
+  verifyLedgerClaimArtifact,
+  verifyLedgerClaimRevocationArtifact,
   verifyClaimChain,
   validateKeyRef,
   type AuthorizationDecision,
@@ -16,7 +19,8 @@ import {
   type ClaimVerificationContext,
   type ClaimState,
   type JsonValue,
-  type VerifiedRevocation,
+  type VerifiedClaimArtifact,
+  type VerifiedClaimRevocationArtifact,
 } from "./claims.js";
 import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
@@ -30,11 +34,7 @@ import {
   isCredentialLedgerBinding,
   type CredentialLedgerBinding,
 } from "./credential-generation.js";
-import {
-  snapshotAndVerifyNostrEvent,
-  type NostrSignedEvent,
-  type VerifiedNostrEvent,
-} from "./nostr.js";
+import { type NostrSignedEvent } from "./nostr.js";
 import { snapshotClosedDataTree } from "./closed-data.js";
 
 export type LedgerRecordType =
@@ -122,7 +122,7 @@ export type LedgerMergeResult = {
   checkpoint: LedgerCheckpoint;
   repository_confirmed_record_ids?: string[];
   delivered_record_ids?: string[];
-  authenticated_revocations?: VerifiedRevocation[];
+  authenticated_revocations?: VerifiedClaimRevocationArtifact[];
   token_invalidations?: string[];
   canonical_commit_oids?: string[];
 };
@@ -136,14 +136,12 @@ export type MintingAttemptDecision = MintingEligibility & {
 
 export type ClaimArtifact = { event: NostrSignedEvent; semantic: ClaimSemanticBody };
 export type RevocationArtifact = { event: NostrSignedEvent; semantic: JsonValue };
-type VerifiedClaimArtifact = { event: VerifiedNostrEvent; semantic: ClaimSemanticBody };
-type VerifiedRevocationArtifact = { event: VerifiedNostrEvent; semantic: JsonValue };
 
 export type LedgerRecordValidationEvidence = {
   record_id: string;
   payload_digest: string;
   claim_envelope_context?: ClaimEnvelopeContext;
-  claims_by_id?: Map<string, ClaimSemanticBody>;
+  claims_by_id?: Map<string, unknown>;
   claim_verification_context?: ClaimVerificationContext;
 };
 
@@ -169,7 +167,7 @@ export type LedgerRepositoryEvidence = {
 export type ReaderAccessRequest = {
   claim_record_id: string;
   envelope_context: ClaimEnvelopeContext;
-  claims_by_id: Map<string, ClaimSemanticBody>;
+  claims_by_id: Map<string, unknown>;
   verification_context: ClaimVerificationContext;
 };
 
@@ -409,13 +407,18 @@ export function mergeClaimLedger(
       continue;
     }
     const evidence = context.record_evidence.get(record.record_id);
+    const artifactSensitiveEvidence = evidence?.claims_by_id !== undefined;
     const fingerprint = {
       record: replayValidationFingerprint(record),
-      evidence: replayValidationFingerprint(evidence),
+      // Opaque artifact identity is intentionally not serializable. Never
+      // cache artifact-sensitive evidence by a shaped-data fingerprint.
+      evidence: artifactSensitiveEvidence
+        ? "opaque-artifact-evidence-uncached"
+        : replayValidationFingerprint(evidence),
       record_context: recordContextFingerprint!,
     };
     const validated = replayValidatedRecords.get(record);
-    if (validated === undefined ||
+    if (artifactSensitiveEvidence || validated === undefined ||
         validated.record !== fingerprint.record ||
         validated.evidence !== fingerprint.evidence ||
         validated.record_context !== fingerprint.record_context) {
@@ -428,7 +431,8 @@ export function mergeClaimLedger(
           credential_ledger_generation: record.credential_ledger_generation,
         },
       );
-      replayValidatedRecords.set(record, fingerprint);
+      if (artifactSensitiveEvidence) replayValidatedRecords.delete(record);
+      else replayValidatedRecords.set(record, fingerprint);
     }
   }
   if (records.some(({ credential_ledger_generation }) =>
@@ -445,8 +449,8 @@ export function mergeClaimLedger(
     .filter((record) => ["revocation", "authority-reduction", "reader-change", "issuer-authority"].includes(record.record_type))
     .filter((record) => isReduction(record))
     .map(revocationArtifactFromRecord)
-    .filter((artifact): artifact is VerifiedRevocationArtifact => artifact !== null)
-    .map(({ event }) => validateClaimRevocationEnvelope(event));
+    .filter((artifact): artifact is RevocationArtifact => artifact !== null)
+    .map((artifact) => verifyLedgerClaimRevocationArtifact(artifact));
   const confirmedSet = new Set(confirmed);
   const explicitTokenInvalidations = records
     .filter(({ record_type, record_id }) => record_type === "status-invalidation" && confirmedSet.has(record_id))
@@ -581,18 +585,17 @@ export function replayConfirmedClaimForAuthorization(input: {
   if (artifact === null || evidence?.claim_envelope_context === undefined || evidence.claims_by_id === undefined) {
     throw new Error("claim-event-signature-invalid: release source claim evidence is absent");
   }
-  const semantic = validateClaimEnvelope(artifact.event, evidence.claim_envelope_context);
-  if (jcsCanonicalize(semantic) !== jcsCanonicalize(artifact.semantic)) {
-    throw new Error("claim-id-mismatch: release source semantic mismatch");
-  }
-  const claimsById = new Map(evidence.claims_by_id);
-  claimsById.set(semantic.claim_id, semantic);
-  const chain = verifyClaimChain(semantic, claimsById);
-  const decision = authorizeWithClaim(semantic, chain, {
+  const verifiedClaim = verifyLedgerClaimArtifact(artifact, evidence.claim_envelope_context);
+  const semantic = inspectVerifiedClaim(verifiedClaim);
+  const chain = verifyClaimChain(
+    verifiedClaim,
+    evidence.claims_by_id as ReadonlyMap<string, VerifiedClaimArtifact>,
+  );
+  const decision = authorizeWithClaim(verifiedClaim, chain, {
     ...input.verification_context,
     repository_confirmed: confirmedClaimIds(snapshot),
     repository_conflicted: new Set(snapshot.conflicted_claim_ids),
-    revocations: [...(snapshot.authenticated_revocations ?? [])],
+    revocations: authenticatedRevocationsFromRecords(snapshot.records),
   });
   if (resolveAuthoritativeClaimState(semantic.claim_id, snapshot, input.verification_context.now) !== decision.state) {
     throw new Error("claim-repository-conflict: replayed and authoritative claim state disagree");
@@ -1325,14 +1328,16 @@ export function evaluateReaderAccess(
   }
   const artifact = claimArtifactFromRecord(record);
   if (artifact === null) return readerDenied("invalid", "claim-ledger-reader-unauthorized");
+  let verifiedClaim: VerifiedClaimArtifact;
   let claim: ClaimSemanticBody;
-  let chain: ClaimSemanticBody[];
+  let chain: readonly VerifiedClaimArtifact[];
   try {
-    claim = validateClaimEnvelope(artifact.event, request.envelope_context);
-    if (jcsCanonicalize(claim) !== jcsCanonicalize(artifact.semantic)) throw new Error("artifact mismatch");
-    const claimsById = new Map(request.claims_by_id);
-    claimsById.set(claim.claim_id, claim);
-    chain = verifyClaimChain(claim, claimsById);
+    verifiedClaim = verifyLedgerClaimArtifact(artifact, request.envelope_context);
+    claim = inspectVerifiedClaim(verifiedClaim);
+    chain = verifyClaimChain(
+      verifiedClaim,
+      request.claims_by_id as ReadonlyMap<string, VerifiedClaimArtifact>,
+    );
   } catch {
     return readerDenied("invalid", "claim-event-signature-invalid");
   }
@@ -1361,9 +1366,9 @@ export function evaluateReaderAccess(
     ...request.verification_context,
     repository_confirmed: repositoryConfirmed,
     repository_conflicted: new Set(state.conflicted_claim_ids),
-    revocations: [...(state.authenticated_revocations ?? [])],
+    revocations: authenticatedRevocationsFromRecords(state.records),
   };
-  const decision = authorizeWithClaim(claim, chain, verification);
+  const decision = authorizeWithClaim(verifiedClaim, chain, verification);
   return decision.allowed ? decision : {
     ...decision,
     reason_code: decision.reason_code ?? "claim-ledger-reader-unauthorized",
@@ -1453,7 +1458,7 @@ function canonicalIssuerAuthorityClaimId(
         state.credential_ledger.credential_ledger_generation &&
       confirmed.has(record.record_id))
     .map(claimArtifactFromRecord)
-    .filter((artifact): artifact is VerifiedClaimArtifact => artifact !== null)
+    .filter((artifact): artifact is ClaimArtifact => artifact !== null)
     .map(({ semantic }) => semantic)
     .filter((claim) => claim.claim_class === "authorization" && claim.namespace === "heterodyne.device" &&
       claim.name === "oidc-token-issuer" && claim.value === true &&
@@ -2133,7 +2138,8 @@ function validateAuthenticatedArtifact(
     if (evidence.claim_envelope_context === undefined || evidence.claims_by_id === undefined) {
       throw new Error("claim-issuer-authority-invalid: signed claim validation context is required");
     }
-    const parsed = validateClaimEnvelope(claimArtifact.event, evidence.claim_envelope_context);
+    const verifiedClaim = verifyLedgerClaimArtifact(claimArtifact, evidence.claim_envelope_context);
+    const parsed = inspectVerifiedClaim(verifiedClaim);
     if (parsed.claim_class === "authorization" &&
         (parsed.credential_ledger_persona !== record.persona ||
          parsed.credential_ledger_generation !== record.credential_ledger_generation)) {
@@ -2141,14 +2147,12 @@ function validateAuthenticatedArtifact(
         ? "credential_ledger_persona_mismatch"
         : "credential_generation_stale");
     }
-    if (jcsCanonicalize(parsed) !== jcsCanonicalize(claimArtifact.semantic)) {
-      throw new Error("claim-id-mismatch: claim artifact semantic does not equal signed event content");
-    }
-    const claimsById = new Map(evidence.claims_by_id);
-    claimsById.set(parsed.claim_id, parsed);
-    const chain = verifyClaimChain(parsed, claimsById);
+    const chain = verifyClaimChain(
+      verifiedClaim,
+      evidence.claims_by_id as ReadonlyMap<string, VerifiedClaimArtifact>,
+    );
     if (evidence.claim_verification_context !== undefined) {
-      const decision = authorizeWithClaim(parsed, chain, evidence.claim_verification_context);
+      const decision = authorizeWithClaim(verifiedClaim, chain, evidence.claim_verification_context);
       if (decision.state === "invalid") throw new Error(decision.reason_code ?? "claim-issuer-authority-invalid");
     }
   }
@@ -2161,36 +2165,38 @@ function validateAuthenticatedArtifact(
   if (evidence.claims_by_id === undefined || evidence.claim_verification_context === undefined) {
     throw new Error("claim-revoker-unauthorized: revocation validation context is required");
   }
-  const verified = validateClaimRevocationEnvelope(revocationArtifact.event);
-  if (jcsCanonicalize(verifiedRevocationSemantic(verified)) !== jcsCanonicalize(revocationArtifact.semantic)) {
-    throw new Error("claim-id-mismatch: revocation artifact semantic does not equal signed event content");
-  }
-  const target = evidence.claims_by_id.get(verified.claim_id);
+  const verifiedArtifact = verifyLedgerClaimRevocationArtifact(revocationArtifact);
+  const verified = inspectVerifiedClaimRevocation(verifiedArtifact);
+  const target = Map.prototype.get.call(evidence.claims_by_id, verified.claim_id) as
+    | VerifiedClaimArtifact
+    | undefined;
   if (target === undefined) throw new Error("claim-revoker-unauthorized: revocation target claim is absent");
-  const chain = verifyClaimChain(target, evidence.claims_by_id);
-  const decision = authorizeWithClaim(target, chain, {
+  const chain = verifyClaimChain(
+    target,
+    evidence.claims_by_id as ReadonlyMap<string, VerifiedClaimArtifact>,
+  );
+  if (!isClaimRevocationAuthorized(target, chain, verifiedArtifact, {
     ...evidence.claim_verification_context,
-    revocations: [...evidence.claim_verification_context.revocations, verified],
-  });
-  if (decision.state !== "revoked") {
+  })) {
     throw new Error("claim-revoker-unauthorized: Task 3 did not authenticate this revocation effect");
   }
+  const targetSemantic = inspectVerifiedClaim(target);
   const payload = payloadObject(record.payload);
   if (record.record_type === "authority-reduction") {
-    if (target.subject.type !== "radicle-ed25519-nid" || target.subject.value !== payload.subject_nid ||
-        target.name !== payload.role) {
+    if (targetSemantic.subject.type !== "radicle-ed25519-nid" || targetSemantic.subject.value !== payload.subject_nid ||
+        targetSemantic.name !== payload.role) {
       throw new Error("claim-revoker-unauthorized: authority reduction target, subject, or role mismatch");
     }
   }
   if (record.record_type === "reader-change" && payload.action === "remove") {
-    if (target.subject.type !== "radicle-ed25519-nid" || target.subject.value !== payload.reader_nid ||
-        target.name !== "claim-ledger-reader") {
+    if (targetSemantic.subject.type !== "radicle-ed25519-nid" || targetSemantic.subject.value !== payload.reader_nid ||
+        targetSemantic.name !== "claim-ledger-reader") {
       throw new Error("claim-revoker-unauthorized: reader removal is not bound to the reader claim");
     }
   }
   if (record.record_type === "issuer-authority" && payload.action === "remove") {
-    if (target.subject.type !== "radicle-ed25519-nid" || target.subject.value !== payload.writer_nid ||
-        target.name !== "oidc-token-issuer") {
+    if (targetSemantic.subject.type !== "radicle-ed25519-nid" || targetSemantic.subject.value !== payload.writer_nid ||
+        targetSemantic.name !== "oidc-token-issuer") {
       throw new Error("claim-revoker-unauthorized: issuer removal is not bound to the issuer claim");
     }
   }
@@ -2204,14 +2210,14 @@ function validateAuthenticatedArtifact(
   )) throw new Error("claim-repository-unconfirmed: revocation target has no signed ledger artifact");
 }
 
-function claimArtifactFromRecord(record: LedgerRecord): VerifiedClaimArtifact | null {
+function claimArtifactFromRecord(record: LedgerRecord): ClaimArtifact | null {
   const value = claimArtifactValueFromRecord(record);
   if (value === undefined) return null;
   const artifact = payloadObject(value);
-  const event = snapshotAndVerifyNostrEvent(artifact.event);
-  return event === null
-    ? null
-    : { event, semantic: artifact.semantic as unknown as ClaimSemanticBody };
+  return {
+    event: artifact.event as unknown as NostrSignedEvent,
+    semantic: artifact.semantic as unknown as ClaimSemanticBody,
+  };
 }
 
 function claimArtifactValueFromRecord(record: LedgerRecord): JsonValue | undefined {
@@ -2221,12 +2227,14 @@ function claimArtifactValueFromRecord(record: LedgerRecord): JsonValue | undefin
       && payload.action === "grant") ? payload.claim_artifact : undefined;
 }
 
-function revocationArtifactFromRecord(record: LedgerRecord): VerifiedRevocationArtifact | null {
+function revocationArtifactFromRecord(record: LedgerRecord): RevocationArtifact | null {
   const value = revocationArtifactValueFromRecord(record);
   if (value === undefined) return null;
   const artifact = payloadObject(value);
-  const event = snapshotAndVerifyNostrEvent(artifact.event);
-  return event === null ? null : { event, semantic: artifact.semantic as JsonValue };
+  return {
+    event: artifact.event as unknown as NostrSignedEvent,
+    semantic: artifact.semantic as JsonValue,
+  };
 }
 
 function revocationArtifactValueFromRecord(record: LedgerRecord): JsonValue | undefined {
@@ -2238,9 +2246,14 @@ function revocationArtifactValueFromRecord(record: LedgerRecord): JsonValue | un
     ? payload.revocation_artifact : undefined;
 }
 
-function verifiedRevocationSemantic(verified: VerifiedRevocation): JsonValue {
-  const { signer: _signer, event_id: _eventId, event_created_at: _eventCreatedAt, ...semantic } = verified;
-  return semantic as unknown as JsonValue;
+function authenticatedRevocationsFromRecords(
+  records: readonly LedgerRecord[],
+): VerifiedClaimRevocationArtifact[] {
+  return records
+    .filter((record) => isReduction(record))
+    .map(revocationArtifactFromRecord)
+    .filter((artifact): artifact is RevocationArtifact => artifact !== null)
+    .map((artifact) => verifyLedgerClaimRevocationArtifact(artifact));
 }
 
 function findConflictedClaims(records: LedgerRecord[]): string[] {
@@ -2356,8 +2369,8 @@ function validateLedgerStateInvariants(
     authenticated_revocations: records
       .filter((record) => isReduction(record))
       .map(revocationArtifactFromRecord)
-      .filter((artifact): artifact is VerifiedRevocationArtifact => artifact !== null)
-      .map(({ event }) => validateClaimRevocationEnvelope(event)),
+      .filter((artifact): artifact is RevocationArtifact => artifact !== null)
+      .map((artifact) => verifyLedgerClaimRevocationArtifact(artifact)),
     token_invalidations: [],
   };
   for (const invalidationRecord of records.filter(({ record_type }) => record_type === "status-invalidation")) {
@@ -2694,8 +2707,8 @@ function ledgerSnapshotForRecordSet(
     authenticated_revocations: records
       .filter((record) => isReduction(record))
       .map(revocationArtifactFromRecord)
-      .filter((artifact): artifact is VerifiedRevocationArtifact => artifact !== null)
-      .map(({ event }) => validateClaimRevocationEnvelope(event)),
+      .filter((artifact): artifact is RevocationArtifact => artifact !== null)
+      .map((artifact) => verifyLedgerClaimRevocationArtifact(artifact)),
     token_invalidations: [],
   };
 }
@@ -2711,7 +2724,7 @@ function activeIssuerNidsForRecordSet(
   const candidates = new Set(records
     .filter(({ record_type }) => record_type === "claim")
     .map(claimArtifactFromRecord)
-    .filter((artifact): artifact is VerifiedClaimArtifact => artifact !== null)
+    .filter((artifact): artifact is ClaimArtifact => artifact !== null)
     .filter(({ semantic }) => semantic.claim_class === "authorization" &&
       semantic.namespace === "heterodyne.device" && semantic.name === "oidc-token-issuer" &&
       semantic.value === true && semantic.visibility === "repository-private" &&

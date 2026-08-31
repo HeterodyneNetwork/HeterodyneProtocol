@@ -1480,6 +1480,11 @@ NOT carry verification authority. Inspection returns an independent immutable
 copy that cannot be supplied back as authority. Signed revocations use the same
 opaque-artifact rule.
 
+The signed NIP-01 `created_at` audit timestamp and the claim semantic
+`issued_at` are independently authenticated artifact fields; they are not
+required to be equal. Revocation `revoked_at` retains its profile-specific
+equality requirement with its signed event timestamp.
+
 `claim-issuer-authority-invalid` means that the implementation did not
 establish the exact verified outer issuer or the explicit verified claim-chain
 authority required at that edge. It MUST NOT treat a KEL identity, recovery
