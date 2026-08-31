@@ -15,8 +15,8 @@ import type { Fixtures } from "./fixtures.js";
 import { bytesToHex, hexToBytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
 import {
+  authorizeAuthorizationRequestEffect,
   issuerMetadata,
-  validateAuthorizationRequest,
   type JwtProjectionInput,
   type OidcAuthorizationRequest,
   type PersonaIdentityState,
@@ -114,10 +114,10 @@ export async function buildLiveOidcScenario(
   });
   const allClaims = new Map([
     ...s.allClaims,
-    [registrationClaim.artifact.semantic.claim_id, registrationClaim.artifact.semantic] as const,
-    [consentClaim.artifact.semantic.claim_id, consentClaim.artifact.semantic] as const,
-    [dataClaim.artifact.semantic.claim_id, dataClaim.artifact.semantic] as const,
-    [keyClaim.artifact.semantic.claim_id, keyClaim.artifact.semantic] as const,
+    [registrationClaim.artifact.semantic.claim_id, registrationClaim.verified_artifact] as const,
+    [consentClaim.artifact.semantic.claim_id, consentClaim.verified_artifact] as const,
+    [dataClaim.artifact.semantic.claim_id, dataClaim.verified_artifact] as const,
+    [keyClaim.artifact.semantic.claim_id, keyClaim.verified_artifact] as const,
   ]);
   const verificationFor = (claim: typeof dataClaim, resource: string) => {
     const verification = s.makeVerification(claim);
@@ -152,14 +152,13 @@ export async function buildLiveOidcScenario(
     record_id: record.record_id,
     payload_digest: record.payload_digest,
     claim_envelope_context: {
-      issuer_authorized: true,
       profile_revision: 2,
       credential_ledger: {
         credential_ledger_persona: s.persona,
         credential_ledger_generation: 0,
       },
     },
-    claims_by_id: new Map(allClaims),
+    claims_by_id: new Map(),
     claim_verification_context: verificationFor(
       claim,
       claim.artifact.semantic.resources![0],
@@ -211,10 +210,31 @@ export async function buildLiveOidcScenario(
     consent: evidence(consentRecord, consentClaim),
     source_claims: [evidence(dataRecord, dataClaim), evidence(keyRecord, keyClaim)],
   };
-  const release = validateAuthorizationRequest(request);
-  if (!release.allowed || release.request_digest === undefined || release.release_digest === undefined) {
-    throw new Error(`OIDC scenario release failed: ${release.reason_code}`);
+  const releaseHarness = s.makeClaimAuthorizationHarness({
+    load_state: () => preMintState,
+    trusted_now: () => s.now + 69,
+  });
+  let releaseEffects = 0;
+  const releaseAuthorization = await authorizeAuthorizationRequestEffect(
+    releaseHarness.authority,
+    {
+      request,
+      idempotency_key: "synthetic-local-oidc-release-0001",
+      effect_digest: "81".repeat(32),
+      effect: (inspectedRelease) => {
+        releaseEffects += 1;
+        return { status: "completed", result: inspectedRelease };
+      },
+    },
+  );
+  if (releaseAuthorization.verdict !== "accept") {
+    throw new Error(`OIDC scenario release failed: ${releaseAuthorization.reason_code}`);
   }
+  if (releaseAuthorization.result.request_digest === undefined ||
+      releaseAuthorization.result.release_digest === undefined) {
+    throw new Error("OIDC scenario release failed: incomplete release result");
+  }
+  const release = releaseAuthorization.result;
   const sourceClaimIds = [
     registrationClaim.artifact.semantic.claim_id,
     consentClaim.artifact.semantic.claim_id,
@@ -230,8 +250,8 @@ export async function buildLiveOidcScenario(
     manifest_max_age_seconds: 300,
     signing_key_id: s.issuerKeyEnvelopeOne.signing_key_id,
     client_id: CLIENT.client_id,
-    authorization_request_digest: release.request_digest,
-    release_digest: release.release_digest,
+    authorization_request_digest: release.request_digest!,
+    release_digest: release.release_digest!,
     source_claim_ids: sourceClaimIds,
     issued_at: now,
     expires_at: now + 600,
@@ -318,6 +338,9 @@ export async function buildLiveOidcScenario(
     issuanceRecord,
     request,
     release,
+    releaseAuthorization,
+    releaseHarness,
+    releaseEffects,
     projection,
     dataClaim,
     allClaims,

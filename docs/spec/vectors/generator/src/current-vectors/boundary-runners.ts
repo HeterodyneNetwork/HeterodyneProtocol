@@ -45,6 +45,31 @@ const REPOSITORY_ROOT = resolve(import.meta.dirname, "../../../../../..");
 
 type BoundaryModule = Readonly<Record<string, unknown>>;
 type BoundaryFunction = (...args: readonly unknown[]) => unknown;
+const PRIVATE_CURRENT_BOUNDARY_ARGS = new Map<string, readonly unknown[]>();
+
+export function registerPrivateCurrentBoundaryArgs(
+  fixtureId: string,
+  args: readonly unknown[],
+): readonly unknown[] {
+  PRIVATE_CURRENT_BOUNDARY_ARGS.set(fixtureId, args);
+  return [Object.freeze({ private_fixture_id: fixtureId })];
+}
+
+function resolvePrivateCurrentBoundaryArgs(
+  args: readonly unknown[] | undefined,
+): readonly unknown[] | undefined {
+  const marker = args?.[0];
+  if (args?.length !== 1 || marker === null || typeof marker !== "object" ||
+      Array.isArray(marker) || Object.getPrototypeOf(marker) !== Object.prototype) {
+    return args;
+  }
+  const descriptors = Object.getOwnPropertyDescriptors(marker);
+  const keys = Reflect.ownKeys(descriptors);
+  if (keys.length !== 1 || keys[0] !== "private_fixture_id" ||
+      !("value" in descriptors.private_fixture_id) ||
+      typeof descriptors.private_fixture_id.value !== "string") return args;
+  return PRIVATE_CURRENT_BOUNDARY_ARGS.get(descriptors.private_fixture_id.value);
+}
 
 const BOUNDARY_MODULES: Readonly<Record<string, BoundaryModule>> = Object.freeze({
   "agent-authorship": agentAuthorship,
@@ -109,6 +134,13 @@ async function executeCurrentBoundary(
   boundaryId: string,
   fixture: CurrentCaseFixture,
 ): Promise<Readonly<{ raw_result: unknown; projected_output: unknown }>> {
+  const privateArgs = resolvePrivateCurrentBoundaryArgs(fixture.boundary_args);
+  if (privateArgs !== fixture.boundary_args) {
+    if (privateArgs === undefined) {
+      throw new Error("current private boundary fixture is unavailable");
+    }
+    fixture = { ...fixture, boundary_args: privateArgs };
+  }
   if (boundaryId === "profile-negotiation.validateCurrentKindProfileNegotiation") {
     const raw = profileNegotiation.validateCurrentKindProfileNegotiation(
       registry.loadRegistry(REPOSITORY_ROOT),
@@ -524,7 +556,7 @@ async function executeCurrentBoundary(
     };
   }
   if (boundaryId === "claim-ledger.mergeClaimLedger+evaluateReaderAccess") {
-    const [records, tombstones, checkpoint, context, readerNid, request] =
+    const [records, tombstones, checkpoint, context, readerNid, request, authority] =
       fixture.boundary_args ?? [];
     const state = claimLedger.mergeClaimLedger(
       records as Parameters<typeof claimLedger.mergeClaimLedger>[0],
@@ -532,11 +564,26 @@ async function executeCurrentBoundary(
       checkpoint as Parameters<typeof claimLedger.mergeClaimLedger>[2],
       context as Parameters<typeof claimLedger.mergeClaimLedger>[3],
     );
-    const authorization = claimLedger.evaluateReaderAccess(
-      readerNid as Parameters<typeof claimLedger.evaluateReaderAccess>[0],
-      state,
-      request as Parameters<typeof claimLedger.evaluateReaderAccess>[2],
-    );
+    const authorization = authority === undefined
+      ? claimLedger.evaluateReaderAccess(
+        readerNid as Parameters<typeof claimLedger.evaluateReaderAccess>[0],
+        state,
+        request as Parameters<typeof claimLedger.evaluateReaderAccess>[2],
+      )
+      : await claimAuthorization.authorizeReaderAccessEffect(
+        authority as Parameters<typeof claimAuthorization.authorizeReaderAccessEffect>[0],
+        {
+          reader_nid: readerNid as string,
+          state,
+          request: request as claimLedger.ReaderAccessRequest,
+          idempotency_key: `current-vector-${fixture.vector_id}`,
+          effect_digest: "91".repeat(32),
+          effect: () => ({
+            status: "completed" as const,
+            result: { access: "granted" },
+          }),
+        },
+      );
     return {
       raw_result: { state, authorization },
       projected_output: {

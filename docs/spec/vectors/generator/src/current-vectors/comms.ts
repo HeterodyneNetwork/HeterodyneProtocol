@@ -4,7 +4,7 @@ import { injectAgentAttribution, validateAgentAccessToken, validateWorkloadRegis
 import { buildAuthorizationFreshnessTestSupport } from "../authorization-freshness-test-support.js";
 import { evaluateAuthorizationFreshness } from "../authorization-freshness.js";
 import { createClaimAuthorizationAuthority, type ClaimAuthorizationEffectInput, type ClaimEffectRecord, type ClaimEffectStore, type CurrentClaimAuthorizationView, } from "../claim-authorization.js";
-import { canMint, evaluateReaderAccess, ledgerErrorReason, mergeClaimLedger, validateLedgerRecordOrThrow, } from "../claim-ledger.js";
+import { canMint, ledgerErrorReason, mergeClaimLedger, validateLedgerRecordOrThrow, } from "../claim-ledger.js";
 import { buildClaimLedgerScenario } from "../claim-ledger-test-support.js";
 import { inspectVerifiedClaim, inspectVerifiedClaimRevocation, validateClaimId, validateKeyRef, verifyClaimEnvelope, verifyClaimRevocationEnvelope, type ClaimVerificationContext, type VerifiedClaimArtifact, } from "../claims.js";
 import { classifyRelayWriteFailure, evaluateMarmotInboxBootstrap, evaluateOneTimeInvite, validateDmInviteDevice, validatePrivateBroadcast, validatePublicReaderRendering, } from "../comms-policy.js";
@@ -24,6 +24,7 @@ import { validateOidcContinuityManifestSchemaOrThrow } from "../schema.js";
 import { createTrustedSeedAdmissionAuthority, evaluateTrustedSeedAdmission, trustedSeedAclProofBytes, } from "../trusted-seed.js";
 import { encodeStatusList } from "../token-status.js";
 import { currentSpecRef, type CurrentCaseFixture } from "./types.js";
+import { registerPrivateCurrentBoundaryArgs } from "./boundary-runners.js";
 const decisionOutput = (decision: ReturnType<typeof evaluateAuthorizationFreshness>): Record<string, unknown> => decision.verdict === "accept"
     ? { verdict: "accept", current_authorization_view: "opaque" }
     : { verdict: "reject", reason_code: decision.reason };
@@ -179,8 +180,9 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
     const authorizedReaderRequest = ledger.requestFor(ledger.claimRecordOne, ledger.claimOne);
     authorizedReaderRequest.verification_context.now =
         ledger.baseRepository.checkpoint.observed_at;
-    const authorizedReader = evaluateReaderAccess(ledger.writerOne.did_key, baseLedgerState, authorizedReaderRequest);
-    const unauthorizedReader = evaluateReaderAccess(ledger.writerTwo.did_key, baseLedgerState, ledger.requestFor(ledger.claimRecordOne, ledger.claimOne));
+    const readerEffectHarness = ledger.makeClaimAuthorizationHarness({
+        load_state: () => baseLedgerState,
+    });
     const invalidClaimId = { ...claim, claim_id: "00".repeat(32) };
     const invalidClaimIdDecision = thrownDecision(() => validateClaimId(invalidClaimId));
     const invalidClaimKey = { type: "nostr-secp256k1" as const, value: "00".repeat(32) };
@@ -931,18 +933,24 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
         ["comms/claim-chain-cycle", [chainCycleBoundary.authority, chainCycleBoundary.input]],
         ["comms/claim-chain-depth-exceeded", [chainDepthBoundary.authority, chainDepthBoundary.input]],
         ["comms/claim-delegation-not-authorized", [delegationBoundary.authority, delegationBoundary.input]],
-        ["comms/claim-ledger-rollback", [
+        ["comms/claim-ledger-rollback", registerPrivateCurrentBoundaryArgs(
+            "comms/claim-ledger-rollback",
+            [
                 [ledger.claimRecordOne],
                 [],
                 rollbackCheckpoint,
                 ledger.makeContext(ledger.baseRepository.repository),
-            ]],
-        ["comms/claim-ledger-writer-unauthorized", [
+            ],
+        )],
+        ["comms/claim-ledger-writer-unauthorized", registerPrivateCurrentBoundaryArgs(
+            "comms/claim-ledger-writer-unauthorized",
+            [
                 [ledger.claimRecordOne, ledger.claimRecordTwo],
                 [],
                 ledger.baseRepository.checkpoint,
                 unauthorizedWriterContext,
-            ]],
+            ],
+        )],
         ["comms/claim-revoker-unauthorized", [
                 ledger.removalRecord,
                 new Map([
@@ -957,14 +965,18 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
             ]],
         ["comms/claim-active-authenticated", [activeClaimBoundary.authority, activeClaimBoundary.input]],
         ["comms/claim-repository-unconfirmed", [unconfirmedClaimBoundary.authority, unconfirmedClaimBoundary.input]],
-        ["comms/ledger-reader-authorized", [
+        ["comms/ledger-reader-authorized", registerPrivateCurrentBoundaryArgs(
+            "comms/ledger-reader-authorized",
+            [
                 [ledger.claimRecordOne, ledger.claimRecordTwo],
                 [],
                 ledger.baseRepository.checkpoint,
                 ledger.makeContext(ledger.baseRepository.repository),
                 ledger.writerOne.did_key,
                 authorizedReaderRequest,
-            ]],
+                readerEffectHarness.authority,
+            ],
+        )],
         ["comms/ledger-reader-unauthorized", [
                 ledger.writerTwo.did_key,
                 baseLedgerState,

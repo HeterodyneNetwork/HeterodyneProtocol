@@ -3,6 +3,7 @@ import { nip19 } from "nostr-tools";
 import { beforeAll, describe, expect, it } from "vitest";
 import { buildFixtures } from "./fixtures.js";
 import {
+  authorizeAuthorizationRequestEffect,
   decideDeviceAuthorization,
   derivePairwiseSubject,
   discoveryPaths,
@@ -91,6 +92,55 @@ describe("active-persona issuer and exact origin identity", () => {
 });
 
 describe("evidence-bound release and OAuth state machines", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local executes an active OIDC release once and rejects writer removal before acquire", async () => {
+    // BLUE TEAM VALIDATION: synthetic/local uses deterministic opaque claims, one in-memory CAS store, and bounded effect counters only.
+    expect(x.releaseAuthorization).toMatchObject({
+      verdict: "accept",
+      allowed: true,
+      disposition: "executed",
+    });
+    expect(x.releaseHarness.calls.acquire).toBe(1);
+    expect(x.releaseEffects).toBe(1);
+
+    let loads = 0;
+    let effects = 0;
+    const harness = x.s.makeClaimAuthorizationHarness({
+      trusted_now: () => x.s.now + 69,
+      load_state: () => {
+        loads += 1;
+        if (loads === 2) {
+          x.s.setCurrentWriterPolicy({
+            ...x.s.activeWriterPolicy(),
+            writers: x.s.activeWriterPolicy().writers.map((writer) => ({
+              ...writer,
+              state: "revoked" as const,
+            })),
+          });
+        }
+        return x.preMintState;
+      },
+    });
+    try {
+      await expect(authorizeAuthorizationRequestEffect(harness.authority, {
+        request: x.request,
+        idempotency_key: "synthetic-local-oidc-writer-removed-0001",
+        effect_digest: "82".repeat(32),
+        effect: () => {
+          effects += 1;
+          return { status: "completed", result: { release: "unexpected" } };
+        },
+      })).resolves.toMatchObject({
+        verdict: "reject",
+        allowed: false,
+        reason_code: "claim-ledger-writer-unauthorized",
+      });
+      expect(harness.calls.acquire).toBe(0);
+      expect(effects).toBe(0);
+    } finally {
+      x.s.resetCurrentWriterPolicy();
+    }
+  });
+
   it("derives pairwise subjects only from the exact lowercase typed-subject JCS digest", () => {
     const typedSubject = { type: "radicle-ed25519-nid", value: x.s.writerOne.did_key };
     const localSubject = createHash("sha256").update(jcsCanonicalize(typedSubject)).digest("hex");
@@ -157,7 +207,7 @@ describe("evidence-bound release and OAuth state machines", () => {
         resources: existing.resources,
       });
       const alternateRecord = x.s.signRecord("claim", { claim_artifact: alternate.artifact });
-      x.allClaims.set(alternate.artifact.semantic.claim_id, alternate.artifact.semantic);
+      x.allClaims.set(alternate.artifact.semantic.claim_id, alternate.verified_artifact);
       try {
         const records = [...x.preMintRecords, alternateRecord];
         const repository = buildLedgerRepositoryEvidence({

@@ -28,17 +28,54 @@ export type CurrentRevocationProofSuite =
   | "jwk-jws";
 
 export type CurrentRevocationExecutionFixture = Readonly<{
+  fixture_id: string;
   left: readonly LedgerRecord[];
   right: readonly LedgerRecord[];
   checkpoint: Parameters<typeof buildLedgerRepositoryEvidence>[0] extends never
     ? never
     : ReturnType<typeof buildLedgerRepositoryEvidence>["checkpoint"];
+}>;
+
+type PrivateRevocationExecution = Readonly<{
+  record_artifact: RevocationArtifact;
   context: LedgerValidationContext;
   reader_nid?: string;
   reader_request?: ReaderAccessRequest;
   target_verified_claim?: VerifiedClaimArtifact;
   target_verification_context?: ClaimVerificationContext;
 }>;
+
+const PRIVATE_REVOCATION_EXECUTIONS = new Map<
+  string,
+  PrivateRevocationExecution[]
+>();
+
+function registerPrivateExecution(
+  fixtureId: string,
+  publicExecution: CurrentRevocationExecutionFixture,
+  privateExecution: PrivateRevocationExecution,
+): CurrentRevocationExecutionFixture {
+  const entries = PRIVATE_REVOCATION_EXECUTIONS.get(fixtureId) ?? [];
+  entries.push(privateExecution);
+  PRIVATE_REVOCATION_EXECUTIONS.set(fixtureId, entries);
+  return publicExecution;
+}
+
+export function resolvePrivateRevocationExecution(
+  execution: CurrentRevocationExecutionFixture,
+): PrivateRevocationExecution | undefined {
+  const entries = PRIVATE_REVOCATION_EXECUTIONS.get(execution.fixture_id);
+  if (entries === undefined || entries.length === 0) return undefined;
+  const publicRecord = execution.right.find(({ record_type }) =>
+    record_type === "revocation");
+  const exact = entries.find((candidate) => {
+    const payload = publicRecord?.payload as
+      | { revocation_artifact?: RevocationArtifact }
+      | undefined;
+    return payload?.revocation_artifact === candidate.record_artifact;
+  });
+  return exact ?? entries.at(-1);
+}
 
 export type CurrentRevocationProfileFixture = Readonly<{
   artifact: RevocationArtifact;
@@ -146,14 +183,17 @@ async function readerRevocationFixture(
   request.verification_context.now = repository.checkpoint.observed_at;
   return {
     artifact,
-    execution: {
+    execution: registerPrivateExecution(`current-revocation-${suite}`, {
+      fixture_id: `current-revocation-${suite}`,
       left,
       right,
       checkpoint: repository.checkpoint,
+    }, {
+      record_artifact: artifact,
       context,
       reader_nid: ledger.writerOne.did_key,
       reader_request: request,
-    },
+    }),
   };
 }
 
@@ -250,14 +290,17 @@ async function jwkRevocationFixture(
   );
   return {
     artifact,
-    execution: {
+    execution: registerPrivateExecution("current-revocation-jwk-jws", {
+      fixture_id: "current-revocation-jwk-jws",
       left,
       right,
       checkpoint: repository.checkpoint,
+    }, {
+      record_artifact: artifact,
       context,
       target_verified_claim: target.verified_artifact,
       target_verification_context: verification,
-    },
+    }),
   };
 }
 

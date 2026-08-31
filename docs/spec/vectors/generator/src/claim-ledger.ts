@@ -615,7 +615,11 @@ function captureLedgerRecordArray(
       !Number.isSafeInteger(length.value) || length.value < 0 || length.value > 4_096) {
     throw writerUnauthorized(`${label} must be a bounded dense array`);
   }
-  return snapshotBoundedClosedDataTree(value, label) as readonly LedgerRecord[];
+  snapshotBoundedClosedDataTree(value, label);
+  return Object.freeze(Array.from(
+    { length: length.value as number },
+    (_, index) => descriptors[String(index)]!.value as LedgerRecord,
+  ));
 }
 
 function snapshotBoundedClosedDataTree<T>(value: T, label: string): T {
@@ -863,7 +867,9 @@ function resolveLedgerWriterAuthorities(
     validateRecordIdentityBeforeWriterResolution(record);
     let loaded: unknown;
     try {
-      loaded = context.load_record_location(record);
+      loaded = context.load_record_location(
+        snapshotBoundedClosedDataTree(record, "claim ledger record-location input"),
+      );
     } catch {
       throw writerUnauthorized("record-location load failed");
     }
@@ -938,30 +944,26 @@ function resolveLedgerWriterAuthorities(
 }
 
 function validateRecordIdentityBeforeWriterResolution(record: LedgerRecord): void {
-  try {
-    assertPlainObject(record, "record");
-    assertExactKeys(record, RECORD_KEYS, "record");
-    validateClaimLedgerRecordSchemaOrThrow(record);
-    if (!HEX_32.test(record.record_id) || !HEX_32.test(record.payload_digest) ||
-        !HEX_64.test(record.signature)) {
-      throw new Error("invalid byte encoding");
-    }
-    if (record.payload_digest !==
-        domainSeparatedDigestJson("heterodyne-claim-ledger-payload-v1", record.payload) ||
-        record.record_id !== domainSeparatedDigestJson(
-          "heterodyne-claim-ledger-record-id-v1",
-          withoutRecordId(record),
-        )) {
-      throw new Error("record bytes do not match their location identity");
-    }
-    if (!ed25519.verify(
-      hexToBytes(record.signature),
-      utf8Bytes(recordSigningPayload(record)),
-      ed25519PublicKeyFromNid(record.writer_nid),
-    )) throw new Error("record self-signature is invalid");
-  } catch {
-    throw writerUnauthorized("record bytes or writer self-signature are invalid");
+  assertPlainObject(record, "record");
+  assertExactKeys(record, RECORD_KEYS, "record");
+  validateClaimLedgerRecordSchemaOrThrow(record);
+  if (!HEX_32.test(record.record_id) || !HEX_32.test(record.payload_digest) ||
+      !HEX_64.test(record.signature)) {
+    throw new Error("claim-schema-invalid: invalid ledger byte encoding");
   }
+  if (record.payload_digest !==
+      domainSeparatedDigestJson("heterodyne-claim-ledger-payload-v1", record.payload) ||
+      record.record_id !== domainSeparatedDigestJson(
+        "heterodyne-claim-ledger-record-id-v1",
+        withoutRecordId(record),
+      )) {
+    throw new Error("claim-id-mismatch: record_id does not match the record bytes at its location");
+  }
+  if (!ed25519.verify(
+    hexToBytes(record.signature),
+    utf8Bytes(recordSigningPayload(record)),
+    ed25519PublicKeyFromNid(record.writer_nid),
+  )) throw new Error("claim-event-signature-invalid: record self-signature is invalid");
 }
 
 function writerUnauthorized(detail: string): Error {
@@ -1056,7 +1058,13 @@ export function replayConfirmedClaimForAuthorization(input: {
   state: LedgerMergeResult;
   claim_record_id: string;
   verification_context: ClaimVerificationContext;
-}): { record: LedgerRecord; semantic: ClaimSemanticBody; decision: AuthorizationDecision } {
+}): {
+  record: LedgerRecord;
+  semantic: ClaimSemanticBody;
+  decision: AuthorizationDecision;
+  verified_claim: VerifiedClaimArtifact;
+  chain: readonly VerifiedClaimArtifact[];
+} {
   assertValidatedLedgerState(input.state);
   canonicalValidatedCheckpoint(input.state);
   if (jcsCanonicalize(input.state.checkpoint) !==
@@ -1098,7 +1106,91 @@ export function replayConfirmedClaimForAuthorization(input: {
   if (resolveAuthoritativeClaimState(semantic.claim_id, snapshot, input.verification_context.now) !== decision.state) {
     throw new Error("claim-repository-conflict: replayed and authoritative claim state disagree");
   }
-  return { record, semantic, decision };
+  return { record, semantic, decision, verified_claim: verifiedClaim, chain };
+}
+
+export function currentClaimAuthorizationView(state: LedgerMergeResult): Readonly<{
+  credential_ledger: CredentialLedgerBinding;
+  checkpoint_digest: string;
+  repository_revision: number;
+  claims: readonly VerifiedClaimArtifact[];
+  revocations: readonly VerifiedClaimRevocationArtifact[];
+  conflicted_claim_ids: readonly string[];
+  ledger_state: LedgerMergeResult;
+}> {
+  assertValidatedLedgerState(state);
+  canonicalValidatedCheckpoint(state);
+  const context = VALIDATED_LEDGER_CONTEXTS.get(state);
+  const repository = validatedRepositoryForState(state);
+  const confirmed = new Set(repository.repository_confirmed_record_ids);
+  const head = repository.commits.find(({ commit_oid }) =>
+    commit_oid === repository.canonical_head);
+  if (context === undefined || head === undefined) {
+    throw new Error("claim-repository-unconfirmed: current claim authorization view is absent");
+  }
+  const claims: VerifiedClaimArtifact[] = [];
+  for (const record of state.records) {
+    if (record.record_type !== "claim" || !confirmed.has(record.record_id) ||
+        !head.record_ids.includes(record.record_id)) continue;
+    const artifact = claimArtifactFromRecord(record);
+    const evidence = context.record_evidence.get(record.record_id);
+    if (artifact === null || evidence?.claim_envelope_context === undefined) {
+      throw new Error("claim-event-signature-invalid: current claim artifact is absent");
+    }
+    claims.push(verifyLedgerClaimArtifact(artifact, evidence.claim_envelope_context));
+  }
+  const revocations = authenticatedRevocationsFromRecords(state.records);
+  return Object.freeze({
+    credential_ledger: Object.freeze({ ...state.credential_ledger }),
+    checkpoint_digest: domainSeparatedDigestJson(
+      "heterodyne-claim-authorization-checkpoint-v1",
+      state.checkpoint,
+    ),
+    repository_revision: repository.commits.length,
+    claims: Object.freeze(claims),
+    revocations: Object.freeze(revocations),
+    conflicted_claim_ids: Object.freeze([...state.conflicted_claim_ids].sort()),
+    ledger_state: state,
+  });
+}
+
+export function prepareReaderClaimAuthorization(
+  readerNid: string | null,
+  state: LedgerMergeResult,
+  request?: ReaderAccessRequest,
+): Readonly<{
+  decision: AuthorizationDecision;
+  verified_claim?: VerifiedClaimArtifact;
+  chain?: readonly VerifiedClaimArtifact[];
+}> {
+  const decision = evaluateReaderAccess(readerNid, state, request);
+  if (decision.state !== "active" || readerNid === null || request === undefined) {
+    return Object.freeze({ decision });
+  }
+  const record = state.records.find(({ record_id }) =>
+    record_id === request.claim_record_id);
+  const artifact = record === undefined ? null : claimArtifactFromRecord(record);
+  if (artifact === null) return Object.freeze({
+    decision: readerDenied("invalid", "claim-ledger-reader-unauthorized"),
+  });
+  try {
+    const verifiedClaim = verifyLedgerClaimArtifact(
+      artifact,
+      request.envelope_context,
+    );
+    return Object.freeze({
+      decision,
+      verified_claim: verifiedClaim,
+      chain: verifyClaimChain(
+        verifiedClaim,
+        request.claims_by_id as ReadonlyMap<string, VerifiedClaimArtifact>,
+      ),
+    });
+  } catch {
+    return Object.freeze({
+      decision: readerDenied("invalid", "claim-event-signature-invalid"),
+    });
+  }
 }
 
 export function deriveLedgerPath(audienceKey: Uint8Array, recordId: string): string {
@@ -1868,9 +1960,11 @@ export function evaluateReaderAccess(
     revocations: authenticatedRevocationsFromRecords(state.records),
   };
   const decision = authorizeWithClaim(verifiedClaim, chain, verification);
-  return decision.allowed ? decision : {
+  return {
     ...decision,
-    reason_code: decision.reason_code ?? "claim-ledger-reader-unauthorized",
+    reason_code: decision.state === "active"
+      ? null
+      : decision.reason_code ?? "claim-ledger-reader-unauthorized",
   };
 }
 
@@ -2217,11 +2311,15 @@ export function buildReaderOnboardingBundle(
   state: LedgerMergeResult,
 ): LedgerOnboardingBundle {
   const decision = evaluateReaderAccess(input.reader_nid, state, input.request);
-  if (!decision.allowed) throw new Error(decision.reason_code ?? "claim-ledger-reader-unauthorized");
+  if (decision.state !== "active") {
+    throw new Error(decision.reason_code ?? "claim-ledger-reader-unauthorized");
+  }
   if (input.audience_key.length !== 32) throw new Error("ledger audience key must be exactly 32 bytes");
   const claimRecord = state.records.find(({ record_id }) => record_id === input.request.claim_record_id);
   const artifact = claimRecord === undefined ? null : claimArtifactFromRecord(claimRecord);
   if (artifact === null) throw new Error("claim-ledger-reader-unauthorized: onboarding authorization artifact is absent");
+  verifyLedgerClaimArtifact(artifact, input.request.envelope_context);
+  const verifiedEventId = artifact.event.id;
   const epochRecord = currentAudienceEpochRecord(state);
   if (epochRecord === null) throw new Error("claim-ledger-reader-unauthorized: current audience-key epoch is absent");
   const epoch = payloadObject(epochRecord.payload) as unknown as AudienceKeyEpochPayload;
@@ -2245,7 +2343,7 @@ export function buildReaderOnboardingBundle(
     transport: "dr-self-dm",
     authorization: {
       claim_record_id: claimRecord!.record_id,
-      event_id: artifact.event.id,
+      event_id: verifiedEventId,
       claim_id: artifact.semantic.claim_id,
     },
     repository: { rid: state.checkpoint.repository_rid, branch: "main" },
@@ -2264,7 +2362,8 @@ export function validateReaderOnboardingBundle(
   state: LedgerMergeResult,
   request?: ReaderAccessRequest,
 ): void {
-  if (request === undefined || !evaluateReaderAccess(bundle.radicle_access.nid, state, request).allowed) {
+  if (request === undefined ||
+      evaluateReaderAccess(bundle.radicle_access.nid, state, request).state !== "active") {
     throw new Error("claim-ledger-reader-unauthorized: onboarding authorization failed replay");
   }
   const { bundle_digest, ...withoutDigest } = bundle;
@@ -2992,7 +3091,7 @@ function validateLedgerStateInvariants(
     if (request === undefined || request.claim_record_id !== candidate.record_id) {
       throw new Error("claim-ledger-reader-unauthorized: validation context is required for every canonical reader candidate");
     }
-    if (evaluateReaderAccess(claim.subject.value, stateForReaders, request).allowed) {
+    if (evaluateReaderAccess(claim.subject.value, stateForReaders, request).state === "active") {
       activeReaders.add(claim.subject.value);
     }
   }

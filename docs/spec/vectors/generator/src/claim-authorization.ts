@@ -18,8 +18,10 @@ import type { CredentialLedgerBinding } from "./credential-generation.js";
 import { bytesToHex, utf8Bytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
 import {
+  prepareReaderClaimAuthorization,
   revalidateLedgerWriterAuthorities,
   type LedgerMergeResult,
+  type ReaderAccessRequest,
 } from "./claim-ledger.js";
 
 declare const claimAuthorizationAuthorityBrand: unique symbol;
@@ -403,6 +405,51 @@ export async function authorizeClaimEffect<T>(
   }
 }
 
+export async function authorizeReaderAccessEffect<T>(
+  authority: ClaimAuthorizationAuthority,
+  input: Readonly<{
+    reader_nid: string | null;
+    state: LedgerMergeResult;
+    request: ReaderAccessRequest;
+    idempotency_key: string;
+    effect_digest: string;
+    effect(executionToken: string): ClaimEffectOutcome<T> | Promise<ClaimEffectOutcome<T>>;
+  }>,
+): Promise<ClaimEffectAuthorizationResult<T>> {
+  const members = captureClosedObject(input, [
+    "reader_nid",
+    "state",
+    "request",
+    "idempotency_key",
+    "effect_digest",
+    "effect",
+  ], "reader claim effect request");
+  const request = members.request as ReaderAccessRequest | undefined;
+  const prepared = prepareReaderClaimAuthorization(
+    members.reader_nid as string | null,
+    members.state as LedgerMergeResult,
+    request,
+  );
+  if (prepared.decision.state !== "active" ||
+      prepared.verified_claim === undefined || prepared.chain === undefined ||
+      request === undefined) {
+    return rejectedDecision(prepared.decision);
+  }
+  return authorizeClaimEffect(authority, {
+    leaf: prepared.verified_claim,
+    chain: prepared.chain,
+    audience: request.verification_context.audience,
+    resource: request.verification_context.resource,
+    requested_namespace: request.verification_context.requested_namespace,
+    operation: request.verification_context.requested_operation,
+    nonce: request.verification_context.expected_nonce,
+    subject_proof: request.verification_context.subject_proof,
+    idempotency_key: members.idempotency_key as string,
+    effect_digest: members.effect_digest as string,
+    effect: members.effect as ClaimAuthorizationEffectInput<T>["effect"],
+  });
+}
+
 function captureConfig(value: unknown): AuthorityRecord {
   const members = captureClosedObject(value, [
     "authority_id",
@@ -482,7 +529,14 @@ function captureInspection(value: unknown, allowEffectMembers: boolean): Capture
   );
   const leaf = descriptors.leaf.value as VerifiedClaimArtifact;
   claimArtifactBindingDigest(leaf);
-  const chain = captureArray(descriptors.chain.value, MAX_CHAIN, "claim chain")
+  const chainValue = descriptors.chain.value;
+  if (Array.isArray(chainValue) && !utilTypes.isProxy(chainValue)) {
+    const length = Object.getOwnPropertyDescriptor(chainValue, "length")?.value;
+    if (typeof length === "number" && length > MAX_CHAIN) {
+      throw new Error("claim-chain-depth-exceeded: claim chain exceeds the current depth bound");
+    }
+  }
+  const chain = captureArray(chainValue, MAX_CHAIN, "claim chain")
     .map((artifact) => {
       claimArtifactBindingDigest(artifact as VerifiedClaimArtifact);
       return artifact as VerifiedClaimArtifact;

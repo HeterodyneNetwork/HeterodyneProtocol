@@ -5,9 +5,10 @@ import { snapshotClosedDataTree } from "../closed-data.js";
 import { bytesToHex, utf8Bytes } from "../hex.js";
 import { jcsCanonicalize } from "../jcs.js";
 import { currentProfileOracleForVector } from "./profile-oracles.js";
-import type {
-  CurrentRevocationExecutionFixture,
-  CurrentRevocationProofSuite,
+import {
+  resolvePrivateRevocationExecution,
+  type CurrentRevocationExecutionFixture,
+  type CurrentRevocationProofSuite,
 } from "./revocation-profile-fixtures.js";
 
 type RevocationArtifact = Readonly<{
@@ -107,6 +108,8 @@ export function evaluateCurrentRevocationProfile(
   }
 
   try {
+    const privateExecution = resolvePrivateRevocationExecution(execution);
+    if (privateExecution === undefined) return reject("claim-repository-unconfirmed");
     const frozen = freezeExactArtifact(recordArtifact);
     const artifact = frozen.artifact;
     if (proofSuite(artifact.semantic) !== expectation.suite) {
@@ -121,7 +124,7 @@ export function evaluateCurrentRevocationProfile(
       [...execution.left],
       [...execution.right],
       execution.checkpoint,
-      execution.context,
+      privateExecution.context,
     );
     const mergedRecord = state.records.find(({ record_id }) =>
       record_id === record.record_id
@@ -138,14 +141,14 @@ export function evaluateCurrentRevocationProfile(
       | Readonly<{ kind: "descriptive-claim-revoked"; result: ReturnType<typeof claims.authorizeWithClaim> }>;
     if (expectation.suite === "jwk-jws") {
       if (
-        execution.target_verified_claim === undefined
-        || execution.target_verification_context === undefined
+        privateExecution.target_verified_claim === undefined
+        || privateExecution.target_verification_context === undefined
       ) return reject("claim-revoker-unauthorized");
       const decision = claims.authorizeWithClaim(
-        execution.target_verified_claim,
-        [execution.target_verified_claim],
+        privateExecution.target_verified_claim,
+        [privateExecution.target_verified_claim],
         {
-          ...execution.target_verification_context,
+          ...privateExecution.target_verification_context,
           now: state.checkpoint.observed_at,
           revocations: [verifiedArtifact],
         },
@@ -155,13 +158,13 @@ export function evaluateCurrentRevocationProfile(
       }
       effect = { kind: "descriptive-claim-revoked", result: decision };
     } else {
-      if (execution.reader_nid === undefined || execution.reader_request === undefined) {
+      if (privateExecution.reader_nid === undefined || privateExecution.reader_request === undefined) {
         return reject("claim-revoker-unauthorized");
       }
       const decision = claimLedger.evaluateReaderAccess(
-        execution.reader_nid,
+        privateExecution.reader_nid,
         state,
-        execution.reader_request,
+        privateExecution.reader_request,
       );
       if (
         decision.allowed

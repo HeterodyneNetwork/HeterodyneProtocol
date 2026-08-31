@@ -410,8 +410,10 @@ describe("authenticated onboarding and snapshot-wide layout", () => {
     const requestTwo = refreshedRequest(s.claimRecordTwo, s.claimTwo, s.writerTwo);
     context.reader_requests.set(s.claimRecordOne.record_id, request);
     context.reader_requests.set(s.claimRecordTwo.record_id, requestTwo);
-    expect(evaluateReaderAccess(s.writerOne.did_key, s.issuerKeyEpochTwoState, request)).toMatchObject({ allowed: true });
-    expect(evaluateReaderAccess(s.writerTwo.did_key, s.issuerKeyEpochTwoState, requestTwo)).toMatchObject({ allowed: true });
+    expect(evaluateReaderAccess(s.writerOne.did_key, s.issuerKeyEpochTwoState, request))
+      .toMatchObject({ allowed: false, state: "active" });
+    expect(evaluateReaderAccess(s.writerTwo.did_key, s.issuerKeyEpochTwoState, requestTwo))
+      .toMatchObject({ allowed: false, state: "active" });
     const state = mergeClaimLedger(records, [], repository.checkpoint, context);
     const bundle = buildReaderOnboardingBundle({
       reader_nid: s.writerOne.did_key,

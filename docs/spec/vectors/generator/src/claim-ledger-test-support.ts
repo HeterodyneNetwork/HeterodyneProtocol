@@ -7,6 +7,7 @@ import {
   createIssuerKeyEnvelope,
   createIssuerKeyEpochPayload,
   createSignedLedgerRecord,
+  currentClaimAuthorizationView,
   mergeClaimLedger,
   reserveStatusIndex,
   type ClaimArtifact,
@@ -18,6 +19,11 @@ import {
   type ReaderAccessRequest,
   type RevocationArtifact,
 } from "./claim-ledger.js";
+import {
+  createClaimAuthorizationAuthority,
+  type ClaimEffectRecord,
+  type ClaimEffectStore,
+} from "./claim-authorization.js";
 import {
   createCoreRepositoryWriterAuthority,
   type RepositoryWriterBindingV1,
@@ -118,6 +124,66 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
   };
   const resetCurrentWriterPolicy = (): void => {
     currentWriterPolicy = activeWriterPolicy();
+  };
+  const makeClaimAuthorizationHarness = (options: Readonly<{
+    load_state: () => ReturnType<typeof mergeClaimLedger>;
+    trusted_now?: () => number;
+  }>) => {
+    const records = new Map<string, ClaimEffectRecord>();
+    const calls = { load: 0, acquire: 0, commit: 0, mark: 0 };
+    const store: ClaimEffectStore = {
+      load(singleUseKey) {
+        calls.load += 1;
+        return records.get(singleUseKey) ?? null;
+      },
+      acquire(singleUseKey, bindingDigest, executionToken) {
+        calls.acquire += 1;
+        if (records.has(singleUseKey)) return "replay";
+        records.set(singleUseKey, {
+          state: "executing",
+          binding_digest: bindingDigest,
+          execution_token: executionToken,
+        });
+        return "acquired";
+      },
+      commit(executionToken, resultDigest, cachedResult) {
+        calls.commit += 1;
+        const entry = [...records.entries()].find(([, value]) =>
+          value.execution_token === executionToken);
+        if (entry === undefined || entry[1].state !== "executing") return "conflict";
+        records.set(entry[0], {
+          state: "committed",
+          binding_digest: entry[1].binding_digest,
+          execution_token: executionToken,
+          result_digest: resultDigest,
+          cached_result: structuredClone(cachedResult),
+        });
+        return "committed";
+      },
+      markIndeterminate(executionToken, reconciliationDigest) {
+        calls.mark += 1;
+        const entry = [...records.entries()].find(([, value]) =>
+          value.execution_token === executionToken);
+        if (entry === undefined || entry[1].state !== "executing") return "conflict";
+        records.set(entry[0], {
+          state: "indeterminate",
+          binding_digest: entry[1].binding_digest,
+          execution_token: executionToken,
+          reconciliation_digest: reconciliationDigest,
+        });
+        return "indeterminate";
+      },
+    };
+    const authority = createClaimAuthorizationAuthority({
+      authority_id: "synthetic-local-claim-ledger-effect-authority",
+      trusted_now: options.trusted_now ?? (() => options.load_state().checkpoint.observed_at),
+      trusted_issuers: [{ type: "nostr-secp256k1", value: persona }],
+      load_current_view: () => currentClaimAuthorizationView(options.load_state()),
+      store,
+      effect_timeout_ms: 60_000,
+      schedule_effect_deadline: { schedule: () => () => {} },
+    });
+    return { authority, records, calls };
   };
   const audienceKeyOne = Uint8Array.from({ length: 32 }, () => 0x51);
   const audienceKeyTwo = Uint8Array.from({ length: 32 }, () => 0x52);
@@ -670,7 +736,7 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
 
   return {
     now, persona, issuer, writerOne, writerTwo, rid, resource, audienceKeyOne, audienceKeyTwo, issuerAudienceKeyOne, issuerAudienceKeyTwo,
-    writerRefNamespace, writerRefs, writerBindings, writerAuthority, activeWriterPolicy, setCurrentWriterPolicy, resetCurrentWriterPolicy,
+    writerRefNamespace, writerRefs, writerBindings, writerAuthority, activeWriterPolicy, setCurrentWriterPolicy, resetCurrentWriterPolicy, makeClaimAuthorizationHarness,
     claimOne, claimTwo, issuerClaimOne, issuerClaimTwo, alternateClaimOne, temporalClaim, allClaims, makeClaim, makeVerification, requestFor, signRecord, evidence, temporalRecordEvidence, grantOnlyEvidence, makeContext, makeTask5Context,
     claimRecordOne, claimRecordTwo, temporalClaimRecord, grantOne, grantDivergent, grantOnly, revocationRecord, verifiedRevocationArtifact, reductionRecord, removalRecord,
     issuerClaimRecordOne, issuerClaimRecordTwo, issuerAuthorityRecordOne, issuerAuthorityRecordTwo, issuerRemovalRecord,

@@ -1,6 +1,12 @@
 import { createHash, createHmac, createPrivateKey, createPublicKey, sign, verify, type JsonWebKey } from "node:crypto";
 import { nip19 } from "nostr-tools";
 import type { AuthorizationDecision, ClaimVerificationContext, JsonValue } from "./claims.js";
+import {
+  authorizeClaimEffect,
+  type ClaimAuthorizationAuthority,
+  type ClaimEffectAuthorizationResult,
+  type ClaimEffectOutcome,
+} from "./claim-authorization.js";
 import { jcsCanonicalize } from "./jcs.js";
 import {
   activeCanonicalClaimSemanticsAt,
@@ -480,7 +486,8 @@ export function validateAuthorizationRequest(input: OidcAuthorizationRequest): O
       state: input.state, claim_record_id: input.consent.claim_record_id,
       verification_context: input.consent.verification_context,
     });
-    if (!registrationReplay.decision.allowed || !consentReplay.decision.allowed ||
+    if (registrationReplay.decision.state !== "active" ||
+        consentReplay.decision.state !== "active" ||
         registrationReplay.semantic.namespace !== "heterodyne.oidc" ||
         registrationReplay.semantic.name !== "client-registration" ||
         consentReplay.semantic.namespace !== "heterodyne.oidc" || consentReplay.semantic.name !== "consent" ||
@@ -549,7 +556,7 @@ export function validateAuthorizationRequest(input: OidcAuthorizationRequest): O
         verification_context: evidence.verification_context,
       });
       const semantic = replay.semantic;
-      if (!replay.decision.allowed || semantic.visibility !== "repository-private" ||
+      if (replay.decision.state !== "active" || semantic.visibility !== "repository-private" ||
           jcsCanonicalize(semantic.subject) !== jcsCanonicalize(registrationReplay.semantic.subject) ||
           evidence.verification_context.audience !== registrationReplay.record.persona ||
           evidence.verification_context.requested_namespace !== semantic.namespace ||
@@ -584,6 +591,66 @@ export function validateAuthorizationRequest(input: OidcAuthorizationRequest): O
   } catch {
     return denied("oidc-claim-release-denied");
   }
+}
+
+export async function authorizeAuthorizationRequestEffect<T>(
+  authority: ClaimAuthorizationAuthority,
+  input: Readonly<{
+    request: OidcAuthorizationRequest;
+    idempotency_key: string;
+    effect_digest: string;
+    effect(
+      release: OidcAuthorizationDecision,
+      executionToken: string,
+    ): ClaimEffectOutcome<T> | Promise<ClaimEffectOutcome<T>>;
+  }>,
+): Promise<ClaimEffectAuthorizationResult<T>> {
+  const release = validateAuthorizationRequest(input.request);
+  if (!release.allowed) {
+    return Object.freeze({
+      verdict: "reject" as const,
+      allowed: false as const,
+      state: "invalid" as const,
+      reason_code: release.reason_code ?? "oidc-claim-release-denied",
+    });
+  }
+  let consent: ReturnType<typeof replayConfirmedClaimForAuthorization>;
+  try {
+    consent = replayConfirmedClaimForAuthorization({
+      state: input.request.state,
+      claim_record_id: input.request.consent.claim_record_id,
+      verification_context: input.request.consent.verification_context,
+    });
+  } catch {
+    return Object.freeze({
+      verdict: "reject" as const,
+      allowed: false as const,
+      state: "invalid" as const,
+      reason_code: "oidc-claim-release-denied",
+    });
+  }
+  if (consent.decision.state !== "active") {
+    return Object.freeze({
+      verdict: "reject" as const,
+      allowed: false as const,
+      state: consent.decision.state,
+      reason_code: consent.decision.reason_code ?? "oidc-claim-release-denied",
+    });
+  }
+  const verification = input.request.consent.verification_context;
+  return authorizeClaimEffect(authority, {
+    leaf: consent.verified_claim,
+    chain: consent.chain,
+    audience: verification.audience,
+    resource: verification.resource,
+    requested_namespace: verification.requested_namespace,
+    operation: verification.requested_operation,
+    nonce: verification.expected_nonce,
+    subject_proof: verification.subject_proof,
+    idempotency_key: input.idempotency_key,
+    effect_digest: input.effect_digest,
+    effect: (executionToken) => input.effect(release, executionToken),
+  });
 }
 
 export function projectIdToken(input: JwtProjectionInput): ProjectedJwt {

@@ -1682,6 +1682,13 @@ audience-key epoch and wrap, compact-state digest, and Radicle fetch-and-seed
 access. The recipient verifies all bindings before use. A delivered claim not
 reachable from canonical state remains provisional.
 
+Reader claim evaluation is inspection-only and MUST return no positive effect
+authority. A fetch, replication, decryption, or onboarding effect MUST compose
+the opaque verified reader claim through the durable claim-effect authority in
+§9.1. That authority acquires and confirms the exact single-use binding before
+the effect; stale or revoked claims and changed current repository-writer
+authority reject without acquisition or access.
+
 The dedicated ledger audience key is a second
 [`heterodyne:0.6.0#core-key-envelope`](heterodyne-core.md#core-key-envelope)
 instantiation. Its five choices are: the recipient set is the `active`
@@ -1827,6 +1834,13 @@ is pairwise by default. Stable key release additionally requires scope
 `https://heterodyne.network/jwt/key-ref`. A client MUST NOT infer unreleased
 claims, correlate pairwise subjects across sectors, or treat a descriptive
 claim as authority.
+
+OIDC request validation and claim replay are likewise inspection-only. The
+actual consent-bound release MUST execute through the same durable claim-effect
+authority using the opaque verified consent artifact, exact proof challenge,
+current ledger/revocation view, and current writer revalidation. A validated
+request object, public semantic body, or prior inspection decision alone MUST
+NOT authorize a release or token-producing effect.
 
 `local-subject` is exactly 64 lowercase hexadecimal characters encoding
 SHA-256 over the RFC 8785 JCS bytes of the exact typed-key subject. The

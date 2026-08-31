@@ -30,6 +30,7 @@ import {
   type LedgerValidationContext,
   type ReaderAccessRequest,
 } from "./claim-ledger.js";
+import { authorizeReaderAccessEffect } from "./claim-authorization.js";
 import { buildFixtures } from "./fixtures.js";
 import {
   buildClaimLedgerScenario,
@@ -272,12 +273,36 @@ describe("canonical repository evidence and convergence", () => {
 });
 
 describe("reader authorization and effect precedence", () => {
-  it("requires the exact signed reader claim, trust, current state, and fresh subject PoP", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local authorizes one active reader effect through the durable Task 6 boundary", async () => {
+    // BLUE TEAM VALIDATION: synthetic/local uses deterministic fixture claims, an in-memory CAS store, and one inert effect counter only.
     const records = [s.claimRecordOne, s.claimRecordTwo];
     const state = mergeClaimLedger(records, [], s.baseRepository.checkpoint, contextFor(s.baseRepository.repository));
     const request = s.requestFor(s.claimRecordOne, s.claimOne);
     request.verification_context.now = s.baseRepository.checkpoint.observed_at;
-    expect(evaluateReaderAccess(s.writerOne.did_key, state, request).allowed).toBe(true);
+    expect(evaluateReaderAccess(s.writerOne.did_key, state, request)).toMatchObject({
+      allowed: false,
+      state: "active",
+    });
+    const harness = s.makeClaimAuthorizationHarness({ load_state: () => state });
+    let effects = 0;
+    await expect(authorizeReaderAccessEffect(harness.authority, {
+      reader_nid: s.writerOne.did_key,
+      state,
+      request,
+      idempotency_key: "synthetic-local-reader-effect-0001",
+      effect_digest: "71".repeat(32),
+      effect: () => {
+        effects += 1;
+        return { status: "completed", result: { access: "granted" } };
+      },
+    })).resolves.toMatchObject({
+      verdict: "accept",
+      allowed: true,
+      disposition: "executed",
+      result: { access: "granted" },
+    });
+    expect(harness.calls.acquire).toBe(1);
+    expect(effects).toBe(1);
     expect(evaluateReaderAccess(null, state, request).reason_code).toBe("claim-ledger-reader-unauthorized");
     expect(evaluateReaderAccess(s.writerTwo.did_key, state, request).allowed).toBe(false);
     expect(evaluateReaderAccess(s.writerOne.did_key, state).allowed).toBe(false);
@@ -314,12 +339,81 @@ describe("reader authorization and effect precedence", () => {
 
     const expiredRequest = cloneRequest(request);
     expiredRequest.verification_context.now = s.claimOne.artifact.semantic.expires_at!;
-    expiredRequest.verification_context.claim_authority_evidence.get(
-      s.claimOne.artifact.semantic.claim_id,
-    )!.valid_until = expiredRequest.verification_context.now + 1;
     expect(evaluateReaderAccess(s.writerOne.did_key, mergeClaimLedger(
       [s.claimRecordOne, s.claimRecordTwo], [], s.baseRepository.checkpoint, contextFor(s.baseRepository.repository),
     ), expiredRequest).state).toBe("expired");
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local denies stale, revoked, and writer-removed reader effects before acquire", async () => {
+    // BLUE TEAM VALIDATION: synthetic/local mutates only bounded process-local proof time and writer-policy fixtures; no external effect or target exists.
+    const activeState = mergeClaimLedger(
+      [s.claimRecordOne, s.claimRecordTwo], [],
+      s.baseRepository.checkpoint, contextFor(s.baseRepository.repository),
+    );
+    const attempt = async (
+      request: ReaderAccessRequest,
+      state: typeof activeState,
+      suffix: string,
+    ) => {
+      const harness = s.makeClaimAuthorizationHarness({ load_state: () => state });
+      const result = await authorizeReaderAccessEffect(harness.authority, {
+        reader_nid: s.writerOne.did_key,
+        state,
+        request,
+        idempotency_key: `synthetic-local-reader-${suffix}`,
+        effect_digest: "72".repeat(32),
+        effect: () => ({ status: "completed", result: { access: "unexpected" } }),
+      });
+      expect(result).toMatchObject({ verdict: "reject", allowed: false });
+      expect(harness.calls.acquire).toBe(0);
+    };
+    const stale = s.requestFor(s.claimRecordOne, s.claimOne);
+    stale.verification_context.now = stale.verification_context.subject_proof!.challenge.expires_at;
+    await attempt(stale, activeState, "stale-0001");
+
+    const revokedState = mergeClaimLedger(
+      [s.claimRecordOne, s.claimRecordTwo], [s.revocationRecord],
+      s.baseRepository.checkpoint, contextFor(s.baseRepository.repository),
+    );
+    const revoked = s.requestFor(s.claimRecordOne, s.claimOne);
+    revoked.verification_context.now = s.baseRepository.checkpoint.observed_at;
+    await attempt(revoked, revokedState, "revoked-0001");
+
+    const current = s.requestFor(s.claimRecordOne, s.claimOne);
+    current.verification_context.now = s.baseRepository.checkpoint.observed_at;
+    let loads = 0;
+    const writerHarness = s.makeClaimAuthorizationHarness({
+      load_state: () => {
+        loads += 1;
+        if (loads === 2) {
+          s.setCurrentWriterPolicy({
+            ...s.activeWriterPolicy(),
+            writers: s.activeWriterPolicy().writers.map((writer) => ({
+              ...writer,
+              state: "revoked" as const,
+            })),
+          });
+        }
+        return activeState;
+      },
+    });
+    try {
+      await expect(authorizeReaderAccessEffect(writerHarness.authority, {
+        reader_nid: s.writerOne.did_key,
+        state: activeState,
+        request: current,
+        idempotency_key: "synthetic-local-reader-writer-removed-0001",
+        effect_digest: "73".repeat(32),
+        effect: () => ({ status: "completed", result: { access: "unexpected" } }),
+      })).resolves.toMatchObject({
+        verdict: "reject",
+        allowed: false,
+        reason_code: "claim-ledger-writer-unauthorized",
+      });
+      expect(writerHarness.calls.acquire).toBe(0);
+    } finally {
+      s.resetCurrentWriterPolicy();
+    }
   });
 
   it("applies authenticated reduction before widening conflict and isolates status invalidation", () => {
