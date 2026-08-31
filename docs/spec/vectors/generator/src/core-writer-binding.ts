@@ -7,9 +7,12 @@ import {
   captureExactDataObject,
   snapshotClosedDataTree,
 } from "./closed-data.js";
-import type {
-  CurrentRepositoryPolicy,
-  CurrentRepositoryWriterPolicy,
+import {
+  isCanonicalCoreGitRef,
+  isCanonicalCoreGitRefNamespace,
+  isCanonicalCoreRepositoryRid,
+  type CurrentRepositoryPolicy,
+  type CurrentRepositoryWriterPolicy,
 } from "./core-policy.js";
 import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
@@ -19,10 +22,7 @@ import { validateRepositoryWriterBindingSchemaOrThrow } from "./schema.js";
 const PROOF_DOMAIN = "heterodyne-core-repository-writer-binding-v1";
 const ED25519_MULTICODEC = Uint8Array.from([0xed, 0x01]);
 const HEX_KEY = /^[0-9a-f]{64}$/u;
-const RID = /^rad:z[1-9A-HJ-NP-Za-km-z]+$/u;
 const CHECKPOINT = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/u;
-const REF_NAMESPACE = /^refs\/(?!.*(?:\.\.|\/\/|@\{|\\))[A-Za-z0-9._/-]+\/$/u;
-const WRITER_REF = /^refs\/(?!.*(?:\.\.|\/\/|@\{|\\))[A-Za-z0-9._/-]+$/u;
 
 declare const CORE_REPOSITORY_WRITER_AUTHORITY: unique symbol;
 declare const CURRENT_REPOSITORY_WRITER_BINDING: unique symbol;
@@ -276,11 +276,9 @@ function captureRequest(value: unknown): RepositoryWriterRequest {
   if (
     typeof captured.owner_active_key !== "string" ||
     !HEX_KEY.test(captured.owner_active_key) ||
-    typeof captured.repository_rid !== "string" ||
-    !RID.test(captured.repository_rid) ||
+    !isCanonicalCoreRepositoryRid(captured.repository_rid) ||
     typeof captured.writer_nid !== "string" ||
-    typeof captured.writer_ref !== "string" ||
-    !WRITER_REF.test(captured.writer_ref) ||
+    !isCanonicalCoreGitRef(captured.writer_ref) ||
     captured.operation !== "claim-ledger-write"
   ) throw invalid("invalid repository writer request");
   return Object.freeze({
@@ -307,8 +305,7 @@ function captureCurrentPolicy(value: unknown): CapturedPolicy {
     "writers",
   ]], "current Core repository policy");
   if (
-    typeof captured.repository_rid !== "string" ||
-    !RID.test(captured.repository_rid) ||
+    !isCanonicalCoreRepositoryRid(captured.repository_rid) ||
     typeof captured.owner_active_key !== "string" ||
     !HEX_KEY.test(captured.owner_active_key) ||
     !Number.isSafeInteger(captured.revision) ||
@@ -354,8 +351,7 @@ function captureCurrentWriter(value: unknown): CurrentRepositoryWriterPolicy {
   if (
     typeof captured.writer_nid !== "string" ||
     writerEd25519KeyFromNid(captured.writer_nid) === null ||
-    typeof captured.ref_namespace !== "string" ||
-    !REF_NAMESPACE.test(captured.ref_namespace) ||
+    !isCanonicalCoreGitRefNamespace(captured.ref_namespace) ||
     !Array.isArray(captured.operations) ||
     !captured.operations.every((operation) =>
       typeof operation === "string" &&
@@ -469,7 +465,8 @@ function isWriterRefInNamespace(
   writerRef: string,
   namespace: string,
 ): boolean {
-  return REF_NAMESPACE.test(namespace) && WRITER_REF.test(writerRef) &&
+  return isCanonicalCoreGitRefNamespace(namespace) &&
+    isCanonicalCoreGitRef(writerRef) &&
     writerRef.startsWith(namespace) && writerRef.length > namespace.length &&
     !writerRef.endsWith("/");
 }

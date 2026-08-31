@@ -555,7 +555,20 @@ It is the closed object with exactly these members:
 
 `operations` MUST be non-empty, strictly lexicographically sorted, and unique.
 Both times MUST be nonnegative safe integers and `expires_at` MUST be greater
-than `issued_at`. The unsigned body is the exact closed object above with
+than `issued_at`. `repository_rid` MUST use the `rad:z` prefix; its Base58btc
+payload MUST decode to exactly 20 bytes and re-encode byte-for-byte to the
+presented payload. Alphabet membership alone is insufficient.
+
+`ref_namespace` is a canonical vanilla Git ref namespace prefix. It MUST begin
+`refs/`, end in `/`, contain valid UTF-8, and contain at least one complete
+component after `refs`. Every complete component is nonempty, is neither `.`
+nor `..`, does not begin or end with `.`, and does not end with `.lock`.
+The namespace MUST NOT contain `..`, `@{`, duplicate `/`, backslash, a control
+or space character, or any of `~^:?*[`. A requested writer ref MUST satisfy
+the same vanilla Git component rules without a trailing `/` and MUST be a
+strict descendant of the namespace, not the namespace itself.
+
+The unsigned body is the exact closed object above with
 `owner_signature` and `nid_signature` deleted. The registered proof domain
 `heterodyne-core-repository-writer-binding-v1` applies [§3.6](#core-proof-bytes)
 to that body. The active repository owner makes `owner_signature` with

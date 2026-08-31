@@ -1,9 +1,60 @@
+import { base58 } from "@scure/base";
 import { FAMILY_VERSION, QUALIFIED_VERSION, parseFamilyVersion } from "./family.js";
 import {
   canonicalNip01,
   snapshotAndVerifyNostrEvent,
   type NostrSignedEvent,
 } from "./nostr.js";
+
+const GIT_REF_FORBIDDEN = new Set(["~", "^", ":", "?", "*", "[", "\\"]);
+
+export function isCanonicalCoreRepositoryRid(value: unknown): value is string {
+  if (typeof value !== "string" || !value.startsWith("rad:z")) return false;
+  const encoded = value.slice("rad:z".length);
+  if (encoded.length < 20 || encoded.length > 28) return false;
+  try {
+    const decoded = base58.decode(encoded);
+    return decoded.length === 20 && base58.encode(decoded) === encoded;
+  } catch {
+    return false;
+  }
+}
+
+export function isCanonicalCoreGitRefNamespace(
+  value: unknown,
+): value is string {
+  return typeof value === "string" && value.endsWith("/") &&
+    isCanonicalCoreGitRef(value.slice(0, -1));
+}
+
+export function isCanonicalCoreGitRef(value: unknown): value is string {
+  if (
+    typeof value !== "string" || value.length < 6 || value.length > 1024 ||
+    value === "@" || !value.startsWith("refs/") || value.endsWith("/") ||
+    value.includes("//") || value.includes("..") || value.includes("@{") ||
+    [...value].some((character) => {
+      const codePoint = character.codePointAt(0)!;
+      return codePoint <= 0x20 || codePoint === 0x7f ||
+        GIT_REF_FORBIDDEN.has(character);
+    }) ||
+    !isCanonicalUtf8String(value)
+  ) return false;
+  const components = value.split("/");
+  return components.length >= 2 && components.every((component) =>
+    component.length > 0 && component !== "." && component !== ".." &&
+    !component.startsWith(".") && !component.endsWith(".") &&
+    !component.endsWith(".lock")
+  );
+}
+
+function isCanonicalUtf8String(value: string): boolean {
+  try {
+    const encoded = new TextEncoder().encode(value);
+    return new TextDecoder("utf-8", { fatal: true }).decode(encoded) === value;
+  } catch {
+    return false;
+  }
+}
 
 export type CurrentRepositoryWriterPolicy = Readonly<{
   writer_nid: string;

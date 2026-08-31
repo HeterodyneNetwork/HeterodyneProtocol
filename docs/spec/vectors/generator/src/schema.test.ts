@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Ajv, type AnySchema } from "ajv";
 import { Ajv2020 } from "ajv/dist/2020.js";
+import { base58 } from "@scure/base";
 import { describe, expect, it } from "vitest";
 import {
   didKeyFromEd25519,
@@ -1754,6 +1755,10 @@ describe("Core repository-writer binding schema", () => {
     });
     expect(() => validateRepositoryWriterBindingSchemaOrThrow(binding))
       .not.toThrow();
+    expect(() => validateRepositoryWriterBindingSchemaOrThrow({
+      ...binding,
+      ref_namespace: "refs/heads/équipe/",
+    })).not.toThrow();
   });
 
   it.each([
@@ -1776,6 +1781,33 @@ describe("Core repository-writer binding schema", () => {
     ["duplicate operations", {
       ...binding,
       operations: ["claim-ledger-write", "claim-ledger-write"],
+    }],
+    ["19-byte RID", {
+      ...binding,
+      repository_rid: `rad:z${base58.encode(new Uint8Array(19).fill(7))}`,
+    }],
+    ["21-byte RID", {
+      ...binding,
+      repository_rid: `rad:z${base58.encode(new Uint8Array(21).fill(7))}`,
+    }],
+    ["leading-zero 21-byte RID", {
+      ...binding,
+      repository_rid: `rad:z${base58.encode(Uint8Array.from([
+        0,
+        ...new Uint8Array(20).fill(7),
+      ]))}`,
+    }],
+    ["leading-dot ref component", {
+      ...binding,
+      ref_namespace: "refs/.bad/",
+    }],
+    ["lock-suffix ref component", {
+      ...binding,
+      ref_namespace: "refs/good.lock/",
+    }],
+    ["lock-suffix ancestor ref component", {
+      ...binding,
+      ref_namespace: "refs/good.lock/descendants/",
     }],
   ] as const)(
     "BLUE TEAM VALIDATION: synthetic/local rejects %s",

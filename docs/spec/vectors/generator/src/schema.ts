@@ -10,6 +10,10 @@ import {
   QUALIFIED_VERSION,
 } from "./family.js";
 import { jcsCanonicalize } from "./jcs.js";
+import {
+  isCanonicalCoreGitRefNamespace,
+  isCanonicalCoreRepositoryRid,
+} from "./core-policy.js";
 import type { DocumentId, Vector } from "./types.js";
 
 const REGISTRY_REASON_CODES = reasonCodeValues();
@@ -393,10 +397,23 @@ export function validateRepositoryWriterBindingSchemaOrThrow(
     );
   }
   const binding = value as Readonly<{
+    repository_rid: string;
     issued_at: number;
     expires_at: number;
     operations: readonly string[];
   }>;
+  if (!isCanonicalCoreRepositoryRid(binding.repository_rid)) {
+    throw new Error(
+      "repository-writer-binding-invalid: repository_rid must be a canonical 20-byte Radicle RID",
+    );
+  }
+  const refNamespace = (value as Readonly<{ ref_namespace: string }>)
+    .ref_namespace;
+  if (!isCanonicalCoreGitRefNamespace(refNamespace)) {
+    throw new Error(
+      "repository-writer-binding-invalid: ref_namespace must be a canonical Git ref namespace",
+    );
+  }
   if (!Number.isSafeInteger(binding.issued_at) ||
       !Number.isSafeInteger(binding.expires_at) ||
       binding.expires_at <= binding.issued_at) {

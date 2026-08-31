@@ -31,7 +31,7 @@
     },
     "repository_rid": {
       "type": "string",
-      "pattern": "^rad:z[1-9A-HJ-NP-Za-km-z]+$"
+      "pattern": "^rad:z[1-9A-HJ-NP-Za-km-z]{20,28}$"
     },
     "writer_nid": {
       "type": "string",
@@ -41,7 +41,7 @@
       "type": "string",
       "minLength": 7,
       "maxLength": 1024,
-      "pattern": "^refs/(?!.*(?:\\.\\.|//|@\\{|\\\\))[A-Za-z0-9._/-]+/$"
+      "pattern": "^refs/[^\\u0000-\\u0020\\u007f~^:?*\\[\\\\]+/$"
     },
     "operations": {
       "type": "array",
