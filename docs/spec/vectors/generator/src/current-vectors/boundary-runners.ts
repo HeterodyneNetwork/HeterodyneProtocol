@@ -47,6 +47,7 @@ const REPOSITORY_ROOT = resolve(import.meta.dirname, "../../../../../..");
 
 type BoundaryModule = Readonly<Record<string, unknown>>;
 type BoundaryFunction = (...args: readonly unknown[]) => unknown;
+type EvaluatorFunction = (...args: never[]) => unknown;
 const PRIVATE_CURRENT_BOUNDARY_ARGS = new Map<string, readonly unknown[]>();
 
 declare const CURRENT_BOUNDARY_EXECUTION: unique symbol;
@@ -66,11 +67,11 @@ export type CurrentBoundaryExecutionRecord = Readonly<{
 
 type PrivateCurrentBoundaryExecutionRecord = CurrentBoundaryExecutionRecord & Readonly<{
   fixture: CurrentCaseFixture;
-  evaluator_identity: object;
+  evaluator_runner: EvaluatorFunction;
+  evaluator_steps: readonly EvaluatorFunction[];
 }>;
 
 const EXECUTION_RECORDS = new WeakMap<object, PrivateCurrentBoundaryExecutionRecord>();
-const EVALUATOR_IDENTITIES = new Map<string, object>();
 
 type DescriptorState = { seen: WeakSet<object>; nodes: number };
 
@@ -148,19 +149,12 @@ function executionDigest(value: unknown): string {
   return bytesToHex(sha256(utf8Bytes(JSON.stringify(boundedDescriptor(value)))));
 }
 
-function evaluatorIdentity(boundaryId: string): object {
-  let identity = EVALUATOR_IDENTITIES.get(boundaryId);
-  if (identity === undefined) {
-    identity = Object.freeze({});
-    EVALUATOR_IDENTITIES.set(boundaryId, identity);
-  }
-  return identity;
-}
-
 function mintBoundaryExecution(
   boundaryId: string,
   fixture: CurrentCaseFixture,
   result: Readonly<{ raw_result: unknown; projected_output: unknown }>,
+  evaluatorSteps: readonly EvaluatorFunction[],
+  evaluatorRunner: EvaluatorFunction,
 ): CurrentBoundaryExecution {
   const execution = Object.freeze({
     raw_result: result.raw_result,
@@ -173,7 +167,10 @@ function mintBoundaryExecution(
     projected_output: result.projected_output,
     fixture_digest: executionDigest(fixture),
     result_digest: executionDigest(result),
-    evaluator_identity: evaluatorIdentity(boundaryId),
+    evaluator_runner: evaluatorRunner,
+    evaluator_steps: Object.freeze([
+      ...actualReceiptFunctions(boundaryId, fixture, evaluatorSteps),
+    ]),
   }));
   return execution;
 }
@@ -186,14 +183,19 @@ export function inspectCurrentBoundaryExecution(
   const record = execution !== null && typeof execution === "object"
     ? EXECUTION_RECORDS.get(execution)
     : undefined;
+  const actualSteps = actualReceiptFunctions(boundaryId, fixture);
   if (
     record === undefined
     || record.boundary_id !== boundaryId
     || record.fixture !== fixture
-    || record.evaluator_identity !== evaluatorIdentity(boundaryId)
     || execution.raw_result !== record.raw_result
     || execution.projected_output !== record.projected_output
   ) throw new Error("semantic certificate requires the exact boundary execution");
+  if (
+    record.evaluator_runner !== invokeCurrentBoundary
+    || record.evaluator_steps.length !== actualSteps.length
+    || record.evaluator_steps.some((step, index) => step !== actualSteps[index])
+  ) throw new Error("semantic certificate requires the exact evaluator implementation");
   if (executionDigest(fixture) !== record.fixture_digest) {
     throw new Error("semantic certificate fixture changed after execution");
   }
@@ -282,6 +284,113 @@ function directBoundary(boundaryId: string): BoundaryFunction {
   return candidate as BoundaryFunction;
 }
 
+function repeatedStep(step: EvaluatorFunction, count: number): readonly EvaluatorFunction[] {
+  return Array.from({ length: count }, () => step);
+}
+
+function actualEvaluatorFunctions(
+  boundaryId: string,
+  fixture: CurrentCaseFixture,
+): readonly EvaluatorFunction[] {
+  switch (boundaryId) {
+    case "profile-negotiation.validateCurrentKindProfileNegotiation":
+      return [profileNegotiation.validateCurrentKindProfileNegotiation];
+    case "current-private-route.evaluateCurrentTier3PrivateRoute":
+      return [evaluateCurrentTier3PrivateRoute];
+    case "current-revocation.evaluateCurrentRevocationProfile":
+      return [evaluateCurrentRevocationProfile];
+    case "agent-authorship.injectAgentAttribution+matchesAgentAttributionProfile":
+      return [
+        agentAuthorship.injectAgentAttribution,
+        agentAuthorship.matchesAgentAttributionProfile,
+      ];
+    case "agent-authorship.injectAgentAttribution+agent-moderation.applySubscribedAgentPolicy":
+      return [
+        agentAuthorship.injectAgentAttribution,
+        agentAuthorship.matchesAgentAttributionProfile,
+        agentModeration.applySubscribedAgentPolicy,
+      ];
+    case "replaceable-selection.selectCurrentReplaceableEvent":
+      return [
+        replaceableSelection.createReplaceableSelectionAuthority,
+        replaceableSelection.selectCurrentReplaceableEvent,
+      ];
+    case "radicle.validateNodeAdvertisement":
+      return [radicle.validateNodeAdvertisement];
+    case "assurance-observation.evaluateEnrollmentEligibility":
+      return [
+        assuranceObservation.createAssuranceEnrollmentObservationAuthority,
+        ...repeatedStep(
+          assuranceObservation.evaluateEnrollmentEligibility,
+          Array.isArray(fixture.input.steps) ? fixture.input.steps.length : 0,
+        ),
+      ];
+    case "assurance-downgrade.evaluateAssuranceDowngrade+commitAssuranceDowngrade":
+      return [
+        assuranceObservation.createAssuranceEnrollmentObservationAuthority,
+        ...repeatedStep(
+          assuranceObservation.evaluateEnrollmentEligibility,
+          Array.isArray(fixture.input.steps) ? fixture.input.steps.length : 0,
+        ),
+        assuranceDowngrade.evaluateAssuranceDowngrade,
+        assuranceDowngrade.commitAssuranceDowngrade,
+      ];
+    case "assurance.evaluateAssuranceAuthorityAt":
+      return [assurance.evaluateAssuranceAuthorityAt];
+    case "backup-crypto.nip49EncryptDeterministic+nostr-tools.nip49.decrypt":
+      return [backupCrypto.nip49EncryptDeterministic, nip49.decrypt];
+    case "privacy-crypto.deriveConfigPostKey+nostr-tools.nip44":
+      return [privacyCrypto.deriveConfigPostKey, nip44.v2.encrypt, nip44.v2.decrypt];
+    case "privacy-crypto.deriveTier3IndexKey+nostr-tools.nip44":
+      return [privacyCrypto.deriveTier3IndexKey, nip44.v2.encrypt, nip44.v2.decrypt];
+    case "privacy-crypto.deriveTier3IndexKey+nostr-tools.nip44+follow-up-hardening.resolveTier3Recipients+current-private-route.evaluateCurrentTier3PrivateRoute":
+      return [
+        privacyCrypto.deriveTier3IndexKey,
+        nip44.v2.encrypt,
+        nip44.v2.decrypt,
+        followUpHardening.resolveTier3Recipients,
+        evaluateCurrentTier3PrivateRoute,
+      ];
+    case "claim-authorization.authorizeClaimEffect+authorizeClaimEffect":
+      return [
+        claimAuthorization.authorizeClaimEffect,
+        claimAuthorization.authorizeClaimEffect,
+      ];
+    case "core-writer-binding.resolveCurrentRepositoryWriterBinding+revalidateCurrentRepositoryWriterBinding":
+      return [
+        coreWriterBinding.resolveCurrentRepositoryWriterBinding,
+        coreWriterBinding.revalidateCurrentRepositoryWriterBinding,
+      ];
+    case "claims.verifyClaimRevocationEnvelope+claim-authorization.inspectClaimState":
+      return [claims.verifyClaimRevocationEnvelope, claimAuthorization.inspectClaimState];
+    case "claim-ledger.mergeClaimLedger+evaluateReaderAccess":
+      return [claimLedger.mergeClaimLedger, claimAuthorization.authorizeReaderAccessEffect];
+    case "oidc.projectAccessToken+validateProjectedJwt":
+      return [oidc.projectAccessToken, oidc.validateProjectedJwt];
+    case "trusted-seed.createTrustedSeedAdmissionAuthority+evaluateTrustedSeedAdmission":
+      return fixture.boundary_args?.[2] === "replay"
+        ? [trustedSeed.evaluateTrustedSeedAdmission, trustedSeed.evaluateTrustedSeedAdmission]
+        : [trustedSeed.evaluateTrustedSeedAdmission];
+    case "agent-authorship.validateWorkloadRegistration+validateAgentAccessToken":
+      return [
+        agentAuthorship.validateWorkloadRegistration,
+        agentAuthorship.validateAgentAccessToken,
+      ];
+    default:
+      return [directBoundary(boundaryId)];
+  }
+}
+
+function actualReceiptFunctions(
+  boundaryId: string,
+  fixture: CurrentCaseFixture,
+  semanticSteps: readonly EvaluatorFunction[] = actualEvaluatorFunctions(boundaryId, fixture),
+): readonly EvaluatorFunction[] {
+  return currentProfileOracleForVector(fixture.vector_id) === undefined
+    ? semanticSteps
+    : [registry.loadRegistry, profileNegotiation.validateCurrentKindProfileNegotiation, ...semanticSteps];
+}
+
 function thrownProjection(error: unknown): Readonly<Record<string, unknown>> {
   const message = error instanceof Error ? error.message : String(error);
   const reason = message.match(/^([a-z][a-z0-9_-]*)(?::|$)/u)?.[1];
@@ -293,6 +402,7 @@ function thrownProjection(error: unknown): Readonly<Record<string, unknown>> {
 async function executeCurrentBoundary(
   boundaryId: string,
   fixture: CurrentCaseFixture,
+  evaluatorSteps: readonly EvaluatorFunction[] = actualEvaluatorFunctions(boundaryId, fixture),
 ): Promise<Readonly<{ raw_result: unknown; projected_output: unknown }>> {
   const privateArgs = resolvePrivateCurrentBoundaryArgs(fixture.boundary_args);
   if (privateArgs !== fixture.boundary_args) {
@@ -710,13 +820,15 @@ async function executeCurrentBoundary(
     === "core-writer-binding.resolveCurrentRepositoryWriterBinding+revalidateCurrentRepositoryWriterBinding"
   ) {
     const [authority, source, request] = fixture.boundary_args ?? [];
+    const resolveWriter = evaluatorSteps[0] as typeof coreWriterBinding.resolveCurrentRepositoryWriterBinding;
+    const revalidateWriter = evaluatorSteps[1] as typeof coreWriterBinding.revalidateCurrentRepositoryWriterBinding;
     try {
-      const binding = coreWriterBinding.resolveCurrentRepositoryWriterBinding(
+      const binding = resolveWriter(
         authority as Parameters<typeof coreWriterBinding.resolveCurrentRepositoryWriterBinding>[0],
         source,
         request as Parameters<typeof coreWriterBinding.resolveCurrentRepositoryWriterBinding>[2],
       );
-      const revalidated = coreWriterBinding.revalidateCurrentRepositoryWriterBinding(
+      const revalidated = revalidateWriter(
         authority as Parameters<typeof coreWriterBinding.revalidateCurrentRepositoryWriterBinding>[0],
         binding,
       );
@@ -858,7 +970,11 @@ async function executeCurrentBoundary(
           : [fixture.input]
   );
   try {
-    const raw = await directBoundary(boundaryId)(...args);
+    const directEvaluator = evaluatorSteps[0];
+    if (directEvaluator === undefined) {
+      throw new Error(`current boundary has no selected evaluator: ${boundaryId}`);
+    }
+    const raw = await (directEvaluator as BoundaryFunction)(...args);
     if (boundaryId === "authorization-freshness.evaluateAuthorizationFreshness") {
       const decision = raw as ReturnType<typeof authorizationFreshness.evaluateAuthorizationFreshness>;
       return {
@@ -1179,6 +1295,7 @@ export async function invokeCurrentBoundary(
   boundaryId: string,
   fixture: CurrentCaseFixture,
 ): Promise<CurrentBoundaryExecution> {
+  const evaluatorSteps = actualEvaluatorFunctions(boundaryId, fixture);
   const profileOracle = currentProfileOracleForVector(fixture.vector_id);
   let registryComparison: ReturnType<
     typeof profileNegotiation.validateCurrentKindProfileNegotiation
@@ -1197,7 +1314,7 @@ export async function invokeCurrentBoundary(
       );
     }
   }
-  const execution = await executeCurrentBoundary(boundaryId, fixture);
+  const execution = await executeCurrentBoundary(boundaryId, fixture, evaluatorSteps);
   const rawVerdict = rawSemanticVerdict(boundaryId, fixture, execution.raw_result);
   assertProjectionPreservesVerdict(
     rawVerdict,
@@ -1216,5 +1333,55 @@ export async function invokeCurrentBoundary(
         }),
         projected_output: execution.projected_output,
       };
-  return mintBoundaryExecution(boundaryId, fixture, boundResult);
+  return mintBoundaryExecution(
+    boundaryId,
+    fixture,
+    boundResult,
+    evaluatorSteps,
+    invokeCurrentBoundary,
+  );
+}
+
+/** BLUE TEAM VALIDATION: synthetic/local test seam; substituted executions cannot certify. */
+export async function invokeCurrentBoundaryWithTestEvaluatorSubstitution(
+  boundaryId: string,
+  fixture: CurrentCaseFixture,
+  substitution: Readonly<{
+    direct?: BoundaryFunction;
+    composite_step?: Readonly<{ index: number; evaluator: BoundaryFunction }>;
+  }>,
+): Promise<CurrentBoundaryExecution> {
+  const evaluatorSteps = [...actualEvaluatorFunctions(boundaryId, fixture)];
+  if (substitution.direct !== undefined) {
+    if (evaluatorSteps.length !== 1 || substitution.composite_step !== undefined) {
+      throw new Error("direct evaluator substitution requires one direct boundary step");
+    }
+    evaluatorSteps[0] = substitution.direct;
+  } else if (substitution.composite_step !== undefined) {
+    const { index, evaluator } = substitution.composite_step;
+    if (!Number.isSafeInteger(index) || index < 0 || index >= evaluatorSteps.length) {
+      throw new Error("composite evaluator substitution index is invalid");
+    }
+    evaluatorSteps[index] = evaluator;
+  } else {
+    throw new Error("test evaluator substitution is required");
+  }
+  const execution = await executeCurrentBoundary(boundaryId, fixture, evaluatorSteps);
+  const rawVerdict = rawSemanticVerdict(boundaryId, fixture, execution.raw_result);
+  assertProjectionPreservesVerdict(
+    rawVerdict,
+    execution.projected_output,
+    rawVerdict === "accept"
+      ? undefined
+      : rawSemanticReason(boundaryId, fixture, execution.raw_result),
+  );
+  return mintBoundaryExecution(
+    boundaryId,
+    fixture,
+    execution,
+    evaluatorSteps,
+    // Deliberately retain the production runner token so hostile tests isolate
+    // the independently captured evaluator-step identity check.
+    invokeCurrentBoundary,
+  );
 }

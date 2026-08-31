@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { buildWorkspaceCases } from "./workspace.js";
 import { buildCommsCases } from "./comms.js";
+import { buildCoreCases } from "./core.js";
+import { resolveCurrentRepositoryWriterBinding } from "../core-writer-binding.js";
 import {
   currentCaseContract,
   currentCaseIds,
 } from "./case-contracts.js";
-import { invokeCurrentBoundary } from "./boundary-runners.js";
+import {
+  invokeCurrentBoundary,
+  invokeCurrentBoundaryWithTestEvaluatorSubstitution,
+} from "./boundary-runners.js";
 import {
   certifyBoundaryExecution,
   inspectSemanticBoundaryCertificate,
@@ -68,6 +73,44 @@ describe("semantic boundary certificates", () => {
       signature.fixture,
       schemaExecution,
     )).toThrow(/exact boundary execution/u);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects a same-ID direct evaluator substitution", async () => {
+    // BLUE TEAM VALIDATION: an in-process wrapper returns the same deterministic result without changing any external system.
+    const { fixture, contract, execution } = await workspaceSignatureExecution();
+    const substituted = await invokeCurrentBoundaryWithTestEvaluatorSubstitution(
+      contract.boundary_id,
+      fixture,
+      { direct: () => execution.raw_result },
+    );
+    expect(substituted.projected_output).toBe(execution.raw_result);
+    expect(() => certifyBoundaryExecution(contract, fixture, substituted))
+      .toThrow(/exact evaluator implementation/u);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects a composite-step substitution", async () => {
+    // BLUE TEAM VALIDATION: the wrapper delegates only to the real local Core verifier over synthetic non-deployable keys.
+    const fixture = (await buildCoreCases()).find(({ vector_id }) =>
+      vector_id === "core/repository-writer-dual-proof-valid"
+    )!;
+    const contract = currentCaseContract(fixture.vector_id);
+    const substituted = await invokeCurrentBoundaryWithTestEvaluatorSubstitution(
+      contract.boundary_id,
+      fixture,
+      {
+        composite_step: {
+          index: 0,
+          evaluator: (...args) => resolveCurrentRepositoryWriterBinding(
+            args[0] as Parameters<typeof resolveCurrentRepositoryWriterBinding>[0],
+            args[1],
+            args[2] as Parameters<typeof resolveCurrentRepositoryWriterBinding>[2],
+          ),
+        },
+      },
+    );
+    expect(substituted.projected_output).toMatchObject({ verdict: "accept" });
+    expect(() => certifyBoundaryExecution(contract, fixture, substituted))
+      .toThrow(/exact evaluator implementation/u);
   });
 
   it("BLUE TEAM VALIDATION: synthetic/local rejects a plain certificate clone", async () => {
@@ -136,7 +179,31 @@ describe("semantic boundary certificates", () => {
         boundary_id: contract.boundary_id,
       });
       expect(byVector.get(vectorId)?.postcondition.length).toBeGreaterThan(0);
+      expect(byVector.get(vectorId)?.postcondition).not.toBe("exact-executed-boundary");
     }
+    const specialized = new Set([
+      "workspace-signed-object-rejected",
+      "assurance-authoritative-observation",
+      "assurance-dual-proof-downgrade",
+      "claim-artifact-durable-effect",
+      "claim-subject-proof-durable-replay",
+      "claim-effect-durable-indeterminate",
+      "ledger-current-writer-rejection",
+      "ledger-current-writer-durable-effect",
+      "oidc-durable-projection-validation",
+      "core-current-writer-dual-proof",
+    ]);
+    const boundaryDefaults = inventory.filter(({ postcondition }) =>
+      postcondition.startsWith("boundary-contract:")
+    );
+    for (const entry of boundaryDefaults) {
+      expect(entry.postcondition).toBe(`boundary-contract:${entry.boundary_id}`);
+    }
+    expect(new Set(boundaryDefaults.map(({ postcondition }) => postcondition)).size)
+      .toBe(new Set(boundaryDefaults.map(({ boundary_id }) => boundary_id)).size);
+    expect(inventory.every(({ postcondition }) =>
+      postcondition.startsWith("boundary-contract:") || specialized.has(postcondition)
+    )).toBe(true);
   });
 
   it("binds dual-proof coverage only to real Core writer executions", () => {
