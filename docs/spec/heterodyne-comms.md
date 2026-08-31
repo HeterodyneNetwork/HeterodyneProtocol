@@ -1504,6 +1504,48 @@ BIP-340, Ed25519 with exact NID binding, or JWS with an RFC 7638-matching JWK.
 An authorization claim without valid fresh subject proof is inactive. An
 event signature or an earlier possession proof MUST NOT substitute for it.
 
+Claim-state inspection is non-authorizing. It MAY report `active` for display
+or policy explanation, but it MUST NOT return an effect capability or a
+positive authorization result. Authorization that can cause an effect MUST be
+performed by one authority boundary that owns its trusted clock, trusted
+issuer policy, current canonical claim-ledger and revocation loader, stable
+authority identity, and proof/effect store. Caller-owned nonce sets, a prior
+inspection result, or a callback return value alone MUST NOT authorize.
+
+For each effect attempt, that authority derives a domain-separated single-use
+key from exactly `(issuer, subject, claim_id, audience, resource, operation,
+nonce)`. Its acquired binding additionally commits the complete verified
+artifact-chain digest, subject proof and challenge, current credential-ledger
+binding, canonical checkpoint digest and repository revision, current
+conflicted claim IDs and authenticated revocations, exact request and effect
+digests, stable authority identity, and idempotency key. After initial
+validation, it MUST reload the complete current view immediately before
+acquisition and MUST re-evaluate the chain, repository confirmation,
+conflicts, revocations, proof freshness, and trust policy against that reload.
+
+Before invoking the effect, one atomic store operation MUST irreversibly
+transition that single-use key from unused to `executing` with the exact
+binding and a fresh opaque unpredictable execution token. The effect MUST be
+idempotent for that token and MUST be invoked at most once by the acquiring
+authority. Production stores MUST preserve acquisition and terminal state
+across process restart and MUST serialize competing workers; a process-local
+store is suitable only for deterministic conformance testing.
+
+The only terminal states are `committed`, containing an immutable defensively
+captured result and its digest, and `indeterminate`, containing a
+reconciliation digest. A positive result MUST be returned only after the
+authority reloads and verifies the exact committed terminal record. If the
+effect throws, times out, reports an unknown outcome, returns a result that
+cannot be safely bounded and captured, or if terminal persistence fails or is
+uncertain, the acquisition remains burned and the result is
+`claim-authorization-effect-indeterminate`; it MUST NOT be reopened or
+reported as allowed. An exact retry returns the cached committed result or the
+same indeterminate reconciliation result without invoking the effect. A
+changed chain, proof, checkpoint, revision, conflict or revocation set,
+request, effect, authority, or idempotency binding is rejected as
+`claim-subject-proof-replayed`. Invalid proof cryptography or challenge
+binding remains `claim-subject-proof-invalid`.
+
 <a id="comms-claim-chain"></a>
 ### 10.2 Issuance chains and attenuation
 

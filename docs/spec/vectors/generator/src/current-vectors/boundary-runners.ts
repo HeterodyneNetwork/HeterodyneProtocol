@@ -6,6 +6,7 @@ import * as assuranceObservation from "../assurance-observation.js";
 import * as assurancePolicy from "../assurance-policy.js";
 import * as authorizationFreshness from "../authorization-freshness.js";
 import * as backupCrypto from "../backup-crypto.js";
+import * as claimAuthorization from "../claim-authorization.js";
 import * as claimLedger from "../claim-ledger.js";
 import * as claims from "../claims.js";
 import * as commsPolicy from "../comms-policy.js";
@@ -54,6 +55,7 @@ const BOUNDARY_MODULES: Readonly<Record<string, BoundaryModule>> = Object.freeze
   "assurance-policy": assurancePolicy,
   "authorization-freshness": authorizationFreshness,
   "backup-crypto": backupCrypto,
+  "claim-authorization": claimAuthorization,
   "claim-ledger": claimLedger,
   claims,
   "comms-policy": commsPolicy,
@@ -497,17 +499,17 @@ async function executeCurrentBoundary(
       projected_output: raw,
     };
   }
-  if (boundaryId === "claims.verifyClaimRevocationEnvelope+authorizeWithClaim") {
-    const [event, leaf, chain, suppliedContext] = fixture.boundary_args ?? [];
+  if (
+    boundaryId
+    === "claims.verifyClaimRevocationEnvelope+claim-authorization.inspectClaimState"
+  ) {
+    const [event, authority, input] = fixture.boundary_args ?? [];
     const revocation = claims.verifyClaimRevocationEnvelope(
       event as Parameters<typeof claims.verifyClaimRevocationEnvelope>[0],
     );
-    const inspected = claims.inspectVerifiedClaimRevocation(revocation);
-    const context = suppliedContext as Parameters<typeof claims.authorizeWithClaim>[2];
-    const authorization = claims.authorizeWithClaim(
-      leaf as Parameters<typeof claims.authorizeWithClaim>[0],
-      chain as Parameters<typeof claims.authorizeWithClaim>[1],
-      { ...context, now: inspected.revoked_at, revocations: [revocation] },
+    const authorization = claimAuthorization.inspectClaimState(
+      authority as Parameters<typeof claimAuthorization.inspectClaimState>[0],
+      input as Parameters<typeof claimAuthorization.inspectClaimState>[1],
     );
     const raw = { revocation, authorization };
     return {
@@ -656,6 +658,26 @@ async function executeCurrentBoundary(
       return {
         raw_result: decision,
         projected_output: { verdict: "accept", authorization: decision },
+      };
+    }
+    if (boundaryId === "claim-authorization.inspectClaimState") {
+      const decision = raw as ReturnType<typeof claimAuthorization.inspectClaimState>;
+      return {
+        raw_result: decision,
+        projected_output: {
+          verdict: decision.allowed ? "accept" : "reject",
+          ...(decision.reason_code === null ? {} : { reason_code: decision.reason_code }),
+          evaluator_output: decision,
+        },
+      };
+    }
+    if (boundaryId === "claim-authorization.authorizeClaimEffect") {
+      const decision = raw as Awaited<ReturnType<typeof claimAuthorization.authorizeClaimEffect>>;
+      return {
+        raw_result: decision,
+        projected_output: decision.verdict === "accept"
+          ? { verdict: "accept", authorization: decision }
+          : decision,
       };
     }
     if (boundaryId === "claim-ledger.evaluateReaderAccess") {

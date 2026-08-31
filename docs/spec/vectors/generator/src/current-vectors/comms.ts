@@ -3,9 +3,10 @@ import { schnorr } from "@noble/curves/secp256k1";
 import { injectAgentAttribution, validateAgentAccessToken, validateWorkloadRegistration, type AgentTokenValidationInput, } from "../agent-authorship.js";
 import { buildAuthorizationFreshnessTestSupport } from "../authorization-freshness-test-support.js";
 import { evaluateAuthorizationFreshness } from "../authorization-freshness.js";
+import { createClaimAuthorizationAuthority, type ClaimAuthorizationEffectInput, type ClaimEffectRecord, type ClaimEffectStore, type CurrentClaimAuthorizationView, } from "../claim-authorization.js";
 import { canMint, evaluateReaderAccess, ledgerErrorReason, mergeClaimLedger, validateLedgerRecordOrThrow, } from "../claim-ledger.js";
 import { buildClaimLedgerScenario } from "../claim-ledger-test-support.js";
-import { authorizeWithClaim, inspectVerifiedClaim, inspectVerifiedClaimRevocation, validateClaimId, validateKeyRef, verifyClaimEnvelope, verifyClaimRevocationEnvelope, type VerifiedClaimArtifact, } from "../claims.js";
+import { inspectVerifiedClaim, inspectVerifiedClaimRevocation, validateClaimId, validateKeyRef, verifyClaimEnvelope, verifyClaimRevocationEnvelope, type ClaimVerificationContext, type VerifiedClaimArtifact, } from "../claims.js";
 import { classifyRelayWriteFailure, evaluateMarmotInboxBootstrap, evaluateOneTimeInvite, validateDmInviteDevice, validatePrivateBroadcast, validatePublicReaderRendering, } from "../comms-policy.js";
 import { QUALIFIED_VERSION } from "../family.js";
 import { buildFixtures } from "../fixtures.js";
@@ -38,6 +39,84 @@ const thrownDecision = (evaluate: () => unknown): Record<string, unknown> => {
             throw error;
         return { verdict: "reject", reason_code: reason };
     }
+};
+const currentClaimStore = (): ClaimEffectStore => {
+    const records = new Map<string, ClaimEffectRecord>();
+    return {
+        load(singleUseKey) {
+            const record = records.get(singleUseKey);
+            return record === undefined ? null : structuredClone(record);
+        },
+        acquire(singleUseKey, bindingDigest, executionToken) {
+            const existing = records.get(singleUseKey);
+            if (existing !== undefined)
+                return existing.binding_digest === bindingDigest ? "replay" : "conflict";
+            records.set(singleUseKey, {
+                state: "executing",
+                binding_digest: bindingDigest,
+                execution_token: executionToken,
+            });
+            return "acquired";
+        },
+        commit(executionToken, resultDigest, cachedResult) {
+            for (const [key, existing] of records) {
+                if (existing.state !== "executing" || existing.execution_token !== executionToken)
+                    continue;
+                records.set(key, {
+                    state: "committed",
+                    binding_digest: existing.binding_digest,
+                    execution_token: executionToken,
+                    result_digest: resultDigest,
+                    cached_result: structuredClone(cachedResult),
+                });
+                return "committed";
+            }
+            return "conflict";
+        },
+        markIndeterminate(executionToken, reconciliationDigest) {
+            for (const [key, existing] of records) {
+                if (existing.state !== "executing" || existing.execution_token !== executionToken)
+                    continue;
+                records.set(key, {
+                    state: "indeterminate",
+                    binding_digest: existing.binding_digest,
+                    execution_token: executionToken,
+                    reconciliation_digest: reconciliationDigest,
+                });
+                return "indeterminate";
+            }
+            return "conflict";
+        },
+    };
+};
+const currentClaimBoundary = (options: {
+    authority_id: string;
+    leaf: VerifiedClaimArtifact;
+    chain: readonly VerifiedClaimArtifact[];
+    context: ClaimVerificationContext;
+    view: CurrentClaimAuthorizationView;
+}) => {
+    const authority = createClaimAuthorizationAuthority({
+        authority_id: options.authority_id,
+        trusted_now: () => options.context.now,
+        trusted_issuers: options.context.trusted_issuers,
+        load_current_view: () => options.view,
+        store: currentClaimStore(),
+    });
+    const input: ClaimAuthorizationEffectInput<{ operation: string }> = {
+        leaf: options.leaf,
+        chain: options.chain,
+        audience: options.context.audience,
+        resource: options.context.resource,
+        requested_namespace: options.context.requested_namespace,
+        operation: options.context.requested_operation,
+        nonce: options.context.expected_nonce,
+        subject_proof: options.context.subject_proof,
+        idempotency_key: `${options.authority_id}:current-vector`,
+        effect_digest: "e6".repeat(32),
+        effect: () => ({ status: "completed", result: { operation: "claim-authorized" } }),
+    };
+    return { authority, input };
 };
 export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
     const support = await buildAuthorizationFreshnessTestSupport();
@@ -82,11 +161,6 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
     const claimArtifact = ledger.claimOne.verified_artifact;
     const claim = inspectVerifiedClaim(claimArtifact);
     const claimContext = ledger.makeVerification(ledger.claimOne);
-    const activeClaimDecision = authorizeWithClaim(claimArtifact, [claimArtifact], claimContext);
-    const unconfirmedClaimDecision = authorizeWithClaim(claimArtifact, [claimArtifact], {
-        ...claimContext,
-        repository_confirmed: new Set(),
-    });
     const baseLedgerState = mergeClaimLedger([ledger.claimRecordOne, ledger.claimRecordTwo], [], ledger.baseRepository.checkpoint, ledger.makeContext(ledger.baseRepository.repository));
     const authorizedReaderRequest = ledger.requestFor(ledger.claimRecordOne, ledger.claimOne);
     authorizedReaderRequest.verification_context.now =
@@ -101,36 +175,16 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
     const claimEnvelopeContext = ledger.requestFor(ledger.claimRecordOne, ledger.claimOne).envelope_context;
     const invalidClaimEventDecision = thrownDecision(() => verifyClaimEnvelope(invalidClaimEvent, claimEnvelopeContext));
     const missingAuthorityArtifact = Object.freeze({}) as VerifiedClaimArtifact;
-    const missingAuthorityDecision = authorizeWithClaim(
-        missingAuthorityArtifact,
-        [missingAuthorityArtifact],
-        claimContext,
-    );
     const attenuationContext = { ...claimContext, requested_namespace: "other.namespace" };
-    const attenuationDecision = authorizeWithClaim(claimArtifact, [claimArtifact], attenuationContext);
     const expiredContext = {
         ...claimContext,
         now: claim.expires_at!,
     };
-    const expiredClaimDecision = authorizeWithClaim(claimArtifact, [claimArtifact], expiredContext);
-    const repositoryConflictDecision = authorizeWithClaim(claimArtifact, [claimArtifact], {
-        ...claimContext,
-        repository_conflicted: new Set([claim.claim_id]),
-    });
-    const subjectRequiredDecision = authorizeWithClaim(claimArtifact, [claimArtifact], {
-        ...claimContext,
-        subject_proof: null,
-    });
     const subjectInvalidContext = structuredClone(claimContext);
     if (subjectInvalidContext.subject_proof === null) {
         throw new Error("claim subject-proof fixture missing");
     }
     subjectInvalidContext.subject_proof.challenge.nonce = "ff".repeat(16);
-    const subjectInvalidDecision = authorizeWithClaim(claimArtifact, [claimArtifact], subjectInvalidContext);
-    const untrustedClaimDecision = authorizeWithClaim(claimArtifact, [claimArtifact], {
-        ...claimContext,
-        trusted_issuers: [],
-    });
     const revocationArtifact = (ledger.revocationRecord.payload as unknown as {
         revocation_artifact: {
             event: Parameters<typeof verifyClaimRevocationEnvelope>[0];
@@ -138,14 +192,66 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
     }).revocation_artifact;
     const verifiedRevocation = verifyClaimRevocationEnvelope(revocationArtifact.event);
     const inspectedRevocation = inspectVerifiedClaimRevocation(verifiedRevocation);
-    const revokedClaimDecision = authorizeWithClaim(claimArtifact, [claimArtifact], {
-        ...claimContext,
-        now: inspectedRevocation.revoked_at,
-        revocations: [verifiedRevocation],
+    const claimView = (overrides: Partial<CurrentClaimAuthorizationView> = {}): CurrentClaimAuthorizationView => ({
+        credential_ledger: claimContext.credential_ledger,
+        checkpoint_digest: "c6".repeat(32),
+        repository_revision: 7,
+        claims: [claimArtifact],
+        revocations: [],
+        conflicted_claim_ids: [],
+        ...overrides,
     });
-    const chainCycleDecision = authorizeWithClaim(claimArtifact, [claimArtifact, claimArtifact], claimContext);
-    const chainDepthDecision = authorizeWithClaim(claimArtifact, Array.from({ length: 10 }, () => claimArtifact), claimContext);
-    const delegationDecision = authorizeWithClaim(ledger.claimTwo.verified_artifact, [claimArtifact], claimContext);
+    const claimBoundary = (id: string, options: {
+        leaf?: VerifiedClaimArtifact;
+        chain?: readonly VerifiedClaimArtifact[];
+        context?: typeof claimContext;
+        view?: CurrentClaimAuthorizationView;
+    } = {}) => currentClaimBoundary({
+        authority_id: `current-${id}`,
+        leaf: options.leaf ?? claimArtifact,
+        chain: options.chain ?? [claimArtifact],
+        context: options.context ?? claimContext,
+        view: options.view ?? claimView(),
+    });
+    const activeClaimBoundary = claimBoundary("claim-active-authenticated");
+    const unconfirmedClaimBoundary = claimBoundary("claim-repository-unconfirmed", {
+        view: claimView({ claims: [] }),
+    });
+    const missingAuthorityBoundary = claimBoundary("claim-issuer-authority-invalid", {
+        leaf: missingAuthorityArtifact,
+        chain: [missingAuthorityArtifact],
+    });
+    const attenuationBoundary = claimBoundary("claim-attenuation-violation", {
+        context: attenuationContext,
+    });
+    const expiredClaimBoundary = claimBoundary("claim-expired", { context: expiredContext });
+    const repositoryConflictBoundary = claimBoundary("claim-repository-conflict", {
+        view: claimView({ conflicted_claim_ids: [claim.claim_id] }),
+    });
+    const subjectRequiredBoundary = claimBoundary("claim-subject-proof-required", {
+        context: { ...claimContext, subject_proof: null },
+    });
+    const subjectInvalidBoundary = claimBoundary("claim-subject-proof-invalid", {
+        context: subjectInvalidContext,
+    });
+    const untrustedClaimBoundary = claimBoundary("claim-issuer-untrusted", {
+        context: { ...claimContext, trusted_issuers: [] },
+    });
+    const revokedClaimBoundary = claimBoundary("claim-revoked", {
+        context: { ...claimContext, now: inspectedRevocation.revoked_at },
+        view: claimView({ revocations: [verifiedRevocation] }),
+    });
+    const chainCycleBoundary = claimBoundary("claim-chain-cycle", {
+        chain: [claimArtifact, claimArtifact],
+    });
+    const chainDepthBoundary = claimBoundary("claim-chain-depth-exceeded", {
+        chain: Array.from({ length: 10 }, () => claimArtifact),
+    });
+    const delegationBoundary = claimBoundary("claim-delegation-not-authorized", {
+        leaf: ledger.claimTwo.verified_artifact,
+        chain: [claimArtifact],
+        view: claimView({ claims: [claimArtifact, ledger.claimTwo.verified_artifact] }),
+    });
     const rollbackCheckpoint = { ...ledger.baseRepository.checkpoint, branch: "dev" };
     const rollbackDecision = (() => {
         try {
@@ -793,38 +899,17 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
     ];
     const boundaryArgs = new Map<string, readonly unknown[]>([
         ["comms/claim-event-signature-invalid", [invalidClaimEvent, claimEnvelopeContext]],
-        ["comms/claim-issuer-authority-invalid", [missingAuthorityArtifact, [missingAuthorityArtifact], claimContext]],
-        ["comms/claim-attenuation-violation", [claimArtifact, [claimArtifact], attenuationContext]],
-        ["comms/claim-expired", [claimArtifact, [claimArtifact], expiredContext]],
-        ["comms/claim-repository-conflict", [claimArtifact, [claimArtifact], {
-                    ...claimContext,
-                    repository_conflicted: new Set([claim.claim_id]),
-                }]],
-        ["comms/claim-subject-proof-required", [claimArtifact, [claimArtifact], {
-                    ...claimContext,
-                    subject_proof: null,
-                }]],
-        ["comms/claim-subject-proof-invalid", [claimArtifact, [claimArtifact], subjectInvalidContext]],
-        ["comms/claim-issuer-untrusted", [claimArtifact, [claimArtifact], {
-                    ...claimContext,
-                    trusted_issuers: [],
-                }]],
-        ["comms/claim-revoked", [revocationArtifact.event, claimArtifact, [claimArtifact], {
-                    ...claimContext,
-                    now: inspectedRevocation.revoked_at,
-                    revocations: [verifiedRevocation],
-                }]],
-        ["comms/claim-chain-cycle", [claimArtifact, [claimArtifact, claimArtifact], claimContext]],
-        ["comms/claim-chain-depth-exceeded", [
-                claimArtifact,
-                Array.from({ length: 10 }, () => claimArtifact),
-                claimContext,
-            ]],
-        ["comms/claim-delegation-not-authorized", [
-                ledger.claimTwo.verified_artifact,
-                [claimArtifact],
-                claimContext,
-            ]],
+        ["comms/claim-issuer-authority-invalid", [missingAuthorityBoundary.authority, missingAuthorityBoundary.input]],
+        ["comms/claim-attenuation-violation", [attenuationBoundary.authority, attenuationBoundary.input]],
+        ["comms/claim-expired", [expiredClaimBoundary.authority, expiredClaimBoundary.input]],
+        ["comms/claim-repository-conflict", [repositoryConflictBoundary.authority, repositoryConflictBoundary.input]],
+        ["comms/claim-subject-proof-required", [subjectRequiredBoundary.authority, subjectRequiredBoundary.input]],
+        ["comms/claim-subject-proof-invalid", [subjectInvalidBoundary.authority, subjectInvalidBoundary.input]],
+        ["comms/claim-issuer-untrusted", [untrustedClaimBoundary.authority, untrustedClaimBoundary.input]],
+        ["comms/claim-revoked", [revocationArtifact.event, revokedClaimBoundary.authority, revokedClaimBoundary.input]],
+        ["comms/claim-chain-cycle", [chainCycleBoundary.authority, chainCycleBoundary.input]],
+        ["comms/claim-chain-depth-exceeded", [chainDepthBoundary.authority, chainDepthBoundary.input]],
+        ["comms/claim-delegation-not-authorized", [delegationBoundary.authority, delegationBoundary.input]],
         ["comms/claim-ledger-rollback", [
                 [ledger.claimRecordOne],
                 [],
@@ -843,11 +928,8 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
                     credential_ledger_generation: 0,
                 },
             ]],
-        ["comms/claim-active-authenticated", [claimArtifact, [claimArtifact], claimContext]],
-        ["comms/claim-repository-unconfirmed", [claimArtifact, [claimArtifact], {
-                    ...claimContext,
-                    repository_confirmed: new Set(),
-                }]],
+        ["comms/claim-active-authenticated", [activeClaimBoundary.authority, activeClaimBoundary.input]],
+        ["comms/claim-repository-unconfirmed", [unconfirmedClaimBoundary.authority, unconfirmedClaimBoundary.input]],
         ["comms/ledger-reader-authorized", [
                 [ledger.claimRecordOne, ledger.claimRecordTwo],
                 [],

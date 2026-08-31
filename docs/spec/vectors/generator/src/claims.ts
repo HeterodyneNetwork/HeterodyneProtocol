@@ -253,6 +253,15 @@ export function inspectVerifiedClaim(artifact: VerifiedClaimArtifact): ClaimSema
   return deepFreezeJsonClone(requireVerifiedClaimRecord(artifact).semantic);
 }
 
+/**
+ * Returns only the verifier-owned exact-byte commitment needed by a later
+ * durable authorization boundary. The digest carries no authority by itself;
+ * every authorization call must still consume the opaque artifact.
+ */
+export function claimArtifactBindingDigest(artifact: VerifiedClaimArtifact): string {
+  return requireVerifiedClaimRecord(artifact).chain_binding_digest;
+}
+
 export function verifyLedgerClaimArtifact(
   value: unknown,
   context: ClaimEnvelopeContext,
@@ -354,6 +363,13 @@ export function inspectVerifiedClaimRevocation(
   artifact: VerifiedClaimRevocationArtifact,
 ): VerifiedRevocation {
   return inspectedRevocation(requireVerifiedClaimRevocationRecord(artifact));
+}
+
+/** Inspection-only exact-byte commitment; the opaque revocation is still required. */
+export function claimRevocationArtifactBindingDigest(
+  artifact: VerifiedClaimRevocationArtifact,
+): string {
+  return requireVerifiedClaimRevocationRecord(artifact).chain_binding_digest;
 }
 
 export function verifyLedgerClaimRevocationArtifact(

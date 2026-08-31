@@ -4,6 +4,8 @@ import { schnorr } from "@noble/curves/secp256k1";
 import { describe, expect, it } from "vitest";
 import {
   authorizeWithClaim as authorizeVerifiedClaim,
+  claimArtifactBindingDigest,
+  claimRevocationArtifactBindingDigest,
   CLAIM_REVOCATION_OPERATION_BUDGET,
   CLAIM_REVOCATION_PROFILE,
   computeClaimId,
@@ -157,6 +159,7 @@ describe("canonical key claims", () => {
     const artifact = verifyClaimEnvelope(event, context);
     expect(artifact).toEqual({});
     expect(Object.isFrozen(artifact)).toBe(true);
+    expect(claimArtifactBindingDigest(artifact)).toMatch(/^[0-9a-f]{64}$/);
     const first = inspectVerifiedClaim(artifact);
     const second = inspectVerifiedClaim(artifact);
     expect(first).toEqual(body);
@@ -177,9 +180,11 @@ describe("canonical key claims", () => {
 
     const clone = structuredClone(artifact) as VerifiedClaimArtifact;
     expect(() => inspectVerifiedClaim(clone)).toThrow(/verified claim artifact/i);
+    expect(() => claimArtifactBindingDigest(clone)).toThrow(/verified claim artifact/i);
     expect(() => verifyVerifiedClaimChain(clone, new Map([[body.claim_id, clone]])))
       .toThrow(/verified claim artifact/i);
     const secondArtifact = verifyClaimEnvelope(event, context);
+    expect(claimArtifactBindingDigest(secondArtifact)).toBe(claimArtifactBindingDigest(artifact));
     expect(() => verifyVerifiedClaimChain(artifact, new Map([[body.claim_id, secondArtifact]])))
       .toThrow(/identity/i);
 
@@ -1124,6 +1129,7 @@ describe("claim trust, attenuation, and authorization state", () => {
       reason_code: "claim-issuer-authority-invalid",
     });
     const revocationArtifact = nostrRevocation(formerPublicReturn, formerPublicReturn.issuer);
+    expect(claimRevocationArtifactBindingDigest(revocationArtifact)).toMatch(/^[0-9a-f]{64}$/);
     const formerRevocation = inspectVerifiedClaimRevocation(revocationArtifact);
     expect(authorizeVerifiedClaim(artifactFor(formerPublicReturn), [artifactFor(formerPublicReturn)], context(formerPublicReturn, {
       revocations: [formerRevocation as unknown as VerifiedClaimRevocationArtifact],

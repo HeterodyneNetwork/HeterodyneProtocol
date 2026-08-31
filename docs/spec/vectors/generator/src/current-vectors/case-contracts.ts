@@ -709,7 +709,7 @@ const CURRENT_CASE_CONTRACTS = {
     ]
   },
   "comms/claim-active-authenticated": {
-    "boundary_id": "claims.authorizeWithClaim",
+    "boundary_id": "claim-authorization.authorizeClaimEffect",
     "owner_document": "comms",
     "spec_refs": [
       "heterodyne:0.6.0#comms-claim-verification"
@@ -721,7 +721,7 @@ const CURRENT_CASE_CONTRACTS = {
     "reason_codes": []
   },
   "comms/claim-attenuation-violation": {
-    "boundary_id": "claims.authorizeWithClaim",
+    "boundary_id": "claim-authorization.inspectClaimState",
     "owner_document": "comms",
     "spec_refs": [
       "heterodyne:0.6.0#comms-conformance"
@@ -734,7 +734,7 @@ const CURRENT_CASE_CONTRACTS = {
     ]
   },
   "comms/claim-chain-cycle": {
-    "boundary_id": "claims.authorizeWithClaim",
+    "boundary_id": "claim-authorization.inspectClaimState",
     "owner_document": "comms",
     "spec_refs": [
       "heterodyne:0.6.0#comms-conformance"
@@ -747,7 +747,7 @@ const CURRENT_CASE_CONTRACTS = {
     ]
   },
   "comms/claim-chain-depth-exceeded": {
-    "boundary_id": "claims.authorizeWithClaim",
+    "boundary_id": "claim-authorization.inspectClaimState",
     "owner_document": "comms",
     "spec_refs": [
       "heterodyne:0.6.0#comms-conformance"
@@ -760,7 +760,7 @@ const CURRENT_CASE_CONTRACTS = {
     ]
   },
   "comms/claim-delegation-not-authorized": {
-    "boundary_id": "claims.authorizeWithClaim",
+    "boundary_id": "claim-authorization.inspectClaimState",
     "owner_document": "comms",
     "spec_refs": [
       "heterodyne:0.6.0#comms-conformance"
@@ -786,7 +786,7 @@ const CURRENT_CASE_CONTRACTS = {
     ]
   },
   "comms/claim-expired": {
-    "boundary_id": "claims.authorizeWithClaim",
+    "boundary_id": "claim-authorization.inspectClaimState",
     "owner_document": "comms",
     "spec_refs": [
       "heterodyne:0.6.0#comms-conformance"
@@ -812,7 +812,7 @@ const CURRENT_CASE_CONTRACTS = {
     ]
   },
   "comms/claim-issuer-authority-invalid": {
-    "boundary_id": "claims.authorizeWithClaim",
+    "boundary_id": "claim-authorization.inspectClaimState",
     "owner_document": "comms",
     "spec_refs": [
       "heterodyne:0.6.0#comms-conformance"
@@ -825,7 +825,7 @@ const CURRENT_CASE_CONTRACTS = {
     ]
   },
   "comms/claim-issuer-untrusted": {
-    "boundary_id": "claims.authorizeWithClaim",
+    "boundary_id": "claim-authorization.inspectClaimState",
     "owner_document": "comms",
     "spec_refs": [
       "heterodyne:0.6.0#comms-conformance"
@@ -864,7 +864,7 @@ const CURRENT_CASE_CONTRACTS = {
     ]
   },
   "comms/claim-repository-conflict": {
-    "boundary_id": "claims.authorizeWithClaim",
+    "boundary_id": "claim-authorization.inspectClaimState",
     "owner_document": "comms",
     "spec_refs": [
       "heterodyne:0.6.0#comms-conformance"
@@ -877,7 +877,7 @@ const CURRENT_CASE_CONTRACTS = {
     ]
   },
   "comms/claim-repository-unconfirmed": {
-    "boundary_id": "claims.authorizeWithClaim",
+    "boundary_id": "claim-authorization.inspectClaimState",
     "owner_document": "comms",
     "spec_refs": [
       "heterodyne:0.6.0#comms-claim-ledger"
@@ -890,7 +890,7 @@ const CURRENT_CASE_CONTRACTS = {
     ]
   },
   "comms/claim-revoked": {
-    "boundary_id": "claims.verifyClaimRevocationEnvelope+authorizeWithClaim",
+    "boundary_id": "claims.verifyClaimRevocationEnvelope+claim-authorization.inspectClaimState",
     "owner_document": "comms",
     "spec_refs": [
       "heterodyne:0.6.0#comms-conformance"
@@ -916,7 +916,7 @@ const CURRENT_CASE_CONTRACTS = {
     ]
   },
   "comms/claim-subject-proof-invalid": {
-    "boundary_id": "claims.authorizeWithClaim",
+    "boundary_id": "claim-authorization.inspectClaimState",
     "owner_document": "comms",
     "spec_refs": [
       "heterodyne:0.6.0#comms-conformance"
@@ -929,7 +929,7 @@ const CURRENT_CASE_CONTRACTS = {
     ]
   },
   "comms/claim-subject-proof-required": {
-    "boundary_id": "claims.authorizeWithClaim",
+    "boundary_id": "claim-authorization.inspectClaimState",
     "owner_document": "comms",
     "spec_refs": [
       "heterodyne:0.6.0#comms-conformance"
