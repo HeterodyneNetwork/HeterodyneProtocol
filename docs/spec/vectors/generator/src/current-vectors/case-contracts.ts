@@ -863,6 +863,19 @@ const CURRENT_CASE_CONTRACTS = {
       "claim-ledger-rollback"
     ]
   },
+  "comms/claim-ledger-writer-unauthorized": {
+    "boundary_id": "claim-ledger.mergeClaimLedger",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:0.6.0#comms-claim-ledger"
+    ],
+    "invariants": [
+      "COMMS-I-CLAIM-REPOSITORY-AUTHORITY"
+    ],
+    "reason_codes": [
+      "claim-ledger-writer-unauthorized"
+    ]
+  },
   "comms/claim-repository-conflict": {
     "boundary_id": "claim-authorization.inspectClaimState",
     "owner_document": "comms",

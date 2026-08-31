@@ -164,6 +164,18 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
     const claim = inspectVerifiedClaim(claimArtifact);
     const claimContext = ledger.makeVerification(ledger.claimOne);
     const baseLedgerState = mergeClaimLedger([ledger.claimRecordOne, ledger.claimRecordTwo], [], ledger.baseRepository.checkpoint, ledger.makeContext(ledger.baseRepository.repository));
+    const unauthorizedWriterContext = ledger.makeContext(ledger.baseRepository.repository);
+    const loadAuthorizedLocation = unauthorizedWriterContext.load_record_location;
+    unauthorizedWriterContext.load_record_location = (record) => {
+        const location = loadAuthorizedLocation(record);
+        return {
+            ...location,
+            writer_binding: {
+                ...location.writer_binding,
+                owner_signature: "00".repeat(64),
+            },
+        };
+    };
     const authorizedReaderRequest = ledger.requestFor(ledger.claimRecordOne, ledger.claimOne);
     authorizedReaderRequest.verification_context.now =
         ledger.baseRepository.checkpoint.observed_at;
@@ -201,6 +213,7 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
         claims: [claimArtifact],
         revocations: [],
         conflicted_claim_ids: [],
+        ledger_state: baseLedgerState,
         ...overrides,
     });
     const claimBoundary = (id: string, options: {
@@ -819,6 +832,12 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
             input: { checkpoint: rollbackCheckpoint }
         },
         {
+            vector_id: "comms/" + String("claim-ledger-writer-unauthorized"),
+            description: "A self-signed ledger record without the current repository owner's exact Core writer proof is rejected before replay.",
+            direction: "consume" as const,
+            input: { record_ids: [ledger.claimRecordOne.record_id, ledger.claimRecordTwo.record_id] }
+        },
+        {
             vector_id: "comms/" + String("claim-revoker-unauthorized"),
             description: "A revocation ledger record without claim-bound revoker authority evidence cannot reduce authority.",
             direction: "consume" as const,
@@ -917,6 +936,12 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
                 [],
                 rollbackCheckpoint,
                 ledger.makeContext(ledger.baseRepository.repository),
+            ]],
+        ["comms/claim-ledger-writer-unauthorized", [
+                [ledger.claimRecordOne, ledger.claimRecordTwo],
+                [],
+                ledger.baseRepository.checkpoint,
+                unauthorizedWriterContext,
             ]],
         ["comms/claim-revoker-unauthorized", [
                 ledger.removalRecord,

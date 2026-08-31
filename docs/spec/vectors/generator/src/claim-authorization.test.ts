@@ -1,5 +1,5 @@
 import { schnorr } from "@noble/curves/secp256k1";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import {
   authorizeClaimEffect,
   createClaimAuthorizationAuthority,
@@ -25,6 +25,7 @@ import { bytesToHex, hexToBytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
 import { getEventId, type NostrSignedEvent, type NostrUnsignedEvent } from "./nostr.js";
 import { invokeCurrentBoundary } from "./current-vectors/boundary-runners.js";
+import { buildClaimLedgerScenario } from "./claim-ledger-test-support.js";
 
 const fixtures = buildFixtures();
 const issuer = fixtures.personas.alice.epoch_keys.epoch_1;
@@ -34,6 +35,11 @@ const now = 1_784_390_420;
 const ledger = Object.freeze({
   credential_ledger_persona: issuer.pubkey,
   credential_ledger_generation: 0,
+});
+let writerScenario: Awaited<ReturnType<typeof buildClaimLedgerScenario>>;
+
+beforeAll(async () => {
+  writerScenario = await buildClaimLedgerScenario(fixtures);
 });
 
 type StoreHarness = Readonly<{
@@ -203,6 +209,7 @@ function currentView(
     claims: [artifact],
     revocations: [],
     conflicted_claim_ids: [],
+    ledger_state: writerScenario.issuerKeyEpochOneState,
     ...overrides,
   };
 }
@@ -691,6 +698,43 @@ describe("claim authorization proof/effect fence", () => {
     });
     expect(revoked.store.calls.acquire).toBe(0);
     expect(revoked.effects()).toBe(0);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects writer removal immediately before effect acquisition", async () => {
+    // BLUE TEAM VALIDATION: synthetic/local policy replacement and effect counters are bounded in-memory fixtures with no external target or reusable payload.
+    const artifact = signedArtifact();
+    let loads = 0;
+    const value = scenario({
+      artifact,
+      load: () => {
+        loads += 1;
+        if (loads === 2) {
+          writerScenario.setCurrentWriterPolicy({
+            ...writerScenario.activeWriterPolicy(),
+            writers: writerScenario.activeWriterPolicy().writers.map((writer) => ({
+              ...writer,
+              state: "revoked" as const,
+            })),
+          });
+        }
+        return {
+          ...currentView(artifact),
+          ledger_state: writerScenario.issuerKeyEpochOneState,
+        } as unknown as CurrentClaimAuthorizationView;
+      },
+    });
+    try {
+      await expect(authorizeClaimEffect(value.authority, value.input)).resolves.toMatchObject({
+        verdict: "reject",
+        allowed: false,
+        reason_code: "claim-ledger-writer-unauthorized",
+      });
+      expect(loads).toBe(2);
+      expect(value.store.calls.acquire).toBe(0);
+      expect(value.effects()).toBe(0);
+    } finally {
+      writerScenario.resetCurrentWriterPolicy();
+    }
   });
 
   it("BLUE TEAM VALIDATION: synthetic/local rejects regressed trusted time and repository revision before acquire", async () => {

@@ -1,4 +1,5 @@
 import { ed25519 } from "@noble/curves/ed25519";
+import { schnorr } from "@noble/curves/secp256k1";
 import { sha256 } from "@noble/hashes/sha2";
 import {
   buildLedgerRepositoryEvidence,
@@ -18,6 +19,11 @@ import {
   type RevocationArtifact,
 } from "./claim-ledger.js";
 import {
+  createCoreRepositoryWriterAuthority,
+  type RepositoryWriterBindingV1,
+} from "./core-writer-binding.js";
+import type { CurrentRepositoryPolicy } from "./core-policy.js";
+import {
   CLAIM_REVOCATION_PROFILE,
   computeClaimId,
   subjectProofPayload,
@@ -35,6 +41,7 @@ import { jcsCanonicalize } from "./jcs.js";
 import { signEvent } from "./nostr.js";
 import { AUX_RAND } from "./vector-helpers.js";
 import { OIDC_RSA_ONE, OIDC_RSA_TWO } from "./oidc-rsa-fixtures.js";
+import { proofBytes } from "./proof-bytes.js";
 
 export type ClaimLedgerScenario = Awaited<ReturnType<typeof buildClaimLedgerScenario>>;
 
@@ -46,6 +53,72 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
   const writerTwo = fixtures.ed25519_nids.alice_device_2;
   const rid = fixtures.radicle_rids.alice;
   const resource = `${rid}#claim-ledger`;
+  const writerRefNamespace = "refs/xyz.heterodyne.claim-ledger/writers/";
+  const writerRefs = new Map([
+    [writerOne.did_key, `${writerRefNamespace}writer-one`],
+    [writerTwo.did_key, `${writerRefNamespace}writer-two`],
+  ]);
+  const makeWriterBinding = (
+    writer: typeof writerOne,
+  ): RepositoryWriterBindingV1 => {
+    const body = {
+      profile: "heterodyne.core.repository-writer-binding.v1" as const,
+      spec_version: "heterodyne/0.6.0" as const,
+      owner_active_key: persona,
+      repository_rid: rid,
+      writer_nid: writer.did_key,
+      ref_namespace: writerRefNamespace,
+      operations: ["claim-ledger-write"],
+      issued_at: now - 10,
+      expires_at: now + 10_000,
+    };
+    const payload = proofBytes(
+      "heterodyne-core-repository-writer-binding-v1",
+      body,
+    );
+    return {
+      ...body,
+      owner_signature: bytesToHex(schnorr.sign(
+        sha256(payload),
+        hexToBytes(issuer.private_key),
+        hexToBytes(AUX_RAND),
+      )),
+      nid_signature: bytesToHex(ed25519.sign(
+        payload,
+        hexToBytes(writer.private_key),
+      )),
+    };
+  };
+  const writerBindings = new Map([
+    [writerOne.did_key, makeWriterBinding(writerOne)],
+    [writerTwo.did_key, makeWriterBinding(writerTwo)],
+  ]);
+  const activeWriterPolicy = (): CurrentRepositoryPolicy => ({
+    repository_rid: rid,
+    owner_active_key: persona,
+    revision: 7,
+    checkpoint: "a7".repeat(20),
+    predecessor: "a6".repeat(20),
+    state: "active",
+    writers: [writerOne, writerTwo].map((writer) => ({
+      writer_nid: writer.did_key,
+      ref_namespace: writerRefNamespace,
+      operations: ["claim-ledger-write"],
+      state: "active" as const,
+    })),
+  });
+  let currentWriterPolicy = activeWriterPolicy();
+  const writerAuthority = createCoreRepositoryWriterAuthority({
+    authority_id: "synthetic-local-claim-ledger-writer-authority",
+    trusted_now: () => now + 50,
+    load_current_policy: () => currentWriterPolicy,
+  });
+  const setCurrentWriterPolicy = (policy: CurrentRepositoryPolicy): void => {
+    currentWriterPolicy = policy;
+  };
+  const resetCurrentWriterPolicy = (): void => {
+    currentWriterPolicy = activeWriterPolicy();
+  };
   const audienceKeyOne = Uint8Array.from({ length: 32 }, () => 0x51);
   const audienceKeyTwo = Uint8Array.from({ length: 32 }, () => 0x52);
   const issuerAudienceKeyOne = Uint8Array.from({ length: 32 }, () => 0x71);
@@ -391,6 +464,18 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
       repository,
       reader_requests: new Map([[claimRecordOne.record_id, requestOne], [claimRecordTwo.record_id, requestTwo]]),
       audience_keys_by_epoch: new Map([[1, audienceKeyOne], [2, audienceKeyTwo]]),
+      writer_authority: writerAuthority,
+      load_record_location(record) {
+        return {
+          record_id: record.record_id,
+          repository_rid: repository.repository_rid,
+          writer_ref: writerRefs.get(record.writer_nid) ?? `${writerRefNamespace}unknown`,
+          commit: repository.canonical_head,
+          checkpoint: repository.canonical_head,
+          revision: repository.commits.length,
+          writer_binding: writerBindings.get(record.writer_nid) ?? writerBindings.get(writerOne.did_key)!,
+        };
+      },
     };
   };
   const authorityState = mergeClaimLedger(
@@ -560,6 +645,18 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
         [claimRecordTwo.record_id, requestTwo],
       ]),
       audience_keys_by_epoch: new Map([[1, audienceKeyOne], [2, audienceKeyTwo]]),
+      writer_authority: writerAuthority,
+      load_record_location(record) {
+        return {
+          record_id: record.record_id,
+          repository_rid: repository.repository_rid,
+          writer_ref: writerRefs.get(record.writer_nid) ?? `${writerRefNamespace}unknown`,
+          commit: repository.canonical_head,
+          checkpoint: repository.canonical_head,
+          revision: repository.commits.length,
+          writer_binding: writerBindings.get(record.writer_nid) ?? writerBindings.get(writerOne.did_key)!,
+        };
+      },
     };
   };
   const makeTask5Context = (repository: LedgerRepositoryEvidence): LedgerValidationContext => ({
@@ -573,6 +670,7 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
 
   return {
     now, persona, issuer, writerOne, writerTwo, rid, resource, audienceKeyOne, audienceKeyTwo, issuerAudienceKeyOne, issuerAudienceKeyTwo,
+    writerRefNamespace, writerRefs, writerBindings, writerAuthority, activeWriterPolicy, setCurrentWriterPolicy, resetCurrentWriterPolicy,
     claimOne, claimTwo, issuerClaimOne, issuerClaimTwo, alternateClaimOne, temporalClaim, allClaims, makeClaim, makeVerification, requestFor, signRecord, evidence, temporalRecordEvidence, grantOnlyEvidence, makeContext, makeTask5Context,
     claimRecordOne, claimRecordTwo, temporalClaimRecord, grantOne, grantDivergent, grantOnly, revocationRecord, verifiedRevocationArtifact, reductionRecord, removalRecord,
     issuerClaimRecordOne, issuerClaimRecordTwo, issuerAuthorityRecordOne, issuerAuthorityRecordTwo, issuerRemovalRecord,

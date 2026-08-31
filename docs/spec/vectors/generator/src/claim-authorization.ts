@@ -17,6 +17,10 @@ import {
 import type { CredentialLedgerBinding } from "./credential-generation.js";
 import { bytesToHex, utf8Bytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
+import {
+  revalidateLedgerWriterAuthorities,
+  type LedgerMergeResult,
+} from "./claim-ledger.js";
 
 declare const claimAuthorizationAuthorityBrand: unique symbol;
 
@@ -40,6 +44,7 @@ export type CurrentClaimAuthorizationView = Readonly<{
   claims: readonly VerifiedClaimArtifact[];
   revocations: readonly VerifiedClaimRevocationArtifact[];
   conflicted_claim_ids: readonly string[];
+  ledger_state: LedgerMergeResult;
 }>;
 
 export type ClaimEffectStore = Readonly<{
@@ -170,6 +175,8 @@ type CapturedView = Readonly<{
   revocations: readonly VerifiedClaimRevocationArtifact[];
   revocation_bindings: readonly string[];
   conflicted_claim_ids: readonly string[];
+  ledger_state: LedgerMergeResult;
+  writer_fingerprints: readonly string[];
 }>;
 
 const AUTHORITIES = new WeakMap<object, AuthorityRecord>();
@@ -234,6 +241,15 @@ export async function authorizeClaimEffect<T>(
     }
     const current = evaluateCurrent(captured, retained, currentView, currentNow);
     if (current.state !== "active") return rejectedDecision(current);
+
+    const writerRevalidation = revalidateLedgerWriterAuthorities(
+      currentView.ledger_state,
+    );
+    if (writerRevalidation.verdict !== "accept" ||
+        jcsCanonicalize(writerRevalidation.writer_fingerprints) !==
+          jcsCanonicalize(currentView.writer_fingerprints)) {
+      throw new Error("claim-ledger-writer-unauthorized: current writer authority changed before acquire");
+    }
 
     const binding = authorizationBinding(captured, retained, currentView);
     const executionToken = randomBytes(32).toString("hex");
@@ -532,6 +548,7 @@ function loadView(authority: AuthorityRecord): CapturedView {
     "claims",
     "revocations",
     "conflicted_claim_ids",
+    "ledger_state",
   ], "current claim authorization view");
   const credential = captureCredentialLedger(members.credential_ledger);
   if (typeof members.checkpoint_digest !== "string" || !LOWER_HEX_32.test(members.checkpoint_digest)) {
@@ -569,6 +586,11 @@ function loadView(authority: AuthorityRecord): CapturedView {
   if (new Set(conflicts).size !== conflicts.length) {
     throw new Error("claim-repository-conflict: duplicate conflicted claim ID");
   }
+  const ledgerState = members.ledger_state as LedgerMergeResult;
+  const writerAuthority = revalidateLedgerWriterAuthorities(ledgerState);
+  if (writerAuthority.verdict !== "accept") {
+    throw new Error("claim-ledger-writer-unauthorized: current claim view has no current writer authority");
+  }
   return Object.freeze({
     credential_ledger: credential,
     checkpoint_digest: members.checkpoint_digest,
@@ -578,6 +600,8 @@ function loadView(authority: AuthorityRecord): CapturedView {
     revocations: Object.freeze(revocations),
     revocation_bindings: Object.freeze(revocationBindings),
     conflicted_claim_ids: Object.freeze(conflicts),
+    ledger_state: ledgerState,
+    writer_fingerprints: writerAuthority.writer_fingerprints,
   });
 }
 
@@ -648,6 +672,7 @@ function authorizationBinding(
     claims: [...view.claim_bindings.entries()].sort(([left], [right]) => left.localeCompare(right)),
     revocations: view.revocation_bindings,
     conflicted_claim_ids: view.conflicted_claim_ids,
+    writer_fingerprints: view.writer_fingerprints,
   });
   const bindingDigest = digest("heterodyne-claim-authorization-binding-v1", {
     single_use_key: singleUseKey,

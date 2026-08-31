@@ -1523,6 +1523,14 @@ validation, it MUST reload the complete current view immediately before
 acquisition and MUST re-evaluate the chain, repository confirmation,
 conflicts, revocations, proof freshness, and trust policy against that reload.
 
+The reload MUST also carry the exact validated claim-ledger state and MUST
+revalidate every distinct opaque current Core writer binding immediately
+before acquisition. Removal, revocation, conflict, expiry, policy revision or
+checkpoint change, binding mutation, or authority substitution makes the
+prepared view stale and returns `claim-ledger-writer-unauthorized` without
+acquiring or invoking the effect. Repository membership and a record's
+Ed25519 self-signature never substitute for current owner delegation.
+
 Before invoking the effect, one atomic store operation MUST irreversibly
 transition that single-use key from unused to `executing` with the exact
 binding and a fresh opaque unpredictable execution token. The effect MUST be
@@ -1632,6 +1640,26 @@ ledger generation. Record types are `claim`, `revocation`,
 `issuer-authority`, `issuance-reservation`, and `status-invalidation`.
 `payload_digest` and `record_id` are domain-separated JCS SHA-256 digests. The
 writer signature and current Core NID delegation MUST verify before replay.
+
+Replay evidence for every record MUST include one closed record-location value
+containing exactly `record_id`, `repository_rid`, `writer_ref`, `commit`,
+`checkpoint`, `revision`, and the
+`heterodyne.core.repository-writer-binding.v1` object. The record ID, RID,
+canonical replay commit, checkpoint, revision, writer NID, and binding bytes
+MUST equal the independently authenticated record and repository view before
+writer authority is resolved. Caller booleans and `record.created_at` are not
+writer-delegation evidence.
+
+Before a record enters replay, the implementation MUST resolve the binding
+through the current Core repository-writer authority and require both exact
+proofs, `owner_active_key === persona`, the exact claim-ledger RID and writer
+ref, `writer_nid === record.writer_nid`, operation `claim-ledger-write`, and
+current nonexpired, nonrevoked, nonconflicted policy inclusion at the replay
+checkpoint and revision. The validated replay result retains only private
+authority fingerprints and opaque current bindings. A failure at this Comms
+boundary is `claim-ledger-writer-unauthorized`; privileged local audit MAY
+retain the more detailed Core `repository-writer-binding-invalid` cause but
+MUST NOT disclose it through the Comms decision.
 
 Canonical replay verifies commits and parents from genesis, rejects rollback
 or missing history, validates each embedded event and issuance object, and

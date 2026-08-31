@@ -1,6 +1,7 @@
 import {
   currentAuthorizationLedgerView,
   evaluateLedgerCheckpointEligibility,
+  revalidateLedgerWriterAuthorities,
   type LedgerCheckpoint,
   type LedgerMergeResult,
 } from "./claim-ledger.js";
@@ -37,7 +38,8 @@ export type CurrentAuthorizationView = Readonly<{
 
 type FreshnessRejection = Readonly<{
   verdict: "reject";
-  reason: "oidc-checkpoint-stale" | "oidc-issuer-authority-invalid" | "control-authorization-view-stale";
+  reason: "oidc-checkpoint-stale" | "oidc-issuer-authority-invalid" |
+    "control-authorization-view-stale" | "claim-ledger-writer-unauthorized";
 }>;
 
 export type AuthorizationFreshnessDecision =
@@ -100,6 +102,7 @@ export function evaluateAuthorizationFreshness(
     authority,
     manifest: structuredClone(evaluated.manifest),
     checkpoint: structuredClone(evaluated.checkpoint),
+    writer_fingerprints: evaluated.writer_fingerprints,
   });
   return { verdict: "accept", view };
 }
@@ -116,6 +119,10 @@ export function revalidateAuthorizationViewAtEffect(
   }
   if (jcsCanonicalize(evaluated.checkpoint) !== jcsCanonicalize(prepared.checkpoint)) {
     return rejected("control-authorization-view-stale");
+  }
+  if (jcsCanonicalize(evaluated.writer_fingerprints) !==
+      jcsCanonicalize(prepared.writer_fingerprints)) {
+    return rejected("claim-ledger-writer-unauthorized");
   }
   return {
     verdict: "accept",
@@ -138,12 +145,14 @@ type PreparedViewRecord = Readonly<{
   authority: AuthorizationFreshnessAuthority;
   manifest: ContinuityManifest;
   checkpoint: LedgerCheckpoint;
+  writer_fingerprints: readonly string[];
 }>;
 
 type EvaluatedView = Readonly<{
   manifest: ContinuityManifest;
   checkpoint: LedgerCheckpoint;
   evaluated_at: number;
+  writer_fingerprints: readonly string[];
 }>;
 
 const AUTHORITY_RECORDS = new WeakMap<object, AuthorityRecord>();
@@ -182,6 +191,10 @@ function loadAndEvaluate(
         "previous authoritative authorization manifest",
       );
     const ledgerView = currentAuthorizationLedgerView(loadedValues.ledger_state as LedgerMergeResult);
+    const writerAuthority = revalidateLedgerWriterAuthorities(ledgerView.state);
+    if (writerAuthority.verdict !== "accept") {
+      return rejected("claim-ledger-writer-unauthorized");
+    }
     if (jcsCanonicalize(loadedManifest) !== jcsCanonicalize(presented)
       || continuityManifestDigest(loadedManifest) !== record.binding.manifest_digest) {
       return rejected("oidc-issuer-authority-invalid");
@@ -226,6 +239,7 @@ function loadAndEvaluate(
       manifest: loadedManifest,
       checkpoint: structuredClone(ledgerView.checkpoint),
       evaluated_at: evaluatedAt,
+      writer_fingerprints: writerAuthority.writer_fingerprints,
     };
   } catch {
     return rejected("control-authorization-view-stale");

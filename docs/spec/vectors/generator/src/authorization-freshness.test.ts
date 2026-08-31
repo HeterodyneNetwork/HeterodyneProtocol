@@ -120,6 +120,33 @@ describe("opaque current authorization freshness", () => {
     });
   });
 
+  it("BLUE TEAM VALIDATION: synthetic/local rejects writer removal at freshness effect revalidation", () => {
+    // BLUE TEAM VALIDATION: synthetic/local policy replacement is one bounded process-local snapshot with no external target or effect.
+    const state = scenario.issuerKeyEpochOneState;
+    const manifest = signedManifest(state);
+    const clock = { now: state.checkpoint.observed_at };
+    const prepared = evaluateAuthorizationFreshness(
+      authorityFor(manifest, state, clock),
+      manifest,
+    );
+    if (prepared.verdict !== "accept") throw new Error("fixture rejected");
+    scenario.setCurrentWriterPolicy({
+      ...scenario.activeWriterPolicy(),
+      writers: scenario.activeWriterPolicy().writers.map((writer) => ({
+        ...writer,
+        state: "revoked" as const,
+      })),
+    });
+    try {
+      expect(revalidateAuthorizationViewAtEffect(prepared.view)).toEqual({
+        verdict: "reject",
+        reason: "claim-ledger-writer-unauthorized",
+      });
+    } finally {
+      scenario.resetCurrentWriterPolicy();
+    }
+  });
+
   it("rejects caller-authored clocks, freshness claims, authorities, and views", () => {
     const state = scenario.issuerKeyEpochOneState;
     const manifest = signedManifest(state);

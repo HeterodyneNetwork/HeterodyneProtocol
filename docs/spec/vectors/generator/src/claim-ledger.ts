@@ -36,7 +36,17 @@ import {
   type CredentialLedgerBinding,
 } from "./credential-generation.js";
 import { type NostrSignedEvent } from "./nostr.js";
-import { snapshotClosedDataTree } from "./closed-data.js";
+import {
+  captureExactDataObject,
+  snapshotClosedDataTree,
+} from "./closed-data.js";
+import {
+  resolveCurrentRepositoryWriterBinding,
+  revalidateCurrentRepositoryWriterBinding,
+  type CoreRepositoryWriterAuthority,
+  type CurrentRepositoryWriterBinding,
+  type RepositoryWriterBindingV1,
+} from "./core-writer-binding.js";
 
 export type LedgerRecordType =
   | "claim"
@@ -146,6 +156,16 @@ export type LedgerRecordValidationEvidence = {
   claim_verification_context?: ClaimVerificationContext;
 };
 
+export type LedgerRecordLocation = Readonly<{
+  record_id: string;
+  repository_rid: string;
+  writer_ref: string;
+  commit: string;
+  checkpoint: string;
+  revision: number;
+  writer_binding: RepositoryWriterBindingV1;
+}>;
+
 export type LedgerRepositoryCommit = {
   commit_oid: string;
   tree_oid: string;
@@ -179,6 +199,8 @@ export type LedgerValidationContext = {
   reader_requests: Map<string, ReaderAccessRequest>;
   audience_keys_by_epoch: Map<number, Uint8Array>;
   issuer_key_material_by_record_id?: Map<string, { envelope: IssuerKeyEnvelope; audience_key: Uint8Array }>;
+  writer_authority: CoreRepositoryWriterAuthority;
+  load_record_location: (record: LedgerRecord) => LedgerRecordLocation;
 };
 
 export type LedgerLayout = {
@@ -279,6 +301,15 @@ const VALIDATED_LEDGER_STATES = new WeakSet<object>();
 const VALIDATED_LEDGER_REPOSITORIES = new WeakMap<object, LedgerRepositoryEvidence>();
 const VALIDATED_LEDGER_CONTEXTS = new WeakMap<object, LedgerValidationContext>();
 const VALIDATED_LEDGER_SNAPSHOTS = new WeakMap<object, LedgerMergeResult>();
+type LedgerWriterAuthorityRecord = Readonly<{
+  authority: CoreRepositoryWriterAuthority;
+  binding: CurrentRepositoryWriterBinding;
+  fingerprint: string;
+}>;
+const VALIDATED_LEDGER_WRITERS = new WeakMap<
+  object,
+  readonly LedgerWriterAuthorityRecord[]
+>();
 type ReplayValidationFingerprint = {
   record: string;
   evidence: string;
@@ -445,11 +476,26 @@ export function mergeClaimLedger(
   if (context === undefined) {
     throw new Error("claim-repository-unconfirmed: explicit validation and canonical repository evidence is required");
   }
-  if (!isCredentialLedgerBinding(context.credential_ledger)) {
+  let capturedContext: LedgerValidationContext;
+  let capturedLeft: readonly LedgerRecord[];
+  let capturedRight: readonly LedgerRecord[];
+  let capturedCheckpoint: LedgerCheckpoint;
+  try {
+    capturedLeft = captureLedgerRecordArray(left, "left claim ledger records");
+    capturedRight = captureLedgerRecordArray(right, "right claim ledger records");
+    capturedCheckpoint = captureLedgerCheckpoint(checkpoint);
+    capturedContext = captureLedgerValidationContext(context);
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("claim-ledger-writer-unauthorized:")) {
+      throw error;
+    }
+    throw writerUnauthorized("validation context capture failed");
+  }
+  if (!isCredentialLedgerBinding(capturedContext.credential_ledger)) {
     throw new Error("credential_schema_invalid");
   }
   const recordsById = new Map<string, LedgerRecord>();
-  for (const record of [...left, ...right]) {
+  for (const record of [...capturedLeft, ...capturedRight]) {
     const existing = recordsById.get(record.record_id);
     if (existing !== undefined && jcsCanonicalize(existing) !== jcsCanonicalize(record)) {
       throw new Error("claim-repository-conflict: record ID collision");
@@ -457,7 +503,12 @@ export function mergeClaimLedger(
     recordsById.set(record.record_id, record);
   }
   const records = [...recordsById.values()];
-  validateRepositoryEvidence(checkpoint, recordsById, context.repository);
+  validateRepositoryEvidence(capturedCheckpoint, recordsById, capturedContext.repository);
+  const writerAuthorities = resolveLedgerWriterAuthorities(
+    records,
+    capturedCheckpoint,
+    capturedContext,
+  );
   const replayValidatedRecords = REPLAY_VALIDATED_RECORDS.get(context);
   const recordContextFingerprint = replayValidatedRecords === undefined
     ? null
@@ -465,7 +516,7 @@ export function mergeClaimLedger(
   for (const record of records) {
     const artifactSensitiveRecord = recordTypeMayCarryAuthorityArtifact(record.record_type);
     const evidence = captureLedgerRecordValidationEvidence(
-      Map.prototype.get.call(context.record_evidence, record.record_id) as
+      Map.prototype.get.call(capturedContext.record_evidence, record.record_id) as
         | LedgerRecordValidationEvidence
         | undefined,
       artifactSensitiveRecord,
@@ -476,7 +527,7 @@ export function mergeClaimLedger(
         recordsById,
         evidence,
         {
-          credential_ledger_persona: context.credential_ledger.credential_ledger_persona,
+          credential_ledger_persona: capturedContext.credential_ledger.credential_ledger_persona,
           credential_ledger_generation: record.credential_ledger_generation,
         },
       );
@@ -501,7 +552,7 @@ export function mergeClaimLedger(
         recordsById,
         evidence,
         {
-          credential_ledger_persona: context.credential_ledger.credential_ledger_persona,
+          credential_ledger_persona: capturedContext.credential_ledger.credential_ledger_persona,
           credential_ledger_generation: record.credential_ledger_generation,
         },
       );
@@ -510,15 +561,15 @@ export function mergeClaimLedger(
     }
   }
   if (records.some(({ credential_ledger_generation }) =>
-    credential_ledger_generation > context.credential_ledger.credential_ledger_generation)) {
+    credential_ledger_generation > capturedContext.credential_ledger.credential_ledger_generation)) {
     throw new Error("credential_generation_stale");
   }
   assertAcyclic(recordsById);
-  validateLedgerStateInvariants(recordsById, context);
+  validateLedgerStateInvariants(recordsById, capturedContext);
   const personas = new Set(records.map(({ persona }) => persona));
   if (personas.size > 1) throw new Error("claim-repository-conflict: one persona is permitted per ledger");
   records.sort((a, b) => a.record_id.localeCompare(b.record_id));
-  const confirmed = [...context.repository.repository_confirmed_record_ids].sort();
+  const confirmed = [...capturedContext.repository.repository_confirmed_record_ids].sort();
   const authenticatedRevocations = records
     .filter((record) => ["revocation", "authority-reduction", "reader-change", "issuer-authority"].includes(record.record_type))
     .filter((record) => isReduction(record))
@@ -530,12 +581,12 @@ export function mergeClaimLedger(
     .filter(({ record_type, record_id }) => record_type === "status-invalidation" && confirmedSet.has(record_id))
     .map((record) => String(payloadObject(record.payload).jti));
   const tokenInvalidations = [...new Set(explicitTokenInvalidations)].sort();
-  const canonicalCommits = canonicalAncestorCommits(context.repository);
+  const canonicalCommits = canonicalAncestorCommits(capturedContext.repository);
   const result: LedgerMergeResult = {
-    credential_ledger: { ...context.credential_ledger },
+    credential_ledger: { ...capturedContext.credential_ledger },
     records,
     conflicted_claim_ids: findConflictedClaims(records),
-    checkpoint: { ...checkpoint },
+    checkpoint: { ...capturedCheckpoint },
     repository_confirmed_record_ids: confirmed,
     delivered_record_ids: records.map(({ record_id }) => record_id).filter((id) => !confirmed.includes(id)).sort(),
     authenticated_revocations: authenticatedRevocations,
@@ -543,10 +594,378 @@ export function mergeClaimLedger(
     canonical_commit_oids: canonicalCommits.map(({ commit_oid }) => commit_oid),
   };
   VALIDATED_LEDGER_STATES.add(result);
-  VALIDATED_LEDGER_REPOSITORIES.set(result, structuredClone(context.repository));
-  VALIDATED_LEDGER_CONTEXTS.set(result, structuredClone(context));
+  VALIDATED_LEDGER_REPOSITORIES.set(result, structuredClone(capturedContext.repository));
+  VALIDATED_LEDGER_CONTEXTS.set(result, capturedContext);
   VALIDATED_LEDGER_SNAPSHOTS.set(result, structuredClone(result));
+  VALIDATED_LEDGER_WRITERS.set(result, writerAuthorities);
   return result;
+}
+
+function captureLedgerRecordArray(
+  value: unknown,
+  label: string,
+): readonly LedgerRecord[] {
+  if (!Array.isArray(value) || utilTypes.isProxy(value) ||
+      Object.getPrototypeOf(value) !== Array.prototype) {
+    throw writerUnauthorized(`${label} must be an ordinary array`);
+  }
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const length = Reflect.get(descriptors, "length") as PropertyDescriptor | undefined;
+  if (length === undefined || !("value" in length) ||
+      !Number.isSafeInteger(length.value) || length.value < 0 || length.value > 4_096) {
+    throw writerUnauthorized(`${label} must be a bounded dense array`);
+  }
+  return snapshotBoundedClosedDataTree(value, label) as readonly LedgerRecord[];
+}
+
+function snapshotBoundedClosedDataTree<T>(value: T, label: string): T {
+  const budget = { nodes: 0 };
+  const ancestors = new WeakSet<object>();
+  const visit = (member: unknown, path: string, depth: number): void => {
+    budget.nodes += 1;
+    if (budget.nodes > 65_536 || depth > 64) {
+      throw writerUnauthorized(`${label} exceeds its closed-data budget`);
+    }
+    if (member === null || typeof member === "boolean") return;
+    if (typeof member === "string") {
+      if (member.length > 1_048_576) {
+        throw writerUnauthorized(`${label} contains an oversized string`);
+      }
+      return;
+    }
+    if (typeof member === "number") {
+      if (!Number.isFinite(member)) {
+        throw writerUnauthorized(`${label} contains a non-finite number`);
+      }
+      return;
+    }
+    if (typeof member !== "object" || utilTypes.isProxy(member)) {
+      throw writerUnauthorized(`${path} must be closed ordinary data`);
+    }
+    if (ancestors.has(member)) throw writerUnauthorized(`${label} contains a cycle`);
+    ancestors.add(member);
+    try {
+      const descriptors = Object.getOwnPropertyDescriptors(member);
+      const keys = Reflect.ownKeys(descriptors);
+      if (keys.some((key) => typeof key === "symbol")) {
+        throw writerUnauthorized(`${path} contains a symbol member`);
+      }
+      if (Array.isArray(member)) {
+        if (Object.getPrototypeOf(member) !== Array.prototype) {
+          throw writerUnauthorized(`${path} must be an ordinary array`);
+        }
+        const length = Reflect.get(descriptors, "length") as PropertyDescriptor | undefined;
+        if (length === undefined || !("value" in length) ||
+            typeof length.value !== "number" || !Number.isSafeInteger(length.value) ||
+            length.value < 0 || length.value > 4_096) {
+          throw writerUnauthorized(`${path} must be a bounded dense array`);
+        }
+        const expected = ["length", ...Array.from({ length: length.value as number }, (_, index) => String(index))]
+          .sort();
+        if (keys.map(String).sort().join("\0") !== expected.join("\0")) {
+          throw writerUnauthorized(`${path} must be a bounded dense array`);
+        }
+      } else if (Object.getPrototypeOf(member) !== Object.prototype || keys.length > 256) {
+        throw writerUnauthorized(`${path} must be a bounded ordinary object`);
+      }
+      for (const key of keys) {
+        if (key === "length" && Array.isArray(member)) continue;
+        const descriptor = descriptors[String(key)];
+        if (descriptor === undefined || descriptor.enumerable !== true || !("value" in descriptor)) {
+          throw writerUnauthorized(`${path} members must be enumerable data properties`);
+        }
+        visit(descriptor.value, `${path}.${String(key)}`, depth + 1);
+      }
+    } finally {
+      ancestors.delete(member);
+    }
+  };
+  visit(value, label, 0);
+  return snapshotClosedDataTree(value, label);
+}
+
+function captureLedgerCheckpoint(value: unknown): LedgerCheckpoint {
+  const captured = captureExactDataObject(value, [[
+    "repository_rid",
+    "branch",
+    "commit_oid",
+    "observed_at",
+  ]], "claim ledger checkpoint");
+  return Object.freeze({
+    repository_rid: captured.repository_rid as string,
+    branch: captured.branch as "main",
+    commit_oid: captured.commit_oid as string,
+    observed_at: captured.observed_at as number,
+  });
+}
+
+export function revalidateLedgerWriterAuthorities(
+  state: LedgerMergeResult,
+):
+  | { verdict: "accept"; writer_fingerprints: readonly string[] }
+  | { verdict: "reject"; reason_code: "claim-ledger-writer-unauthorized" } {
+  try {
+    assertValidatedLedgerState(state);
+    const snapshot = VALIDATED_LEDGER_SNAPSHOTS.get(state);
+    const writers = VALIDATED_LEDGER_WRITERS.get(state);
+    if (snapshot === undefined || writers === undefined ||
+        jcsCanonicalize(state) !== jcsCanonicalize(snapshot)) {
+      throw writerUnauthorized("validated ledger writer state is absent or changed");
+    }
+    for (const writer of writers) {
+      revalidateCurrentRepositoryWriterBinding(writer.authority, writer.binding);
+    }
+    return Object.freeze({
+      verdict: "accept" as const,
+      writer_fingerprints: Object.freeze(writers.map(({ fingerprint }) => fingerprint)),
+    });
+  } catch {
+    return Object.freeze({
+      verdict: "reject" as const,
+      reason_code: "claim-ledger-writer-unauthorized" as const,
+    });
+  }
+}
+
+function captureLedgerValidationContext(
+  value: LedgerValidationContext,
+): LedgerValidationContext {
+  const required = [
+    "credential_ledger",
+    "record_evidence",
+    "repository",
+    "reader_requests",
+    "audience_keys_by_epoch",
+    "writer_authority",
+    "load_record_location",
+  ];
+  const captured = captureExactDataObject(value, [
+    required,
+    [...required, "issuer_key_material_by_record_id"],
+  ], "claim ledger validation context");
+  if (
+    typeof captured.load_record_location !== "function" ||
+    utilTypes.isProxy(captured.load_record_location)
+  ) throw writerUnauthorized("record-location loader must be a non-proxy callback");
+  const credential = snapshotBoundedClosedDataTree(
+    captured.credential_ledger,
+    "claim ledger credential binding",
+  ) as CredentialLedgerBinding;
+  const repository = snapshotBoundedClosedDataTree(
+    captured.repository,
+    "claim ledger repository evidence",
+  ) as LedgerRepositoryEvidence;
+  return Object.freeze({
+    credential_ledger: credential,
+    record_evidence: captureOrdinaryMap(
+      captured.record_evidence,
+      "claim ledger record evidence",
+    ) as Map<string, LedgerRecordValidationEvidence>,
+    repository,
+    reader_requests: captureOrdinaryMap(
+      captured.reader_requests,
+      "claim ledger reader requests",
+    ) as Map<string, ReaderAccessRequest>,
+    audience_keys_by_epoch: captureOrdinaryMap(
+      captured.audience_keys_by_epoch,
+      "claim ledger audience keys",
+    ) as Map<number, Uint8Array>,
+    ...(captured.issuer_key_material_by_record_id === undefined ? {} : {
+      issuer_key_material_by_record_id: captureOrdinaryMap(
+        captured.issuer_key_material_by_record_id,
+        "claim ledger issuer-key material",
+      ) as Map<string, { envelope: IssuerKeyEnvelope; audience_key: Uint8Array }>,
+    }),
+    writer_authority: captured.writer_authority as CoreRepositoryWriterAuthority,
+    load_record_location: captured.load_record_location as LedgerValidationContext["load_record_location"],
+  });
+}
+
+function captureOrdinaryMap(
+  value: unknown,
+  label: string,
+): Map<unknown, unknown> {
+  if (
+    value === null || typeof value !== "object" || utilTypes.isProxy(value) ||
+    Object.getPrototypeOf(value) !== Map.prototype
+  ) throw writerUnauthorized(`${label} must be an ordinary Map`);
+  let size: number;
+  try {
+    size = Reflect.getOwnPropertyDescriptor(Map.prototype, "size")!.get!.call(value) as number;
+  } catch {
+    throw writerUnauthorized(`${label} is not readable as a Map`);
+  }
+  if (!Number.isSafeInteger(size) || size < 0 || size > 4_096) {
+    throw writerUnauthorized(`${label} is oversized`);
+  }
+  const result = new Map<unknown, unknown>();
+  try {
+    for (const [key, member] of Map.prototype.entries.call(value) as MapIterator<[unknown, unknown]>) {
+      if (result.size >= 4_096) throw writerUnauthorized(`${label} is oversized`);
+      result.set(key, member);
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("claim-ledger-writer-unauthorized:")) {
+      throw error;
+    }
+    throw writerUnauthorized(`${label} iteration failed`);
+  }
+  if (result.size !== size) throw writerUnauthorized(`${label} changed during capture`);
+  return result;
+}
+
+function captureLedgerRecordLocation(
+  value: unknown,
+): LedgerRecordLocation & Readonly<{ writer_binding_source: RepositoryWriterBindingV1 }> {
+  const captured = captureExactDataObject(value, [[
+    "record_id",
+    "repository_rid",
+    "writer_ref",
+    "commit",
+    "checkpoint",
+    "revision",
+    "writer_binding",
+  ]], "claim ledger record location");
+  if (
+    typeof captured.record_id !== "string" || !HEX_32.test(captured.record_id) ||
+    typeof captured.repository_rid !== "string" || !RID.test(captured.repository_rid) ||
+    typeof captured.writer_ref !== "string" || captured.writer_ref.length === 0 ||
+    typeof captured.commit !== "string" || !COMMIT_OID.test(captured.commit) ||
+    typeof captured.checkpoint !== "string" || !COMMIT_OID.test(captured.checkpoint) ||
+    !Number.isSafeInteger(captured.revision) || (captured.revision as number) < 1
+  ) throw writerUnauthorized("record location is invalid");
+  const bindingSource = captured.writer_binding as RepositoryWriterBindingV1;
+  const binding = snapshotBoundedClosedDataTree(
+    bindingSource,
+    "claim ledger writer binding",
+  ) as RepositoryWriterBindingV1;
+  return Object.freeze({
+    record_id: captured.record_id,
+    repository_rid: captured.repository_rid,
+    writer_ref: captured.writer_ref,
+    commit: captured.commit,
+    checkpoint: captured.checkpoint,
+    revision: captured.revision as number,
+    writer_binding: binding,
+    writer_binding_source: bindingSource,
+  });
+}
+
+function resolveLedgerWriterAuthorities(
+  records: readonly LedgerRecord[],
+  checkpoint: LedgerCheckpoint,
+  context: LedgerValidationContext,
+): readonly LedgerWriterAuthorityRecord[] {
+  if (records.length > 4_096) throw writerUnauthorized("too many ledger records");
+  const commits = context.repository.commits;
+  const writers = new Map<string, LedgerWriterAuthorityRecord>();
+  for (const record of records) {
+    validateRecordIdentityBeforeWriterResolution(record);
+    let loaded: unknown;
+    try {
+      loaded = context.load_record_location(record);
+    } catch {
+      throw writerUnauthorized("record-location load failed");
+    }
+    let location: ReturnType<typeof captureLedgerRecordLocation>;
+    try {
+      location = captureLedgerRecordLocation(loaded);
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith("claim-ledger-writer-unauthorized:")) {
+        throw error;
+      }
+      throw writerUnauthorized("record-location capture failed");
+    }
+    if (
+      location.record_id !== record.record_id ||
+      location.repository_rid !== checkpoint.repository_rid ||
+      location.repository_rid !== context.repository.repository_rid ||
+      location.commit !== context.repository.canonical_head ||
+      location.checkpoint !== checkpoint.commit_oid ||
+      location.checkpoint !== context.repository.canonical_head ||
+      location.revision !== commits.length
+    ) throw writerUnauthorized("record location does not match canonical repository bytes");
+    const binding = location.writer_binding;
+    if (
+      binding.owner_active_key !== record.persona ||
+      binding.repository_rid !== location.repository_rid ||
+      binding.writer_nid !== record.writer_nid
+    ) throw writerUnauthorized("record and writer binding do not match");
+    const fingerprint = domainSeparatedDigestJson(
+      "heterodyne-claim-ledger-writer-authority-v1",
+      {
+        owner_active_key: record.persona,
+        repository_rid: location.repository_rid,
+        writer_nid: record.writer_nid,
+        writer_ref: location.writer_ref,
+        operation: "claim-ledger-write",
+        writer_binding: location.writer_binding,
+      },
+    );
+    const existing = writers.get(record.writer_nid);
+    if (existing !== undefined) {
+      if (existing.fingerprint !== fingerprint) {
+        throw writerUnauthorized("one writer resolved to conflicting authority");
+      }
+      continue;
+    }
+    let opaque: CurrentRepositoryWriterBinding;
+    try {
+      opaque = resolveCurrentRepositoryWriterBinding(
+        context.writer_authority,
+        location.writer_binding_source,
+        {
+          owner_active_key: record.persona,
+          repository_rid: location.repository_rid,
+          writer_nid: record.writer_nid,
+          writer_ref: location.writer_ref,
+          operation: "claim-ledger-write",
+        },
+      );
+    } catch {
+      throw writerUnauthorized("current Core writer resolution failed");
+    }
+    writers.set(record.writer_nid, Object.freeze({
+      authority: context.writer_authority,
+      binding: opaque,
+      fingerprint,
+    }));
+  }
+  return Object.freeze(
+    [...writers.values()].sort((left, right) =>
+      left.fingerprint.localeCompare(right.fingerprint)),
+  );
+}
+
+function validateRecordIdentityBeforeWriterResolution(record: LedgerRecord): void {
+  try {
+    assertPlainObject(record, "record");
+    assertExactKeys(record, RECORD_KEYS, "record");
+    validateClaimLedgerRecordSchemaOrThrow(record);
+    if (!HEX_32.test(record.record_id) || !HEX_32.test(record.payload_digest) ||
+        !HEX_64.test(record.signature)) {
+      throw new Error("invalid byte encoding");
+    }
+    if (record.payload_digest !==
+        domainSeparatedDigestJson("heterodyne-claim-ledger-payload-v1", record.payload) ||
+        record.record_id !== domainSeparatedDigestJson(
+          "heterodyne-claim-ledger-record-id-v1",
+          withoutRecordId(record),
+        )) {
+      throw new Error("record bytes do not match their location identity");
+    }
+    if (!ed25519.verify(
+      hexToBytes(record.signature),
+      utf8Bytes(recordSigningPayload(record)),
+      ed25519PublicKeyFromNid(record.writer_nid),
+    )) throw new Error("record self-signature is invalid");
+  } catch {
+    throw writerUnauthorized("record bytes or writer self-signature are invalid");
+  }
+}
+
+function writerUnauthorized(detail: string): Error {
+  return new Error(`claim-ledger-writer-unauthorized: ${detail}`);
 }
 
 export function canonicalValidatedCheckpoint(state: LedgerMergeResult): LedgerCheckpoint {
@@ -576,6 +995,11 @@ export function currentAuthorizationLedgerView(state: LedgerMergeResult): Readon
   const immutableState = snapshotClosedDataTree(snapshot, "current authorization ledger snapshot");
   VALIDATED_LEDGER_STATES.add(immutableState);
   VALIDATED_LEDGER_SNAPSHOTS.set(immutableState, immutableState);
+  const writerAuthorities = VALIDATED_LEDGER_WRITERS.get(state);
+  if (writerAuthorities === undefined) {
+    throw writerUnauthorized("current authorization writer state is absent");
+  }
+  VALIDATED_LEDGER_WRITERS.set(immutableState, writerAuthorities);
   return Object.freeze({
     checkpoint: immutableState.checkpoint,
     conflicted: snapshot.conflicted_claim_ids.length > 0,
@@ -1367,6 +1791,7 @@ export function ledgerErrorReason(error: unknown): string {
     "credential_checkpoint_invalid",
     "credential_reset_invalid",
     "claim-ledger-rollback",
+    "claim-ledger-writer-unauthorized",
     "claim-repository-conflict",
     "claim-repository-unconfirmed",
     "claim-ledger-reader-unauthorized",

@@ -964,7 +964,8 @@ describe("multi-writer OIDC issuer authority", () => {
     });
   });
 
-  it("rejects canonical token return from an unauthorized writer or unbound signing key", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local rejects an unauthorized writer before token return and an unbound signing key", () => {
+    // BLUE TEAM VALIDATION: synthetic/local keys and records are deterministic, non-deployable fixtures and never contact an external system.
     const bob = fixtures.ed25519_nids.bob_device_1;
     const authorityRecords = [
       s.claimRecordOne, s.claimRecordTwo, s.issuerClaimRecordOne, s.issuerClaimRecordTwo,
@@ -995,16 +996,52 @@ describe("multi-writer OIDC issuer authority", () => {
     });
     const context = s.makeTask5Context(repository.repository);
     context.record_evidence.set(record.record_id, boundEvidence(record));
-    const state = mergeClaimLedger([...authorityRecords, record], [], repository.checkpoint, context);
+    expect(() => mergeClaimLedger(
+      [...authorityRecords, record], [], repository.checkpoint, context,
+    )).toThrow(/^claim-ledger-writer-unauthorized:/);
+
+    const authorizedIssuance = {
+      ...issuance,
+      reservation: reserveStatusIndex(s.writerTwo.did_key, s.now + 3_600, 0, []),
+    };
+    const authorizedRecord = createSignedLedgerRecord({
+      record_type: "issuance-reservation",
+      persona: s.persona,
+      credential_ledger_generation: 0,
+      writer_nid: s.writerTwo.did_key,
+      created_at: s.now + 70,
+      parents: [s.claimRecordOne.record_id],
+      payload: authorizedIssuance as never,
+    }, s.writerTwo.private_key);
+    const authorizedRepository = buildLedgerRepositoryEvidence({
+      repository_rid: s.rid,
+      confirmed_records: [...authorityRecords, authorizedRecord],
+      observed_at: s.now + 100,
+      prior: s.issuerKeyEpochOneRepository.repository,
+    });
+    const authorizedContext = s.makeTask5Context(authorizedRepository.repository);
+    authorizedContext.record_evidence.set(
+      authorizedRecord.record_id,
+      boundEvidence(authorizedRecord),
+    );
+    const authorizedState = mergeClaimLedger(
+      [...authorityRecords, authorizedRecord],
+      [],
+      authorizedRepository.checkpoint,
+      authorizedContext,
+    );
     expect(canReturnToken(
-      record.record_id, state, s.issuerKeyEnvelopeOne, s.issuerAudienceKeyOne,
-    )).toMatchObject({ allowed: false, reason_code: "oidc-issuer-authority-invalid" });
+      authorizedRecord.record_id,
+      authorizedState,
+      s.issuerKeyEnvelopeOne,
+      s.issuerAudienceKeyOne,
+    )).toMatchObject({ allowed: false, reason_code: "oidc-signing-key-unavailable" });
     expect(createStatusInvalidationRecords({
-      state,
+      state: authorizedState,
       writer_nid: s.writerTwo.did_key,
       writer_secret_key: s.writerTwo.private_key,
-      created_at: repository.checkpoint.observed_at + 1,
-      compromised_signing_key_ids: [issuance.signing_key_id],
+      created_at: authorizedRepository.checkpoint.observed_at + 1,
+      compromised_signing_key_ids: [authorizedIssuance.signing_key_id],
     })).toEqual([]);
   });
 
