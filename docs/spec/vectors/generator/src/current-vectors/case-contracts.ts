@@ -472,8 +472,20 @@ const CURRENT_CASE_CONTRACTS = {
       "assurance-witness-threshold-unsatisfied"
     ]
   },
+  "assurance/dual-consent-downgrade-accepted": {
+    "boundary_id": "assurance-downgrade.evaluateAssuranceDowngrade+commitAssuranceDowngrade",
+    "owner_document": "assurance",
+    "profile": "heterodyne-assurance-active-key-acceptance-v1",
+    "spec_refs": [
+      "heterodyne:0.6.0#assurance-downgrade-resistance"
+    ],
+    "invariants": [
+      "ASSURANCE-I-PIN-DOWNGRADE"
+    ],
+    "reason_codes": []
+  },
   "assurance/unilateral-downgrade-rejected": {
-    "boundary_id": "assurance-policy.evaluateAssurancePinPolicy",
+    "boundary_id": "assurance-downgrade.evaluateAssuranceDowngrade+commitAssuranceDowngrade",
     "owner_document": "assurance",
     "spec_refs": [
       "heterodyne:0.6.0#assurance-downgrade-resistance"

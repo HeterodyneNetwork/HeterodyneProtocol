@@ -11,26 +11,16 @@ type AssurancePin = Readonly<{
 export function evaluateAssurancePinPolicy(input: Readonly<{
   retained_pin: AssurancePin;
   presented_head: string;
-  downgrade: null | Readonly<{
-    active_key_consent: boolean;
-    recovery_authority_proof: boolean;
-  }>;
   authorized_successors: readonly string[];
 }>):
-  | { verdict: "accept"; state: "pinned" | "downgraded" }
-  | { verdict: "reject"; reason_code: "assurance-pin-conflict" | "assurance-downgrade-consent-required" | "assurance-duplicity" } {
+  | { verdict: "accept"; state: "pinned" }
+  | { verdict: "reject"; reason_code: "assurance-pin-conflict" | "assurance-duplicity" } {
   if (input.presented_head !== input.retained_pin.assurance_head) {
     return { verdict: "reject", reason_code: "assurance-pin-conflict" };
   }
   const successors = new Set(input.authorized_successors);
   if (successors.size > 1) {
     return { verdict: "reject", reason_code: "assurance-duplicity" };
-  }
-  if (input.downgrade !== null) {
-    if (!input.downgrade.active_key_consent || !input.downgrade.recovery_authority_proof) {
-      return { verdict: "reject", reason_code: "assurance-downgrade-consent-required" };
-    }
-    return { verdict: "accept", state: "downgraded" };
   }
   return { verdict: "accept", state: "pinned" };
 }

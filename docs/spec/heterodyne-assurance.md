@@ -519,10 +519,29 @@ request, and a server policy change are not consent. If the active key is
 unavailable, the recovery authority performs succession to a fresh active
 key; it does not silently downgrade the old pin.
 
+The verifier MUST snapshot one strict NIP-01 event and validate its event ID,
+outer signature, canonical closed content, exact tags, original inception
+binding, accepted head, predecessor, recovery-authority identifier, and the
+five-member recovery proof before authorizing any transition. Public
+booleans, shaped pin objects, parsed-content lookalikes, and a recovery proof
+detached from that exact active-key-authored event carry no downgrade
+authority. Mutation of the source event or retained pin after verification
+fails closed.
+
 A valid downgrade becomes the retained terminal pin for that enrollment. It
 does not invalidate older events or claim that enhanced assurance never
 existed. Reattachment requires a new reciprocal inception and acceptance;
 clients retain the prior downgraded pin as history.
+
+The downgrade transition MUST compare-and-swap the exact sealed durable
+enrollment scope from its retained revision and accepted head to an explicit
+sealed terminal `downgraded` state. No evaluator or persistence API may
+return a state-changing acceptance before that commit succeeds. A completed
+retry of the identical verified event returns the cached terminal state;
+revision conflict, a different event or predecessor, an artifact from another
+authority, or replay against a different scope is
+`assurance-pin-conflict`. Once terminal, enrollment-window evaluation MUST
+return the retained downgraded state and MUST NOT recreate or repin the scope.
 
 <a id="assurance-compromise"></a>
 ## 10. Compromise behavior

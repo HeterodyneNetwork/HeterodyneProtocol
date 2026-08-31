@@ -96,23 +96,21 @@ describe("current Assurance pin and export policy", () => {
     }
   });
 
-  it("rejects conflicting pins, unilateral downgrade, and duplicity", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local rejects conflicting pins and duplicity without a boolean downgrade path", () => {
     expect(evaluateAssurancePinPolicy({
       retained_pin: pin,
       presented_head: "44".repeat(32),
-      downgrade: null,
       authorized_successors: [],
     })).toEqual({ verdict: "reject", reason_code: "assurance-pin-conflict" });
     expect(evaluateAssurancePinPolicy({
       retained_pin: pin,
       presented_head: pin.assurance_head,
-      downgrade: { active_key_consent: true, recovery_authority_proof: false },
       authorized_successors: [],
-    })).toEqual({ verdict: "reject", reason_code: "assurance-downgrade-consent-required" });
+      downgrade: { active_key_consent: true, recovery_authority_proof: true },
+    } as never)).toEqual({ verdict: "accept", state: "pinned" });
     expect(evaluateAssurancePinPolicy({
       retained_pin: pin,
       presented_head: pin.assurance_head,
-      downgrade: null,
       authorized_successors: ["55".repeat(32), "66".repeat(32)],
     })).toEqual({ verdict: "reject", reason_code: "assurance-duplicity" });
   });

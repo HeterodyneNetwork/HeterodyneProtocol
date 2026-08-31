@@ -166,6 +166,10 @@ type ActiveKeyAcceptance = {
   cold_root_signature: string;
   assurance_head: string;
   state: "assured" | "downgraded";
+  downgrade_consent?: {
+    recovery_authority: string;
+    signature: string;
+  };
 };
 
 export type AssuranceVerdict<T> =
@@ -187,11 +191,13 @@ export type EnrollmentObservationReceipt = {
 };
 
 export type AssuranceEnrollmentEligibility = {
-  state: "pending" | "verified" | "contested";
+  state: "pending" | "verified" | "contested" | "downgraded";
   reason: "assurance-enrollment-pending-window" |
     "assurance-enrollment-contested" | null;
   warnings: Array<"assurance-enrollment-contested">;
   normalized: AssuranceHeadState;
+  retained_pin: import("./assurance-observation.js")
+    .AssuranceEnrollmentAuthoritativePin | null;
 };
 
 const ajv = new Ajv({ allErrors: true, strict: false });

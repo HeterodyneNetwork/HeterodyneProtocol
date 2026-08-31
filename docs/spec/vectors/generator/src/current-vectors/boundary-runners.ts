@@ -1,6 +1,7 @@
 import * as agentAuthorship from "../agent-authorship.js";
 import * as agentModeration from "../agent-moderation.js";
 import * as assurance from "../assurance.js";
+import * as assuranceDowngrade from "../assurance-downgrade.js";
 import * as assuranceObservation from "../assurance-observation.js";
 import * as assurancePolicy from "../assurance-policy.js";
 import * as authorizationFreshness from "../authorization-freshness.js";
@@ -48,6 +49,7 @@ const BOUNDARY_MODULES: Readonly<Record<string, BoundaryModule>> = Object.freeze
   "agent-authorship": agentAuthorship,
   "agent-moderation": agentModeration,
   assurance,
+  "assurance-downgrade": assuranceDowngrade,
   "assurance-observation": assuranceObservation,
   "assurance-policy": assurancePolicy,
   "authorization-freshness": authorizationFreshness,
@@ -300,6 +302,78 @@ async function executeCurrentBoundary(
             assurance_head: raw.normalized.head,
           };
     return { raw_result: raw, projected_output: projected };
+  }
+  if (
+    boundaryId ===
+      "assurance-downgrade.evaluateAssuranceDowngrade+commitAssuranceDowngrade"
+  ) {
+    const input = fixture.input as {
+      inception: Parameters<typeof assurance.evaluateEnrollment>[0]["inception"];
+      acceptance: Parameters<typeof assurance.evaluateEnrollment>[0]["acceptance"];
+      authority_id: string;
+      journal_integrity_key: string;
+      witness_policy: {
+        policy_digest: string;
+        minimum_weight: number;
+        witnesses: Array<[string, number]>;
+      };
+      steps: Array<{
+        at: number;
+        evidence: assuranceObservation.EnrollmentEvidenceInput;
+      }>;
+      downgrade_event: Parameters<typeof assuranceDowngrade.evaluateAssuranceDowngrade>[1];
+    };
+    const entries = new Map<string, assuranceObservation.EnrollmentObservationJournalEntry>();
+    let trustedNow = input.steps[0]?.at ?? 0;
+    const authority = assuranceObservation.createAssuranceEnrollmentObservationAuthority({
+      authority_id: input.authority_id,
+      journal_integrity_key: input.journal_integrity_key,
+      trusted_now: () => trustedNow,
+      witness_policy: {
+        policy_digest: input.witness_policy.policy_digest,
+        minimum_weight: input.witness_policy.minimum_weight,
+        witnesses: new Map(input.witness_policy.witnesses),
+      },
+      journal: {
+        load: (key) => entries.get(key) ?? null,
+        compareAndSwap(key, expectedRevision, next) {
+          if ((entries.get(key)?.revision ?? null) !== expectedRevision) {
+            return "conflict";
+          }
+          entries.set(key, next);
+          return "committed";
+        },
+      },
+    });
+    let retained: Awaited<ReturnType<
+      typeof assuranceObservation.evaluateEnrollmentEligibility
+    >> = { verdict: "reject", reason_code: "assurance-pin-conflict" };
+    for (const step of input.steps) {
+      trustedNow = step.at;
+      retained = await assuranceObservation.evaluateEnrollmentEligibility(authority, {
+        inception: input.inception,
+        acceptance: input.acceptance,
+        evidence: step.evidence,
+      });
+    }
+    if (
+      "verdict" in retained || retained.state !== "verified" ||
+      retained.retained_pin === null
+    ) return { raw_result: retained, projected_output: retained };
+    const evaluated = assuranceDowngrade.evaluateAssuranceDowngrade(
+      retained.retained_pin,
+      input.downgrade_event,
+    );
+    if (evaluated.verdict === "reject") {
+      return { raw_result: evaluated, projected_output: evaluated };
+    }
+    const committed = assuranceDowngrade.commitAssuranceDowngrade(
+      evaluated.normalized,
+    );
+    return {
+      raw_result: committed,
+      projected_output: committed,
+    };
   }
   if (boundaryId === "assurance.evaluateAssuranceAuthorityAt") {
     const input = fixture.input as { created_at: number; compromise_cutoff: number | null };

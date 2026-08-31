@@ -168,6 +168,42 @@ function observationInput(
         steps,
     };
 }
+async function downgradeEvent(
+    pair: Awaited<ReturnType<typeof enrolledPersona>>,
+    recoveryConsent: boolean,
+): Promise<NostrSignedEvent> {
+    const proofBody = {
+        active_key: ACTIVE_KEY,
+        assurance_head: pair.acceptance.id,
+        created_at: OBSERVATION_NOW + 1,
+        inception_event_id: pair.inception.id,
+        predecessor: pair.acceptance.id,
+    };
+    const body: Record<string, unknown> = {
+        profile: "heterodyne.assurance.active-key-acceptance.v1",
+        spec_version: QUALIFIED_VERSION,
+        ...proofBody,
+        cold_root: COLD_KEY,
+        cold_root_signature: pair.inception.sig,
+        state: "downgraded",
+    };
+    if (recoveryConsent) {
+        body.downgrade_consent = {
+            recovery_authority: COLD_KEY,
+            signature: proof(COLD_SECRET, domainSeparatedJcsDigest(
+                "heterodyne-assurance-downgrade-v1",
+                proofBody,
+            )),
+        };
+    }
+    return assuranceEvent(
+        ACTIVE_SECRET,
+        31000,
+        "assurance-head",
+        body.profile as string,
+        body,
+    );
+}
 function acceptedHead(pair: Awaited<ReturnType<typeof enrolledPersona>>): AssuranceHeadState {
     const decision = evaluateEnrollment(pair);
     if (decision.verdict !== "accept") {
@@ -639,19 +675,23 @@ export async function buildAssuranceCases(): Promise<CurrentCaseFixture[]> {
     const pinConflictInput = {
         retained_pin: retainedPin,
         presented_head: "aa".repeat(32),
-        downgrade: null,
         authorized_successors: [] as string[],
     };
+    const downgradeObservation = observationInput(pair, [
+        { at: firstObserved, evidence: baseEvidence() },
+        { at: OBSERVATION_NOW, evidence: baseEvidence() },
+    ]);
+    const dualConsentDowngradeInput = {
+        ...downgradeObservation,
+        downgrade_event: await downgradeEvent(pair, true),
+    };
     const unilateralDowngradeInput = {
-        retained_pin: retainedPin,
-        presented_head: retainedPin.assurance_head,
-        downgrade: { active_key_consent: true, recovery_authority_proof: false },
-        authorized_successors: [] as string[],
+        ...downgradeObservation,
+        downgrade_event: await downgradeEvent(pair, false),
     };
     const duplicityInput = {
         retained_pin: retainedPin,
         presented_head: retainedPin.assurance_head,
-        downgrade: null,
         authorized_successors: ["bb".repeat(32), "cc".repeat(32)],
     };
     const exportInput = {
@@ -701,6 +741,12 @@ export async function buildAssuranceCases(): Promise<CurrentCaseFixture[]> {
             description: "A presented Assurance head that conflicts with the retained verified pin cannot replace it.",
             direction: "consume",
             input: pinConflictInput
+        },
+        {
+            vector_id: "assurance/dual-consent-downgrade-accepted",
+            description: "An active-key-authored downgrade with the exact current recovery-authority proof becomes the retained terminal state.",
+            direction: "consume",
+            input: dualConsentDowngradeInput
         },
         {
             vector_id: "assurance/unilateral-downgrade-rejected",

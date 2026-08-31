@@ -14,6 +14,7 @@ import {
   type EnrollmentObservationReceipt,
 } from "./assurance.js";
 import { domainSeparatedJcsDigest } from "./credential-continuity.js";
+import { verifiedAssuranceDowngradeBindingForCommit } from "./assurance-downgrade.js";
 import { bytesToHex } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
 import {
@@ -89,6 +90,20 @@ export type AssuranceEnrollmentAuthoritativePin = Readonly<{
   eligibility_basis_digest: string;
 }>;
 
+export type AssuranceEnrollmentDowngradeTerminal = Readonly<{
+  state: "downgraded";
+  active_key: string;
+  inception_event_id: string;
+  cold_root: string;
+  accepted_head: string;
+  predecessor: string;
+  created_at: number;
+  downgrade_event_id: string;
+  downgrade_event_signature: string;
+  transition_digest: string;
+  binding_digest: string;
+}>;
+
 export type EnrollmentObservationJournalEntry = Readonly<{
   scope: Readonly<{
     active_key: string;
@@ -107,6 +122,7 @@ export type EnrollmentObservationJournalEntry = Readonly<{
   conflicts: readonly EnrollmentObservationConflict[];
   contested: boolean;
   pin: AssuranceEnrollmentAuthoritativePin | null;
+  terminal: AssuranceEnrollmentDowngradeTerminal | null;
   seal: string;
 }>;
 
@@ -141,6 +157,33 @@ export type AssuranceEnrollmentObservationAuthority = Readonly<{
   [assuranceEnrollmentObservationAuthorityBrand]: true;
 }>;
 
+declare const assuranceEnrollmentDowngradeCapabilityBrand: unique symbol;
+export type AssuranceEnrollmentDowngradeCapability = Readonly<{
+  [assuranceEnrollmentDowngradeCapabilityBrand]: true;
+}>;
+
+export type AssuranceEnrollmentDowngradeContext = Readonly<{
+  active_key: string;
+  inception_event_id: string;
+  inception_signature: string;
+  cold_root: string;
+  accepted_head: string;
+  capability: AssuranceEnrollmentDowngradeCapability;
+}>;
+
+export type AssuranceEnrollmentDowngradeBinding = Readonly<{
+  active_key: string;
+  inception_event_id: string;
+  cold_root: string;
+  accepted_head: string;
+  predecessor: string;
+  created_at: number;
+  downgrade_event_id: string;
+  downgrade_event_signature: string;
+  transition_digest: string;
+  binding_digest: string;
+}>;
+
 type CapturedAuthority = Readonly<{
   authority_id: string;
   trusted_now: () => number;
@@ -159,7 +202,17 @@ type Candidate = Readonly<{
   inception_body: EnrollmentInception;
 }>;
 
+type CapturedRetainedPin = Readonly<{
+  authority: CapturedAuthority;
+  candidate: Candidate;
+  scope_key: string;
+  revision: number;
+  pin: AssuranceEnrollmentAuthoritativePin;
+}>;
+
 const AUTHORITIES = new WeakMap<object, CapturedAuthority>();
+const RETAINED_PINS = new WeakMap<object, CapturedRetainedPin>();
+const DOWNGRADE_CAPABILITIES = new WeakMap<object, CapturedRetainedPin>();
 const ajv = new Ajv({ allErrors: true, strict: false });
 const validateContest = ajv.compile(contestSchema as AnySchema);
 const validateObservationReceipt = ajv.compile(
@@ -241,6 +294,92 @@ export function createAssuranceEnrollmentObservationAuthority(
   return authority as AssuranceEnrollmentObservationAuthority;
 }
 
+export function resolveAssuranceEnrollmentPinForDowngrade(
+  retainedPin: unknown,
+): AssuranceEnrollmentDowngradeContext | null {
+  if (retainedPin === null || typeof retainedPin !== "object") return null;
+  const retained = RETAINED_PINS.get(retainedPin);
+  if (retained === undefined) return null;
+  const capability = Object.freeze({});
+  DOWNGRADE_CAPABILITIES.set(capability, retained);
+  return Object.freeze({
+    active_key: retained.pin.active_key,
+    inception_event_id: retained.pin.inception_event_id,
+    inception_signature: retained.candidate.enrollment.inception_signature,
+    cold_root: retained.pin.cold_root,
+    accepted_head: retained.pin.accepted_head,
+    capability: capability as AssuranceEnrollmentDowngradeCapability,
+  });
+}
+
+export function commitAssuranceEnrollmentDowngrade(
+  capability: AssuranceEnrollmentDowngradeCapability,
+  artifact: unknown,
+): AssuranceVerdict<AssuranceEnrollmentDowngradeTerminal> {
+  if (capability === null || typeof capability !== "object") {
+    return pinConflict();
+  }
+  const retained = DOWNGRADE_CAPABILITIES.get(capability);
+  const binding = verifiedAssuranceDowngradeBindingForCommit(
+    artifact,
+    capability,
+  );
+  if (retained === undefined || binding === null || !bindingMatchesPin(
+    binding,
+    retained.pin,
+  )) return pinConflict();
+
+  let now: number;
+  let loaded: unknown;
+  try {
+    now = retained.authority.trusted_now();
+    loaded = retained.authority.load(retained.scope_key);
+  } catch {
+    return pinConflict();
+  }
+  if (!isUnixTime(now)) return pinConflict();
+  const entry = snapshotJournalEntry(loaded);
+  if (
+    entry === null ||
+    !validJournalSeal(entry, retained.authority.journal_integrity_key) ||
+    !validJournalState(entry, retained.candidate, retained.authority, now) ||
+    !samePin(entry.pin, retained.pin)
+  ) return pinConflict();
+  if (entry.terminal !== null) {
+    return sameDowngradeTerminal(entry.terminal, binding)
+      ? { verdict: "accept", normalized: entry.terminal }
+      : pinConflict();
+  }
+  if (entry.revision !== retained.revision || entry.pin === null) {
+    return pinConflict();
+  }
+
+  const terminal: AssuranceEnrollmentDowngradeTerminal = Object.freeze({
+    state: "downgraded",
+    ...binding,
+  });
+  const next = sealJournalEntry({
+    ...entry,
+    revision: entry.revision + 1,
+    terminal,
+  }, retained.authority.journal_integrity_key);
+  if (!validJournalState(next, retained.candidate, retained.authority, now)) {
+    return pinConflict();
+  }
+  try {
+    return commit(
+        retained.authority,
+        retained.scope_key,
+        retained.revision,
+        next,
+      )
+      ? { verdict: "accept", normalized: next.terminal! }
+      : pinConflict();
+  } catch {
+    return pinConflict();
+  }
+}
+
 export async function evaluateEnrollmentEligibility(
   authority: AssuranceEnrollmentObservationAuthority,
   input: Readonly<{
@@ -304,6 +443,13 @@ export async function evaluateEnrollmentEligibility(
     if (!validJournalState(entry, candidate, captured, now)) {
       return pinConflict();
     }
+    if (entry.terminal !== null) {
+      if (entry.pin === null) return pinConflict();
+      return downgraded(
+        candidate.enrollment,
+        registerRetainedPin(entry.pin, entry, candidate, captured, key),
+      );
+    }
 
     const ingested = ingestEvidence(entry, candidate, evidence, captured, now);
     if (ingested === null) return pending(candidate.enrollment);
@@ -317,7 +463,11 @@ export async function evaluateEnrollmentEligibility(
 
     if (entry.pin !== null) {
       if (changed && !commit(captured, key, expectedRevision, entry)) continue;
-      return verified(candidate.enrollment, entry.conflicts.length > 0);
+      return verified(
+        candidate.enrollment,
+        entry.conflicts.length > 0,
+        registerRetainedPin(entry.pin, entry, candidate, captured, key),
+      );
     }
 
     const witness = qualifyingWitnessReceipts(entry, candidate, captured, now);
@@ -355,12 +505,17 @@ export async function evaluateEnrollmentEligibility(
         eligibility_basis: basis,
         eligibility_basis_digest: basisDigest(basis),
       },
+      terminal: null,
     }, captured.journal_integrity_key);
     if (!validJournalState(closed, candidate, captured, now)) {
       throw observationAuthorityInvalid();
     }
     if (!commit(captured, key, expectedRevision, closed)) continue;
-    return verified(candidate.enrollment, false);
+    return verified(
+      candidate.enrollment,
+      false,
+      registerRetainedPin(closed.pin!, closed, candidate, captured, key),
+    );
   }
   throw observationAuthorityInvalid();
 }
@@ -707,6 +862,12 @@ function validJournalState(
   if (entry.pin === null && entry.conflicts.length > 0 && !entry.contested) {
     return false;
   }
+  if (
+    entry.terminal !== null &&
+    (entry.pin === null || entry.contested ||
+      entry.revision <= entry.pin.eligibility_basis.closing_revision ||
+      !bindingMatchesPin(entry.terminal, entry.pin))
+  ) return false;
   return entry.pin === null || validRetainedPin(
     entry.pin,
     entry,
@@ -784,6 +945,7 @@ function initialEntry(
     conflicts: [],
     contested: false,
     pin: null,
+    terminal: null,
     seal: "00".repeat(32),
   }, authority.journal_integrity_key);
 }
@@ -896,7 +1058,7 @@ function snapshotJournalEntry(value: unknown): EnrollmentObservationJournalEntry
     "scope", "revision", "authority_id", "active_key", "inception_event_id",
     "cold_root", "accepted_head", "policy_digest",
     "first_candidate_ingested_at", "evidence_digests", "witnesses",
-    "conflicts", "contested", "pin", "seal",
+    "conflicts", "contested", "pin", "terminal", "seal",
   ]);
   const scope = entry === null
     ? null
@@ -1002,6 +1164,10 @@ function snapshotJournalEntry(value: unknown): EnrollmentObservationJournalEntry
         new Set(basis.conflict_digests).size !== basis.conflict_digests.length
       ) return null;
     }
+    if (
+      cloned.terminal !== null &&
+      snapshotDowngradeTerminal(cloned.terminal) === null
+    ) return null;
     return cloned;
   } catch {
     return null;
@@ -1028,6 +1194,85 @@ function mutableEntry(entry: EnrollmentObservationJournalEntry): {
     conflicts: entry.conflicts.map((conflict) => ({ ...conflict })),
     pin: entry.pin,
   };
+}
+
+function registerRetainedPin(
+  pin: AssuranceEnrollmentAuthoritativePin,
+  entry: EnrollmentObservationJournalEntry,
+  candidate: Candidate,
+  authority: CapturedAuthority,
+  scopeKey: string,
+): AssuranceEnrollmentAuthoritativePin {
+  RETAINED_PINS.set(pin, Object.freeze({
+    authority,
+    candidate,
+    scope_key: scopeKey,
+    revision: entry.revision,
+    pin,
+  }));
+  return pin;
+}
+
+function snapshotDowngradeBinding(
+  value: unknown,
+): AssuranceEnrollmentDowngradeBinding | null {
+  const record = exactRecord(value, [
+    "active_key", "inception_event_id", "cold_root", "accepted_head",
+    "predecessor", "created_at", "downgrade_event_id",
+    "downgrade_event_signature", "transition_digest", "binding_digest",
+  ]);
+  if (
+    record === null || !isHex32(record.active_key) ||
+    !isHex32(record.inception_event_id) || !isHex32(record.cold_root) ||
+    !isHex32(record.accepted_head) || !isHex32(record.predecessor) ||
+    !isUnixTime(record.created_at) || !isHex32(record.downgrade_event_id) ||
+    typeof record.downgrade_event_signature !== "string" ||
+    !/^[0-9a-f]{128}$/u.test(record.downgrade_event_signature) ||
+    !isDigest(record.transition_digest) || !isDigest(record.binding_digest)
+  ) return null;
+  return immutableClone(record) as AssuranceEnrollmentDowngradeBinding;
+}
+
+function snapshotDowngradeTerminal(
+  value: unknown,
+): AssuranceEnrollmentDowngradeTerminal | null {
+  const record = exactRecord(value, [
+    "state", "active_key", "inception_event_id", "cold_root", "accepted_head",
+    "predecessor", "created_at", "downgrade_event_id",
+    "downgrade_event_signature", "transition_digest", "binding_digest",
+  ]);
+  if (record === null || record.state !== "downgraded") return null;
+  const { state: _state, ...binding } = record;
+  const captured = snapshotDowngradeBinding(binding);
+  return captured === null
+    ? null
+    : Object.freeze({ state: "downgraded", ...captured });
+}
+
+function bindingMatchesPin(
+  binding: AssuranceEnrollmentDowngradeBinding | AssuranceEnrollmentDowngradeTerminal,
+  pin: AssuranceEnrollmentAuthoritativePin,
+): boolean {
+  return binding.active_key === pin.active_key &&
+    binding.inception_event_id === pin.inception_event_id &&
+    binding.cold_root === pin.cold_root &&
+    binding.accepted_head === pin.accepted_head &&
+    binding.predecessor === pin.accepted_head;
+}
+
+function sameDowngradeTerminal(
+  terminal: AssuranceEnrollmentDowngradeTerminal,
+  binding: AssuranceEnrollmentDowngradeBinding,
+): boolean {
+  const { state: _state, ...retained } = terminal;
+  return jcsCanonicalize(retained) === jcsCanonicalize(binding);
+}
+
+function samePin(
+  left: AssuranceEnrollmentAuthoritativePin | null,
+  right: AssuranceEnrollmentAuthoritativePin,
+): boolean {
+  return left !== null && jcsCanonicalize(left) === jcsCanonicalize(right);
 }
 
 function exactRecord(
@@ -1295,9 +1540,10 @@ function isDigest(value: unknown): value is string {
 }
 
 function enrollmentResult(
-  state: "pending" | "verified" | "contested",
+  state: "pending" | "verified" | "contested" | "downgraded",
   normalized: AssuranceHeadState,
   warning: boolean,
+  retainedPin: AssuranceEnrollmentAuthoritativePin | null,
 ): AssuranceEnrollmentEligibility {
   return {
     state,
@@ -1308,22 +1554,31 @@ function enrollmentResult(
         : null,
     warnings: warning ? ["assurance-enrollment-contested"] : [],
     normalized,
+    retained_pin: retainedPin,
   };
 }
 
 function pending(normalized: AssuranceHeadState): AssuranceEnrollmentEligibility {
-  return enrollmentResult("pending", normalized, false);
+  return enrollmentResult("pending", normalized, false, null);
 }
 
 function contested(normalized: AssuranceHeadState): AssuranceEnrollmentEligibility {
-  return enrollmentResult("contested", normalized, true);
+  return enrollmentResult("contested", normalized, true, null);
 }
 
 function verified(
   normalized: AssuranceHeadState,
   warning: boolean,
+  retainedPin: AssuranceEnrollmentAuthoritativePin,
 ): AssuranceEnrollmentEligibility {
-  return enrollmentResult("verified", normalized, warning);
+  return enrollmentResult("verified", normalized, warning, retainedPin);
+}
+
+function downgraded(
+  normalized: AssuranceHeadState,
+  retainedPin: AssuranceEnrollmentAuthoritativePin,
+): AssuranceEnrollmentEligibility {
+  return enrollmentResult("downgraded", normalized, false, retainedPin);
 }
 
 function reciprocalReject(): AssuranceVerdict<never> {
