@@ -351,6 +351,17 @@
       ]
     },
     {
+      "code": "repository-writer-binding-invalid",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "heterodyne/0.6.0",
+      "description": "The closed repository-writer binding or its current owner-policy authorization is invalid.",
+      "spec_refs": [
+        "heterodyne:0.6.0#core-nid-delegation"
+      ],
+      "intentionally_coarse": true
+    },
+    {
       "code": "node_advert_expired",
       "owner": "core",
       "status": "draft",
@@ -377,7 +388,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "An org member NID add carried only one of the required member-KEL and org-admin-threshold authorizations.",
       "spec_refs": [
-        "heterodyne:0.6.0#core-conformance"
+        "heterodyne:0.6.0#core-retired-member-kel-and-role-delegation"
       ]
     },
     {
@@ -625,7 +636,7 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Core/KEL validation does not establish the issuer's claimed authority at issuance time.",
+      "description": "The exact verified outer issuer or explicit verified claim-chain authority required at the edge was not established.",
       "spec_refs": [
         "heterodyne:0.6.0#comms-conformance"
       ]
@@ -701,6 +712,26 @@
       ]
     },
     {
+      "code": "claim-subject-proof-replayed",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "heterodyne/0.6.0",
+      "description": "The claim subject proof single-use key was already acquired or conflicts with a different authorization-effect binding.",
+      "spec_refs": [
+        "heterodyne:0.6.0#comms-claim-verification"
+      ]
+    },
+    {
+      "code": "claim-authorization-effect-indeterminate",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "heterodyne/0.6.0",
+      "description": "The acquired claim authorization effect has no safely confirmed terminal result and requires reconciliation.",
+      "spec_refs": [
+        "heterodyne:0.6.0#comms-claim-verification"
+      ]
+    },
+    {
       "code": "claim-repository-unconfirmed",
       "owner": "comms",
       "status": "draft",
@@ -759,6 +790,17 @@
       "spec_refs": [
         "heterodyne:0.6.0#comms-conformance"
       ]
+    },
+    {
+      "code": "claim-ledger-writer-unauthorized",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "heterodyne/0.6.0",
+      "description": "A claim-ledger record or prepared claim view lacks current Core repository-writer authorization.",
+      "spec_refs": [
+        "heterodyne:0.6.0#comms-claim-ledger"
+      ],
+      "intentionally_coarse": true
     },
     {
       "code": "claim-ledger-rollback",
@@ -887,7 +929,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A role-addressed delegation does not use the exact registered namespace and role identifier syntax.",
       "spec_refs": [
-        "heterodyne:0.6.0#core-nid-delegation"
+        "heterodyne:0.6.0#core-retired-member-kel-and-role-delegation"
       ]
     },
     {
@@ -897,7 +939,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The registered role-key proof is missing, malformed, or invalid over the profile binding.",
       "spec_refs": [
-        "heterodyne:0.6.0#core-nid-delegation"
+        "heterodyne:0.6.0#core-retired-member-kel-and-role-delegation"
       ]
     },
     {

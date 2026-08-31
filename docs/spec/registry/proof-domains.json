@@ -140,6 +140,7 @@
       "first_version": "heterodyne/0.6.0",
       "status": "draft",
       "bound_members": [
+        "accepted_head",
         "active_key",
         "cold_root",
         "conflict_free",
@@ -193,6 +194,28 @@
         "ed25519"
       ],
       "description": "NID proof over a kind:31010 node and repository advertisement."
+    },
+    {
+      "id": "heterodyne-core-repository-writer-binding-v1",
+      "owner": "core",
+      "first_version": "heterodyne/0.6.0",
+      "status": "draft",
+      "bound_members": [
+        "expires_at",
+        "issued_at",
+        "operations",
+        "owner_active_key",
+        "profile",
+        "ref_namespace",
+        "repository_rid",
+        "spec_version",
+        "writer_nid"
+      ],
+      "suites": [
+        "bip340",
+        "ed25519"
+      ],
+      "description": "Repository owner BIP-340 and writer NID Ed25519 proofs bind the identical closed repository-writer authority body."
     },
     {
       "id": "heterodyne-claim-pop-v1",
