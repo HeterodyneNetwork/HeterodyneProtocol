@@ -103,4 +103,68 @@ describe("claim-ledger remediation security contexts", () => {
     )).toThrow(/evidence|data-only|repository-unconfirmed/i);
     expect(accessorReads).toBe(0);
   });
+
+  it("BLUE TEAM VALIDATION: synthetic/local ledger revocation never spreads nested hostile context", async () => {
+    // BLUE TEAM VALIDATION: synthetic/local replay uses only deterministic non-deployable signed records.
+    const scenario = await buildClaimLedgerScenario(fixtures);
+    const repository = buildLedgerRepositoryEvidence({
+      repository_rid: scenario.rid,
+      confirmed_records: [scenario.claimRecordOne, scenario.revocationRecord],
+      observed_at: scenario.now + 50,
+    });
+
+    let nowReads = 0;
+    const accessorValidation = scenario.makeContext(repository.repository);
+    const accessorEvidence = accessorValidation.record_evidence.get(
+      scenario.revocationRecord.record_id,
+    )!;
+    const accessorContext = { ...accessorEvidence.claim_verification_context! };
+    Object.defineProperty(accessorContext, "now", {
+      enumerable: true,
+      get() {
+        nowReads += 1;
+        return scenario.now + 40;
+      },
+    });
+    accessorValidation.record_evidence.set(scenario.revocationRecord.record_id, {
+      ...accessorEvidence,
+      claim_verification_context: accessorContext,
+    });
+    expect(() => mergeClaimLedger(
+      [scenario.claimRecordOne, scenario.revocationRecord],
+      [],
+      repository.checkpoint,
+      accessorValidation,
+    )).toThrow(/claim-revoker-unauthorized|data-only|context/i);
+    expect(nowReads).toBe(0);
+
+    let proxyTraps = 0;
+    const proxyValidation = scenario.makeContext(repository.repository);
+    const proxyEvidence = proxyValidation.record_evidence.get(scenario.revocationRecord.record_id)!;
+    const proxyContext = new Proxy(proxyEvidence.claim_verification_context!, {
+      ownKeys(target) {
+        proxyTraps += 1;
+        return Reflect.ownKeys(target);
+      },
+      getOwnPropertyDescriptor(target, property) {
+        proxyTraps += 1;
+        return Reflect.getOwnPropertyDescriptor(target, property);
+      },
+      get(target, property, receiver) {
+        proxyTraps += 1;
+        return Reflect.get(target, property, receiver);
+      },
+    });
+    proxyValidation.record_evidence.set(scenario.revocationRecord.record_id, {
+      ...proxyEvidence,
+      claim_verification_context: proxyContext,
+    });
+    expect(() => mergeClaimLedger(
+      [scenario.claimRecordOne, scenario.revocationRecord],
+      [],
+      repository.checkpoint,
+      proxyValidation,
+    )).toThrow(/claim-revoker-unauthorized|context/i);
+    expect(proxyTraps).toBe(0);
+  });
 });

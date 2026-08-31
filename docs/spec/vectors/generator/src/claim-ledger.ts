@@ -2249,9 +2249,12 @@ function validateAuthenticatedArtifact(
     target,
     evidence.claims_by_id as ReadonlyMap<string, VerifiedClaimArtifact>,
   );
-  if (!isClaimRevocationAuthorized(target, chain, verifiedArtifact, {
-    ...evidence.claim_verification_context,
-  })) {
+  if (!isClaimRevocationAuthorized(
+    target,
+    chain,
+    verifiedArtifact,
+    evidence.claim_verification_context,
+  )) {
     throw new Error("claim-revoker-unauthorized: Task 3 did not authenticate this revocation effect");
   }
   const targetSemantic = inspectVerifiedClaim(target);

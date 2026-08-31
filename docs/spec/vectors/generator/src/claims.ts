@@ -928,6 +928,7 @@ function evaluateRevocationTimeline(
             revoked,
             context,
             trusted,
+            budget,
           )
         ) {
           authorized = true;
@@ -949,19 +950,23 @@ function claimWasActiveAtSnapshot(
   revoked: readonly boolean[],
   context: RevocationAuthorityContextSnapshot,
   trusted: boolean,
+  budget: RevocationWorkBudget,
 ): boolean {
-  const claim = chainRecords[claimIndex].semantic;
-  if (
-    evaluationTime < claim.not_before ||
-    (claim.expires_at !== undefined && evaluationTime >= claim.expires_at) ||
-    revoked[claimIndex] ||
-    context.repository_conflicted.includes(claim.claim_id) ||
-    (claim.claim_class === "authorization" && !context.repository_confirmed.includes(claim.claim_id)) ||
-    !trusted
-  ) return false;
-  if (claim.claim_class === "authorization") {
-    const generation = evaluateCredentialGeneration(claim, context.credential_ledger);
-    if (!generation.valid) return false;
+  if (!trusted) return false;
+  for (let prefixIndex = 0; prefixIndex <= claimIndex; prefixIndex += 1) {
+    consumeRevocationOperation(budget);
+    const claim = chainRecords[prefixIndex].semantic;
+    if (
+      evaluationTime < claim.not_before ||
+      (claim.expires_at !== undefined && evaluationTime >= claim.expires_at) ||
+      revoked[prefixIndex] ||
+      context.repository_conflicted.includes(claim.claim_id) ||
+      (claim.claim_class === "authorization" && !context.repository_confirmed.includes(claim.claim_id))
+    ) return false;
+    if (claim.claim_class === "authorization") {
+      const generation = evaluateCredentialGeneration(claim, context.credential_ledger);
+      if (!generation.valid) return false;
+    }
   }
   return true;
 }

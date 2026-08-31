@@ -1558,6 +1558,87 @@ describe("claim trust, attenuation, and authorization state", () => {
     )).toBe(false);
   });
 
+  it("BLUE TEAM VALIDATION: synthetic/local revocation disables the full delegated superior prefix", () => {
+    // BLUE TEAM VALIDATION: synthetic/local chronology is deterministic, bounded, and non-deployable.
+    const root = claim({
+      subject: delegatedIssuer,
+      constraints: {
+        namespaces: ["heterodyne.device"],
+        audiences: [epoch.pubkey, "https://rp.example"],
+        resources: ["rad:claims", "rad:claims/device"],
+        remaining_depth: 2,
+      },
+    });
+    const middle = claim({
+      issuer: delegatedIssuer,
+      subject,
+      parent_claim_id: root.claim_id,
+      not_before: issuedAt + 1,
+      expires_at: issuedAt + 400,
+      audience: [epoch.pubkey],
+      resources: ["rad:claims/device"],
+      constraints: {
+        namespaces: ["heterodyne.device"],
+        audiences: [epoch.pubkey],
+        resources: ["rad:claims/device"],
+        remaining_depth: 1,
+      },
+    });
+    const leaf = claim({
+      issuer: subject,
+      parent_claim_id: middle.claim_id,
+      not_before: issuedAt + 2,
+      expires_at: issuedAt + 300,
+      audience: [epoch.pubkey],
+      resources: ["rad:claims/device"],
+    });
+    const chain = [artifactFor(root), artifactFor(middle), artifactFor(leaf)];
+    const confirmed = new Set([root.claim_id, middle.claim_id, leaf.claim_id]);
+    const rootRevokedAtNine = nostrRevocation(root, root.issuer, issuedAt + 9);
+    const leafCandidateAtTen = nostrRevocation(leaf, root.subject, issuedAt + 10);
+
+    expect(inspectClaimRevocationAuthorityEvaluation(
+      artifactFor(leaf),
+      chain,
+      leafCandidateAtTen,
+      context(leaf, {
+        now: issuedAt + 10,
+        repository_confirmed: confirmed,
+        revocations: [rootRevokedAtNine],
+      }),
+    )).toMatchObject({ authorized: false, rejected: false });
+    expect(resolveVerifiedClaimState(
+      artifactFor(leaf),
+      chain,
+      context(leaf, {
+        now: issuedAt + 10,
+        repository_confirmed: confirmed,
+        revocations: [rootRevokedAtNine, leafCandidateAtTen],
+      }),
+    )).toBe("revoked");
+
+    expect(isClaimRevocationAuthorized(
+      artifactFor(leaf),
+      chain,
+      leafCandidateAtTen,
+      context(leaf, {
+        now: issuedAt + 10,
+        repository_confirmed: confirmed,
+        revocations: [],
+      }),
+    )).toBe(true);
+    expect(isClaimRevocationAuthorized(
+      artifactFor(leaf),
+      chain,
+      leafCandidateAtTen,
+      context(leaf, {
+        now: issuedAt + 9,
+        repository_confirmed: confirmed,
+        revocations: [],
+      }),
+    )).toBe(false);
+  });
+
   it("BLUE TEAM VALIDATION: synthetic/local bounds branching inactive superior revocation work", () => {
     // BLUE TEAM VALIDATION: synthetic/local matrix is bounded, deterministic, and has no external target.
     const root = claim({
