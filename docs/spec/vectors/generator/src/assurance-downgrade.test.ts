@@ -42,9 +42,20 @@ class MemoryJournal implements EnrollmentObservationJournal {
   conflictNextCommit = false;
   throwNextCommit = false;
   writeTerminalThenThrow = false;
+  failReconciliationLoadAfterWrite = false;
+  throwNextLoad = false;
   terminalReentry: (() => void) | null = null;
+  terminalReentryThenWrite: (() => void) | null = null;
+  persistentTerminalReentry: (() => void) | null = null;
+  loadCount = 0;
+  compareAndSwapCount = 0;
 
   load(key: string): EnrollmentObservationJournalEntry | null {
+    this.loadCount += 1;
+    if (this.throwNextLoad) {
+      this.throwNextLoad = false;
+      throw new Error("synthetic local transient load failure");
+    }
     return this.entries.get(key) ?? null;
   }
 
@@ -53,9 +64,17 @@ class MemoryJournal implements EnrollmentObservationJournal {
     expectedRevision: number | null,
     next: EnrollmentObservationJournalEntry,
   ): "committed" | "conflict" {
+    this.compareAndSwapCount += 1;
     if (this.throwNextCommit) {
       this.throwNextCommit = false;
       throw new Error("synthetic local persistence failure");
+    }
+    if (next.terminal !== null && this.terminalReentryThenWrite !== null) {
+      const reenter = this.terminalReentryThenWrite;
+      this.terminalReentryThenWrite = null;
+      reenter();
+      this.entries.set(key, next);
+      return "conflict";
     }
     if (next.terminal !== null && this.terminalReentry !== null) {
       const reenter = this.terminalReentry;
@@ -63,9 +82,17 @@ class MemoryJournal implements EnrollmentObservationJournal {
       reenter();
       return "conflict";
     }
+    if (next.terminal !== null && this.persistentTerminalReentry !== null) {
+      this.persistentTerminalReentry();
+      return "conflict";
+    }
     if (next.terminal !== null && this.writeTerminalThenThrow) {
       this.writeTerminalThenThrow = false;
       this.entries.set(key, next);
+      if (this.failReconciliationLoadAfterWrite) {
+        this.failReconciliationLoadAfterWrite = false;
+        this.throwNextLoad = true;
+      }
       throw new Error("synthetic local post-write persistence failure");
     }
     if (this.conflictNextCommit) {
@@ -438,7 +465,7 @@ describe("BLUE TEAM VALIDATION: synthetic/local dual-signature Assurance downgra
     });
   });
 
-  it("BLUE TEAM VALIDATION: synthetic/local reconciles an exact terminal committed by reentrant same-artifact CAS", async () => {
+  it("BLUE TEAM VALIDATION: synthetic/local rejects nested same-artifact commit and reconciles the outer exact terminal", async () => {
     const journal = new MemoryJournal();
     const { pin } = await genuinePin({ journal });
     const artifact = acceptedArtifact(evaluateAssuranceDowngrade(
@@ -446,17 +473,61 @@ describe("BLUE TEAM VALIDATION: synthetic/local dual-signature Assurance downgra
       await signedDowngrade(pin),
     ));
     let inner: ReturnType<typeof commitAssuranceDowngrade> | null = null;
-    journal.terminalReentry = () => {
+    journal.terminalReentryThenWrite = () => {
       inner = commitAssuranceDowngrade(artifact);
     };
 
     const outer = commitAssuranceDowngrade(artifact);
-    expect(inner).toMatchObject({ verdict: "accept" });
-    expect(outer).toEqual(inner);
+    expect(inner).toEqual({
+      verdict: "reject",
+      reason_code: "assurance-pin-conflict",
+    });
+    expect(outer).toMatchObject({ verdict: "accept" });
     expect(commitAssuranceDowngrade(artifact)).toEqual(outer);
     expect([...journal.entries.values()][0]?.terminal).toEqual(
       outer.verdict === "accept" ? outer.normalized : null,
     );
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local bounds persistent same-artifact reentry without a nested authority effect", async () => {
+    const journal = new MemoryJournal();
+    const { pin } = await genuinePin({ journal });
+    const artifact = acceptedArtifact(evaluateAssuranceDowngrade(
+      pin,
+      await signedDowngrade(pin),
+    ));
+    let nestedCalls = 0;
+    let nested: ReturnType<typeof commitAssuranceDowngrade> | null = null;
+    journal.persistentTerminalReentry = () => {
+      nestedCalls += 1;
+      nested = commitAssuranceDowngrade(artifact);
+    };
+    const loadCount = journal.loadCount;
+    const compareAndSwapCount = journal.compareAndSwapCount;
+
+    let outer: ReturnType<typeof commitAssuranceDowngrade> | null = null;
+    expect(() => {
+      outer = commitAssuranceDowngrade(artifact);
+    }).not.toThrow();
+    expect(nestedCalls).toBe(1);
+    expect(nested).toEqual({
+      verdict: "reject",
+      reason_code: "assurance-pin-conflict",
+    });
+    expect(outer).toEqual({
+      verdict: "reject",
+      reason_code: "assurance-pin-conflict",
+    });
+    expect(journal.loadCount - loadCount).toBe(2);
+    expect(journal.compareAndSwapCount - compareAndSwapCount).toBe(1);
+    expect([...journal.entries.values()][0]?.terminal).toBeNull();
+    journal.persistentTerminalReentry = null;
+    expect(commitAssuranceDowngrade(artifact)).toEqual({
+      verdict: "reject",
+      reason_code: "assurance-downgrade-consent-required",
+    });
+    expect(journal.loadCount - loadCount).toBe(2);
+    expect(journal.compareAndSwapCount - compareAndSwapCount).toBe(1);
   });
 
   it("BLUE TEAM VALIDATION: synthetic/local reconciles an exact terminal stored before CAS throws", async () => {
@@ -474,6 +545,51 @@ describe("BLUE TEAM VALIDATION: synthetic/local dual-signature Assurance downgra
     expect([...journal.entries.values()][0]?.terminal).toEqual(
       committed.verdict === "accept" ? committed.normalized : null,
     );
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local retries an indeterminate reconciliation after exact terminal persistence", async () => {
+    const journal = new MemoryJournal();
+    const { pin } = await genuinePin({ journal });
+    const artifact = acceptedArtifact(evaluateAssuranceDowngrade(
+      pin,
+      await signedDowngrade(pin),
+    ));
+    journal.writeTerminalThenThrow = true;
+    journal.failReconciliationLoadAfterWrite = true;
+
+    expect(commitAssuranceDowngrade(artifact)).toEqual({
+      verdict: "reject",
+      reason_code: "assurance-pin-conflict",
+    });
+    const completed = commitAssuranceDowngrade(artifact);
+    expect(completed).toMatchObject({ verdict: "accept" });
+    expect(commitAssuranceDowngrade(artifact)).toEqual(completed);
+    expect([...journal.entries.values()][0]?.terminal).toEqual(
+      completed.verdict === "accept" ? completed.normalized : null,
+    );
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local preserves exact inner completion across an outer transient reconciliation error", async () => {
+    const journal = new MemoryJournal();
+    const { pin } = await genuinePin({ journal });
+    const source = await signedDowngrade(pin);
+    const outerArtifact = acceptedArtifact(evaluateAssuranceDowngrade(pin, source));
+    const innerArtifact = acceptedArtifact(evaluateAssuranceDowngrade(pin, source));
+    let inner: ReturnType<typeof commitAssuranceDowngrade> | null = null;
+    journal.terminalReentry = () => {
+      inner = commitAssuranceDowngrade(innerArtifact);
+      journal.throwNextLoad = true;
+    };
+
+    expect(commitAssuranceDowngrade(outerArtifact)).toEqual({
+      verdict: "reject",
+      reason_code: "assurance-pin-conflict",
+    });
+    expect(inner).toMatchObject({ verdict: "accept" });
+    expect(commitAssuranceDowngrade(innerArtifact)).toEqual(inner);
+    const outerCompleted = commitAssuranceDowngrade(outerArtifact);
+    expect(outerCompleted).toEqual(inner);
+    expect(commitAssuranceDowngrade(outerArtifact)).toEqual(outerCompleted);
   });
 
   it("BLUE TEAM VALIDATION: synthetic/local rejects and poisons an artifact when a different terminal wins reentrant CAS", async () => {

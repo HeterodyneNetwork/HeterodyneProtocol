@@ -5,7 +5,7 @@ import { sha256 } from "@noble/hashes/sha2";
 import acceptanceSchema from "../../../schemas/assurance/active-key-acceptance-v1.schema.json" with { type: "json" };
 import type { AssuranceVerdict } from "./assurance.js";
 import {
-  commitAssuranceEnrollmentDowngrade,
+  attemptAssuranceEnrollmentDowngradeCommit,
   resolveAssuranceEnrollmentPinForDowngrade,
   type AssuranceEnrollmentAuthoritativePin,
   type AssuranceEnrollmentDowngradeBinding,
@@ -47,8 +47,14 @@ type CapturedDowngrade = {
   source: object;
   source_snapshot: VerifiedNostrEvent;
   binding: AssuranceEnrollmentDowngradeBinding;
-  completed: AssuranceEnrollmentDowngradeTerminal | null;
-  failed: boolean;
+  state:
+    | Readonly<{ status: "idle" }>
+    | Readonly<{ status: "executing" }>
+    | Readonly<{
+      status: "completed";
+      terminal: AssuranceEnrollmentDowngradeTerminal;
+    }>
+    | Readonly<{ status: "terminal-failed" }>;
 };
 
 const ajv = new Ajv({ allErrors: true, strict: false });
@@ -136,8 +142,7 @@ export function evaluateAssuranceDowngrade(
     source: sourceEvent,
     source_snapshot: event,
     binding,
-    completed: null,
-    failed: false,
+    state: { status: "idle" },
   });
   return {
     verdict: "accept",
@@ -152,30 +157,47 @@ export function commitAssuranceDowngrade(
     return reject("assurance-downgrade-consent-required");
   }
   const captured = VERIFIED_DOWNGRADES.get(artifact);
-  if (captured === undefined || captured.failed) {
+  if (captured === undefined) {
     return reject("assurance-downgrade-consent-required");
   }
-  const current = snapshotAndVerifyNostrEvent(captured.source);
-  if (
-    current === null ||
-    jcsCanonicalize(current) !== jcsCanonicalize(captured.source_snapshot)
-  ) {
-    captured.failed = true;
+  if (!sourceSnapshotIsCurrent(captured)) {
+    captured.state = { status: "terminal-failed" };
     return reject("assurance-downgrade-consent-required");
   }
-  if (captured.completed !== null) {
-    return { verdict: "accept", normalized: captured.completed };
+  if (captured.state.status === "completed") {
+    return { verdict: "accept", normalized: captured.state.terminal };
   }
-  const committed = commitAssuranceEnrollmentDowngrade(
-    captured.capability,
-    artifact,
-  );
-  if (committed.verdict === "accept") {
-    captured.completed = committed.normalized;
-  } else {
-    captured.failed = true;
+  if (captured.state.status === "terminal-failed") {
+    return reject("assurance-downgrade-consent-required");
   }
-  return committed;
+  if (captured.state.status === "executing") {
+    return reject("assurance-pin-conflict");
+  }
+
+  captured.state = { status: "executing" };
+  try {
+    const attempted = attemptAssuranceEnrollmentDowngradeCommit(
+      captured.capability,
+      artifact,
+    );
+    if (attempted.outcome === "completed") {
+      captured.state = {
+        status: "completed",
+        terminal: attempted.terminal,
+      };
+      return { verdict: "accept", normalized: attempted.terminal };
+    }
+    if (attempted.outcome === "terminal-failure") {
+      captured.state = { status: "terminal-failed" };
+    }
+    return reject("assurance-pin-conflict");
+  } catch {
+    return reject("assurance-pin-conflict");
+  } finally {
+    if (captured.state.status === "executing") {
+      captured.state = { status: "idle" };
+    }
+  }
 }
 
 export function verifiedAssuranceDowngradeBindingForCommit(
@@ -185,18 +207,24 @@ export function verifiedAssuranceDowngradeBindingForCommit(
   if (artifact === null || typeof artifact !== "object") return null;
   const captured = VERIFIED_DOWNGRADES.get(artifact);
   if (
-    captured === undefined || captured.failed ||
+    captured === undefined || captured.state.status === "terminal-failed" ||
     captured.capability !== capability
   ) return null;
-  const current = snapshotAndVerifyNostrEvent(captured.source);
-  if (
-    current === null ||
-    jcsCanonicalize(current) !== jcsCanonicalize(captured.source_snapshot)
-  ) {
-    captured.failed = true;
+  if (!sourceSnapshotIsCurrent(captured)) {
+    captured.state = { status: "terminal-failed" };
     return null;
   }
   return captured.binding;
+}
+
+function sourceSnapshotIsCurrent(captured: CapturedDowngrade): boolean {
+  try {
+    const current = snapshotAndVerifyNostrEvent(captured.source);
+    return current !== null &&
+      jcsCanonicalize(current) === jcsCanonicalize(captured.source_snapshot);
+  } catch {
+    return false;
+  }
 }
 
 function parseDowngrade(event: VerifiedNostrEvent): DowngradeRecord | null {
