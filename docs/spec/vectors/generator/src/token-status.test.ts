@@ -165,15 +165,15 @@ function continuityChain(token: ReturnType<typeof generateStatusListToken>) {
   }]);
 }
 
-function validatedAccessContext(token: ReturnType<typeof generateStatusListToken>) {
+async function validatedAccessContext(token: ReturnType<typeof generateStatusListToken>) {
   const manifest = signedManifest(manifestBodyFor(token));
-  const projection = {
-    ...x.projection("access_token"),
+  const projection = await x.authorizeProjection("access_token", {
+    ...x.projectionContext,
     status_mirror: {
       ...x.projectionContext.status_mirror,
       sha256: continuityManifestDigest(manifest),
     },
-  };
+  });
   const projected = projectAccessToken(projection);
   return createValidatedProjectedJwtContext(
     projected.compact,
@@ -199,7 +199,7 @@ describe("live one-bit status-list semantics", () => {
     expect(STATUS_LIST_MEDIA_TYPE).toBe("application/statuslist+jwt");
   });
 
-  it("accepts a valid alternative ZLIB-wrapped DEFLATE representation", () => {
+  it("accepts a valid alternative ZLIB-wrapped DEFLATE representation", async () => {
     const canonical = generateToken();
     const raw = inflateSync(Buffer.from(canonical.claims.status_list.lst, "base64url"));
     const alternative = resignStatusToken(
@@ -207,7 +207,7 @@ describe("live one-bit status-list semantics", () => {
       deflateSync(raw, { level: 1 }).toString("base64url"),
     );
     expect(validateTokenStatus(
-      validatedAccessContext(alternative),
+      await validatedAccessContext(alternative),
       alternative,
       jwksBytes(),
       statusIat(),
@@ -216,14 +216,14 @@ describe("live one-bit status-list semantics", () => {
     )).toMatchObject({ allowed: true });
   });
 
-  it("rejects authenticated decompression above the output bound", () => {
+  it("rejects authenticated decompression above the output bound", async () => {
     const canonical = generateToken();
     const oversized = resignStatusToken(
       canonical,
       deflateSync(Buffer.alloc(MAX_STATUS_LIST_BYTES + 1)).toString("base64url"),
     );
     expect(validateTokenStatus(
-      validatedAccessContext(oversized),
+      await validatedAccessContext(oversized),
       oversized,
       jwksBytes(),
       statusIat(),
@@ -257,14 +257,14 @@ describe("live one-bit status-list semantics", () => {
     })).toThrow(/predates.*checkpoint/i);
   });
 
-  it("rejects another credential-ledger generation", () => {
+  it("rejects another credential-ledger generation", async () => {
     const token = generateToken();
     const stale = resignStatusToken(token, token.claims.status_list.lst, {
       credential_ledger_generation:
         x.issuedState.credential_ledger.credential_ledger_generation + 1,
     });
     expect(validateTokenStatus(
-      validatedAccessContext(stale),
+      await validatedAccessContext(stale),
       stale,
       jwksBytes(),
       statusIat(),
@@ -273,9 +273,9 @@ describe("live one-bit status-list semantics", () => {
     )).toMatchObject({ allowed: false });
   });
 
-  it("requires the branded validated referenced JWT context", () => {
+  it("requires the branded validated referenced JWT context", async () => {
     const token = generateToken();
-    const validated = validatedAccessContext(token);
+    const validated = await validatedAccessContext(token);
     expect(validateTokenStatus(
       validated,
       token,
@@ -294,7 +294,7 @@ describe("live one-bit status-list semantics", () => {
     )).toMatchObject({ allowed: false });
   });
 
-  it("rejects an expired referenced JWT while the status token remains fresh", () => {
+  it("rejects an expired referenced JWT while the status token remains fresh", async () => {
     const token = generateStatusListToken({
       state: x.issuedState,
       uri: statusUri(),
@@ -304,7 +304,7 @@ describe("live one-bit status-list semantics", () => {
       ttl: 10_000,
     });
     expect(validateTokenStatus(
-      validatedAccessContext(token),
+      await validatedAccessContext(token),
       token,
       jwksBytes(),
       x.issuance.expires_at,
@@ -313,10 +313,10 @@ describe("live one-bit status-list semantics", () => {
     )).toMatchObject({ allowed: false, reason_code: "oidc-token-type-invalid" });
   });
 
-  it("rejects a status token with the wrong media type", () => {
+  it("rejects a status token with the wrong media type", async () => {
     const token = generateToken();
     expect(validateTokenStatus(
-      validatedAccessContext(token),
+      await validatedAccessContext(token),
       { ...token, media_type: "application/json" } as never,
       jwksBytes(),
       statusIat(),
@@ -328,10 +328,10 @@ describe("live one-bit status-list semantics", () => {
   it.each([
     ["future resolution", 0, 1],
     ["stale resolution", 31, 0],
-  ])("rejects %s time for a fresh signed status token", (_label, nowOffset, resolvedOffset) => {
+  ])("rejects %s time for a fresh signed status token", async (_label, nowOffset, resolvedOffset) => {
     const token = generateToken();
     expect(validateTokenStatus(
-      validatedAccessContext(token),
+      await validatedAccessContext(token),
       token,
       jwksBytes(),
       statusIat() + nowOffset,
@@ -340,9 +340,9 @@ describe("live one-bit status-list semantics", () => {
     )).toMatchObject({ allowed: false, reason_code: "oidc-status-invalid" });
   });
 
-  it("binds raw JWKS bytes and fractional TTL to trusted resolution time", () => {
+  it("binds raw JWKS bytes and fractional TTL to trusted resolution time", async () => {
     const token = generateToken(0.5);
-    const referenced = validatedAccessContext(token);
+    const referenced = await validatedAccessContext(token);
     const chain = continuityChain(token);
     expect(validateTokenStatus(
       referenced,
@@ -362,11 +362,11 @@ describe("live one-bit status-list semantics", () => {
     )).toMatchObject({ allowed: false });
   });
 
-  it("fails closed for invalid, malformed, and unauthenticated status", () => {
+  it("fails closed for invalid, malformed, and unauthenticated status", async () => {
     const valid = generateToken();
     const invalid = resignStatusToken(valid, encodeStatusList([1]).lst);
     expect(validateTokenStatus(
-      validatedAccessContext(invalid),
+      await validatedAccessContext(invalid),
       invalid,
       jwksBytes(),
       statusIat(),
@@ -375,7 +375,7 @@ describe("live one-bit status-list semantics", () => {
     )).toMatchObject({ allowed: false, reason_code: "oidc-status-invalid" });
     const malformed = resignStatusToken(valid, "eA");
     expect(validateTokenStatus(
-      validatedAccessContext(malformed),
+      await validatedAccessContext(malformed),
       malformed,
       jwksBytes(),
       statusIat(),
@@ -385,7 +385,7 @@ describe("live one-bit status-list semantics", () => {
     const [header, payload, signature] = valid.compact.split(".");
     const badSignature = `${signature[0] === "A" ? "B" : "A"}${signature.slice(1)}`;
     expect(validateTokenStatus(
-      validatedAccessContext(valid),
+      await validatedAccessContext(valid),
       { ...valid, compact: `${header}.${payload}.${badSignature}` },
       jwksBytes(),
       statusIat(),
@@ -394,16 +394,16 @@ describe("live one-bit status-list semantics", () => {
     )).toMatchObject({ allowed: false, reason_code: "oidc-status-invalid" });
   });
 
-  it("rejects an authenticated referenced index outside the status bytes", () => {
+  it("rejects an authenticated referenced index outside the status bytes", async () => {
     const token = generateToken();
     const manifest = signedManifest(manifestBodyFor(token));
-    const projected = projectAccessToken({
-      ...x.projection("access_token"),
+    const projected = projectAccessToken(await x.authorizeProjection("access_token", {
+      ...x.projectionContext,
       status_mirror: {
         ...x.projectionContext.status_mirror,
         sha256: continuityManifestDigest(manifest),
       },
-    });
+    }));
     const outOfRange = resignReferencedJwt(projected.compact, (claims) => {
       claims.status.status_list.idx = 8;
     });

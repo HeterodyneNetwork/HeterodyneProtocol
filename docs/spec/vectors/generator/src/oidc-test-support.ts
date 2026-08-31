@@ -19,6 +19,7 @@ import {
   inspectOidcAuthorizedRelease,
   issuerMetadata,
   type JwtProjectionInput,
+  type JwtProjectionRequest,
   type OidcAuthorizationRequest,
   type OidcProjectionSubtype,
   type PersonaIdentityState,
@@ -222,9 +223,10 @@ export async function buildLiveOidcScenario(
     {
       request,
       idempotency_key: "synthetic-local-oidc-release-0001",
-      purpose: "jwt_projection",
-      projection_subtype: "access_token",
+      purpose: "authorization_code",
+      projection_subtype: null,
       assertion_profile: null,
+      projection_request: null,
       authorization_validity_seconds: 300,
       effect: () => {
         releaseEffects += 1;
@@ -295,6 +297,27 @@ export async function buildLiveOidcScenario(
     issuedRepository.checkpoint,
     issuedContext,
   );
+  const projectionContext: JwtProjectionRequest = Object.freeze({
+    issuer: metadata.issuer,
+    client_id: CLIENT.client_id,
+    audience: release.audience!,
+    pairwise_sub: release.pairwise_sub!,
+    scopes: release.scopes!,
+    now,
+    expires_at: issuance.expires_at,
+    issuance_record_id: issuanceRecord.record_id,
+    state: issuedState,
+    issuer_envelope: s.issuerKeyEnvelopeOne,
+    issuer_audience_key: s.issuerAudienceKeyOne,
+    issuer_writer_nid: s.writerOne.did_key,
+    identity,
+    status_mirror: {
+      repository_rid: s.rid,
+      branch: "main" as const,
+      path: `.well-known/${personaNpub}/${issuance.reservation.uri}`,
+      sha256: "33".repeat(32),
+    },
+  });
   const projectionAuthorizations: Array<Readonly<{
     authority: typeof releaseHarness.authority;
     authorization: typeof releaseAuthorization.authorization;
@@ -320,6 +343,7 @@ export async function buildLiveOidcScenario(
       purpose: "jwt_projection",
       projection_subtype: profile.projection_subtype,
       assertion_profile: profile.assertion_profile,
+      projection_request: projectionContext,
       authorization_validity_seconds: 300,
       effect: () => ({ status: "completed", result: { executed: true } }),
     });
@@ -332,27 +356,6 @@ export async function buildLiveOidcScenario(
       ...profile,
     }));
   }
-  const projectionContext: Omit<JwtProjectionInput, "authorization_authority" | "authorization"> = Object.freeze({
-    issuer: metadata.issuer,
-    client_id: CLIENT.client_id,
-    audience: release.audience!,
-    pairwise_sub: release.pairwise_sub!,
-    scopes: release.scopes!,
-    now,
-    expires_at: issuance.expires_at,
-    issuance_record_id: issuanceRecord.record_id,
-    state: issuedState,
-    issuer_envelope: s.issuerKeyEnvelopeOne,
-    issuer_audience_key: s.issuerAudienceKeyOne,
-    issuer_writer_nid: s.writerOne.did_key,
-    identity,
-    status_mirror: {
-      repository_rid: s.rid,
-      branch: "main" as const,
-      path: `.well-known/${personaNpub}/${issuance.reservation.uri}`,
-      sha256: "33".repeat(32),
-    },
-  });
   const projection = (
     projectionSubtype: OidcProjectionSubtype,
     assertionProfile: string | null = projectionSubtype === "jwt_assertion"
@@ -367,10 +370,40 @@ export async function buildLiveOidcScenario(
     }
     const [selected] = projectionAuthorizations.splice(selectedIndex, 1);
     return {
-      ...projectionContext,
       authorization_authority: selected.authority,
       authorization: selected.authorization,
     };
+  };
+  let customProjectionIndex = 0;
+  const authorizeProjection = async (
+    projectionSubtype: OidcProjectionSubtype,
+    projectionRequest: JwtProjectionRequest,
+    assertionProfile: string | null = projectionSubtype === "jwt_assertion"
+      ? "urn:example:jwt-assertion:v1"
+      : null,
+  ): Promise<JwtProjectionInput> => {
+    const harness = s.makeClaimAuthorizationHarness({
+      load_state: () => preMintState,
+      trusted_now: () => s.now + 69,
+    });
+    const authorized = await authorizeAuthorizationRequestEffect(harness.authority, {
+      request,
+      idempotency_key: `synthetic-local-oidc-custom-projection-${String(customProjectionIndex).padStart(4, "0")}`,
+      purpose: "jwt_projection",
+      projection_subtype: projectionSubtype,
+      assertion_profile: assertionProfile,
+      projection_request: projectionRequest,
+      authorization_validity_seconds: 300,
+      effect: () => ({ status: "completed", result: { executed: true } }),
+    });
+    customProjectionIndex += 1;
+    if (authorized.verdict !== "accept") {
+      throw new Error(`OIDC custom projection authorization failed: ${authorized.reason_code}`);
+    }
+    return Object.freeze({
+      authorization_authority: harness.authority,
+      authorization: authorized.authorization,
+    });
   };
   return {
     s,
@@ -398,6 +431,7 @@ export async function buildLiveOidcScenario(
     releaseHarness,
     releaseEffects,
     projection,
+    authorizeProjection,
     projectionContext,
     dataClaim,
     allClaims,

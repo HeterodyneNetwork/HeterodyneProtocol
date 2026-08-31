@@ -1866,18 +1866,26 @@ retry that reads the committed Task 6 terminal result MAY return a new
 one-shot handle to the same already determined issuance output, but MUST NOT
 mint a second grant.
 
-A JWT-projection authorization MUST additionally bind exactly one projection
-subtype: ID Token, access token, or a JWT assertion with its exact registered
-assertion profile. The complete closed projection input, including release,
+A JWT-projection authorization MUST additionally capture by exact own data
+descriptors and bind, before any semantic read, exactly one complete closed
+projection request and subtype: ID Token, access token, or a JWT assertion
+with its exact registered assertion profile. The captured request includes the
 issuance reservation, current checkpoint and credential generation, issuer
 signing envelope and audience-key binding, client, audiences, scopes, times,
-identity, and status-mirror binding, MUST determine the private durable output
-key. Signing occurs at most once for that key and the immutable exact signed
-output is retained. An exact committed retry returns that same byte-identical
-output. A different subtype, assertion profile, projection input, signing
-authority, released claims, or time MUST fail closed and MUST NOT mint another
-token. A coarse JWT-projection artifact MUST NOT allow its consumer to choose
-the token subtype or assertion profile after authorization.
+identity, and status-mirror binding. Accessors, proxies, subclasses, sparse
+containers, cycles, and excess members fail closed without trap invocation.
+The effect-time release and complete captured request determine the internal
+Task 6 authorization binding. Full projection validation and signing occur
+inside the acquired durable effect, and the immutable exact signed output is
+committed as part of its terminal cached result. An exact committed retry
+returns that same byte-identical output without signing again. Signing failure
+is a terminal indeterminate effect and exposes no projection artifact. A
+different subtype, assertion profile, projection input, signing authority,
+released claims, or time MUST fail closed and MUST NOT mint another token.
+Public ID Token, access-token, and assertion projection interfaces consume
+only the exact authority plus opaque purpose-specific artifact to retrieve the
+predetermined output; they accept no caller-selected projection or signing
+data after authorization.
 
 `local-subject` is exactly 64 lowercase hexadecimal characters encoding
 SHA-256 over the RFC 8785 JCS bytes of the exact typed-key subject. The
