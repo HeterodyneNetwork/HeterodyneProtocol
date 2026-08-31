@@ -61,7 +61,7 @@ export type ClaimEffectStore = Readonly<{
 }>;
 
 export type ClaimEffectDeadlineScheduler = Readonly<{
-  schedule(deadline: number, fire: () => void): () => void;
+  schedule(duration_ms: number, fire: () => void): () => void;
 }>;
 
 export type ClaimAuthorizationAuthorityConfig = Readonly<{
@@ -724,17 +724,12 @@ function hasExactExecutingRecord(
 }
 
 function scheduleEffectDeadline(authority: AuthorityRecord): ScheduledEffectDeadline {
-  const now = trustedNow(authority);
-  const deadline = now + authority.effect_timeout_ms;
-  if (!Number.isSafeInteger(deadline)) {
-    throw new Error("claim-issuer-authority-invalid: effect deadline is unsafe");
-  }
   let expired = false;
   let resolveDeadline!: () => void;
   const wait = new Promise<void>((resolve) => { resolveDeadline = resolve; });
   let cancel: unknown;
   try {
-    cancel = authority.schedule_effect_deadline(deadline, () => {
+    cancel = authority.schedule_effect_deadline(authority.effect_timeout_ms, () => {
       expired = true;
       resolveDeadline();
     });

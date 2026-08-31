@@ -250,7 +250,7 @@ function scenario(options: Readonly<{
 
 function authorityWithEffectDeadline(
   value: ReturnType<typeof scenario>,
-  schedule: (deadline: number, fire: () => void) => () => void,
+  schedule: (durationMs: number, fire: () => void) => () => void,
 ) {
   return createClaimAuthorizationAuthority({
     authority_id: "claim-authority-deadline",
@@ -261,6 +261,30 @@ function authorityWithEffectDeadline(
     effect_timeout_ms: 12,
     schedule_effect_deadline: { schedule },
   } as unknown as Parameters<typeof createClaimAuthorizationAuthority>[0]);
+}
+
+function deterministicDeadlineScheduler() {
+  let nowMs = 0;
+  let latestDuration = -1;
+  const entries: Array<{ due: number; active: boolean; fire: () => void }> = [];
+  return {
+    schedule(durationMs: number, fire: () => void) {
+      latestDuration = durationMs;
+      const entry = { due: nowMs + durationMs, active: true, fire };
+      entries.push(entry);
+      return () => { entry.active = false; };
+    },
+    advance(durationMs: number) {
+      nowMs += durationMs;
+      for (const entry of entries) {
+        if (entry.active && entry.due <= nowMs) {
+          entry.active = false;
+          entry.fire();
+        }
+      }
+    },
+    latestDuration: () => latestDuration,
+  };
 }
 
 describe("claim authorization proof/effect fence", () => {
@@ -476,15 +500,10 @@ describe("claim authorization proof/effect fence", () => {
   });
 
   it("BLUE TEAM VALIDATION: synthetic/local marks one never-settling effect indeterminate at its authority deadline", async () => {
-    // BLUE TEAM VALIDATION: synthetic/local scheduling uses an explicit in-memory callback, never a wall clock or external timer.
+    // BLUE TEAM VALIDATION: synthetic/local scheduling advances only a bounded in-memory millisecond clock, never a wall clock or external timer.
     const value = scenario();
-    let deadline = -1;
-    let fire: (() => void) | undefined;
-    const authority = authorityWithEffectDeadline(value, (receivedDeadline, callback) => {
-      deadline = receivedDeadline;
-      fire = callback;
-      return () => {};
-    });
+    const scheduler = deterministicDeadlineScheduler();
+    const authority = authorityWithEffectDeadline(value, scheduler.schedule);
     let effects = 0;
     const pending = authorizeClaimEffect(authority, {
       ...value.input,
@@ -493,10 +512,16 @@ describe("claim authorization proof/effect fence", () => {
         return new Promise<never>(() => {});
       },
     });
+    let settled = false;
+    void pending.then(() => { settled = true; });
     await Promise.resolve();
-    expect(deadline).toBe(now + 12);
+    expect(scheduler.latestDuration()).toBe(12);
     expect(effects).toBe(1);
-    fire?.();
+    scheduler.advance(11);
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    expect(value.store.calls.mark).toBe(0);
+    scheduler.advance(1);
     await expect(pending).resolves.toMatchObject({
       verdict: "indeterminate",
       allowed: false,
