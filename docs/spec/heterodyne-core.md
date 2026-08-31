@@ -532,11 +532,73 @@ Making a repository private does not by itself encrypt its Git objects.
 <a id="core-nid-delegation"></a>
 ### 8.1 Writer-NID authorization
 
-An authorized writer binding MUST name the exact repository RID, writer NID,
-permitted ref namespace, operations, issuance time, optional expiry, and owner
-authority. The NID MUST prove possession with strict Ed25519 over the
-registered [§3.6](#core-proof-bytes) claim, and the owner MUST authenticate the
-same binding. Both proofs are required before the ref enters the union.
+The authority-file object `heterodyne.core.repository-writer-binding.v1`
+MUST validate against
+[`schemas/core/repository-writer-binding-v1.schema.json`](schemas/core/repository-writer-binding-v1.schema.json).
+It is the closed object with exactly these members:
+
+```json
+{
+  "profile": "heterodyne.core.repository-writer-binding.v1",
+  "spec_version": "heterodyne/0.6.0",
+  "owner_active_key": "<64-lowercase-hex x-only key>",
+  "repository_rid": "<canonical rad:z RID>",
+  "writer_nid": "<canonical Ed25519 did:key NID>",
+  "ref_namespace": "refs/<canonical permitted namespace>/",
+  "operations": ["claim-ledger-write"],
+  "issued_at": 0,
+  "expires_at": 1,
+  "owner_signature": "<128-lowercase-hex BIP-340 signature>",
+  "nid_signature": "<128-lowercase-hex Ed25519 signature>"
+}
+```
+
+`operations` MUST be non-empty, strictly lexicographically sorted, and unique.
+Both times MUST be nonnegative safe integers and `expires_at` MUST be greater
+than `issued_at`. The unsigned body is the exact closed object above with
+`owner_signature` and `nid_signature` deleted. The registered proof domain
+`heterodyne-core-repository-writer-binding-v1` applies [§3.6](#core-proof-bytes)
+to that body. The active repository owner makes `owner_signature` with
+BIP-340 over SHA-256 of those proof bytes. The Ed25519 key that derives the
+exact canonical `writer_nid` makes `nid_signature` over the identical proof
+bytes. Both proofs are required before the ref enters the union; a proof over
+a reserialized, partial, additional-member, differently ordered-operation, or
+different-domain body grants nothing.
+
+Resolution is repository-local. A verifier captures the presented object and
+request once as closed ordinary data, verifies both proofs from that immutable
+capture, and obtains the current authenticated repository-owner policy from a
+locally configured resolver. The caller supplies only the exact active owner
+key, RID, writer NID, writer ref, and requested operation. It MUST NOT supply
+or assert policy activity, writer activity, conflict or revocation booleans,
+policy revision, predecessor, or checkpoint.
+
+The resolver result MUST bind the same active owner and RID, a non-revoked and
+non-conflicted policy state, an exact revision, predecessor, and checkpoint,
+and exactly one active inclusion of the writer NID, ref namespace, and
+operation. The verifier's trusted current time MUST satisfy
+`issued_at <= trusted_now < expires_at`. A successful resolution produces an
+opaque, authority-instance-bound current binding that privately retains the
+exact wire digest, request, and complete policy fingerprint. Before replay or
+another authority effect, the same authority instance MUST recapture the
+source, reload the current policy, and reject a changed source, owner, RID,
+writer, ref, operation, revision, predecessor, checkpoint, inclusion,
+revocation, conflict, or policy fingerprint. A clone or binding from another
+authority instance is invalid.
+
+Any closed-object, proof, NID derivation, time, request, current-policy, clone,
+or revalidation failure returns the coarse registered reason
+`repository-writer-binding-invalid`. Implementations MAY retain more specific
+detail in a privileged local audit, but MUST NOT expose it as additional wire
+authority.
+
+This binding authorizes only the named writer NID, repository RID, ref
+namespace, and operations while the exact current policy remains active. It
+does not grant Nostr authorship, persona or repository ownership, Workspace or
+group governance, content-decryption authority, Assurance authority, hosting
+trust, or directory status. The resolver is not a network trust or discovery
+service, and vanilla Nostr relays and standard Radicle nodes require no
+Heterodyne-specific change.
 
 Legacy epoch-authorized kind `31001` delegation is not a Core baseline
 prerequisite. A higher-layer or Assurance profile MAY define additional

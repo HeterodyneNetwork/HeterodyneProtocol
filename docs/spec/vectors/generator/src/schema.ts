@@ -174,6 +174,10 @@ const schemasRoot = resolve(
   dirname(fileURLToPath(import.meta.url)),
   "../../../schemas/comms",
 );
+const coreSchemasRoot = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../../schemas/core",
+);
 const controlSchemasRoot = resolve(
   dirname(fileURLToPath(import.meta.url)),
   "../../../schemas/control",
@@ -183,6 +187,12 @@ function readSchema(name: string): AnySchema {
   return JSON.parse(readFileSync(resolve(schemasRoot, name), "utf8")) as AnySchema;
 }
 
+function readCoreSchema(name: string): AnySchema {
+  return JSON.parse(
+    readFileSync(resolve(coreSchemasRoot, name), "utf8"),
+  ) as AnySchema;
+}
+
 function readControlSchema(name: string): AnySchema {
   return JSON.parse(
     readFileSync(resolve(controlSchemasRoot, name), "utf8"),
@@ -190,6 +200,9 @@ function readControlSchema(name: string): AnySchema {
 }
 
 export const KEY_CLAIM_SCHEMA = readSchema("key-claim-v1.schema.json");
+export const REPOSITORY_WRITER_BINDING_SCHEMA = readCoreSchema(
+  "repository-writer-binding-v1.schema.json",
+);
 export const KEY_CLAIM_REVOCATION_SCHEMA = readSchema("key-claim-revocation-v1.schema.json");
 export const CLAIM_LEDGER_RECORD_SCHEMA = readSchema("claim-ledger-record-v1.schema.json");
 export const OIDC_ISSUANCE_RECORD_SCHEMA = readSchema("oidc-issuance-record-v1.schema.json");
@@ -251,6 +264,11 @@ const validateOidcIssuerMetadata = commsSchemaAjv.compile(OIDC_ISSUER_METADATA_S
 const validateOidcContinuityManifest = commsSchemaAjv.compile(OIDC_CONTINUITY_MANIFEST_SCHEMA);
 const validateOneTimeInvite = commsSchemaAjv.compile(ONE_TIME_INVITE_SCHEMA);
 const validateOneTimeInviteResponse = commsSchemaAjv.compile(ONE_TIME_INVITE_RESPONSE_SCHEMA);
+
+const coreSchemaAjv = new Ajv({ allErrors: true, strict: false });
+const validateRepositoryWriterBinding = coreSchemaAjv.compile(
+  REPOSITORY_WRITER_BINDING_SCHEMA,
+);
 
 const controlSchemaAjv = new Ajv({ allErrors: true, strict: false });
 controlSchemaAjv.addSchema(CONTROL_CAPABILITY_SET_SCHEMA);
@@ -352,6 +370,44 @@ export function validateOneTimeInviteResponseSchemaOrThrow(value: unknown): void
   assertJcsInput(value);
   if (!validateOneTimeInviteResponse(value)) {
     throw new Error(`one-time-invite-response-invalid: ${formatErrors(validateOneTimeInviteResponse.errors ?? [])}`);
+  }
+}
+
+export function validateRepositoryWriterBindingSchemaOrThrow(
+  value: unknown,
+): void {
+  try {
+    jcsCanonicalize(value);
+  } catch (error) {
+    throw new Error(
+      `repository-writer-binding-invalid: ${
+        error instanceof Error ? error.message : "invalid JCS value"
+      }`,
+    );
+  }
+  if (!validateRepositoryWriterBinding(value)) {
+    throw new Error(
+      `repository-writer-binding-invalid: ${formatErrors(
+        validateRepositoryWriterBinding.errors ?? [],
+      )}`,
+    );
+  }
+  const binding = value as Readonly<{
+    issued_at: number;
+    expires_at: number;
+    operations: readonly string[];
+  }>;
+  if (!Number.isSafeInteger(binding.issued_at) ||
+      !Number.isSafeInteger(binding.expires_at) ||
+      binding.expires_at <= binding.issued_at) {
+    throw new Error(
+      "repository-writer-binding-invalid: expires_at must be greater than issued_at and both times must be safe integers",
+    );
+  }
+  if (!isStrictlySorted(binding.operations)) {
+    throw new Error(
+      "repository-writer-binding-invalid: operations must be sorted and unique",
+    );
   }
 }
 

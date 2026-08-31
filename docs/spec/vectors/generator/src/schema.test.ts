@@ -5,16 +5,23 @@ import { Ajv, type AnySchema } from "ajv";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
 import {
+  didKeyFromEd25519,
+  ed25519PublicKey,
+  fixtureRid,
+} from "./radicle.js";
+import {
   CREDENTIAL_CONTINUITY_SCHEMA_FILES,
   CREDENTIAL_CONTINUITY_SCHEMAS,
   KEY_CLAIM_REVOCATION_SCHEMA,
   KEY_CLAIM_SCHEMA,
+  REPOSITORY_WRITER_BINDING_SCHEMA,
   VECTOR_SCHEMA,
   validateClaimRevocationSchemaOrThrow,
   validateCredentialContinuitySchemaOrThrow,
   validateKeyClaimSchemaOrThrow,
   validateOneTimeInviteResponseSchemaOrThrow,
   validateOneTimeInviteSchemaOrThrow,
+  validateRepositoryWriterBindingSchemaOrThrow,
   validateVectorOrThrow,
 } from "./schema.js";
 
@@ -1723,4 +1730,58 @@ describe("Comms claim schemas", () => {
       proof: { ...revocation.proof, jwk: { ...jwk, d: "A".repeat(43) } },
     })).toThrow(/additional|oneOf/);
   });
+});
+
+describe("Core repository-writer binding schema", () => {
+  const binding = {
+    profile: "heterodyne.core.repository-writer-binding.v1",
+    spec_version: "heterodyne/0.6.0",
+    owner_active_key: "12".repeat(32),
+    repository_rid: fixtureRid("schema-core-writer-binding"),
+    writer_nid: didKeyFromEd25519(ed25519PublicKey("34".repeat(32))),
+    ref_namespace: "refs/xyz.heterodyne.claim-ledger/writers/",
+    operations: ["claim-ledger-write"],
+    issued_at: 1_800_000_000,
+    expires_at: 1_800_000_100,
+    owner_signature: "56".repeat(64),
+    nid_signature: "78".repeat(64),
+  };
+
+  it("accepts the exact closed repository-writer object", () => {
+    expect(REPOSITORY_WRITER_BINDING_SCHEMA).toMatchObject({
+      $id: "https://heterodyne.network/schemas/core/repository-writer-binding-v1.schema.json",
+      additionalProperties: false,
+    });
+    expect(() => validateRepositoryWriterBindingSchemaOrThrow(binding))
+      .not.toThrow();
+  });
+
+  it.each([
+    ["missing owner proof", (() => {
+      const { owner_signature: _signature, ...value } = binding;
+      return value;
+    })()],
+    ["missing NID proof", (() => {
+      const { nid_signature: _signature, ...value } = binding;
+      return value;
+    })()],
+    ["additional member", { ...binding, current_policy: true }],
+    ["wrong profile", { ...binding, profile: "heterodyne.core.role-delegation.v1" }],
+    ["unsafe issued time", { ...binding, issued_at: Number.MAX_SAFE_INTEGER + 1 }],
+    ["non-increasing expiry", { ...binding, expires_at: binding.issued_at }],
+    ["descending operations", {
+      ...binding,
+      operations: ["status-list-write", "claim-ledger-write"],
+    }],
+    ["duplicate operations", {
+      ...binding,
+      operations: ["claim-ledger-write", "claim-ledger-write"],
+    }],
+  ] as const)(
+    "BLUE TEAM VALIDATION: synthetic/local rejects %s",
+    (_name, value) => {
+      expect(() => validateRepositoryWriterBindingSchemaOrThrow(value))
+        .toThrow(/^repository-writer-binding-invalid:/);
+    },
+  );
 });

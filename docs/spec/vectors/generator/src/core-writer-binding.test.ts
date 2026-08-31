@@ -1,0 +1,374 @@
+import { ed25519 } from "@noble/curves/ed25519";
+import { schnorr } from "@noble/curves/secp256k1";
+import { sha256 } from "@noble/hashes/sha2";
+import { describe, expect, it } from "vitest";
+import {
+  createCoreRepositoryWriterAuthority,
+  repositoryWriterBindingProofBytes,
+  resolveCurrentRepositoryWriterBinding,
+  revalidateCurrentRepositoryWriterBinding,
+  type RepositoryWriterBindingV1,
+  type RepositoryWriterRequest,
+} from "./core-writer-binding.js";
+import type { CurrentRepositoryPolicy } from "./core-policy.js";
+import { bytesToHex, hexToBytes } from "./hex.js";
+import { proofBytes } from "./proof-bytes.js";
+import {
+  didKeyFromEd25519,
+  ed25519PublicKey,
+  fixtureRid,
+} from "./radicle.js";
+
+// BLUE TEAM VALIDATION: synthetic/local deterministic, non-deployable fixtures only;
+// no live targets, production deployments, real credentials/accounts, external systems,
+// reusable payloads, scanning, persistence, evasion, destructive actions, or weakened controls.
+const OWNER_SECRET = "11".repeat(32);
+const OTHER_OWNER_SECRET = "33".repeat(32);
+const NID_SECRET = "22".repeat(32);
+const OTHER_NID_SECRET = "44".repeat(32);
+const AUX_RAND = "00".repeat(32);
+const NOW = 1_800_000_000;
+const OWNER_KEY = bytesToHex(schnorr.getPublicKey(hexToBytes(OWNER_SECRET)));
+const OTHER_OWNER_KEY = bytesToHex(
+  schnorr.getPublicKey(hexToBytes(OTHER_OWNER_SECRET)),
+);
+const WRITER_NID = didKeyFromEd25519(ed25519PublicKey(NID_SECRET));
+const OTHER_WRITER_NID = didKeyFromEd25519(
+  ed25519PublicKey(OTHER_NID_SECRET),
+);
+const RID = fixtureRid("core-writer-binding");
+const OTHER_RID = fixtureRid("core-writer-binding-other");
+const REF_NAMESPACE = "refs/xyz.heterodyne.claim-ledger/writers/";
+const WRITER_REF = `${REF_NAMESPACE}writer-one`;
+
+const unsignedBody = (overrides: Partial<RepositoryWriterBindingV1> = {}) => ({
+  profile: "heterodyne.core.repository-writer-binding.v1" as const,
+  spec_version: "heterodyne/0.6.0" as const,
+  owner_active_key: OWNER_KEY,
+  repository_rid: RID,
+  writer_nid: WRITER_NID,
+  ref_namespace: REF_NAMESPACE,
+  operations: ["claim-ledger-write"],
+  issued_at: NOW - 10,
+  expires_at: NOW + 100,
+  ...overrides,
+});
+
+function signedBinding(
+  overrides: Partial<RepositoryWriterBindingV1> = {},
+  ownerSecret = OWNER_SECRET,
+  nidSecret = NID_SECRET,
+): RepositoryWriterBindingV1 {
+  const body = unsignedBody(overrides);
+  const payload = proofBytes(
+    "heterodyne-core-repository-writer-binding-v1",
+    body,
+  );
+  return {
+    ...body,
+    owner_signature: bytesToHex(schnorr.sign(
+      sha256(payload),
+      hexToBytes(ownerSecret),
+      hexToBytes(AUX_RAND),
+    )),
+    nid_signature: bytesToHex(ed25519.sign(
+      payload,
+      hexToBytes(nidSecret),
+    )),
+  };
+}
+
+function activePolicy(
+  overrides: Partial<CurrentRepositoryPolicy> = {},
+): CurrentRepositoryPolicy {
+  return {
+    repository_rid: RID,
+    owner_active_key: OWNER_KEY,
+    revision: 7,
+    checkpoint: "aa".repeat(20),
+    predecessor: "99".repeat(20),
+    state: "active",
+    writers: [{
+      writer_nid: WRITER_NID,
+      ref_namespace: REF_NAMESPACE,
+      operations: ["claim-ledger-write"],
+      state: "active",
+    }],
+    ...overrides,
+  };
+}
+
+const request = () => ({
+  owner_active_key: OWNER_KEY,
+  repository_rid: RID,
+  writer_nid: WRITER_NID,
+  writer_ref: WRITER_REF,
+  operation: "claim-ledger-write" as const,
+});
+
+function authorityFor(
+  load: () => CurrentRepositoryPolicy,
+  authorityId = "synthetic-local-core-writer-authority",
+  trustedNow: () => number = () => NOW,
+) {
+  return createCoreRepositoryWriterAuthority({
+    authority_id: authorityId,
+    trusted_now: trustedNow,
+    load_current_policy: () => load(),
+  });
+}
+
+describe("current Core repository-writer binding", () => {
+  it("verifies both signatures over the identical exact proof bytes and mints an opaque binding", () => {
+    const source = signedBinding();
+    const expected = proofBytes(
+      "heterodyne-core-repository-writer-binding-v1",
+      unsignedBody(),
+    );
+    expect(bytesToHex(repositoryWriterBindingProofBytes(source)))
+      .toBe(bytesToHex(expected));
+
+    const authority = authorityFor(() => activePolicy());
+    const binding = resolveCurrentRepositoryWriterBinding(
+      authority,
+      source,
+      request(),
+    );
+    expect(binding).toEqual({});
+    expect(Object.isFrozen(binding)).toBe(true);
+    expect(revalidateCurrentRepositoryWriterBinding(authority, binding))
+      .toBe(binding);
+  });
+});
+
+describe("BLUE TEAM VALIDATION: synthetic/local repository-writer boundary", () => {
+  it.each([
+    ["missing owner proof", (value: RepositoryWriterBindingV1) => {
+      const { owner_signature: _signature, ...missing } = value;
+      return missing;
+    }],
+    ["missing NID proof", (value: RepositoryWriterBindingV1) => {
+      const { nid_signature: _signature, ...missing } = value;
+      return missing;
+    }],
+    ["wrong owner proof", (value: RepositoryWriterBindingV1) => ({
+      ...value,
+      owner_signature: signedBinding({}, OTHER_OWNER_SECRET).owner_signature,
+    })],
+    ["wrong NID proof", (value: RepositoryWriterBindingV1) => ({
+      ...value,
+      nid_signature: signedBinding({}, OWNER_SECRET, OTHER_NID_SECRET)
+        .nid_signature,
+    })],
+    ["NID key derivation substitution", () => signedBinding({
+      writer_nid: OTHER_WRITER_NID,
+    })],
+  ] as const)(
+    "BLUE TEAM VALIDATION: synthetic/local rejects %s",
+    (_name, mutate) => {
+      expect(() => resolveCurrentRepositoryWriterBinding(
+        authorityFor(() => activePolicy()),
+        mutate(signedBinding()),
+        request(),
+      )).toThrow(/^repository-writer-binding-invalid:/);
+    },
+  );
+
+  it.each([
+    ["non-safe issued time", { issued_at: Number.MAX_SAFE_INTEGER + 1 }],
+    ["equal expiry", { issued_at: NOW, expires_at: NOW }],
+    ["descending operations", {
+      operations: ["status-list-write", "claim-ledger-write"],
+    }],
+    ["duplicate operations", {
+      operations: ["claim-ledger-write", "claim-ledger-write"],
+    }],
+  ] as const)(
+    "BLUE TEAM VALIDATION: synthetic/local rejects %s",
+    (_name, overrides) => {
+      expect(() => resolveCurrentRepositoryWriterBinding(
+        authorityFor(() => activePolicy()),
+        signedBinding(overrides),
+        request(),
+      )).toThrow(/^repository-writer-binding-invalid:/);
+    },
+  );
+
+  it.each([
+    ["before issuance", NOW - 11],
+    ["at expiry", NOW + 100],
+    ["non-safe trusted time", Number.MAX_SAFE_INTEGER + 1],
+  ] as const)(
+    "BLUE TEAM VALIDATION: synthetic/local rejects trusted time %s",
+    (_name, trustedNow) => {
+      expect(() => resolveCurrentRepositoryWriterBinding(
+        authorityFor(() => activePolicy(), "synthetic-time", () => trustedNow),
+        signedBinding(),
+        request(),
+      )).toThrow(/^repository-writer-binding-invalid:/);
+    },
+  );
+
+  it.each([
+    ["wrong request owner", { owner_active_key: OTHER_OWNER_KEY }],
+    ["cross-persona repository", { repository_rid: OTHER_RID }],
+    ["wrong writer", { writer_nid: OTHER_WRITER_NID }],
+    ["wrong ref namespace", { writer_ref: "refs/heads/main" }],
+    ["wrong operation", { operation: "status-list-write" }],
+  ] as const)(
+    "BLUE TEAM VALIDATION: synthetic/local rejects %s",
+    (_name, overrides) => {
+      expect(() => resolveCurrentRepositoryWriterBinding(
+        authorityFor(() => activePolicy()),
+        signedBinding(),
+        { ...request(), ...overrides } as unknown as RepositoryWriterRequest,
+      )).toThrow(/^repository-writer-binding-invalid:/);
+    },
+  );
+
+  it.each([
+    ["cross-persona owner policy", { owner_active_key: OTHER_OWNER_KEY }],
+    ["wrong repository policy", { repository_rid: OTHER_RID }],
+    ["revoked policy", { state: "revoked" }],
+    ["conflicted policy", { state: "conflicted" }],
+    ["revoked writer", { writers: [{
+      writer_nid: WRITER_NID,
+      ref_namespace: REF_NAMESPACE,
+      operations: ["claim-ledger-write"],
+      state: "revoked",
+    }] }],
+    ["conflicted writer", { writers: [{
+      writer_nid: WRITER_NID,
+      ref_namespace: REF_NAMESPACE,
+      operations: ["claim-ledger-write"],
+      state: "conflicted",
+    }] }],
+    ["missing current writer", { writers: [] }],
+  ] as const)(
+    "BLUE TEAM VALIDATION: synthetic/local rejects %s",
+    (_name, overrides) => {
+      expect(() => resolveCurrentRepositoryWriterBinding(
+        authorityFor(() => activePolicy(overrides as Partial<CurrentRepositoryPolicy>)),
+        signedBinding(),
+        request(),
+      )).toThrow(/^repository-writer-binding-invalid:/);
+    },
+  );
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects caller policy assertions", () => {
+    expect(() => resolveCurrentRepositoryWriterBinding(
+      authorityFor(() => activePolicy()),
+      signedBinding(),
+      { ...request(), revision: 7 } as unknown as RepositoryWriterRequest,
+    )).toThrow(/^repository-writer-binding-invalid:/);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects accessor and proxy inputs without invoking them", () => {
+    let reads = 0;
+    const source = signedBinding() as RepositoryWriterBindingV1 & {
+      injected?: boolean;
+    };
+    Object.defineProperty(source, "owner_active_key", {
+      enumerable: true,
+      get() {
+        reads += 1;
+        return OWNER_KEY;
+      },
+    });
+    expect(() => resolveCurrentRepositoryWriterBinding(
+      authorityFor(() => activePolicy()),
+      source,
+      request(),
+    )).toThrow(/^repository-writer-binding-invalid:/);
+    expect(reads).toBe(0);
+
+    const proxied = new Proxy(signedBinding(), {
+      get() {
+        reads += 1;
+        return undefined;
+      },
+    });
+    expect(() => resolveCurrentRepositoryWriterBinding(
+      authorityFor(() => activePolicy()),
+      proxied,
+      request(),
+    )).toThrow(/^repository-writer-binding-invalid:/);
+    expect(reads).toBe(0);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local snapshots loader results and detects revision/checkpoint substitution", () => {
+    const mutable = activePolicy() as {
+      revision: number;
+      checkpoint: string;
+    } & CurrentRepositoryPolicy;
+    const authority = authorityFor(() => mutable);
+    const source = signedBinding();
+    const binding = resolveCurrentRepositoryWriterBinding(
+      authority,
+      source,
+      request(),
+    );
+
+    mutable.revision += 1;
+    expect(() => revalidateCurrentRepositoryWriterBinding(authority, binding))
+      .toThrow(/^repository-writer-binding-invalid:/);
+
+    const mutableCheckpoint = activePolicy() as {
+      checkpoint: string;
+    } & CurrentRepositoryPolicy;
+    const secondAuthority = authorityFor(
+      () => mutableCheckpoint,
+      "synthetic-checkpoint-authority",
+    );
+    const second = resolveCurrentRepositoryWriterBinding(
+      secondAuthority,
+      signedBinding(),
+      request(),
+    );
+    mutableCheckpoint.checkpoint = "bb".repeat(20);
+    expect(() => revalidateCurrentRepositoryWriterBinding(secondAuthority, second))
+      .toThrow(/^repository-writer-binding-invalid:/);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects source mutation, clones, and foreign authorities", () => {
+    const source = signedBinding() as { expires_at: number } & RepositoryWriterBindingV1;
+    const firstAuthority = authorityFor(() => activePolicy(), "synthetic-first");
+    const secondAuthority = authorityFor(() => activePolicy(), "synthetic-second");
+    const binding = resolveCurrentRepositoryWriterBinding(
+      firstAuthority,
+      source,
+      request(),
+    );
+
+    expect(() => revalidateCurrentRepositoryWriterBinding(
+      firstAuthority,
+      { ...binding },
+    )).toThrow(/^repository-writer-binding-invalid:/);
+    expect(() => revalidateCurrentRepositoryWriterBinding(
+      secondAuthority,
+      binding,
+    )).toThrow(/^repository-writer-binding-invalid:/);
+    source.expires_at += 1;
+    expect(() => revalidateCurrentRepositoryWriterBinding(firstAuthority, binding))
+      .toThrow(/^repository-writer-binding-invalid:/);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local captures authority callback descriptors exactly once", () => {
+    let reads = 0;
+    const config = {
+      authority_id: "synthetic-accessor-authority",
+      trusted_now: () => NOW,
+      load_current_policy: () => activePolicy(),
+    };
+    Object.defineProperty(config, "trusted_now", {
+      enumerable: true,
+      get() {
+        reads += 1;
+        return () => NOW;
+      },
+    });
+    expect(() => createCoreRepositoryWriterAuthority(config))
+      .toThrow(/^repository-writer-binding-invalid:/);
+    expect(reads).toBe(0);
+  });
+});

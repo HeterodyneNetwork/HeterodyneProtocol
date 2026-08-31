@@ -5,6 +5,23 @@ import {
   type NostrSignedEvent,
 } from "./nostr.js";
 
+export type CurrentRepositoryWriterPolicy = Readonly<{
+  writer_nid: string;
+  ref_namespace: string;
+  operations: readonly string[];
+  state: "active" | "revoked" | "conflicted";
+}>;
+
+export type CurrentRepositoryPolicy = Readonly<{
+  repository_rid: string;
+  owner_active_key: string;
+  revision: number;
+  checkpoint: string;
+  predecessor: string | null;
+  state: "active" | "revoked" | "conflicted";
+  writers: readonly CurrentRepositoryWriterPolicy[];
+}>;
+
 type CoreReason =
   | "bad_signature"
   | "nip01_raw_mismatch"
