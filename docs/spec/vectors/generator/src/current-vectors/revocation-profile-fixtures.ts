@@ -15,6 +15,7 @@ import {
   type ClaimSemanticBody,
   type ClaimVerificationContext,
   type JsonValue,
+  type VerifiedClaimArtifact,
 } from "../claims.js";
 import { snapshotClosedDataTree } from "../closed-data.js";
 import { bytesToHex, hexToBytes, utf8Bytes } from "../hex.js";
@@ -36,7 +37,7 @@ export type CurrentRevocationExecutionFixture = Readonly<{
   context: LedgerValidationContext;
   reader_nid?: string;
   reader_request?: ReaderAccessRequest;
-  target_claim?: ClaimSemanticBody;
+  target_verified_claim?: VerifiedClaimArtifact;
   target_verification_context?: ClaimVerificationContext;
 }>;
 
@@ -233,7 +234,6 @@ async function jwkRevocationFixture(
     record_id: targetRecord.record_id,
     payload_digest: targetRecord.payload_digest,
     claim_envelope_context: {
-      issuer_authorized: true,
       profile_revision: 2,
       credential_ledger: {
         credential_ledger_persona: ledger.persona,
@@ -256,7 +256,7 @@ async function jwkRevocationFixture(
       right,
       checkpoint: repository.checkpoint,
       context,
-      target_claim: target.artifact.semantic,
+      target_verified_claim: target.verified_artifact,
       target_verification_context: verification,
     },
   };

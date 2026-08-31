@@ -5,7 +5,7 @@ import { buildAuthorizationFreshnessTestSupport } from "../authorization-freshne
 import { evaluateAuthorizationFreshness } from "../authorization-freshness.js";
 import { canMint, evaluateReaderAccess, ledgerErrorReason, mergeClaimLedger, validateLedgerRecordOrThrow, } from "../claim-ledger.js";
 import { buildClaimLedgerScenario } from "../claim-ledger-test-support.js";
-import { authorizeWithClaim, validateClaimEnvelope, validateClaimId, validateClaimRevocationEnvelope, validateKeyRef, } from "../claims.js";
+import { authorizeWithClaim, inspectVerifiedClaim, inspectVerifiedClaimRevocation, validateClaimId, validateKeyRef, verifyClaimEnvelope, verifyClaimRevocationEnvelope, type VerifiedClaimArtifact, } from "../claims.js";
 import { classifyRelayWriteFailure, evaluateMarmotInboxBootstrap, evaluateOneTimeInvite, validateDmInviteDevice, validatePrivateBroadcast, validatePublicReaderRendering, } from "../comms-policy.js";
 import { QUALIFIED_VERSION } from "../family.js";
 import { buildFixtures } from "../fixtures.js";
@@ -79,10 +79,11 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
     const tier3Decision = resolveTier3Recipients(tier3Input);
     const fixtures = buildFixtures();
     const ledger = await buildClaimLedgerScenario(fixtures);
-    const claim = ledger.claimOne.artifact.semantic;
+    const claimArtifact = ledger.claimOne.verified_artifact;
+    const claim = inspectVerifiedClaim(claimArtifact);
     const claimContext = ledger.makeVerification(ledger.claimOne);
-    const activeClaimDecision = authorizeWithClaim(claim, [claim], claimContext);
-    const unconfirmedClaimDecision = authorizeWithClaim(claim, [claim], {
+    const activeClaimDecision = authorizeWithClaim(claimArtifact, [claimArtifact], claimContext);
+    const unconfirmedClaimDecision = authorizeWithClaim(claimArtifact, [claimArtifact], {
         ...claimContext,
         repository_confirmed: new Set(),
     });
@@ -98,31 +99,25 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
     const invalidClaimKeyDecision = thrownDecision(() => validateKeyRef(invalidClaimKey));
     const invalidClaimEvent = { ...ledger.claimOne.artifact.event, sig: "00".repeat(64) };
     const claimEnvelopeContext = ledger.requestFor(ledger.claimRecordOne, ledger.claimOne).envelope_context;
-    const invalidClaimEventDecision = thrownDecision(() => validateClaimEnvelope(invalidClaimEvent, claimEnvelopeContext));
-    const missingAuthorityContext = {
-        ...claimContext,
-        claim_authority_evidence: new Map(),
-    };
-    const missingAuthorityDecision = authorizeWithClaim(claim, [claim], missingAuthorityContext);
+    const invalidClaimEventDecision = thrownDecision(() => verifyClaimEnvelope(invalidClaimEvent, claimEnvelopeContext));
+    const missingAuthorityArtifact = Object.freeze({}) as VerifiedClaimArtifact;
+    const missingAuthorityDecision = authorizeWithClaim(
+        missingAuthorityArtifact,
+        [missingAuthorityArtifact],
+        claimContext,
+    );
     const attenuationContext = { ...claimContext, requested_namespace: "other.namespace" };
-    const attenuationDecision = authorizeWithClaim(claim, [claim], attenuationContext);
-    const expiredAuthority = new Map(claimContext.claim_authority_evidence);
-    const activeEvidence = expiredAuthority.get(claim.claim_id)!;
-    expiredAuthority.set(claim.claim_id, {
-        ...activeEvidence,
-        valid_until: claim.expires_at! + 60,
-    });
+    const attenuationDecision = authorizeWithClaim(claimArtifact, [claimArtifact], attenuationContext);
     const expiredContext = {
         ...claimContext,
         now: claim.expires_at!,
-        claim_authority_evidence: expiredAuthority,
     };
-    const expiredClaimDecision = authorizeWithClaim(claim, [claim], expiredContext);
-    const repositoryConflictDecision = authorizeWithClaim(claim, [claim], {
+    const expiredClaimDecision = authorizeWithClaim(claimArtifact, [claimArtifact], expiredContext);
+    const repositoryConflictDecision = authorizeWithClaim(claimArtifact, [claimArtifact], {
         ...claimContext,
         repository_conflicted: new Set([claim.claim_id]),
     });
-    const subjectRequiredDecision = authorizeWithClaim(claim, [claim], {
+    const subjectRequiredDecision = authorizeWithClaim(claimArtifact, [claimArtifact], {
         ...claimContext,
         subject_proof: null,
     });
@@ -131,25 +126,26 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
         throw new Error("claim subject-proof fixture missing");
     }
     subjectInvalidContext.subject_proof.challenge.nonce = "ff".repeat(16);
-    const subjectInvalidDecision = authorizeWithClaim(claim, [claim], subjectInvalidContext);
-    const untrustedClaimDecision = authorizeWithClaim(claim, [claim], {
+    const subjectInvalidDecision = authorizeWithClaim(claimArtifact, [claimArtifact], subjectInvalidContext);
+    const untrustedClaimDecision = authorizeWithClaim(claimArtifact, [claimArtifact], {
         ...claimContext,
         trusted_issuers: [],
     });
     const revocationArtifact = (ledger.revocationRecord.payload as unknown as {
         revocation_artifact: {
-            event: Parameters<typeof validateClaimRevocationEnvelope>[0];
+            event: Parameters<typeof verifyClaimRevocationEnvelope>[0];
         };
     }).revocation_artifact;
-    const verifiedRevocation = validateClaimRevocationEnvelope(revocationArtifact.event);
-    const revokedClaimDecision = authorizeWithClaim(claim, [claim], {
+    const verifiedRevocation = verifyClaimRevocationEnvelope(revocationArtifact.event);
+    const inspectedRevocation = inspectVerifiedClaimRevocation(verifiedRevocation);
+    const revokedClaimDecision = authorizeWithClaim(claimArtifact, [claimArtifact], {
         ...claimContext,
-        now: verifiedRevocation.revoked_at,
+        now: inspectedRevocation.revoked_at,
         revocations: [verifiedRevocation],
     });
-    const chainCycleDecision = authorizeWithClaim(claim, [claim, claim], claimContext);
-    const chainDepthDecision = authorizeWithClaim(claim, Array.from({ length: 10 }, () => claim), claimContext);
-    const delegationDecision = authorizeWithClaim(ledger.claimTwo.artifact.semantic, [claim], claimContext);
+    const chainCycleDecision = authorizeWithClaim(claimArtifact, [claimArtifact, claimArtifact], claimContext);
+    const chainDepthDecision = authorizeWithClaim(claimArtifact, Array.from({ length: 10 }, () => claimArtifact), claimContext);
+    const delegationDecision = authorizeWithClaim(ledger.claimTwo.verified_artifact, [claimArtifact], claimContext);
     const rollbackCheckpoint = { ...ledger.baseRepository.checkpoint, branch: "dev" };
     const rollbackDecision = (() => {
         try {
@@ -797,36 +793,36 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
     ];
     const boundaryArgs = new Map<string, readonly unknown[]>([
         ["comms/claim-event-signature-invalid", [invalidClaimEvent, claimEnvelopeContext]],
-        ["comms/claim-issuer-authority-invalid", [claim, [claim], missingAuthorityContext]],
-        ["comms/claim-attenuation-violation", [claim, [claim], attenuationContext]],
-        ["comms/claim-expired", [claim, [claim], expiredContext]],
-        ["comms/claim-repository-conflict", [claim, [claim], {
+        ["comms/claim-issuer-authority-invalid", [missingAuthorityArtifact, [missingAuthorityArtifact], claimContext]],
+        ["comms/claim-attenuation-violation", [claimArtifact, [claimArtifact], attenuationContext]],
+        ["comms/claim-expired", [claimArtifact, [claimArtifact], expiredContext]],
+        ["comms/claim-repository-conflict", [claimArtifact, [claimArtifact], {
                     ...claimContext,
                     repository_conflicted: new Set([claim.claim_id]),
                 }]],
-        ["comms/claim-subject-proof-required", [claim, [claim], {
+        ["comms/claim-subject-proof-required", [claimArtifact, [claimArtifact], {
                     ...claimContext,
                     subject_proof: null,
                 }]],
-        ["comms/claim-subject-proof-invalid", [claim, [claim], subjectInvalidContext]],
-        ["comms/claim-issuer-untrusted", [claim, [claim], {
+        ["comms/claim-subject-proof-invalid", [claimArtifact, [claimArtifact], subjectInvalidContext]],
+        ["comms/claim-issuer-untrusted", [claimArtifact, [claimArtifact], {
                     ...claimContext,
                     trusted_issuers: [],
                 }]],
-        ["comms/claim-revoked", [revocationArtifact.event, claim, [claim], {
+        ["comms/claim-revoked", [revocationArtifact.event, claimArtifact, [claimArtifact], {
                     ...claimContext,
-                    now: verifiedRevocation.revoked_at,
+                    now: inspectedRevocation.revoked_at,
                     revocations: [verifiedRevocation],
                 }]],
-        ["comms/claim-chain-cycle", [claim, [claim, claim], claimContext]],
+        ["comms/claim-chain-cycle", [claimArtifact, [claimArtifact, claimArtifact], claimContext]],
         ["comms/claim-chain-depth-exceeded", [
-                claim,
-                Array.from({ length: 10 }, () => claim),
+                claimArtifact,
+                Array.from({ length: 10 }, () => claimArtifact),
                 claimContext,
             ]],
         ["comms/claim-delegation-not-authorized", [
-                ledger.claimTwo.artifact.semantic,
-                [claim],
+                ledger.claimTwo.verified_artifact,
+                [claimArtifact],
                 claimContext,
             ]],
         ["comms/claim-ledger-rollback", [

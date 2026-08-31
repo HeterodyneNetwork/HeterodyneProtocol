@@ -773,7 +773,7 @@ const CURRENT_CASE_CONTRACTS = {
     ]
   },
   "comms/claim-event-signature-invalid": {
-    "boundary_id": "claims.validateClaimEnvelope",
+    "boundary_id": "claims.verifyClaimEnvelope",
     "owner_document": "comms",
     "spec_refs": [
       "heterodyne:0.6.0#comms-conformance"
@@ -890,7 +890,7 @@ const CURRENT_CASE_CONTRACTS = {
     ]
   },
   "comms/claim-revoked": {
-    "boundary_id": "claims.validateClaimRevocationEnvelope+authorizeWithClaim",
+    "boundary_id": "claims.verifyClaimRevocationEnvelope+authorizeWithClaim",
     "owner_document": "comms",
     "spec_refs": [
       "heterodyne:0.6.0#comms-conformance"

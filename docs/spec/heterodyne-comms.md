@@ -1470,6 +1470,22 @@ Verification is ordered and fail-closed:
 8. return exactly one state: `invalid`, `untrusted`, `provisional`, `active`,
    `expired`, `revoked`, or `conflicted`.
 
+Successful envelope verification MUST mint an opaque, immutable verified-claim
+artifact bound to the exact verified NIP-01 event bytes, event ID, outer
+`pubkey`, canonical semantic bytes, claim ID, issuance time, and declared
+credential-ledger persona and generation. Chain resolution and authorization
+MUST consume only those verifier-minted artifacts and their private snapshots;
+a semantic object, inspection copy, caller assertion, clone, or lookalike MUST
+NOT carry verification authority. Inspection returns an independent immutable
+copy that cannot be supplied back as authority. Signed revocations use the same
+opaque-artifact rule.
+
+`claim-issuer-authority-invalid` means that the implementation did not
+establish the exact verified outer issuer or the explicit verified claim-chain
+authority required at that edge. It MUST NOT treat a KEL identity, recovery
+key, cached persona identity, or caller-supplied boolean as a substitute for
+the signed event's exact outer issuer.
+
 Cryptographic validity is not trust. `untrusted` content MAY be displayed with
 its provenance but MUST NOT authorize. A delivered persona-issued device grant
 is `provisional` until repository-confirmed. Only `active` authorizes.
@@ -1567,6 +1583,12 @@ derives a checkpoint `(repository_rid, main, commit_oid, observed_at)`. Claims
 and reservations merge by immutable ID. Revocation and authority reduction are
 monotonic and win. Concurrent incompatible policy changes remain `conflicted`
 and fail closed; wall-clock or writer order MUST NOT resolve them.
+
+For every ledger-embedded claim or revocation `{event, semantic}` object,
+replay MUST first verify the exact signed event and then require the duplicate
+`semantic` value to be byte-equivalent to that event's canonical content before
+minting the opaque runtime artifact. The duplicate value is wire material only;
+it is never independent verification or authorization evidence.
 
 Direct fetch, replication, and decryption require an `active`, durable,
 NID-bearing `claim-ledger-reader` authorization. Onboarding uses private

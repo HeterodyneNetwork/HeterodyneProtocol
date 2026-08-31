@@ -21,7 +21,9 @@ import {
   CLAIM_REVOCATION_PROFILE,
   computeClaimId,
   subjectProofPayload,
-  type ClaimAuthorityEvidence,
+  validateClaimEnvelope,
+  verifyClaimEnvelope,
+  verifyClaimRevocationEnvelope,
   type ClaimRevocation,
   type ClaimSemanticBody,
   type ClaimVerificationContext,
@@ -84,7 +86,20 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
       tags: [["d", semantic.claim_id]],
       content: jcsCanonicalize(semantic),
     });
-    return { artifact: { event, semantic } satisfies ClaimArtifact, reader };
+    const envelopeContext = {
+      profile_revision: 2,
+      credential_ledger: {
+        credential_ledger_persona: persona,
+        credential_ledger_generation: 0,
+      },
+    } as const;
+    const verifiedSemantic = validateClaimEnvelope(event, envelopeContext);
+    const verifiedArtifact = verifyClaimEnvelope(event, envelopeContext);
+    return {
+      artifact: { event, semantic: verifiedSemantic } satisfies ClaimArtifact,
+      verified_artifact: verifiedArtifact,
+      reader,
+    };
   };
 
   const claimOne = await makeClaim(writerOne);
@@ -124,17 +139,6 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
       subjectProofPayload(challenge),
       hexToBytes(claim.reader.private_key),
     ));
-    const authority: ClaimAuthorityEvidence = {
-      claim_id: semantic.claim_id,
-      issuer: semantic.issuer,
-      event_id: claim.artifact.event.id,
-      event_author: semantic.issuer.type === "nostr-secp256k1" ? semantic.issuer.value : "",
-      envelope_valid: true,
-      credential_ledger_persona: semantic.credential_ledger_persona,
-      credential_ledger_generation: semantic.credential_ledger_generation,
-      verified_at: now + 5,
-      valid_until: now + 300,
-    };
     return {
       now: now + 20,
       audience: persona,
@@ -148,8 +152,6 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
         credential_ledger_persona: persona,
         credential_ledger_generation: 0,
       },
-      claim_authority_evidence: new Map([[semantic.claim_id, authority]]),
-      revocation_authority_evidence: new Map(),
       repository_confirmed: confirmed,
       repository_conflicted: new Set(),
       revocations: [],
@@ -164,7 +166,6 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
   const requestFor = (record: LedgerRecord, claim: typeof claimOne): ReaderAccessRequest => ({
     claim_record_id: record.record_id,
     envelope_context: {
-      issuer_authorized: true,
       profile_revision: 2,
       credential_ledger: {
         credential_ledger_persona: persona,
@@ -228,6 +229,7 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
     content: jcsCanonicalize(revocationSemantic),
   });
   const revocationArtifact: RevocationArtifact = { event: revocationEvent, semantic: revocationSemantic as unknown as JsonValue };
+  const verifiedRevocationArtifact = verifyClaimRevocationEnvelope(revocationEvent);
   const revocationRecord = signRecord("revocation", { revocation_artifact: revocationArtifact }, writerTwo, [claimRecordOne.record_id], now + 31);
   const reductionRecord = signRecord("authority-reduction", {
     role: "claim-ledger-reader", subject_nid: writerOne.did_key, revocation_artifact: revocationArtifact,
@@ -263,7 +265,6 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
     record_id: record.record_id,
     payload_digest: record.payload_digest,
     claim_envelope_context: {
-      issuer_authorized: true,
       profile_revision: 2,
       credential_ledger: {
         credential_ledger_persona: persona,
@@ -283,7 +284,6 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
     record_id: temporalClaimRecord.record_id,
     payload_digest: temporalClaimRecord.payload_digest,
     claim_envelope_context: {
-      issuer_authorized: true,
       profile_revision: 2,
       credential_ledger: {
         credential_ledger_persona: persona,
@@ -297,7 +297,6 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
     record_id: grantOnly.record_id,
     payload_digest: grantOnly.payload_digest,
     claim_envelope_context: {
-      issuer_authorized: true,
       profile_revision: 2,
       credential_ledger: {
         credential_ledger_persona: persona,
@@ -351,7 +350,6 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
     record_id: record.record_id,
     payload_digest: record.payload_digest,
     claim_envelope_context: {
-      issuer_authorized: true,
       profile_revision: 2,
       credential_ledger: {
         credential_ledger_persona: persona,
@@ -578,7 +576,7 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
   return {
     now, persona, issuer, writerOne, writerTwo, rid, resource, audienceKeyOne, audienceKeyTwo, issuerAudienceKeyOne, issuerAudienceKeyTwo,
     claimOne, claimTwo, issuerClaimOne, issuerClaimTwo, alternateClaimOne, temporalClaim, allClaims, makeClaim, makeVerification, requestFor, signRecord, evidence, temporalRecordEvidence, grantOnlyEvidence, makeContext, makeTask5Context,
-    claimRecordOne, claimRecordTwo, temporalClaimRecord, grantOne, grantDivergent, grantOnly, revocationRecord, reductionRecord, removalRecord,
+    claimRecordOne, claimRecordTwo, temporalClaimRecord, grantOne, grantDivergent, grantOnly, revocationRecord, verifiedRevocationArtifact, reductionRecord, removalRecord,
     issuerClaimRecordOne, issuerClaimRecordTwo, issuerAuthorityRecordOne, issuerAuthorityRecordTwo, issuerRemovalRecord,
     epochOneRecord, epochTwoRecord, signingJwk, issuerKeyEnvelopeOne, issuerKeyEnvelopeTwo,
     issuerKeyEpochRecordOne, issuerKeyEpochRecordTwo, issuerKeyEpochOneState, issuerKeyEpochTwoState,

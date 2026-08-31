@@ -497,16 +497,17 @@ async function executeCurrentBoundary(
       projected_output: raw,
     };
   }
-  if (boundaryId === "claims.validateClaimRevocationEnvelope+authorizeWithClaim") {
+  if (boundaryId === "claims.verifyClaimRevocationEnvelope+authorizeWithClaim") {
     const [event, leaf, chain, suppliedContext] = fixture.boundary_args ?? [];
-    const revocation = claims.validateClaimRevocationEnvelope(
-      event as Parameters<typeof claims.validateClaimRevocationEnvelope>[0],
+    const revocation = claims.verifyClaimRevocationEnvelope(
+      event as Parameters<typeof claims.verifyClaimRevocationEnvelope>[0],
     );
+    const inspected = claims.inspectVerifiedClaimRevocation(revocation);
     const context = suppliedContext as Parameters<typeof claims.authorizeWithClaim>[2];
     const authorization = claims.authorizeWithClaim(
       leaf as Parameters<typeof claims.authorizeWithClaim>[0],
       chain as Parameters<typeof claims.authorizeWithClaim>[1],
-      { ...context, now: revocation.revoked_at, revocations: [revocation] },
+      { ...context, now: inspected.revoked_at, revocations: [revocation] },
     );
     const raw = { revocation, authorization };
     return {

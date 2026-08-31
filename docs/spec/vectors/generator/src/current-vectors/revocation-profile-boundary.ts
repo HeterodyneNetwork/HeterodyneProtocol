@@ -69,18 +69,6 @@ function freezeExactArtifact(value: unknown): Readonly<{
   };
 }
 
-function exactRevocationSemantic(
-  verified: claims.VerifiedRevocation,
-): claims.ClaimRevocation {
-  const {
-    signer: _signer,
-    event_id: _eventId,
-    event_created_at: _eventCreatedAt,
-    ...semantic
-  } = verified;
-  return semantic;
-}
-
 function revocationRecord(
   execution: CurrentRevocationExecutionFixture,
 ): RevocationRecord | null {
@@ -124,11 +112,8 @@ export function evaluateCurrentRevocationProfile(
     if (proofSuite(artifact.semantic) !== expectation.suite) {
       return reject("claim-subject-proof-invalid");
     }
-    const verified = claims.validateClaimRevocationEnvelope(artifact.event);
-    if (
-      jcsCanonicalize(exactRevocationSemantic(verified))
-      !== jcsCanonicalize(artifact.semantic)
-    ) return reject("claim-id-mismatch");
+    const verifiedArtifact = claims.verifyLedgerClaimRevocationArtifact(artifact);
+    const verified = claims.inspectVerifiedClaimRevocation(verifiedArtifact);
     const proofPayloadDigest = bytesToHex(sha256(
       claims.revocationProofPayload(artifact.semantic),
     ));
@@ -153,16 +138,16 @@ export function evaluateCurrentRevocationProfile(
       | Readonly<{ kind: "descriptive-claim-revoked"; result: ReturnType<typeof claims.authorizeWithClaim> }>;
     if (expectation.suite === "jwk-jws") {
       if (
-        execution.target_claim === undefined
+        execution.target_verified_claim === undefined
         || execution.target_verification_context === undefined
       ) return reject("claim-revoker-unauthorized");
       const decision = claims.authorizeWithClaim(
-        execution.target_claim,
-        [execution.target_claim],
+        execution.target_verified_claim,
+        [execution.target_verified_claim],
         {
           ...execution.target_verification_context,
           now: state.checkpoint.observed_at,
-          revocations: state.authenticated_revocations ?? [],
+          revocations: [verifiedArtifact],
         },
       );
       if (decision.state !== "revoked" || decision.reason_code !== "claim-revoked") {
