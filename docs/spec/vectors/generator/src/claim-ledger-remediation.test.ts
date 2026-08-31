@@ -5,6 +5,7 @@ import {
   evaluateReaderAccess,
   materializeLedgerLayout,
   mergeClaimLedger,
+  prepareLedgerReplayValidationContext,
   validateReaderOnboardingBundle,
   type LedgerValidationContext,
   type ReaderAccessRequest,
@@ -61,5 +62,45 @@ describe("claim-ledger remediation security contexts", () => {
       allowed: false,
       state: "invalid",
     });
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local replay cache never invokes evidence accessors", async () => {
+    // BLUE TEAM VALIDATION: synthetic/local evidence is deterministic and cannot target deployments.
+    const scenario = await buildClaimLedgerScenario(fixtures);
+    const validation = scenario.makeContext(scenario.baseRepository.repository);
+    prepareLedgerReplayValidationContext(validation);
+    mergeClaimLedger(
+      [scenario.claimRecordOne, scenario.claimRecordTwo],
+      [],
+      scenario.baseRepository.checkpoint,
+      validation,
+    );
+
+    const original = validation.record_evidence.get(scenario.claimRecordOne.record_id)!;
+    let accessorReads = 0;
+    const hostileEvidence = {
+      record_id: original.record_id,
+      payload_digest: original.payload_digest,
+      claim_envelope_context: original.claim_envelope_context,
+      claim_verification_context: original.claim_verification_context,
+    };
+    Object.defineProperty(hostileEvidence, "claims_by_id", {
+      enumerable: true,
+      get() {
+        accessorReads += 1;
+        return accessorReads % 2 === 1 ? undefined : original.claims_by_id;
+      },
+    });
+    validation.record_evidence.set(
+      scenario.claimRecordOne.record_id,
+      hostileEvidence as unknown as typeof original,
+    );
+    expect(() => mergeClaimLedger(
+      [scenario.claimRecordOne, scenario.claimRecordTwo],
+      [],
+      scenario.baseRepository.checkpoint,
+      validation,
+    )).toThrow(/evidence|data-only|repository-unconfirmed/i);
+    expect(accessorReads).toBe(0);
   });
 });

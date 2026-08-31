@@ -39,6 +39,8 @@ export const CLAIM_REVOCATION_PROFILE = {
   profile_revision: 2,
 } as const;
 
+export const CLAIM_REVOCATION_OPERATION_BUDGET = 10_000;
+
 export type DelegationConstraints = {
   namespaces: string[];
   audiences: string[];
@@ -171,10 +173,16 @@ const CLAIM_VERIFIER_IDENTITY = Object.freeze({});
 const MAX_CLAIM_ARTIFACT_MAP_SIZE = 256;
 const MAX_CLAIM_CHAIN_LENGTH = 9;
 const MAX_REVOCATION_ARTIFACTS = 256;
+const MAX_CONTEXT_SET_SIZE = 256;
 const MAP_ENTRIES = Map.prototype.entries;
 const MAP_SIZE_GETTER = Object.getOwnPropertyDescriptor(Map.prototype, "size")!.get!;
 const MAP_ITERATOR_NEXT = Object.getPrototypeOf(new Map().entries()).next as (
   this: MapIterator<unknown>,
+) => IteratorResult<unknown>;
+const SET_VALUES = Set.prototype.values;
+const SET_SIZE_GETTER = Object.getOwnPropertyDescriptor(Set.prototype, "size")!.get!;
+const SET_ITERATOR_NEXT = Object.getPrototypeOf(new Set().values()).next as (
+  this: SetIterator<unknown>,
 ) => IteratorResult<unknown>;
 
 type VerifiedClaimRecord = Readonly<{
@@ -524,25 +532,61 @@ export function isClaimRevocationAuthorized(
   candidate: VerifiedClaimRevocationArtifact,
   context: ClaimVerificationContext,
 ): boolean {
+  return inspectClaimRevocationAuthorityEvaluation(target, chain, candidate, context).authorized;
+}
+
+export type ClaimRevocationAuthorityEvaluation = Readonly<{
+  authorized: boolean;
+  rejected: boolean;
+  operations: number;
+  operation_budget: number;
+}>;
+
+export function inspectClaimRevocationAuthorityEvaluation(
+  target: VerifiedClaimArtifact,
+  chain: readonly VerifiedClaimArtifact[],
+  candidate: VerifiedClaimRevocationArtifact,
+  context: ClaimVerificationContext,
+): ClaimRevocationAuthorityEvaluation {
+  const budget = { operations: 0 };
   try {
     const targetRecord = requireVerifiedClaimRecord(target);
     const chainRecords = captureClaimArtifactArray(chain);
-    if (chainRecords.length === 0 || chainRecords[chainRecords.length - 1] !== targetRecord) return false;
+    if (chainRecords.length === 0 || chainRecords[chainRecords.length - 1] !== targetRecord) {
+      throw new Error("claim-revoker-unauthorized: chain identity mismatch");
+    }
     validateResolvedChain(targetRecord.semantic, chainRecords.map(({ semantic }) => semantic));
     const candidateRecord = requireVerifiedClaimRevocationRecord(candidate);
-    const prior = captureRevocationArtifactArray(readContextDataMember(context, "revocations"));
-    const revocations = prior.includes(candidateRecord) ? prior : [...prior, candidateRecord];
-    return revocationAuthorizedForTarget(
-      chainRecords.length - 1,
-      candidateRecord,
+    const capturedContext = captureRevocationAuthorityContext(context);
+    const alreadyPresent = capturedContext.revocations.find((record) => record === candidateRecord);
+    if (alreadyPresent === undefined &&
+        capturedContext.revocations.some((record) => record.event_id === candidateRecord.event_id)) {
+      throw new Error("claim-revoker-unauthorized: duplicate revocation event ID");
+    }
+    const revocations = alreadyPresent === undefined
+      ? chronologicalRevocationSnapshot([...capturedContext.revocations, candidateRecord])
+      : capturedContext.revocations;
+    const result = evaluateRevocationTimeline(
       chainRecords,
       revocations,
-      context,
-      context.now,
-      new Set<string>(),
+      capturedContext,
+      capturedContext.now,
+      candidateRecord.event_id,
+      budget,
     );
+    return Object.freeze({
+      authorized: result.requested_authorized,
+      rejected: false,
+      operations: budget.operations,
+      operation_budget: CLAIM_REVOCATION_OPERATION_BUDGET,
+    });
   } catch {
-    return false;
+    return Object.freeze({
+      authorized: false,
+      rejected: true,
+      operations: Math.min(budget.operations, CLAIM_REVOCATION_OPERATION_BUDGET),
+      operation_budget: CLAIM_REVOCATION_OPERATION_BUDGET,
+    });
   }
 }
 
@@ -556,11 +600,11 @@ function evaluateClaim(
 ): ClaimEvaluation {
   let leafRecord: VerifiedClaimRecord;
   let chainRecords: VerifiedClaimRecord[];
-  let revocationRecords: VerifiedClaimRevocationRecord[];
+  let capturedContext: RevocationAuthorityContextSnapshot;
   try {
     leafRecord = requireVerifiedClaimRecord(leafArtifact);
     chainRecords = captureClaimArtifactArray(chainArtifacts);
-    revocationRecords = captureRevocationArtifactArray(readContextDataMember(context, "revocations"));
+    capturedContext = captureRevocationAuthorityContext(context);
     if (
       chainRecords.length === 0 ||
       chainRecords[chainRecords.length - 1] !== leafRecord
@@ -575,7 +619,7 @@ function evaluateClaim(
       return { state: "invalid", reason_code: "credential_generation_missing" };
     }
     if (claim.claim_class === "authorization") {
-      const generation = evaluateCredentialGeneration(claim, context.credential_ledger);
+      const generation = evaluateCredentialGeneration(claim, capturedContext.credential_ledger);
       if (!generation.valid) return { state: "invalid", reason_code: generation.reason_code };
     } else if (claim.credential_ledger_persona !== null || claim.credential_ledger_generation !== null) {
       return { state: "invalid", reason_code: "credential_schema_invalid" };
@@ -619,10 +663,10 @@ function evaluateClaim(
   }
 
   // 5. Time, audience, namespace, resource, and subject type.
-  if (chain.some((claim) => context.now < claim.not_before)) {
+  if (chain.some((claim) => capturedContext.now < claim.not_before)) {
     return { state: "invalid", reason_code: "claim-issuer-authority-invalid" };
   }
-  if (chain.some((claim) => claim.expires_at !== undefined && context.now >= claim.expires_at)) {
+  if (chain.some((claim) => claim.expires_at !== undefined && capturedContext.now >= claim.expires_at)) {
     return { state: "expired", reason_code: "claim-expired" };
   }
   if (context.requested_namespace !== leaf.namespace) {
@@ -647,15 +691,15 @@ function evaluateClaim(
   }
 
   // 6. Authenticated monotonic reductions win before repository confirmation.
-  if (isRevoked(chainRecords, revocationRecords, context)) {
+  if (isRevoked(chainRecords, capturedContext)) {
     return { state: "revoked", reason_code: "claim-revoked" };
   }
-  if (chain.some((claim) => context.repository_conflicted.has(claim.claim_id))) {
+  if (chain.some((claim) => capturedContext.repository_conflicted.includes(claim.claim_id))) {
     return { state: "conflicted", reason_code: "claim-repository-conflict" };
   }
   if (chain.some((claim) =>
     claim.claim_class === "authorization" &&
-    !context.repository_confirmed.has(claim.claim_id)
+    !capturedContext.repository_confirmed.includes(claim.claim_id)
   )) {
     return { state: "provisional", reason_code: "claim-repository-unconfirmed" };
   }
@@ -674,7 +718,7 @@ function evaluateClaim(
 
   // 8. Local trust/release policy is deliberately last.
   const trustAnchor = chain[0].issuer;
-  if (!context.trusted_issuers.some((candidate) => sameKeyRef(candidate, trustAnchor))) {
+  if (!capturedContext.trusted_issuers.some((candidate) => sameKeyRef(candidate, trustAnchor))) {
     return { state: "untrusted", reason_code: "claim-issuer-untrusted" };
   }
   return { state: "active", reason_code: null };
@@ -808,47 +852,59 @@ function verifySubjectProof(leaf: ClaimSemanticBody, context: ClaimVerificationC
 
 function isRevoked(
   chainRecords: VerifiedClaimRecord[],
-  revocations: VerifiedClaimRevocationRecord[],
-  context: ClaimVerificationContext,
+  context: RevocationAuthorityContextSnapshot,
 ): boolean {
-  for (let targetIndex = 0; targetIndex < chainRecords.length; targetIndex += 1) {
-    for (const candidate of revocations) {
-      if (revocationAuthorizedForTarget(
-        targetIndex,
-        candidate,
-        chainRecords,
-        revocations,
-        context,
-        context.now,
-        new Set<string>(),
-      )) return true;
-    }
-  }
-  return false;
+  const result = evaluateRevocationTimeline(
+    chainRecords,
+    context.revocations,
+    context,
+    context.now,
+    null,
+    { operations: 0 },
+  );
+  return result.revoked.some(Boolean);
 }
 
-function revocationAuthorizedForTarget(
-  targetIndex: number,
-  candidate: VerifiedClaimRevocationRecord,
+type RevocationWorkBudget = { operations: number };
+
+function consumeRevocationOperation(budget: RevocationWorkBudget): void {
+  budget.operations += 1;
+  if (budget.operations > CLAIM_REVOCATION_OPERATION_BUDGET) {
+    throw new Error("claim-revoker-unauthorized: revocation operation budget exceeded");
+  }
+}
+
+function evaluateRevocationTimeline(
   chainRecords: VerifiedClaimRecord[],
-  revocations: VerifiedClaimRevocationRecord[],
-  context: ClaimVerificationContext,
-  evaluationTime: number,
-  resolving: Set<string>,
-): boolean {
-  const target = chainRecords[targetIndex].semantic;
-  const revocation = candidate.semantic;
-  if (
-    revocation.claim_id !== target.claim_id ||
-    candidate.event.created_at !== revocation.revoked_at ||
-    revocation.revoked_at > evaluationTime ||
-    revocation.revoked_at < target.issued_at ||
-    !sameKeyRef(revocation.revoker, candidate.signer)
-  ) return false;
-  const resolutionKey = `${target.claim_id}:${candidate.event_id}`;
-  if (resolving.has(resolutionKey)) return false;
-  resolving.add(resolutionKey);
-  try {
+  revocations: readonly VerifiedClaimRevocationRecord[],
+  context: RevocationAuthorityContextSnapshot,
+  cutoff: number,
+  requestedEventId: string | null,
+  budget: RevocationWorkBudget,
+): Readonly<{ revoked: readonly boolean[]; requested_authorized: boolean }> {
+  const revoked = Array.from({ length: chainRecords.length }, () => false);
+  let requestedAuthorized = false;
+  const trustAnchor = chainRecords[0].semantic.issuer;
+  const trusted = context.trusted_issuers.some((candidate) => sameKeyRef(candidate, trustAnchor));
+  for (const candidate of revocations) {
+    consumeRevocationOperation(budget);
+    const revocation = candidate.semantic;
+    if (revocation.revoked_at > cutoff) break;
+    let targetIndex = -1;
+    for (let index = 0; index < chainRecords.length; index += 1) {
+      consumeRevocationOperation(budget);
+      if (chainRecords[index].claim_id === revocation.claim_id) {
+        targetIndex = index;
+        break;
+      }
+    }
+    if (targetIndex < 0) continue;
+    const target = chainRecords[targetIndex].semantic;
+    if (
+      candidate.event.created_at !== revocation.revoked_at ||
+      revocation.revoked_at < target.issued_at ||
+      !sameKeyRef(revocation.revoker, candidate.signer)
+    ) continue;
     const directIssuer = sameKeyRef(target.issuer, candidate.signer);
     const personaAuthorized = target.claim_class === "authorization" &&
       target.credential_ledger_persona !== null &&
@@ -856,62 +912,56 @@ function revocationAuthorizedForTarget(
       candidate.signer.value === target.credential_ledger_persona &&
       context.credential_ledger.credential_ledger_persona === target.credential_ledger_persona &&
       context.credential_ledger.credential_ledger_generation === target.credential_ledger_generation;
-    if (
-      directIssuer || personaAuthorized ||
+    let authorized = directIssuer || personaAuthorized ||
       target.claim_class === "authorization" && sameKeyRef(candidate.signer, target.subject) ||
       target.claim_class === "descriptive" &&
-        (target.revokers ?? []).some((revoker) => sameKeyRef(revoker, candidate.signer))
-    ) return true;
-    for (let superiorIndex = 0; superiorIndex < targetIndex; superiorIndex += 1) {
-      if (
-        sameKeyRef(chainRecords[superiorIndex].semantic.issuer, candidate.signer) &&
-        claimWasActiveAt(
-          superiorIndex,
-          revocation.revoked_at,
-          chainRecords,
-          revocations,
-          context,
-          resolving,
-        )
-      ) return true;
+        (target.revokers ?? []).some((revoker) => sameKeyRef(revoker, candidate.signer));
+    if (!authorized) {
+      for (let superiorIndex = 0; superiorIndex < targetIndex; superiorIndex += 1) {
+        consumeRevocationOperation(budget);
+        if (
+          sameKeyRef(chainRecords[superiorIndex].semantic.issuer, candidate.signer) &&
+          claimWasActiveAtSnapshot(
+            superiorIndex,
+            revocation.revoked_at,
+            chainRecords,
+            revoked,
+            context,
+            trusted,
+          )
+        ) {
+          authorized = true;
+          break;
+        }
+      }
     }
-    return false;
-  } finally {
-    resolving.delete(resolutionKey);
+    if (!authorized) continue;
+    revoked[targetIndex] = true;
+    if (candidate.event_id === requestedEventId) requestedAuthorized = true;
   }
+  return Object.freeze({ revoked: Object.freeze(revoked), requested_authorized: requestedAuthorized });
 }
 
-function claimWasActiveAt(
+function claimWasActiveAtSnapshot(
   claimIndex: number,
   evaluationTime: number,
   chainRecords: VerifiedClaimRecord[],
-  revocations: VerifiedClaimRevocationRecord[],
-  context: ClaimVerificationContext,
-  resolving: Set<string>,
+  revoked: readonly boolean[],
+  context: RevocationAuthorityContextSnapshot,
+  trusted: boolean,
 ): boolean {
   const claim = chainRecords[claimIndex].semantic;
   if (
     evaluationTime < claim.not_before ||
     (claim.expires_at !== undefined && evaluationTime >= claim.expires_at) ||
-    context.repository_conflicted.has(claim.claim_id) ||
-    (claim.claim_class === "authorization" && !context.repository_confirmed.has(claim.claim_id))
+    revoked[claimIndex] ||
+    context.repository_conflicted.includes(claim.claim_id) ||
+    (claim.claim_class === "authorization" && !context.repository_confirmed.includes(claim.claim_id)) ||
+    !trusted
   ) return false;
   if (claim.claim_class === "authorization") {
     const generation = evaluateCredentialGeneration(claim, context.credential_ledger);
     if (!generation.valid) return false;
-  }
-  const trustAnchor = chainRecords[0].semantic.issuer;
-  if (!context.trusted_issuers.some((candidate) => sameKeyRef(candidate, trustAnchor))) return false;
-  for (const revocation of revocations) {
-    if (revocationAuthorizedForTarget(
-      claimIndex,
-      revocation,
-      chainRecords,
-      revocations,
-      context,
-      evaluationTime,
-      resolving,
-    )) return false;
   }
   return true;
 }
@@ -1015,11 +1065,119 @@ function captureClaimArtifactArray(value: unknown): VerifiedClaimRecord[] {
 }
 
 function captureRevocationArtifactArray(value: unknown): VerifiedClaimRevocationRecord[] {
-  return captureOrdinaryDenseArray(
+  const records = captureOrdinaryDenseArray(
     value,
     MAX_REVOCATION_ARTIFACTS,
     "claim-revoker-unauthorized: ordinary verified revocation artifact array required",
   ).map(requireVerifiedClaimRevocationRecord);
+  return [...chronologicalRevocationSnapshot(records)];
+}
+
+function chronologicalRevocationSnapshot(
+  records: VerifiedClaimRevocationRecord[],
+): readonly VerifiedClaimRevocationRecord[] {
+  const eventIds = new Map<string, VerifiedClaimRevocationRecord>();
+  for (const record of records) {
+    if (eventIds.has(record.event_id)) {
+      throw new Error("claim-revoker-unauthorized: duplicate revocation event ID");
+    }
+    eventIds.set(record.event_id, record);
+  }
+  return Object.freeze([...records].sort((left, right) =>
+    left.revoked_at - right.revoked_at || left.event_id.localeCompare(right.event_id)));
+}
+
+type RevocationAuthorityContextSnapshot = Readonly<{
+  now: number;
+  credential_ledger: CredentialLedgerBinding;
+  repository_confirmed: readonly string[];
+  repository_conflicted: readonly string[];
+  trusted_issuers: readonly KeyRef[];
+  revocations: readonly VerifiedClaimRevocationRecord[];
+}>;
+
+function captureRevocationAuthorityContext(value: unknown): RevocationAuthorityContextSnapshot {
+  if (
+    value === null || typeof value !== "object" || Array.isArray(value) ||
+    utilTypes.isProxy(value) || Object.getPrototypeOf(value) !== Object.prototype
+  ) throw new Error("claim-issuer-authority-invalid: ordinary claim verification context required");
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const required = [
+    "now",
+    "audience",
+    "resource",
+    "requested_namespace",
+    "requested_operation",
+    "expected_nonce",
+    "used_nonces",
+    "trusted_issuers",
+    "credential_ledger",
+    "repository_confirmed",
+    "repository_conflicted",
+    "revocations",
+    "subject_proof",
+  ];
+  const keys = Reflect.ownKeys(descriptors);
+  if (keys.length !== required.length || keys.some((key) =>
+    typeof key !== "string" || !required.includes(key))) {
+    throw new Error("claim-issuer-authority-invalid: closed claim verification context required");
+  }
+  const read = (member: string): unknown => {
+    const descriptor = descriptors[member];
+    if (descriptor === undefined || !("value" in descriptor) || descriptor.enumerable !== true) {
+      throw new Error("claim-issuer-authority-invalid: data-only claim verification context required");
+    }
+    return descriptor.value;
+  };
+  const now = read("now");
+  if (!Number.isSafeInteger(now) || (now as number) < 0) {
+    throw new Error("claim-issuer-authority-invalid: invalid verification time");
+  }
+  const credential = captureCredentialLedgerBinding(read("credential_ledger"));
+  const confirmed = captureClosedStringSet(read("repository_confirmed"), "repository_confirmed");
+  const conflicted = captureClosedStringSet(read("repository_conflicted"), "repository_conflicted");
+  const trusted = captureOrdinaryDenseArray(
+    read("trusted_issuers"),
+    MAX_CONTEXT_SET_SIZE,
+    "claim-issuer-authority-invalid: ordinary trusted issuer array required",
+  ).map((entry) => {
+    const snapshot = deepFreezeJson(snapshotJsonNode(entry, new Set<object>()) as KeyRef);
+    validateKeyRef(snapshot);
+    return snapshot;
+  });
+  const revocations = captureRevocationArtifactArray(read("revocations"));
+  return Object.freeze({
+    now: now as number,
+    credential_ledger: credential,
+    repository_confirmed: confirmed,
+    repository_conflicted: conflicted,
+    trusted_issuers: Object.freeze(trusted),
+    revocations: Object.freeze(revocations),
+  });
+}
+
+function captureClosedStringSet(value: unknown, label: string): readonly string[] {
+  if (
+    value === null || typeof value !== "object" || utilTypes.isProxy(value) ||
+    Object.getPrototypeOf(value) !== Set.prototype || Reflect.ownKeys(value).length !== 0
+  ) throw new Error(`claim-issuer-authority-invalid: ordinary ${label} set required`);
+  const size = SET_SIZE_GETTER.call(value) as number;
+  if (!Number.isSafeInteger(size) || size < 0 || size > MAX_CONTEXT_SET_SIZE) {
+    throw new Error(`claim-issuer-authority-invalid: bounded ${label} set required`);
+  }
+  const iterator = SET_VALUES.call(value);
+  const captured: string[] = [];
+  for (let index = 0; index < size; index += 1) {
+    const step = SET_ITERATOR_NEXT.call(iterator) as IteratorResult<unknown>;
+    if (step.done || typeof step.value !== "string") {
+      throw new Error(`claim-issuer-authority-invalid: string ${label} set required`);
+    }
+    captured.push(step.value);
+  }
+  if (!SET_ITERATOR_NEXT.call(iterator).done) {
+    throw new Error(`claim-issuer-authority-invalid: ${label} set changed during capture`);
+  }
+  return Object.freeze(captured);
 }
 
 function captureOrdinaryDenseArray(
@@ -1050,17 +1208,6 @@ function captureOrdinaryDenseArray(
     captured.push(descriptor.value);
   }
   return captured;
-}
-
-function readContextDataMember(value: unknown, member: string): unknown {
-  if (value === null || typeof value !== "object" || utilTypes.isProxy(value)) {
-    throw new Error("claim-issuer-authority-invalid: ordinary claim verification context required");
-  }
-  const descriptor = Object.getOwnPropertyDescriptor(value, member);
-  if (descriptor === undefined || !("value" in descriptor) || !descriptor.enumerable) {
-    throw new Error("claim-issuer-authority-invalid: data-only claim verification context required");
-  }
-  return descriptor.value;
 }
 
 function captureClaimEnvelopeContext(

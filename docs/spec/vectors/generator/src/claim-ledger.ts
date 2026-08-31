@@ -1,4 +1,5 @@
 import { createHmac } from "node:crypto";
+import { types as utilTypes } from "node:util";
 import { xchacha20poly1305 } from "@noble/ciphers/chacha";
 import { ed25519 } from "@noble/curves/ed25519";
 import { sha256 } from "@noble/hashes/sha2";
@@ -266,6 +267,14 @@ const RECORD_TYPES = new Set<LedgerRecordType>([
   "issuance-reservation",
   "status-invalidation",
 ]);
+const ARTIFACT_SENSITIVE_RECORD_TYPES = new Set<LedgerRecordType>([
+  "claim",
+  "revocation",
+  "authority-reduction",
+  "reader-change",
+  "issuer-authority",
+  "status-invalidation",
+]);
 const VALIDATED_LEDGER_STATES = new WeakSet<object>();
 const VALIDATED_LEDGER_REPOSITORIES = new WeakMap<object, LedgerRepositoryEvidence>();
 const VALIDATED_LEDGER_CONTEXTS = new WeakMap<object, LedgerValidationContext>();
@@ -279,6 +288,48 @@ const REPLAY_VALIDATED_RECORDS = new WeakMap<
   LedgerValidationContext,
   Map<LedgerRecord, ReplayValidationFingerprint>
 >();
+
+function recordTypeMayCarryAuthorityArtifact(recordType: unknown): boolean {
+  return typeof recordType !== "string" ||
+    !RECORD_TYPES.has(recordType as LedgerRecordType) ||
+    ARTIFACT_SENSITIVE_RECORD_TYPES.has(recordType as LedgerRecordType);
+}
+
+function captureLedgerRecordValidationEvidence(
+  value: unknown,
+  artifactSensitive: boolean,
+): LedgerRecordValidationEvidence | undefined {
+  if (value === undefined) return undefined;
+  if (
+    value === null || typeof value !== "object" || Array.isArray(value) ||
+    utilTypes.isProxy(value) || Object.getPrototypeOf(value) !== Object.prototype
+  ) throw new Error("claim-repository-unconfirmed: ordinary record evidence is required");
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const keys = Reflect.ownKeys(descriptors);
+  const allowed = artifactSensitive
+    ? [
+      "record_id",
+      "payload_digest",
+      "claim_envelope_context",
+      "claims_by_id",
+      "claim_verification_context",
+    ]
+    : ["record_id", "payload_digest"];
+  if (
+    keys.some((key) => typeof key !== "string" || !allowed.includes(key)) ||
+    !Object.hasOwn(descriptors, "record_id") ||
+    !Object.hasOwn(descriptors, "payload_digest")
+  ) throw new Error("claim-repository-unconfirmed: closed record evidence is required");
+  const captured: Record<string, unknown> = {};
+  for (const key of keys) {
+    const descriptor = descriptors[key as string];
+    if (descriptor === undefined || !("value" in descriptor) || descriptor.enumerable !== true) {
+      throw new Error("claim-repository-unconfirmed: data-only record evidence is required");
+    }
+    captured[key as string] = descriptor.value;
+  }
+  return Object.freeze(captured) as LedgerRecordValidationEvidence;
+}
 
 export function prepareLedgerReplayValidationContext(
   context: LedgerValidationContext,
@@ -304,6 +355,24 @@ export function createSignedLedgerRecord(input: UnsignedLedgerRecord, writerSecr
 }
 
 export function validateLedgerRecordOrThrow(
+  record: LedgerRecord,
+  recordsById: ReadonlyMap<string, LedgerRecord>,
+  evidence: LedgerRecordValidationEvidence | undefined,
+  expectedCredentialLedger: CredentialLedgerBinding,
+): void {
+  const capturedEvidence = captureLedgerRecordValidationEvidence(
+    evidence,
+    recordTypeMayCarryAuthorityArtifact(record.record_type),
+  );
+  validateCapturedLedgerRecordOrThrow(
+    record,
+    recordsById,
+    capturedEvidence,
+    expectedCredentialLedger,
+  );
+}
+
+function validateCapturedLedgerRecordOrThrow(
   record: LedgerRecord,
   recordsById: ReadonlyMap<string, LedgerRecord>,
   evidence: LedgerRecordValidationEvidence | undefined,
@@ -394,35 +463,15 @@ export function mergeClaimLedger(
     ? null
     : replayValidationFingerprint([...records].sort((left, right) => left.record_id.localeCompare(right.record_id)));
   for (const record of records) {
+    const artifactSensitiveRecord = recordTypeMayCarryAuthorityArtifact(record.record_type);
+    const evidence = captureLedgerRecordValidationEvidence(
+      Map.prototype.get.call(context.record_evidence, record.record_id) as
+        | LedgerRecordValidationEvidence
+        | undefined,
+      artifactSensitiveRecord,
+    );
     if (replayValidatedRecords === undefined) {
-      validateLedgerRecordOrThrow(
-        record,
-        recordsById,
-        context.record_evidence.get(record.record_id),
-        {
-          credential_ledger_persona: context.credential_ledger.credential_ledger_persona,
-          credential_ledger_generation: record.credential_ledger_generation,
-        },
-      );
-      continue;
-    }
-    const evidence = context.record_evidence.get(record.record_id);
-    const artifactSensitiveEvidence = evidence?.claims_by_id !== undefined;
-    const fingerprint = {
-      record: replayValidationFingerprint(record),
-      // Opaque artifact identity is intentionally not serializable. Never
-      // cache artifact-sensitive evidence by a shaped-data fingerprint.
-      evidence: artifactSensitiveEvidence
-        ? "opaque-artifact-evidence-uncached"
-        : replayValidationFingerprint(evidence),
-      record_context: recordContextFingerprint!,
-    };
-    const validated = replayValidatedRecords.get(record);
-    if (artifactSensitiveEvidence || validated === undefined ||
-        validated.record !== fingerprint.record ||
-        validated.evidence !== fingerprint.evidence ||
-        validated.record_context !== fingerprint.record_context) {
-      validateLedgerRecordOrThrow(
+      validateCapturedLedgerRecordOrThrow(
         record,
         recordsById,
         evidence,
@@ -431,7 +480,32 @@ export function mergeClaimLedger(
           credential_ledger_generation: record.credential_ledger_generation,
         },
       );
-      if (artifactSensitiveEvidence) replayValidatedRecords.delete(record);
+      continue;
+    }
+    const fingerprint = {
+      record: replayValidationFingerprint(record),
+      // Opaque artifact identity is intentionally not serializable. Never
+      // cache artifact-sensitive evidence by a shaped-data fingerprint.
+      evidence: artifactSensitiveRecord
+        ? "opaque-artifact-evidence-uncached"
+        : replayValidationFingerprint(evidence),
+      record_context: recordContextFingerprint!,
+    };
+    const validated = replayValidatedRecords.get(record);
+    if (artifactSensitiveRecord || validated === undefined ||
+        validated.record !== fingerprint.record ||
+        validated.evidence !== fingerprint.evidence ||
+        validated.record_context !== fingerprint.record_context) {
+      validateCapturedLedgerRecordOrThrow(
+        record,
+        recordsById,
+        evidence,
+        {
+          credential_ledger_persona: context.credential_ledger.credential_ledger_persona,
+          credential_ledger_generation: record.credential_ledger_generation,
+        },
+      );
+      if (artifactSensitiveRecord) replayValidatedRecords.delete(record);
       else replayValidatedRecords.set(record, fingerprint);
     }
   }

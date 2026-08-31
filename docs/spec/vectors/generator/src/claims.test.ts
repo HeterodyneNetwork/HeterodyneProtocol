@@ -4,6 +4,7 @@ import { schnorr } from "@noble/curves/secp256k1";
 import { describe, expect, it } from "vitest";
 import {
   authorizeWithClaim as authorizeVerifiedClaim,
+  CLAIM_REVOCATION_OPERATION_BUDGET,
   CLAIM_REVOCATION_PROFILE,
   computeClaimId,
   computeJwkThumbprint,
@@ -18,6 +19,7 @@ import {
   verifyClaimRevocationEnvelope,
   inspectVerifiedClaim,
   inspectVerifiedClaimRevocation,
+  inspectClaimRevocationAuthorityEvaluation,
   isClaimRevocationAuthorized,
   verifyLedgerClaimArtifact,
   verifyLedgerClaimRevocationArtifact,
@@ -1533,6 +1535,169 @@ describe("claim trust, attenuation, and authorization state", () => {
         ]),
       }),
     )).toBe(true);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects duplicate revocation event identities", () => {
+    // BLUE TEAM VALIDATION: synthetic/local duplicates are deterministic, non-deployable signed fixtures.
+    const active = claim();
+    const first = nostrRevocation(active, active.issuer, issuedAt + 11);
+    const duplicate = nostrRevocation(active, active.issuer, issuedAt + 11);
+    expect(first).not.toBe(duplicate);
+    expect(inspectVerifiedClaimRevocation(first).event_id)
+      .toBe(inspectVerifiedClaimRevocation(duplicate).event_id);
+    expect(resolveVerifiedClaimState(
+      artifactFor(active),
+      [artifactFor(active)],
+      context(active, { revocations: [first, duplicate] }),
+    )).toBe("invalid");
+    expect(isClaimRevocationAuthorized(
+      artifactFor(active),
+      [artifactFor(active)],
+      duplicate,
+      context(active, { revocations: [first] }),
+    )).toBe(false);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local bounds branching inactive superior revocation work", () => {
+    // BLUE TEAM VALIDATION: synthetic/local matrix is bounded, deterministic, and has no external target.
+    const root = claim({
+      subject: delegatedIssuer,
+      constraints: {
+        namespaces: ["heterodyne.device"],
+        audiences: [epoch.pubkey, "https://rp.example"],
+        resources: ["rad:claims", "rad:claims/device"],
+        remaining_depth: 2,
+      },
+    });
+    const middle = claim({
+      issuer: delegatedIssuer,
+      subject,
+      parent_claim_id: root.claim_id,
+      not_before: issuedAt + 200,
+      expires_at: issuedAt + 400,
+      audience: [epoch.pubkey],
+      resources: ["rad:claims/device"],
+      constraints: {
+        namespaces: ["heterodyne.device"],
+        audiences: [epoch.pubkey],
+        resources: ["rad:claims/device"],
+        remaining_depth: 1,
+      },
+    });
+    const leaf = claim({
+      issuer: subject,
+      parent_claim_id: middle.claim_id,
+      not_before: middle.not_before,
+      expires_at: middle.expires_at,
+      audience: [epoch.pubkey],
+      resources: ["rad:claims/device"],
+    });
+    const inactiveCandidates = Array.from({ length: 128 }, (_, index) =>
+      nostrRevocation(leaf, middle.issuer, issuedAt + index + 1));
+    const boundary = nostrRevocation(leaf, middle.issuer, middle.not_before);
+    const chain = [artifactFor(root), artifactFor(middle), artifactFor(leaf)];
+    const result = inspectClaimRevocationAuthorityEvaluation(
+      artifactFor(leaf),
+      chain,
+      boundary,
+      context(leaf, {
+        now: issuedAt + 300,
+        repository_confirmed: new Set([root.claim_id, middle.claim_id, leaf.claim_id]),
+        revocations: inactiveCandidates,
+      }),
+    );
+    expect(result).toMatchObject({ authorized: true, rejected: false });
+    expect(result.operation_budget).toBe(CLAIM_REVOCATION_OPERATION_BUDGET);
+    expect(result.operations).toBeLessThanOrEqual(CLAIM_REVOCATION_OPERATION_BUDGET);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local snapshots closed revocation authority context without traps", () => {
+    // BLUE TEAM VALIDATION: synthetic/local hostile containers never contact live accounts or systems.
+    const active = claim();
+    const candidate = nostrRevocation(active, active.issuer, issuedAt + 11);
+    const valid = context(active);
+    expect(isClaimRevocationAuthorized(
+      artifactFor(active), [artifactFor(active)], candidate, valid,
+    )).toBe(true);
+
+    let nowReads = 0;
+    const accessorContext = { ...valid };
+    Object.defineProperty(accessorContext, "now", {
+      enumerable: true,
+      get() {
+        nowReads += 1;
+        return valid.now;
+      },
+    });
+    expect(isClaimRevocationAuthorized(
+      artifactFor(active), [artifactFor(active)], candidate, accessorContext,
+    )).toBe(false);
+    expect(nowReads).toBe(0);
+
+    let hasCalls = 0;
+    const hostileConfirmed = new Set([active.claim_id]) as Set<string> & { has: (value: string) => boolean };
+    Object.defineProperty(hostileConfirmed, "has", {
+      enumerable: true,
+      value(value: string) {
+        hasCalls += 1;
+        return Set.prototype.has.call(hostileConfirmed, value);
+      },
+    });
+    expect(isClaimRevocationAuthorized(
+      artifactFor(active), [artifactFor(active)], candidate,
+      { ...valid, repository_confirmed: hostileConfirmed },
+    )).toBe(false);
+    expect(hasCalls).toBe(0);
+
+    let nestedTrapCalls = 0;
+    const hostileLedger = new Proxy(valid.credential_ledger, {
+      get() {
+        nestedTrapCalls += 1;
+        throw new Error("synthetic/local nested context trap must not execute");
+      },
+    });
+    expect(isClaimRevocationAuthorized(
+      artifactFor(active), [artifactFor(active)], candidate,
+      { ...valid, credential_ledger: hostileLedger },
+    )).toBe(false);
+    expect(nestedTrapCalls).toBe(0);
+
+    let rootTrapCalls = 0;
+    const proxyContext = new Proxy(valid, {
+      get() {
+        rootTrapCalls += 1;
+        throw new Error("synthetic/local root context trap must not execute");
+      },
+    });
+    expect(isClaimRevocationAuthorized(
+      artifactFor(active), [artifactFor(active)], candidate, proxyContext,
+    )).toBe(false);
+    expect(rootTrapCalls).toBe(0);
+
+    let issuerReads = 0;
+    const mutatingIssuer = { type: active.issuer.type } as KeyRef;
+    Object.defineProperty(mutatingIssuer, "value", {
+      enumerable: true,
+      get() {
+        issuerReads += 1;
+        return active.issuer.value;
+      },
+    });
+    expect(isClaimRevocationAuthorized(
+      artifactFor(active), [artifactFor(active)], candidate,
+      { ...valid, trusted_issuers: [mutatingIssuer] },
+    )).toBe(false);
+    expect(issuerReads).toBe(0);
+
+    const extra = { ...valid, unexpected: true };
+    expect(isClaimRevocationAuthorized(
+      artifactFor(active), [artifactFor(active)], candidate, extra,
+    )).toBe(false);
+    const symbol = { ...valid } as ClaimVerificationContext & { [key: symbol]: boolean };
+    symbol[Symbol("synthetic/local unexpected")] = true;
+    expect(isClaimRevocationAuthorized(
+      artifactFor(active), [artifactFor(active)], candidate, symbol,
+    )).toBe(false);
   });
 
   it("limits descriptive revocation to issuer, named revoker, or superior issuer", () => {
