@@ -335,7 +335,7 @@ const signedRelationship = (): Record<string, unknown> => {
     receiving_workspace_key: OTHER_KEY,
     source_role_id: H64,
     receiving_role_id: "22".repeat(32),
-    capability_ceiling: ["read", "triage"],
+    capability_ceiling: ["read"],
     proof_max_age: 300,
     grace_period: 600,
     expires_at: 1_720_086_400,
@@ -1268,6 +1268,111 @@ describe("Workspace configured repository resolver", () => {
       evidence: repositoryViewEvidence(invalidObjects),
       objects: invalidObjects,
     })).toEqual({ verdict: "reject", reason_code: "workspace_repository_invalid" });
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local enforces the signed root as the workspace-wide ceiling", () => {
+    const childRoleId = "12".repeat(32);
+    const childCheckpointId = "13".repeat(32);
+    const common = {
+      spec_version: "heterodyne/0.6.0",
+      workspace_key: WORKSPACE_KEY,
+      policy_head: POLICY_HEAD,
+      predecessor: PREDECESSOR,
+      authority_checkpoint: CHECKPOINT,
+      repository_rid: "rad:zWorkspace",
+      repository_head: H40,
+      issued_at: 1_720_000_050,
+    };
+    const rootRole = currentAuthorityObjects()[1];
+    const childRole = signWorkspaceObject({
+      ...common,
+      object_type: "role-manifest-v1",
+      role_id: childRoleId,
+      parent_role_id: H64,
+      role_type: "member",
+      visibility: "private",
+      allowed_capabilities: ["read", "moderate"],
+      history_mode: "from-admission",
+      selected_snapshots: [],
+      administrator_account: WORKSPACE_KEY,
+      marmot_h: "synthetic-child-role",
+      active_event_repository: { repository_rid: "rad:zChildEvents", mls_epoch: 7 },
+      overlap_event_repository: null,
+      archived_event_repositories: [],
+    }, WORKSPACE_SECRET);
+    const childCheckpoint = signWorkspaceObject({
+      ...common,
+      object_type: "role-checkpoint-v1",
+      checkpoint_id: childCheckpointId,
+      role_id: childRoleId,
+      sequence: 1,
+      materialized_at: 1_720_000_050,
+      workspace_policy_head: POLICY_HEAD,
+      role_policy_heads: [objectDigest(rootRole), objectDigest(childRole)].sort(),
+      active_grant_ids: [],
+      revocation_ids: [REVOCATION_ID],
+      relationship_ids: [],
+      host_ids: [],
+      resource_ids: [],
+      seed_nids: [],
+      previous_checkpoint: null,
+    }, WORKSPACE_SECRET);
+    const objects = [...currentAuthorityObjects(), childRole, childCheckpoint];
+    const authority = createWorkspaceRepositoryResolverAuthority({
+      trust_anchors: [{ suite: "bip340", public_key: RESOLVER_KEY }],
+      allowed_policies: ["radicle-verified-complete-v1"],
+      minimum_version: "1.0.0",
+      max_ttl: 600,
+      max_view_age: 300,
+      repositories: [{
+        workspace_key: WORKSPACE_KEY,
+        repository_rid: "rad:zWorkspace",
+        pinned_head: H40,
+      }],
+      trusted_now: () => 1_720_000_400,
+    });
+
+    expect(authenticateWorkspaceRepositoryView({
+      authority,
+      evidence: repositoryViewEvidence(objects),
+      objects,
+    })).toEqual({ verdict: "reject", reason_code: "capability_escalation" });
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects a signed grant wider than the workspace-wide ceiling", () => {
+    const objects = currentAuthorityObjects();
+    objects[1] = signWorkspaceObject({
+      ...objects[1],
+      allowed_capabilities: ["invite", "read"],
+    }, WORKSPACE_SECRET);
+    objects[2] = signWorkspaceObject({
+      ...objects[2],
+      capabilities: ["invite", "read", "write"],
+      delegable: false,
+    }, WORKSPACE_SECRET);
+    objects[5] = signWorkspaceObject({
+      ...objects[5],
+      role_policy_heads: [objectDigest(objects[1])],
+    }, WORKSPACE_SECRET);
+    const authority = createWorkspaceRepositoryResolverAuthority({
+      trust_anchors: [{ suite: "bip340", public_key: RESOLVER_KEY }],
+      allowed_policies: ["radicle-verified-complete-v1"],
+      minimum_version: "1.0.0",
+      max_ttl: 600,
+      max_view_age: 300,
+      repositories: [{
+        workspace_key: WORKSPACE_KEY,
+        repository_rid: "rad:zWorkspace",
+        pinned_head: H40,
+      }],
+      trusted_now: () => 1_720_000_400,
+    });
+
+    expect(authenticateWorkspaceRepositoryView({
+      authority,
+      evidence: repositoryViewEvidence(objects),
+      objects,
+    })).toEqual({ verdict: "reject", reason_code: "capability_escalation" });
   });
 });
 
@@ -2574,9 +2679,18 @@ describe("Workspace role authorization", () => {
       ...activation,
       invitation_acceptance: finalRetry.acceptance,
     };
-    expect(evaluateGrantActivation(committedActivation)).toMatchObject({ verdict: "accept" });
-    expect(evaluateGrantActivation(committedActivation))
-      .toEqual({ verdict: "reject", reason_code: "workspace_replay" });
+    const committed = evaluateGrantActivation(committedActivation);
+    expect(committed).toMatchObject({ verdict: "accept" });
+    expect(evaluateGrantActivation(committedActivation)).toEqual(committed);
+    const completedRetry = api.consumeWorkspaceInvitationAcceptance?.({
+      authority,
+      current_state: state.state,
+      acceptance: retryableAcceptance,
+    });
+    expect(completedRetry).toEqual({
+      verdict: "accept",
+      acceptance: finalRetry.acceptance,
+    });
   });
 
   it("revalidates every activation boundary at invitation commit's trusted time", () => {

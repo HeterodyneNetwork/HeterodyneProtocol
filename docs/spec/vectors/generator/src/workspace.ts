@@ -103,6 +103,7 @@ type WorkspaceCurrentStateRecord = Readonly<{
   evidence: Readonly<Record<string, unknown>>;
   objects: readonly Readonly<Record<string, unknown>>[];
   policy: Readonly<Record<string, unknown>>;
+  workspace_capability_ceiling: readonly string[];
   assurance: WorkspaceAssuranceProfile | null;
   policy_history: readonly WorkspacePolicyHistoryEntry[];
   role: Readonly<Record<string, unknown>>;
@@ -168,6 +169,8 @@ type WorkspaceInvitationReservation = {
   status: "reserved" | "committed";
   holder: WorkspaceInvitationAcceptance;
   expires_at: number;
+  terminal: WorkspaceGrantActivationValidation | null;
+  request: WorkspaceGrantActivationRequest | null;
 };
 const WORKSPACE_INVITATION_STORES = new WeakMap<object, Map<string, WorkspaceInvitationReservation>>();
 
@@ -769,6 +772,7 @@ function validateCompleteWorkspaceObjectSet(
   effectTime: number,
 ): Validation<{
   policy: Readonly<Record<string, unknown>>;
+  workspace_capability_ceiling: readonly string[];
   role: Readonly<Record<string, unknown>>;
   roles: readonly Readonly<Record<string, unknown>>[];
   grants: readonly Readonly<Record<string, unknown>>[];
@@ -841,6 +845,12 @@ function validateCompleteWorkspaceObjectSet(
     return { ok: false, reason_code: "workspace_repository_invalid" };
   }
   const rolesById = new Map(roles.map((role) => [String(role.role_id), role]));
+  const rootRoles = roles.filter((role) => role.parent_role_id === null);
+  if (rootRoles.length !== 1 || !isCapabilityArray(rootRoles[0]?.allowed_capabilities)) {
+    return { ok: false, reason_code: "workspace_repository_invalid" };
+  }
+  const rootRole = rootRoles[0] as Readonly<Record<string, unknown>>;
+  const workspaceCapabilityCeiling = [...rootRole.allowed_capabilities as string[]].sort();
   const checkpointsByRole = new Map<string, Readonly<Record<string, unknown>>>();
   for (const checkpoint of checkpoints) {
     const checkpointRoleChain = isH64(checkpoint.role_id)
@@ -874,17 +884,25 @@ function validateCompleteWorkspaceObjectSet(
       : visibility === "private" ? 2 : -1;
   for (const role of roles) {
     const chain = resolveWorkspaceRoleChain(roles, String(role.role_id));
-    if (!chain.ok) return chain;
+    if (!chain.ok || chain.value[0] !== rootRole) {
+      return { ok: false, reason_code: "workspace_repository_invalid" };
+    }
+    if (!chain.value.every((candidate) => isCapabilityArray(candidate.allowed_capabilities))) {
+      return { ok: false, reason_code: "workspace_repository_invalid" };
+    }
+    if (!subset(role.allowed_capabilities as string[], workspaceCapabilityCeiling)) {
+      return { ok: false, reason_code: "capability_escalation" };
+    }
     if (visibilityRank(chain.value[0].visibility) < visibilityRank(policy.visibility_ceiling)) {
       return { ok: false, reason_code: "workspace_repository_invalid" };
     }
     for (let index = 1; index < chain.value.length; index += 1) {
       const parent = chain.value[index - 1];
       const child = chain.value[index];
-      if (!isCapabilityArray(parent.allowed_capabilities)
-        || !isCapabilityArray(child.allowed_capabilities)
-        || !subset(child.allowed_capabilities, parent.allowed_capabilities)
-        || historyRank(child.history_mode) > historyRank(parent.history_mode)
+      if (!subset(child.allowed_capabilities as string[], parent.allowed_capabilities as string[])) {
+        return { ok: false, reason_code: "capability_escalation" };
+      }
+      if (historyRank(child.history_mode) > historyRank(parent.history_mode)
         || visibilityRank(child.visibility) < visibilityRank(parent.visibility)
         || (parent.history_mode === "selected-snapshots"
           && (!isH64Array(parent.selected_snapshots)
@@ -906,25 +924,33 @@ function validateCompleteWorkspaceObjectSet(
     const chain = resolveWorkspaceRoleChain(roles, String(grant.role_id));
     const chainRoleIds = chain.ok ? new Set(chain.value.map((role) => role.role_id)) : new Set();
     if (!chain.ok || !isCapabilityArray(grant.capabilities)
-      || !chain.value.every((role) => isCapabilityArray(role.allowed_capabilities)
-        && subset(grant.capabilities as string[], role.allowed_capabilities))
       || !isH64Array(grant.resource_scope)
       || !grant.resource_scope.every((resourceId) => {
         const resource = resources.find((candidate) => candidate.resource_id === resourceId);
         return resource !== undefined && chainRoleIds.has(resource.role_id);
-      })
-      || (grant.delegable === true && !chain.value.every((role) =>
-        isCapabilityArray(role.allowed_capabilities)
-          && role.allowed_capabilities.includes("govern-delegation")))) {
+      })) {
       return { ok: false, reason_code: "workspace_repository_invalid" };
+    }
+    if (!subset(grant.capabilities, workspaceCapabilityCeiling)
+      || !chain.value.every((role) => isCapabilityArray(role.allowed_capabilities)
+        && subset(grant.capabilities as string[], role.allowed_capabilities))
+      || (grant.delegable === true && (!workspaceCapabilityCeiling.includes("govern-delegation")
+        || !chain.value.every((role) => isCapabilityArray(role.allowed_capabilities)
+          && role.allowed_capabilities.includes("govern-delegation"))))) {
+      return { ok: false, reason_code: "capability_escalation" };
     }
   }
   for (const resource of resources) {
     const chain = resolveWorkspaceRoleChain(roles, String(resource.role_id));
-    if (!chain.ok || !isCapabilityArray(resource.required_capabilities)
+    if (!chain.ok || !isCapabilityArray(resource.required_capabilities)) {
+      return { ok: false, reason_code: "workspace_repository_invalid" };
+    }
+    if (!subset(resource.required_capabilities, workspaceCapabilityCeiling)
       || !chain.value.every((role) => isCapabilityArray(role.allowed_capabilities)
-        && subset(resource.required_capabilities as string[], role.allowed_capabilities))
-      || visibilityRank(resource.visibility) < visibilityRank(policy.visibility_ceiling)
+        && subset(resource.required_capabilities as string[], role.allowed_capabilities))) {
+      return { ok: false, reason_code: "capability_escalation" };
+    }
+    if (visibilityRank(resource.visibility) < visibilityRank(policy.visibility_ceiling)
       || !chain.value.every((role) =>
         visibilityRank(resource.visibility) >= visibilityRank(role.visibility))
       || (resource.visibility === "public" && policy.allow_public_resources !== true)) {
@@ -959,6 +985,15 @@ function validateCompleteWorkspaceObjectSet(
   for (const relationship of relationships) {
     if (!rolesById.has(String(relationship.source_role_id))) {
       return { ok: false, reason_code: "workspace_repository_invalid" };
+    }
+    const chain = resolveWorkspaceRoleChain(roles, String(relationship.source_role_id));
+    if (!chain.ok || !isCapabilityArray(relationship.capability_ceiling)) {
+      return { ok: false, reason_code: "workspace_repository_invalid" };
+    }
+    if (!subset(relationship.capability_ceiling, workspaceCapabilityCeiling)
+      || !chain.value.every((role) => isCapabilityArray(role.allowed_capabilities)
+        && subset(relationship.capability_ceiling as string[], role.allowed_capabilities))) {
+      return { ok: false, reason_code: "capability_escalation" };
     }
   }
   for (const receipt of relationshipReceipts) {
@@ -1033,6 +1068,7 @@ function validateCompleteWorkspaceObjectSet(
     ok: true,
     value: {
       policy,
+      workspace_capability_ceiling: workspaceCapabilityCeiling,
       role,
       roles,
       grants,
@@ -1155,6 +1191,10 @@ function requireLatestCurrentView(
     }
     const complete = validateCompleteWorkspaceObjectSet(current.objects, current.state, trustedNow);
     if (!complete.ok) return complete;
+    if (!exactStringArray(
+      complete.value.workspace_capability_ceiling,
+      current.workspace_capability_ceiling,
+    )) return { ok: false, reason_code: "workspace_repository_invalid" };
   } catch {
     return { ok: false, reason_code: "workspace_repository_invalid" };
   }
@@ -1285,9 +1325,10 @@ export function resolveWorkspaceEffectiveAuthorization(value: unknown):
       const rolePath = resolveWorkspaceRoleChain(current.roles, String(grant.role_id));
       if (!rolePath.ok) return false;
       const grantCapabilities = isCapabilityArray(grant.capabilities)
-        ? grant.capabilities.filter((capability) => rolePath.value.every((role) =>
-          isCapabilityArray(role.allowed_capabilities)
-            && role.allowed_capabilities.includes(capability)))
+        ? grant.capabilities.filter((capability) =>
+          current.workspace_capability_ceiling.includes(capability)
+            && rolePath.value.every((role) => isCapabilityArray(role.allowed_capabilities)
+              && role.allowed_capabilities.includes(capability)))
         : [];
       const grantResources = isH64Array(grant.resource_scope)
         ? grant.resource_scope.filter((resourceId) => knownResources.has(resourceId))
@@ -1305,8 +1346,8 @@ export function resolveWorkspaceEffectiveAuthorization(value: unknown):
   if (!selectedRolePath.ok) return { verdict: "reject", reason_code: selectedRolePath.reason_code };
   const effectiveCapabilities = (isCapabilityArray(selected.capabilities)
     ? selected.capabilities : [])
-    .filter((capability) => selectedRolePath.value.every((role) =>
-      isCapabilityArray(role.allowed_capabilities)
+    .filter((capability) => current.workspace_capability_ceiling.includes(capability)
+      && selectedRolePath.value.every((role) => isCapabilityArray(role.allowed_capabilities)
         && role.allowed_capabilities.includes(capability)))
     .sort();
   const effectiveResources = (isH64Array(selected.resource_scope)
@@ -1425,9 +1466,10 @@ function requireEffectiveAuthorizationAtEffect(
     return { ok: false, reason_code: "policy_denied" };
   }
   const currentCapabilities = isCapabilityArray(grant.capabilities)
-    ? grant.capabilities.filter((capability) => rolePath.value.every((role) =>
-      isCapabilityArray(role.allowed_capabilities)
-        && role.allowed_capabilities.includes(capability))).sort()
+    ? grant.capabilities.filter((capability) =>
+      current.workspace_capability_ceiling.includes(capability)
+        && rolePath.value.every((role) => isCapabilityArray(role.allowed_capabilities)
+          && role.allowed_capabilities.includes(capability))).sort()
     : [];
   const currentResourceIds = new Set(current.resources.map((resource) => resource.resource_id));
   const currentResources = isH64Array(grant.resource_scope)
@@ -1570,6 +1612,20 @@ type WorkspaceGrantActivationValidation = Readonly<{
   invitation_acceptance: WorkspaceInvitationAcceptance | null;
   normalized: Readonly<Record<string, unknown>>;
 }>;
+
+function workspaceGrantActivationRequestsEqual(
+  left: WorkspaceGrantActivationRequest,
+  right: WorkspaceGrantActivationRequest,
+): boolean {
+  return left.authority === right.authority
+    && left.current_state === right.current_state
+    && left.authorization === right.authorization
+    && left.invitation_acceptance === right.invitation_acceptance
+    && left.successor_reauthorization === right.successor_reauthorization
+    && left.grant_id === right.grant_id
+    && jcsCanonicalize(left.membership) === jcsCanonicalize(right.membership)
+    && jcsCanonicalize(left.approvals) === jcsCanonicalize(right.approvals);
+}
 
 function validateWorkspaceGrantActivationAtTime(
   request: WorkspaceGrantActivationRequest,
@@ -1757,6 +1813,16 @@ function commitWorkspaceInvitationReservation(
     release();
     return { ok: false, reason_code: "workspace_replay" };
   }
+  const existing = store.get(record.token);
+  if (existing?.status === "committed"
+    && existing.holder === value
+    && existing.binding === record.acceptance_id
+    && existing.terminal !== null
+    && existing.request !== null) {
+    return workspaceGrantActivationRequestsEqual(existing.request, request)
+      ? { ok: true, value: existing.terminal }
+      : { ok: false, reason_code: "workspace_replay" };
+  }
   const trusted = readWorkspaceTrustedNow(request.authority);
   if (!trusted.ok) {
     release();
@@ -1778,6 +1844,8 @@ function commitWorkspaceInvitationReservation(
     return { ok: false, reason_code: "workspace_replay" };
   }
   reservation.status = "committed";
+  reservation.terminal = validated.value;
+  reservation.request = request;
   return validated;
 }
 
@@ -1829,6 +1897,25 @@ export function evaluateGrantActivation(value: unknown): WorkspaceVerdict {
     membership: input.membership as WorkspaceGrantActivationRequest["membership"],
     approvals: input.approvals,
   }) as WorkspaceGrantActivationRequest;
+  if (request.invitation_acceptance !== null) {
+    const invitationRecord = WORKSPACE_INVITATION_ACCEPTANCES.get(request.invitation_acceptance);
+    const invitationStore = invitationRecord === undefined
+      ? undefined
+      : WORKSPACE_INVITATION_STORES.get(invitationRecord.store);
+    const reservation = invitationRecord === undefined
+      ? undefined
+      : invitationStore?.get(invitationRecord.token);
+    if (reservation?.status === "committed") {
+      if (reservation.holder === request.invitation_acceptance
+        && reservation.binding === invitationRecord?.acceptance_id
+        && reservation.terminal !== null
+        && reservation.request !== null
+        && workspaceGrantActivationRequestsEqual(reservation.request, request)) {
+        return accepted(reservation.terminal.normalized as Record<string, unknown>);
+      }
+      return rejectActivation("workspace_replay");
+    }
+  }
   const trusted = readWorkspaceTrustedNow(request.authority);
   if (!trusted.ok) return rejectActivation(trusted.reason_code);
   const initial = validateWorkspaceGrantActivationAtTime(request, trusted.value.now);
@@ -2040,23 +2127,16 @@ export function consumeWorkspaceInvitationAcceptance(value: unknown):
     || !/^[0-9a-f]{128}$/u.test(acceptanceValue.signature)) {
     return { verdict: "reject", reason_code: "workspace_schema_invalid" };
   }
-  const trusted = readWorkspaceTrustedNow(authority as WorkspaceRepositoryResolverAuthority);
-  if (!trusted.ok) return { verdict: "reject", reason_code: trusted.reason_code };
-  const invitationStore = trusted.value.config.invitation_store;
+  const config = WORKSPACE_RESOLVER_AUTHORITIES.get(
+    authority as WorkspaceRepositoryResolverAuthority,
+  );
+  const invitationStore = config?.invitation_store;
   if (invitationStore === null) {
     return { verdict: "reject", reason_code: "workspace_repository_invalid" };
   }
-  const latest = requireFreshCurrentView(
-    authority as WorkspaceRepositoryResolverAuthority,
-    currentState as WorkspaceCurrentState,
-    trusted.value.now,
-    "authority",
-  );
-  if (!latest.ok) return { verdict: "reject", reason_code: latest.reason_code };
-  const config = trusted.value.config;
-  const current = latest.value;
-  const now = trusted.value.now;
-  const grant = current.grants.find((candidate) => candidate.grant_id === acceptanceValue.grant_id);
+  if (config === undefined || invitationStore === undefined) {
+    return { verdict: "reject", reason_code: "workspace_repository_invalid" };
+  }
   const unsignedAcceptance = { ...acceptanceValue };
   delete unsignedAcceptance.signature;
   if (!validRawSignature(
@@ -2064,6 +2144,42 @@ export function consumeWorkspaceInvitationAcceptance(value: unknown):
     proofBytes("heterodyne-workspace-invitation-acceptance-v1", unsignedAcceptance),
     acceptanceValue.subject_account,
   )) return { verdict: "reject", reason_code: "workspace_signature_invalid" };
+  const expectedCommitment = bytesToHex(sha256(proofBytes(
+    "heterodyne-workspace-invitation-nonce-v1",
+    {
+      grant_id: acceptanceValue.grant_id,
+      workspace_key: acceptanceValue.workspace_key,
+      subject_account: acceptanceValue.subject_account,
+      target_device: acceptanceValue.target_device,
+      target_leaf: acceptanceValue.target_leaf,
+      nonce_opening: acceptanceValue.nonce_opening,
+    },
+  )));
+  if (expectedCommitment !== acceptanceValue.nonce_commitment) {
+    return { verdict: "reject", reason_code: "workspace_signature_invalid" };
+  }
+  const store = WORKSPACE_INVITATION_STORES.get(invitationStore);
+  if (store === undefined) return { verdict: "reject", reason_code: "workspace_repository_invalid" };
+  const token = `${acceptanceValue.workspace_key}:${acceptanceValue.grant_id}:${acceptanceValue.nonce_commitment}`;
+  const acceptanceId = workspaceObjectId(acceptanceValue);
+  const existingReservation = store.get(token);
+  if (existingReservation?.status === "committed"
+    && existingReservation.binding === acceptanceId
+    && existingReservation.terminal !== null) {
+    return { verdict: "accept", acceptance: existingReservation.holder };
+  }
+  const trusted = readWorkspaceTrustedNow(authority as WorkspaceRepositoryResolverAuthority);
+  if (!trusted.ok) return { verdict: "reject", reason_code: trusted.reason_code };
+  const latest = requireFreshCurrentView(
+    authority as WorkspaceRepositoryResolverAuthority,
+    currentState as WorkspaceCurrentState,
+    trusted.value.now,
+    "authority",
+  );
+  if (!latest.ok) return { verdict: "reject", reason_code: latest.reason_code };
+  const current = latest.value;
+  const now = trusted.value.now;
+  const grant = current.grants.find((candidate) => candidate.grant_id === acceptanceValue.grant_id);
   if (grant === undefined
     || grant.activation !== "subject-acceptance"
     || !isRecord(grant.invitation)
@@ -2098,24 +2214,6 @@ export function consumeWorkspaceInvitationAcceptance(value: unknown):
           && (grant.resource_scope as string[]).includes(String(revocation.target_id)))))) {
     return { verdict: "reject", reason_code: "policy_denied" };
   }
-  const expectedCommitment = bytesToHex(sha256(proofBytes(
-    "heterodyne-workspace-invitation-nonce-v1",
-    {
-      grant_id: acceptanceValue.grant_id,
-      workspace_key: acceptanceValue.workspace_key,
-      subject_account: acceptanceValue.subject_account,
-      target_device: acceptanceValue.target_device,
-      target_leaf: acceptanceValue.target_leaf,
-      nonce_opening: acceptanceValue.nonce_opening,
-    },
-  )));
-  if (expectedCommitment !== acceptanceValue.nonce_commitment) {
-    return { verdict: "reject", reason_code: "workspace_signature_invalid" };
-  }
-  const store = WORKSPACE_INVITATION_STORES.get(invitationStore);
-  if (store === undefined) return { verdict: "reject", reason_code: "workspace_repository_invalid" };
-  const token = `${acceptanceValue.workspace_key}:${acceptanceValue.grant_id}:${acceptanceValue.nonce_commitment}`;
-  const existingReservation = store.get(token);
   if (existingReservation !== undefined) {
     if (existingReservation.status === "reserved" && now >= existingReservation.expires_at) {
       store.delete(token);
@@ -2123,7 +2221,6 @@ export function consumeWorkspaceInvitationAcceptance(value: unknown):
       return { verdict: "reject", reason_code: "workspace_replay" };
     }
   }
-  const acceptanceId = workspaceObjectId(acceptanceValue);
   const acceptance = Object.freeze({}) as WorkspaceInvitationAcceptance;
   WORKSPACE_INVITATION_ACCEPTANCES.set(acceptance, deepFreeze({
     authority: authority as WorkspaceRepositoryResolverAuthority,
@@ -2139,6 +2236,8 @@ export function consumeWorkspaceInvitationAcceptance(value: unknown):
     status: "reserved",
     holder: acceptance,
     expires_at: acceptanceValue.expires_at,
+    terminal: null,
+    request: null,
   });
   return { verdict: "accept", acceptance };
 }
@@ -2611,6 +2710,8 @@ export function evaluateAllowance(value: unknown): WorkspaceVerdict {
   const qualifyingGrant = affiliationGrants.find((grant) =>
     isCapabilityArray(grant.capabilities)
       && subset(input.requested_capabilities as string[], grant.capabilities)
+      && subset(input.requested_capabilities as string[], source.workspace_capability_ceiling)
+      && subset(input.requested_capabilities as string[], receiving.workspace_capability_ceiling)
       && sourceRolePath.value.every((role) => isCapabilityArray(role.allowed_capabilities)
         && subset(input.requested_capabilities as string[], role.allowed_capabilities))
       && receivingRolePath.value.every((role) => isCapabilityArray(role.allowed_capabilities)

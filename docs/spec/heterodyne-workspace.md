@@ -460,12 +460,18 @@ governance capabilities:
 - `govern-delegation`; or
 - `govern-lifecycle`.
 
-Effective authorization is the intersection of the current workspace ceiling,
-each role policy on one unambiguous parent path, current account membership or
-qualifying allowance, current device authorization, resource-local policy,
-and time/key-epoch state. A child role or resource MAY narrow inherited
-authority. It MUST NOT widen authority beyond the workspace ceiling. An
-explicit denial, expiry, suspension, or revocation at any level wins.
+The authenticated object set MUST contain exactly one root role. That root
+role's signed `allowed_capabilities` is the workspace-wide capability ceiling.
+The repository resolver MUST derive and retain that ceiling in its opaque
+current-state handle; callers, carriers, hosts, repository writers, locators,
+and transports cannot supply or widen it. Effective authorization is the
+intersection of that retained root ceiling, each signed role policy on one
+unambiguous parent path, one current signed grant or qualifying allowance,
+current device authorization, resource-local policy, and time/key-epoch
+state. A child role, grant, relationship, or resource MAY narrow inherited
+authority. It MUST NOT widen authority beyond the root or any ancestor;
+attempted widening fails with `capability_escalation`. An explicit denial,
+expiry, suspension, or effective revocation at any level wins.
 
 If a client cannot construct one unambiguous current path, or encounters
 conflicting or incomparable valid heads, it MUST reject the operation with
@@ -478,9 +484,10 @@ role membership into resource ACLs. A checkpoint sorts policy heads, active
 grants, revocations, relationships, hosts, trusted-seed NIDs, and resources by
 their binary identifier bytes, then hashes the JCS materialization.
 Every current role has exactly one current checkpoint. The authenticated
-object set may contain multiple roles, but every non-root role MUST resolve a
-complete acyclic parent chain and every grant, resource, relationship, and
-checkpoint MUST bind the role to which it applies. Missing parents, duplicate
+object set may contain multiple roles, but it has exactly one role with a null
+parent and every other role MUST resolve a complete acyclic path to that root.
+Every grant, resource, relationship, and checkpoint MUST bind the role to
+which it applies. Missing or multiple roots, missing parents, duplicate
 checkpoints, cross-role materializations, or a child that widens capability,
 visibility, delegation, history, or selected-snapshot authority fail closed.
 Each checkpoint's `role_policy_heads` is the exact unique byte-sorted set of
@@ -574,9 +581,14 @@ threshold. Only then does the store confirm the exact reserved holder and
 perform the atomic transition. Any failure releases the reservation so a
 still-valid acceptance is not permanently consumed; no partial activation
 takes effect. The store also releases or aborts an uncommitted reservation at
-its signed expiry and never commits after that expiry. The committed
-acceptance is executable exactly once; a caller-supplied acceptance ID,
-consumed-ID list, replay boolean, or cached time has no authority. Invitation
+its signed expiry and never commits after that expiry. The store retains the
+committed terminal bound to the exact signed acceptance and activation
+request. An exact committed retry returns that same opaque acceptance and
+byte-identical cached terminal without performing a second activation. A
+changed acceptance, mismatched request, second holder, or already-reserved
+non-terminal attempt fails with `workspace_replay`. A caller-supplied
+acceptance ID, consumed-ID list, replay boolean, or cached time has no
+authority. Invitation
 material for a private role is delivered through an authenticated two-member
 conversation under
 [`heterodyne:0.6.0#comms-direct-messages`](heterodyne-comms.md#comms-direct-messages) or an existing authorized private
@@ -942,7 +954,7 @@ governs.
 | `resource_unknown` | The authorized responder has no such resource. |
 | `host_unauthorized` | The responder is not an authorized custodian for the resource/checkpoint. |
 | `private_topology_disclosed` | A public projection correlates concealed topology. |
-| `workspace_replay` | A nonce, approval, relationship, grant, or envelope was replayed. |
+| `workspace_replay` | A nonce, approval, relationship, grant, or envelope was reused with mismatched bindings or before a consuming transition reached its exact committed terminal. |
 | `workspace-assurance-state-required` | The optional active Workspace Assurance profile is missing a current exact verified binding or matching dual-authority transition authorization. |
 
 <a id="workspace-security"></a>
