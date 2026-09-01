@@ -112,6 +112,7 @@ class MemoryStore implements DurableAuthorityStore<InviteOutput> {
   }>): Promise<"indeterminate"> {
     this.markCalls += 1;
     if (this.preserveExecutingOnMark) return "indeterminate";
+    if (this.records.get(input.key)?.state === "committed") return "indeterminate";
     this.records.set(input.key, Object.freeze({
       state: "indeterminate", revision: 1,
       binding_digest: input.binding_digest,
@@ -495,6 +496,46 @@ describe("one-time invite authority", () => {
     expect(decision.verdict).not.toBe("accept");
   });
 
+  it.each(["revocation", "revision", "expiry"] as const)(
+    "BLUE TEAM VALIDATION: synthetic/local keeps a committed post-effect %s reasonless and retry-stable",
+    async (change) => {
+      const store = new MemoryStore();
+      let stateLoads = 0;
+      let now = NOW;
+      const input = redemption();
+      currentResponseDigest = createHash("sha256").update(input.response_bytes).digest("hex");
+      let effects = 0;
+      const authority = createOneTimeInviteAuthority(withComputedEstablisher(store, {
+        trusted_now: () => now,
+        load_invite_state: async () => {
+          stateLoads += 1;
+          if (stateLoads >= 5) {
+            if (change === "expiry") now = 2_000;
+            return change === "revocation"
+              ? { state: "revoked", revision: 8 }
+              : { state: "active", revision: change === "revision" ? 8 : 7 };
+          }
+          return { state: "active", revision: 7 };
+        },
+        establish_group: async () => {
+          effects += 1;
+          return { group_id: GROUP_ID, response_digest: currentResponseDigest };
+        },
+      }));
+
+      const first = await redeemOneTimeInvite(authority, input);
+      expect(first).toMatchObject({ verdict: "indeterminate" });
+      if (first.verdict !== "indeterminate") throw new Error("expected indeterminate");
+      expect(first).not.toHaveProperty("reason_code");
+      expect(effects).toBe(1);
+      expect(store.markCalls).toBe(1);
+
+      await expect(redeemOneTimeInvite(authority, input)).resolves.toEqual(first);
+      expect(effects).toBe(1);
+      expect(store.markCalls).toBe(1);
+    },
+  );
+
   it("BLUE TEAM VALIDATION: synthetic/local captures the entire redemption before asynchronous state reads", async () => {
     const store = new MemoryStore();
     let release!: () => void;
@@ -631,6 +672,62 @@ describe("one-time invite authority", () => {
       expect(store.acquireCalls).toBe(0);
       expect(effects).toBe(0);
     }
+  });
+
+  it("accepts a canonical 193-byte KeyPackage in its 258-character response field", async () => {
+    const envelope = signedEnvelope();
+    const keyPackage = new Uint8Array(193);
+    keyPackage[0] = 1;
+    keyPackage[192] = 2;
+    const encoded = Buffer.from(keyPackage).toString("base64url");
+    const input = redemption({
+      key_package_bytes: keyPackage,
+      response_bytes: responseBytes(envelope, { mls_key_package: encoded }),
+    }, envelope);
+    expect(encoded).toHaveLength(258);
+    expect(input.response_bytes).toHaveLength(640);
+    currentResponseDigest = createHash("sha256").update(input.response_bytes).digest("hex");
+    const store = new MemoryStore();
+    const authority = createOneTimeInviteAuthority(withComputedEstablisher(store));
+    await expect(redeemOneTimeInvite(authority, input)).resolves.toMatchObject({ verdict: "accept" });
+    expect(store.acquireCalls).toBe(1);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local enforces the exact response-byte ceiling", async () => {
+    const envelope = signedEnvelope();
+    for (const [length, verdict] of [[786_145, "accept"], [786_146, "reject"]] as const) {
+      const keyPackage = new Uint8Array(length);
+      keyPackage[0] = 1;
+      const input = redemption({
+        key_package_bytes: keyPackage,
+        response_bytes: responseBytes(envelope, {
+          mls_key_package: Buffer.from(keyPackage).toString("base64url"),
+        }),
+      }, envelope);
+      expect(input.response_bytes).toHaveLength(
+        verdict === "accept" ? 1_048_576 : 1_048_577,
+      );
+      currentResponseDigest = createHash("sha256").update(input.response_bytes).digest("hex");
+      const store = new MemoryStore();
+      const authority = createOneTimeInviteAuthority(withComputedEstablisher(store));
+      const decision = await redeemOneTimeInvite(authority, input);
+      expect(decision.verdict).toBe(verdict);
+      expect(store.acquireCalls).toBe(verdict === "accept" ? 1 : 0);
+    }
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects padded noncanonical KeyPackage base64url", async () => {
+    const envelope = signedEnvelope();
+    const input = redemption({
+      response_bytes: responseBytes(envelope, { mls_key_package: "AQID=" }),
+    }, envelope);
+    currentResponseDigest = createHash("sha256").update(input.response_bytes).digest("hex");
+    const store = new MemoryStore();
+    const authority = createOneTimeInviteAuthority(withComputedEstablisher(store));
+    await expect(redeemOneTimeInvite(authority, input)).resolves.toEqual({
+      verdict: "reject", reason_code: "invite-authentication-invalid",
+    });
+    expect(store.acquireCalls).toBe(0);
   });
 
   it("accepts exact descriptor collection limits", async () => {

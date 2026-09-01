@@ -28,6 +28,7 @@ const PURPOSES = new Set<InvitePurpose>(["dm", "control-enrollment", "device-enr
 const MAX_AUTHORITY_BYTES = 1_048_576;
 const MAX_AUTHORITY_TOTAL_BYTES = 2_097_152;
 const MAX_POLICY_STRING_BYTES = 256;
+const MAX_KEY_PACKAGE_BASE64URL_BYTES = Math.ceil(MAX_AUTHORITY_BYTES * 4 / 3);
 const MAX_RELAY_HINTS = 16;
 const MAX_RESPONSE_CAPABILITIES = 64;
 const MAX_PREAUTHORIZATION_ENTRIES = 64;
@@ -123,6 +124,11 @@ type DurableRequest = Readonly<{
   binding_digest: string;
   execution_token: string;
   reconciliation_digest: string;
+}>;
+
+type DurableIdentity = Readonly<{
+  key: string;
+  execution_token: string;
 }>;
 
 const AUTHORITIES = new WeakMap<object, AuthorityRecord>();
@@ -223,8 +229,8 @@ const RESPONSE_LIMITS: PreflightLimits = Object.freeze({
   max_nodes: 256,
   max_properties: 16,
   max_array_length: MAX_RESPONSE_CAPABILITIES,
-  max_string_bytes: MAX_POLICY_STRING_BYTES,
-  max_total_string_bytes: 32_768,
+  max_string_bytes: MAX_KEY_PACKAGE_BASE64URL_BYTES,
+  max_total_string_bytes: MAX_AUTHORITY_BYTES,
   max_byte_length: 0,
   max_total_bytes: 0,
 });
@@ -420,15 +426,23 @@ function validDescriptor(descriptor: Readonly<InviteDescriptor>): boolean {
 }
 
 function decodeCanonicalBase64url(value: string): Uint8Array | null {
-  if (!/^[A-Za-z0-9_-]+={0,2}$/u.test(value)) return null;
+  if (value.length > MAX_KEY_PACKAGE_BASE64URL_BYTES || !/^[A-Za-z0-9_-]+$/u.test(value)) {
+    return null;
+  }
   try {
-    const withoutPadding = value.replace(/=+$/u, "");
-    const bytes = Buffer.from(withoutPadding, "base64url");
-    if (bytes.length === 0 || bytes.toString("base64url") !== withoutPadding) return null;
+    const bytes = Buffer.from(value, "base64url");
+    if (bytes.length === 0 || bytes.length > MAX_AUTHORITY_BYTES
+      || bytes.toString("base64url") !== value) return null;
     return new Uint8Array(bytes);
   } catch {
     return null;
   }
+}
+
+function boundedPolicyString(value: unknown): value is string {
+  return typeof value === "string"
+    && value.length > 0
+    && Buffer.byteLength(value, "utf8") <= MAX_POLICY_STRING_BYTES;
 }
 
 function equalBytes(left: Uint8Array, right: Uint8Array): boolean {
@@ -464,11 +478,11 @@ function parseResponse(bytes: Uint8Array): InviteResponse | null {
       || typeof response.responder_account !== "string" || !HEX_32.test(response.responder_account)
       || typeof response.mls_key_package !== "string"
       || decodeCanonicalBase64url(response.mls_key_package) === null
-      || typeof response.requested_class !== "string"
+      || !boundedPolicyString(response.requested_class)
       || !RESPONSE_CLASSES[response.purpose as InvitePurpose].has(response.requested_class)
       || !Array.isArray(response.capabilities)
       || response.capabilities.length > MAX_RESPONSE_CAPABILITIES
-      || !response.capabilities.every((item) => typeof item === "string" && item.length > 0)
+      || !response.capabilities.every(boundedPolicyString)
       || new Set(response.capabilities).size !== response.capabilities.length
       || typeof response.proof !== "string" || !HEX_32.test(response.proof)
     ) return null;
@@ -634,11 +648,35 @@ function captureDurableRecord(
   }
 }
 
-function requestFor(authorityId: string, input: CapturedRedemption, state: InviteState): DurableRequest {
+function identityFor(authorityId: string, input: CapturedRedemption): DurableIdentity {
   const key = authorityBindingDigest("heterodyne.one-time-invite.key/v1", {
     authority_id: authorityId,
     invite_id: input.envelope.descriptor.invite_id,
   });
+  return Object.freeze({
+    key,
+    execution_token: authorityBindingDigest("heterodyne.one-time-invite.execution/v1", {
+      authority_id: authorityId,
+      key,
+      descriptor_digest: input.descriptor_digest,
+      signature: input.envelope.signature,
+      secret_commitment: input.envelope.descriptor.secret_sha256,
+      response_digest: input.response_digest,
+      purpose: input.response_purpose,
+      recipient: input.recipient,
+      key_package_digest: input.key_package_digest,
+      transition_digest: input.transition_digest,
+    }),
+  });
+}
+
+function requestFor(
+  authorityId: string,
+  input: CapturedRedemption,
+  state: InviteState,
+  identity: DurableIdentity,
+): DurableRequest {
+  const { key, execution_token: executionToken } = identity;
   const bindingDigest = authorityBindingDigest("heterodyne.one-time-invite.binding/v1", {
     authority_id: authorityId,
     key,
@@ -656,9 +694,6 @@ function requestFor(authorityId: string, input: CapturedRedemption, state: Invit
     key_package_digest: input.key_package_digest,
     transition_digest: input.transition_digest,
   });
-  const executionToken = authorityBindingDigest("heterodyne.one-time-invite.execution/v1", {
-    authority_id: authorityId, key, binding_digest: bindingDigest,
-  });
   return Object.freeze({
     key,
     binding_digest: bindingDigest,
@@ -668,6 +703,30 @@ function requestFor(authorityId: string, input: CapturedRedemption, state: Invit
       execution_token: executionToken,
     }),
   });
+}
+
+function committedReconciliation(
+  authorityId: string,
+  input: CapturedRedemption,
+  identity: DurableIdentity,
+  record: DurableAuthorityRecord<OneTimeInviteOutput> | null | undefined,
+): OneTimeInviteDecision | null {
+  if (record === undefined || record === null || record.state !== "committed"
+    || record.execution_token !== identity.execution_token) return null;
+  const output = captureOutput(record.output);
+  if (output === null || output.response_digest !== input.response_digest
+    || record.output_digest !== outputDigest(output)) return null;
+  return indeterminate(Object.freeze({
+    key: identity.key,
+    binding_digest: record.binding_digest,
+    execution_token: record.execution_token,
+    reconciliation_digest: authorityBindingDigest("heterodyne.one-time-invite.reconciliation/v1", {
+      authority_id: authorityId,
+      key: identity.key,
+      binding_digest: record.binding_digest,
+      execution_token: record.execution_token,
+    }),
+  }));
 }
 
 function outputDigest(output: OneTimeInviteOutput): string {
@@ -767,20 +826,31 @@ export async function redeemOneTimeInvite(
   if (authorityRecord === undefined) return REJECT;
   const captured = captureRedemption(input);
   if (captured === null) return REJECT;
-  if (!validInviteTime(authorityRecord, captured)) return REJECT;
+  const identity = identityFor(authorityRecord.authority_id, captured);
   const state = await reloadInviteState(authorityRecord, captured);
-  if (state === null || state.state !== "active") return REJECT;
+  if (!validInviteTime(authorityRecord, captured) || state === null || state.state !== "active") {
+    const terminal = await loadRecord(authorityRecord.store, identity.key);
+    return committedReconciliation(
+      authorityRecord.authority_id, captured, identity, terminal,
+    ) ?? REJECT;
+  }
 
-  const request = requestFor(authorityRecord.authority_id, captured, state);
+  const request = requestFor(authorityRecord.authority_id, captured, state, identity);
   let loaded = await loadRecord(authorityRecord.store, request.key);
-  if (!await currentInviteStateIsExact(authorityRecord, captured, state)) return REJECT;
-  if (loaded === undefined) return indeterminate(request);
+  const currentStateExact = await currentInviteStateIsExact(authorityRecord, captured, state);
+  if (loaded === undefined) return currentStateExact ? indeterminate(request) : REJECT;
   if (loaded !== null) {
-    if (loaded.binding_digest !== request.binding_digest) return REJECT;
+    if (loaded.binding_digest !== request.binding_digest) {
+      return committedReconciliation(
+        authorityRecord.authority_id, captured, identity, loaded,
+      ) ?? REJECT;
+    }
     const cached = committedOutput(loaded, request, captured.response_digest);
+    if (!currentStateExact) return cached === null ? REJECT : indeterminate(request);
     if (cached !== null) return Object.freeze({ verdict: "accept", output: cached });
     return indeterminate(request);
   }
+  if (!currentStateExact) return REJECT;
 
   let acquired: "acquired" | "replay" | "conflict" | "unavailable";
   try {
@@ -857,16 +927,16 @@ export async function redeemOneTimeInvite(
     return indeterminate(request);
   }
   const terminal = await loadRecord(authorityRecord.store, request.key);
-  if (!await currentInviteStateIsExact(authorityRecord, captured, state)) {
-    await markIndeterminate(authorityRecord.store, request);
-    return REJECT;
-  }
   if (terminal === undefined || terminal === null) {
     await markIndeterminate(authorityRecord.store, request);
     return indeterminate(request);
   }
   const readback = committedOutput(terminal, request, captured.response_digest);
   if (readback === null || !sameOutput(readback, output)) {
+    await markIndeterminate(authorityRecord.store, request);
+    return indeterminate(request);
+  }
+  if (!await currentInviteStateIsExact(authorityRecord, captured, state)) {
     await markIndeterminate(authorityRecord.store, request);
     return indeterminate(request);
   }

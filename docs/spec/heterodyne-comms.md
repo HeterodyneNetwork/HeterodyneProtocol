@@ -1319,8 +1319,9 @@ The reservation key is issuer-local and invite-specific. Its binding MUST
 commit the authority identity, current invite revision, signed descriptor and
 signature, secret commitment, exact response digest, recipient, purpose,
 KeyPackage digest, and group-transition digest. Group establishment receives
-only a copy of the captured transition plus the authority-derived execution
-token. Its returned response digest MUST equal the captured response digest.
+only a copy of the captured transition plus an authority-derived execution
+token that binds that exact state-independent redemption transcript. Its
+returned response digest MUST equal the captured response digest.
 Success is exposed only after exact committed readback. A binding-equal
 committed retry returns the cached output without repeating establishment; a
 different transcript, recipient, purpose, KeyPackage, transition, or secret
@@ -1336,16 +1337,23 @@ load, after acquire immediately before group establishment, after group
 establishment immediately before commit, and after terminal readback. A
 revocation, revision change, or expiry before establishment causes no group
 effect and leaves an acquired reservation absorbing and non-accepting. A
-change after a possible group effect is indeterminate and MUST NOT expose or
-repeat the result.
+change after a possible group effect, including one first observed after exact
+committed readback, is reasonless indeterminate and MUST NOT expose or repeat
+the result. Recording that uncertainty MUST NOT overwrite, erase, or relabel
+the committed terminal. An exact transcript retry after revocation, revision
+change, or expiry derives the same reconciliation digest from the preserved
+terminal and execution token without repeating group establishment.
 
 Before recursive capture, UTF-8 decode, JCS canonicalization, or hashing, this
 reference authority applies a proxy/accessor-safe closed-data preflight. Each
 response, KeyPackage, or group-transition byte string is at most 1,048,576
 bytes and their aggregate is at most 2,097,152 bytes. Descriptor and response
 collections contain at most 16 relay hints and 64 capabilities, methods,
-objects, or limit entries; each policy string is at most 256 UTF-8 bytes; and
-nested inputs, callback results, outputs, and durable records have fixed
+objects, or limit entries; each ordinary policy string is at most 256 UTF-8
+bytes. The response's canonical unpadded-base64url `mls_key_package` field is
+separately permitted up to the enclosing response limit, and its decoded bytes
+are independently capped at 1,048,576 bytes. Nested inputs, callback results,
+outputs, and durable records have fixed
 prototypes and members, dense arrays, depth at most eight, and bounded
 property, node, and aggregate-string counts. Implementations MAY impose
 smaller local resource limits without changing otherwise valid signed invite
