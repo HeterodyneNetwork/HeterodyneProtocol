@@ -64,46 +64,6 @@ function unwrapParentheses(expression: ts.Expression): ts.Expression {
   return current;
 }
 
-function incrementBindingCount(bindings: Map<string, number>, name: ts.BindingName): void {
-  if (ts.isIdentifier(name)) {
-    bindings.set(name.text, (bindings.get(name.text) ?? 0) + 1);
-    return;
-  }
-  for (const element of name.elements) {
-    if (!ts.isOmittedExpression(element)) incrementBindingCount(bindings, element.name);
-  }
-}
-
-function declarationBindings(source: ts.SourceFile): Map<string, number> {
-  const bindings = new Map<string, number>();
-  const visit = (node: ts.Node): void => {
-    if (
-      ts.isVariableDeclaration(node)
-      || ts.isParameter(node)
-      || ts.isBindingElement(node)
-    ) {
-      incrementBindingCount(bindings, node.name);
-    } else if (
-      (ts.isFunctionDeclaration(node)
-        || ts.isClassDeclaration(node)
-        || ts.isEnumDeclaration(node)
-        || ts.isModuleDeclaration(node)
-        || ts.isImportEqualsDeclaration(node))
-      && node.name !== undefined
-      && ts.isIdentifier(node.name)
-    ) {
-      incrementBindingCount(bindings, node.name);
-    } else if (ts.isImportClause(node) && node.name !== undefined) {
-      incrementBindingCount(bindings, node.name);
-    } else if (ts.isImportSpecifier(node) || ts.isNamespaceImport(node)) {
-      incrementBindingCount(bindings, node.name);
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(source);
-  return bindings;
-}
-
 function variableDeclarations(source: ts.SourceFile): ts.VariableDeclaration[] {
   const declarations: ts.VariableDeclaration[] = [];
   const visit = (node: ts.Node): void => {
@@ -116,26 +76,60 @@ function variableDeclarations(source: ts.SourceFile): ts.VariableDeclaration[] {
   return declarations;
 }
 
+function isAmbientRequire(
+  identifier: ts.Identifier,
+  checker: ts.TypeChecker,
+): boolean {
+  if (identifier.text !== "require") return false;
+  const symbol = checker.getSymbolAtLocation(identifier);
+  return symbol === undefined
+    || (symbol.declarations?.length ?? 0) > 0
+      && symbol.declarations!.every((declaration) => declaration.getSourceFile().isDeclarationFile);
+}
+
+function identifierSymbol(
+  identifier: ts.Identifier,
+  checker: ts.TypeChecker,
+): ts.Symbol | undefined {
+  if (
+    identifier.parent !== undefined
+    && ts.isShorthandPropertyAssignment(identifier.parent)
+    && identifier.parent.name === identifier
+  ) {
+    return checker.getShorthandAssignmentValueSymbol(identifier.parent)
+      ?? checker.getSymbolAtLocation(identifier);
+  }
+  return checker.getSymbolAtLocation(identifier);
+}
+
 function isRequireAliasInitializer(
   expression: ts.Expression | undefined,
-  aliases: ReadonlySet<string>,
+  aliases: ReadonlySet<ts.Symbol>,
+  checker: ts.TypeChecker,
 ): expression is ts.Identifier {
   if (expression === undefined) return false;
   const unwrapped = unwrapParentheses(expression);
-  return ts.isIdentifier(unwrapped)
-    && (unwrapped.text === "require" || aliases.has(unwrapped.text));
+  if (!ts.isIdentifier(unwrapped)) return false;
+  if (isAmbientRequire(unwrapped, checker)) return true;
+  const symbol = identifierSymbol(unwrapped, checker);
+  return symbol !== undefined && aliases.has(symbol);
 }
 
 function containsUncalledAliasReference(
   expression: ts.Expression,
-  aliases: ReadonlySet<string>,
+  aliases: ReadonlySet<ts.Symbol>,
+  checker: ts.TypeChecker,
 ): boolean {
   let found = false;
   const visit = (node: ts.Node, parent?: ts.Node): void => {
     if (found) return;
     if (
       ts.isIdentifier(node)
-      && aliases.has(node.text)
+      && (isAmbientRequire(node, checker)
+        || (() => {
+          const symbol = identifierSymbol(node, checker);
+          return symbol !== undefined && aliases.has(symbol);
+        })())
       && !(parent !== undefined
         && ts.isCallExpression(parent)
         && parent.expression === node)
@@ -149,36 +143,55 @@ function containsUncalledAliasReference(
   return found;
 }
 
-function requireAliases(source: ts.SourceFile, path: string): Set<string> {
+function targetContainsAlias(
+  target: ts.Node,
+  aliases: ReadonlySet<ts.Symbol>,
+  checker: ts.TypeChecker,
+): boolean {
+  let found = false;
+  const visit = (node: ts.Node): void => {
+    if (found) return;
+    if (ts.isIdentifier(node)) {
+      const symbol = identifierSymbol(node, checker);
+      if (symbol !== undefined && aliases.has(symbol)) {
+        found = true;
+        return;
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(target);
+  return found;
+}
+
+function requireAliases(
+  source: ts.SourceFile,
+  path: string,
+  checker: ts.TypeChecker,
+): Set<ts.Symbol> {
   const declarations = variableDeclarations(source);
-  const aliases = new Set<string>();
+  const aliases = new Set<ts.Symbol>();
   let changed = true;
   while (changed) {
     changed = false;
     for (const declaration of declarations) {
+      if (!ts.isIdentifier(declaration.name)) continue;
+      const symbol = identifierSymbol(declaration.name, checker);
       if (
-        !ts.isIdentifier(declaration.name)
-        || aliases.has(declaration.name.text)
-        || !isRequireAliasInitializer(declaration.initializer, aliases)
+        symbol === undefined
+        || aliases.has(symbol)
+        || !isRequireAliasInitializer(declaration.initializer, aliases, checker)
       ) continue;
-      aliases.add(declaration.name.text);
+      aliases.add(symbol);
       changed = true;
     }
   }
 
-  const bindings = declarationBindings(source);
-  for (const alias of aliases) {
-    if ((bindings.get(alias) ?? 0) !== 1) {
-      throw new Error(`ambiguous require alias in current vector graph: ${path}`);
-    }
-  }
-
-  const requireReferences = new Set(["require", ...aliases]);
   for (const declaration of declarations) {
     if (
       declaration.initializer !== undefined
-      && !isRequireAliasInitializer(declaration.initializer, aliases)
-      && containsUncalledAliasReference(declaration.initializer, requireReferences)
+      && !isRequireAliasInitializer(declaration.initializer, aliases, checker)
+      && containsUncalledAliasReference(declaration.initializer, aliases, checker)
     ) {
       throw new Error(`ambiguous require alias in current vector graph: ${path}`);
     }
@@ -189,17 +202,21 @@ function requireAliases(source: ts.SourceFile, path: string): Set<string> {
       ts.isBinaryExpression(node)
       && node.operatorToken.kind >= ts.SyntaxKind.FirstAssignment
       && node.operatorToken.kind <= ts.SyntaxKind.LastAssignment
-      && ts.isIdentifier(node.left)
-      && aliases.has(node.left.text)
+      && targetContainsAlias(node.left, aliases, checker)
     ) {
       throw new Error(`reassigned require alias in current vector graph: ${path}`);
     }
     if (
       (ts.isPrefixUnaryExpression(node) || ts.isPostfixUnaryExpression(node))
-      && ts.isIdentifier(node.operand)
-      && aliases.has(node.operand.text)
       && (node.operator === ts.SyntaxKind.PlusPlusToken
         || node.operator === ts.SyntaxKind.MinusMinusToken)
+      && targetContainsAlias(node.operand, aliases, checker)
+    ) {
+      throw new Error(`reassigned require alias in current vector graph: ${path}`);
+    }
+    if (
+      (ts.isForInStatement(node) || ts.isForOfStatement(node))
+      && targetContainsAlias(node.initializer, aliases, checker)
     ) {
       throw new Error(`reassigned require alias in current vector graph: ${path}`);
     }
@@ -212,9 +229,10 @@ function requireAliases(source: ts.SourceFile, path: string): Set<string> {
 function collectStaticSpecifiers(
   source: ts.SourceFile,
   path: string,
+  checker: ts.TypeChecker,
 ): string[] {
   const specifiers: string[] = [];
-  const aliases = requireAliases(source, path);
+  const aliases = requireAliases(source, path, checker);
   const visit = (node: ts.Node): void => {
     if (ts.isImportDeclaration(node)) {
       specifiers.push(staticSpecifier(node.moduleSpecifier, "import", path));
@@ -232,10 +250,13 @@ function collectStaticSpecifiers(
     } else if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
       specifiers.push(staticSpecifier(node.arguments[0], "import()", path));
     } else if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
-      if (node.expression.text === "require") {
+      if (isAmbientRequire(node.expression, checker)) {
         specifiers.push(staticSpecifier(node.arguments[0], "require", path));
-      } else if (aliases.has(node.expression.text)) {
-        specifiers.push(staticSpecifier(node.arguments[0], "require alias", path));
+      } else {
+        const symbol = identifierSymbol(node.expression, checker);
+        if (symbol !== undefined && aliases.has(symbol)) {
+          specifiers.push(staticSpecifier(node.arguments[0], "require alias", path));
+        }
       }
     }
     ts.forEachChild(node, visit);
@@ -253,14 +274,11 @@ export function currentModuleSpecifiers(
     rootNames: [canonical],
     options: { ...options, noEmit: true },
   });
-  const source = program.getSourceFile(canonical) ?? ts.createSourceFile(
-    canonical,
-    readFileSync(canonical, "utf8"),
-    ts.ScriptTarget.Latest,
-    true,
-    ts.ScriptKind.TS,
-  );
-  return collectStaticSpecifiers(source, canonical);
+  const source = program.getSourceFile(canonical);
+  if (source === undefined) {
+    throw new Error(`unreadable current vector module: ${canonical}`);
+  }
+  return collectStaticSpecifiers(source, canonical, program.getTypeChecker());
 }
 
 export function currentNamedImports(path: string): Set<string> {
@@ -331,10 +349,14 @@ export function currentModuleDependencies(entry: string): string[] {
     ts.sys.useCaseSensitiveFileNames ? (path) => path : (path) => path.toLowerCase(),
     options,
   );
-  const sources = new Map<string, ts.SourceFile>();
+  const checker = program.getTypeChecker();
+  const sources = new Map<string, Readonly<{
+    source: ts.SourceFile;
+    checker: ts.TypeChecker;
+  }>>();
   for (const source of program.getSourceFiles()) {
     if (!existsSync(source.fileName)) continue;
-    sources.set(realpathSync(source.fileName), source);
+    sources.set(realpathSync(source.fileName), { source, checker });
   }
 
   const visited = new Set<string>();
@@ -342,14 +364,24 @@ export function currentModuleDependencies(entry: string): string[] {
     const canonical = realpathSync(path);
     if (visited.has(canonical)) return;
     visited.add(canonical);
-    const source = sources.get(canonical) ?? ts.createSourceFile(
+    let analysis = sources.get(canonical);
+    if (analysis === undefined) {
+      const dependencyProgram = ts.createProgram({
+        rootNames: [canonical],
+        options: { ...options, noEmit: true },
+      });
+      const source = dependencyProgram.getSourceFile(canonical);
+      if (source === undefined) {
+        throw new Error(`unreadable current vector module: ${canonical}`);
+      }
+      analysis = { source, checker: dependencyProgram.getTypeChecker() };
+      sources.set(canonical, analysis);
+    }
+    for (const specifier of collectStaticSpecifiers(
+      analysis.source,
       canonical,
-      readFileSync(canonical, "utf8"),
-      ts.ScriptTarget.Latest,
-      true,
-      ts.ScriptKind.TS,
-    );
-    for (const specifier of collectStaticSpecifiers(source, canonical)) {
+      analysis.checker,
+    )) {
       const dependency = resolveCurrentModule(
         canonical,
         specifier,

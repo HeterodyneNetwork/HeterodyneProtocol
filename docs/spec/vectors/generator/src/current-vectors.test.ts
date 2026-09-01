@@ -165,6 +165,80 @@ describe("current vector catalog import boundary", () => {
     expect(() => moduleDependencies(tree.entry)).toThrow(error);
   });
 
+  it.each([
+    {
+      scope: "module scope",
+      source: 'const local = (_path: string) => ({});\nconst require = local;\nconst load = require;\nload("./nested/dependency.js");\n',
+    },
+    {
+      scope: "block scope",
+      source: 'const local = (_path: string) => ({});\n{ const require = local; const load = require; load("./nested/dependency.js"); }\n',
+    },
+    {
+      scope: "function scope",
+      source: 'const local = (_path: string) => ({});\nfunction run() { const require = local; const load = require; load("./nested/dependency.js"); }\nvoid run;\n',
+    },
+    {
+      scope: "parameter scope",
+      source: 'const local = (_path: string) => ({});\nfunction run(require: typeof local) { const load = require; load("./nested/dependency.js"); }\nrun(local);\n',
+    },
+  ])("BLUE TEAM VALIDATION: synthetic/local ignores shadowed require at $scope", ({ source }) => {
+    const tree = syntheticImportTree(source);
+    expect(moduleDependencies(tree.entry)).toEqual([tree.entry]);
+  });
+
+  it.each([
+    {
+      behavior: "an inner callable shadow",
+      source: 'const load = require;\n{ const load = (_path: string) => ({}); load("./nested/ignored.js"); }\nload("./nested/dependency.js");\n',
+    },
+    {
+      behavior: "a write to an inner alias-name shadow",
+      source: 'const other = (_path: string) => ({});\nconst load = require;\n{ let load = other; load = other; load("./nested/ignored.js"); }\nload("./nested/dependency.js");\n',
+    },
+  ])("BLUE TEAM VALIDATION: synthetic/local preserves ambient alias across $behavior", ({ source }) => {
+    const tree = syntheticImportTree(source);
+    expect(moduleDependencies(tree.entry)).toEqual([
+      tree.entry,
+      tree.dependency,
+    ].sort());
+  });
+
+  it.each([
+    {
+      write: "for-of assignment",
+      source: 'declare const other: (value: string) => unknown;\nlet load = require;\nfor (load of [other]) {}\nload("./nested/dependency.js");\n',
+    },
+    {
+      write: "for-in assignment",
+      source: 'let load = require;\nfor (load in { other: true }) {}\nload("./nested/dependency.js");\n',
+    },
+    {
+      write: "object destructuring assignment",
+      source: 'declare const replacement: { load: (value: string) => unknown };\nlet load = require;\n({ load } = replacement);\nload("./nested/dependency.js");\n',
+    },
+    {
+      write: "array destructuring assignment",
+      source: 'declare const replacement: [(value: string) => unknown];\nlet load = require;\n[load] = replacement;\nload("./nested/dependency.js");\n',
+    },
+    {
+      write: "compound assignment",
+      source: 'declare const other: (value: string) => unknown;\nlet load = require;\nload ||= other;\nload("./nested/dependency.js");\n',
+    },
+    {
+      write: "update expression",
+      source: 'let load = require;\nload++;\nload("./nested/dependency.js");\n',
+    },
+    {
+      write: "nested-scope outer assignment",
+      source: 'declare const other: (value: string) => unknown;\nlet load = require;\n{ load = other; }\nload("./nested/dependency.js");\n',
+    },
+  ])("BLUE TEAM VALIDATION: synthetic/local rejects require alias $write", ({ source }) => {
+    const tree = syntheticImportTree(source);
+    expect(() => moduleDependencies(tree.entry))
+      .toThrow(/reassigned require alias in current vector graph/u);
+  });
+
   it("BLUE TEAM VALIDATION: synthetic/local retains the historical path denylist", () => {
     const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-denylist-"));
     temporaryRoots.push(root);
