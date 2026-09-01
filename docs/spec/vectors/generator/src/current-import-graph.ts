@@ -4,6 +4,7 @@ import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import ts from "typescript";
 
 const SOURCE_ROOT = resolve(import.meta.dirname);
+const REPOSITORY_ROOT = resolve(SOURCE_ROOT, "../../../../../");
 const NODE_BUILTINS = new Set(
   builtinModules.map((specifier) => specifier.replace(/^node:/u, "")),
 );
@@ -57,31 +58,189 @@ function staticSpecifier(
   return expression.text;
 }
 
+function unwrapParentheses(expression: ts.Expression): ts.Expression {
+  let current = expression;
+  while (ts.isParenthesizedExpression(current)) current = current.expression;
+  return current;
+}
+
+function incrementBindingCount(bindings: Map<string, number>, name: ts.BindingName): void {
+  if (ts.isIdentifier(name)) {
+    bindings.set(name.text, (bindings.get(name.text) ?? 0) + 1);
+    return;
+  }
+  for (const element of name.elements) {
+    if (!ts.isOmittedExpression(element)) incrementBindingCount(bindings, element.name);
+  }
+}
+
+function declarationBindings(source: ts.SourceFile): Map<string, number> {
+  const bindings = new Map<string, number>();
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isVariableDeclaration(node)
+      || ts.isParameter(node)
+      || ts.isBindingElement(node)
+    ) {
+      incrementBindingCount(bindings, node.name);
+    } else if (
+      (ts.isFunctionDeclaration(node)
+        || ts.isClassDeclaration(node)
+        || ts.isEnumDeclaration(node)
+        || ts.isModuleDeclaration(node)
+        || ts.isImportEqualsDeclaration(node))
+      && node.name !== undefined
+      && ts.isIdentifier(node.name)
+    ) {
+      incrementBindingCount(bindings, node.name);
+    } else if (ts.isImportClause(node) && node.name !== undefined) {
+      incrementBindingCount(bindings, node.name);
+    } else if (ts.isImportSpecifier(node) || ts.isNamespaceImport(node)) {
+      incrementBindingCount(bindings, node.name);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return bindings;
+}
+
+function variableDeclarations(source: ts.SourceFile): ts.VariableDeclaration[] {
+  const declarations: ts.VariableDeclaration[] = [];
+  const visit = (node: ts.Node): void => {
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name)) {
+      declarations.push(node);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return declarations;
+}
+
+function isRequireAliasInitializer(
+  expression: ts.Expression | undefined,
+  aliases: ReadonlySet<string>,
+): expression is ts.Identifier {
+  if (expression === undefined) return false;
+  const unwrapped = unwrapParentheses(expression);
+  return ts.isIdentifier(unwrapped)
+    && (unwrapped.text === "require" || aliases.has(unwrapped.text));
+}
+
+function containsUncalledAliasReference(
+  expression: ts.Expression,
+  aliases: ReadonlySet<string>,
+): boolean {
+  let found = false;
+  const visit = (node: ts.Node, parent?: ts.Node): void => {
+    if (found) return;
+    if (
+      ts.isIdentifier(node)
+      && aliases.has(node.text)
+      && !(parent !== undefined
+        && ts.isCallExpression(parent)
+        && parent.expression === node)
+    ) {
+      found = true;
+      return;
+    }
+    ts.forEachChild(node, (child) => visit(child, node));
+  };
+  visit(expression);
+  return found;
+}
+
+function requireAliases(source: ts.SourceFile, path: string): Set<string> {
+  const declarations = variableDeclarations(source);
+  const aliases = new Set<string>();
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const declaration of declarations) {
+      if (
+        !ts.isIdentifier(declaration.name)
+        || aliases.has(declaration.name.text)
+        || !isRequireAliasInitializer(declaration.initializer, aliases)
+      ) continue;
+      aliases.add(declaration.name.text);
+      changed = true;
+    }
+  }
+
+  const bindings = declarationBindings(source);
+  for (const alias of aliases) {
+    if ((bindings.get(alias) ?? 0) !== 1) {
+      throw new Error(`ambiguous require alias in current vector graph: ${path}`);
+    }
+  }
+
+  const requireReferences = new Set(["require", ...aliases]);
+  for (const declaration of declarations) {
+    if (
+      declaration.initializer !== undefined
+      && !isRequireAliasInitializer(declaration.initializer, aliases)
+      && containsUncalledAliasReference(declaration.initializer, requireReferences)
+    ) {
+      throw new Error(`ambiguous require alias in current vector graph: ${path}`);
+    }
+  }
+
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isBinaryExpression(node)
+      && node.operatorToken.kind >= ts.SyntaxKind.FirstAssignment
+      && node.operatorToken.kind <= ts.SyntaxKind.LastAssignment
+      && ts.isIdentifier(node.left)
+      && aliases.has(node.left.text)
+    ) {
+      throw new Error(`reassigned require alias in current vector graph: ${path}`);
+    }
+    if (
+      (ts.isPrefixUnaryExpression(node) || ts.isPostfixUnaryExpression(node))
+      && ts.isIdentifier(node.operand)
+      && aliases.has(node.operand.text)
+      && (node.operator === ts.SyntaxKind.PlusPlusToken
+        || node.operator === ts.SyntaxKind.MinusMinusToken)
+    ) {
+      throw new Error(`reassigned require alias in current vector graph: ${path}`);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return aliases;
+}
+
 function collectStaticSpecifiers(
   source: ts.SourceFile,
   path: string,
 ): string[] {
   const specifiers: string[] = [];
-  for (const statement of source.statements) {
-    if (ts.isImportDeclaration(statement)) {
-      specifiers.push(staticSpecifier(statement.moduleSpecifier, "import", path));
-      continue;
-    }
-    if (ts.isExportDeclaration(statement) && statement.moduleSpecifier !== undefined) {
-      specifiers.push(staticSpecifier(statement.moduleSpecifier, "export", path));
-      continue;
-    }
-    if (
-      ts.isImportEqualsDeclaration(statement)
-      && ts.isExternalModuleReference(statement.moduleReference)
+  const aliases = requireAliases(source, path);
+  const visit = (node: ts.Node): void => {
+    if (ts.isImportDeclaration(node)) {
+      specifiers.push(staticSpecifier(node.moduleSpecifier, "import", path));
+    } else if (ts.isExportDeclaration(node) && node.moduleSpecifier !== undefined) {
+      specifiers.push(staticSpecifier(node.moduleSpecifier, "export", path));
+    } else if (
+      ts.isImportEqualsDeclaration(node)
+      && ts.isExternalModuleReference(node.moduleReference)
     ) {
       specifiers.push(staticSpecifier(
-        statement.moduleReference.expression,
+        node.moduleReference.expression,
         "import-equals",
         path,
       ));
+    } else if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
+      specifiers.push(staticSpecifier(node.arguments[0], "import()", path));
+    } else if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
+      if (node.expression.text === "require") {
+        specifiers.push(staticSpecifier(node.arguments[0], "require", path));
+      } else if (aliases.has(node.expression.text)) {
+        specifiers.push(staticSpecifier(node.arguments[0], "require alias", path));
+      }
     }
-  }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
   return specifiers;
 }
 
@@ -202,4 +361,21 @@ export function currentModuleDependencies(entry: string): string[] {
   };
   visit(root);
   return [...visited].sort();
+}
+
+export function assertExactCurrentModuleGraph(
+  entry: string,
+  allowlist: readonly string[],
+): void {
+  const actual = currentModuleDependencies(entry).map((path) =>
+    relative(REPOSITORY_ROOT, path).split(sep).join("/")).sort();
+  const exact = actual.length === allowlist.length
+    && actual.every((path, index) => path === allowlist[index]);
+  if (!exact) {
+    throw new Error([
+      "exact current module graph mismatch",
+      `expected: ${JSON.stringify(allowlist)}`,
+      `actual: ${JSON.stringify(actual)}`,
+    ].join("\n"));
+  }
 }

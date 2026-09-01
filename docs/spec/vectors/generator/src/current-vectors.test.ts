@@ -7,7 +7,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { resolve } from "node:path";
+import { relative, resolve, sep } from "node:path";
 import { ed25519 } from "@noble/curves/ed25519";
 import { schnorr } from "@noble/curves/secp256k1";
 import { sha256 } from "@noble/hashes/sha2";
@@ -36,12 +36,14 @@ import { loadRegistry } from "./registry.js";
 import { validateVectorOrThrow } from "./schema.js";
 import { AUX_RAND } from "./vector-helpers.js";
 import {
+  assertExactCurrentModuleGraph as assertExactGraph,
   currentCompilerConfigPath as compilerConfigPath,
   currentModuleDependencies as moduleDependencies,
   currentNamedImports as importedNames,
 } from "./current-import-graph.js";
 
 const sourceRoot = resolve(import.meta.dirname);
+const repositoryRoot = resolve(sourceRoot, "../../../../../");
 const catalogEntry = resolve(sourceRoot, "current-vectors/index.ts");
 const currentConfigPath = resolve(sourceRoot, "../tsconfig.current.json");
 const authorPath = resolve(sourceRoot, "author.ts");
@@ -62,6 +64,29 @@ afterEach(() => {
   }
 });
 
+function syntheticImportTree(entrySource: string): Readonly<{
+  entry: string;
+  dependency: string;
+}> {
+  const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-imports-"));
+  temporaryRoots.push(root);
+  mkdirSync(resolve(root, "nested"), { recursive: true });
+  writeFileSync(resolve(root, "index.ts"), entrySource);
+  writeFileSync(resolve(root, "nested/dependency.ts"), "export const value = true;\n");
+  return {
+    entry: realpathSync(resolve(root, "index.ts")),
+    dependency: realpathSync(resolve(root, "nested/dependency.ts")),
+  };
+}
+
+function repoRelativeGraph(...paths: string[]): string[] {
+  return paths.map((path) => relative(repositoryRoot, path).split(sep).join("/")).sort();
+}
+
+function assertExactSyntheticGraph(entry: string, allowlist: readonly string[]): void {
+  assertExactGraph(entry, allowlist);
+}
+
 describe("current vector catalog import boundary", () => {
   it("BLUE TEAM VALIDATION: synthetic/local compiler graph omits retired Core evaluators", () => {
     // BLUE TEAM VALIDATION: inspect only compiler-resolved local current-source imports.
@@ -80,34 +105,120 @@ describe("current vector catalog import boundary", () => {
       .toEqual([]);
   }, 60_000);
 
-  it("follows every compiler-resolved static re-export and import-equals edge", () => {
-    const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-imports-"));
+  it.each([
+    {
+      syntax: "nested literal import()",
+      source: 'async function load() { return import("./nested/dependency.js"); }\nvoid load;\n',
+    },
+    {
+      syntax: "literal require",
+      source: 'function load() { return require("./nested/dependency.js"); }\nvoid load;\n',
+    },
+    {
+      syntax: "simple alias calling literal require",
+      source: 'const load = require;\nfunction nested() { return load("./nested/dependency.js"); }\nvoid nested;\n',
+    },
+    {
+      syntax: "re-export",
+      source: 'export { value } from "./nested/dependency.js";\n',
+    },
+    {
+      syntax: "import-equals",
+      source: 'import dependency = require("./nested/dependency.js");\nvoid dependency;\n',
+    },
+  ])("BLUE TEAM VALIDATION: synthetic/local follows $syntax", ({ source }) => {
+    const tree = syntheticImportTree(source);
+    expect(moduleDependencies(tree.entry)).toEqual([
+      tree.entry,
+      tree.dependency,
+    ].sort());
+  });
+
+  it.each([
+    {
+      syntax: "nested nonliteral import()",
+      source: 'const target = "./nested/dependency.js";\nasync function load() { return import(target); }\nvoid load;\n',
+      error: /nonliteral import\(\) in current vector graph/u,
+    },
+    {
+      syntax: "nonliteral require",
+      source: 'const target = "./nested/dependency.js";\nrequire(target);\n',
+      error: /nonliteral require in current vector graph/u,
+    },
+    {
+      syntax: "simple alias calling nonliteral require",
+      source: 'const load = require;\nconst target = "./nested/dependency.js";\nload(target);\n',
+      error: /nonliteral require alias in current vector graph/u,
+    },
+    {
+      syntax: "reassigned require alias",
+      source: 'let load = require;\nload = () => undefined;\nload("./nested/dependency.js");\n',
+      error: /reassigned require alias in current vector graph/u,
+    },
+    {
+      syntax: "ambiguous require alias",
+      source: 'declare const chooseRequire: boolean;\ndeclare const other: (value: string) => unknown;\nconst load = chooseRequire ? require : other;\nload("./nested/dependency.js");\n',
+      error: /ambiguous require alias in current vector graph/u,
+    },
+  ])("BLUE TEAM VALIDATION: synthetic/local rejects $syntax", ({ source, error }) => {
+    const tree = syntheticImportTree(source);
+    expect(() => moduleDependencies(tree.entry)).toThrow(error);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local retains the historical path denylist", () => {
+    const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-denylist-"));
     temporaryRoots.push(root);
-    mkdirSync(resolve(root, "nested"), { recursive: true });
     writeFileSync(
       resolve(root, "index.ts"),
       [
-        'export { value as named } from "./topics-named.js";',
-        'export * from "./topics-star.js";',
-        'import legacy = require("./legacy-import-equals.js");',
-        'void legacy;',
+        'export * from "./topics-archived.js";',
+        'import retired = require("./legacy-import-equals.js");',
+        "void retired;",
       ].join("\n"),
     );
-    for (const file of [
-      "topics-named.ts",
-      "topics-star.ts",
-      "legacy-import-equals.ts",
-    ]) {
-      writeFileSync(resolve(root, file), "export const value = true;\n");
-    }
+    writeFileSync(resolve(root, "topics-archived.ts"), "export const value = true;\n");
+    writeFileSync(resolve(root, "legacy-import-equals.ts"), "export const value = true;\n");
 
-    const graph = moduleDependencies(resolve(root, "index.ts"));
-    expect(graph.filter((path) => forbidden.some((pattern) => pattern.test(path))))
-      .toEqual([
-        realpathSync(resolve(root, "legacy-import-equals.ts")),
-        realpathSync(resolve(root, "topics-named.ts")),
-        realpathSync(resolve(root, "topics-star.ts")),
-      ].sort());
+    expect(moduleDependencies(resolve(root, "index.ts")).filter((path) =>
+      forbidden.some((pattern) => pattern.test(path)))).toEqual([
+      realpathSync(resolve(root, "legacy-import-equals.ts")),
+      realpathSync(resolve(root, "topics-archived.ts")),
+    ].sort());
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects a same-count substitution by an innocent-named historical module", () => {
+    const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-exact-"));
+    temporaryRoots.push(root);
+    writeFileSync(resolve(root, "index.ts"), 'export * from "./approved.js";\n');
+    writeFileSync(resolve(root, "approved.ts"), "export const current = true;\n");
+    writeFileSync(
+      resolve(root, "format.ts"),
+      "// Historical snapshot projection with a deliberately innocent filename.\nexport const frozen = true;\n",
+    );
+    const entry = realpathSync(resolve(root, "index.ts"));
+    const allowlist = repoRelativeGraph(entry, realpathSync(resolve(root, "approved.ts")));
+    assertExactSyntheticGraph(entry, allowlist);
+
+    writeFileSync(resolve(root, "index.ts"), 'export * from "./format.js";\n');
+    const substituted = moduleDependencies(entry);
+    expect(substituted).toHaveLength(allowlist.length);
+    expect(substituted.filter((path) => forbidden.some((pattern) => pattern.test(path))))
+      .toEqual([]);
+    expect(() => assertExactSyntheticGraph(entry, allowlist))
+      .toThrow(/exact current module graph mismatch/u);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects allowlist add and remove drift", () => {
+    const tree = syntheticImportTree('export * from "./nested/dependency.js";\n');
+    const allowlist = repoRelativeGraph(tree.entry, tree.dependency);
+    assertExactSyntheticGraph(tree.entry, allowlist);
+
+    expect(() => assertExactSyntheticGraph(tree.entry, allowlist.slice(0, -1)))
+      .toThrow(/exact current module graph mismatch/u);
+    expect(() => assertExactSyntheticGraph(tree.entry, [
+      ...allowlist,
+      "docs/spec/vectors/generator/src/not-in-current-graph.ts",
+    ].sort())).toThrow(/exact current module graph mismatch/u);
   });
 
   it("resolves configured local aliases through TypeScript and rejects missing ones", () => {
