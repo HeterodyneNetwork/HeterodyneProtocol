@@ -470,30 +470,94 @@ function defensiveValidationCalleeName(call: ts.CallExpression): string | undefi
   return ts.isIdentifier(call.expression) ? call.expression.text : undefined;
 }
 
-function defensiveValidationIsExpectChain(expression: ts.Expression): boolean {
-  if (ts.isCallExpression(expression)) {
-    return ts.isIdentifier(expression.expression) && expression.expression.text === "expect";
-  }
-  return ts.isPropertyAccessExpression(expression)
-    && defensiveValidationIsExpectChain(expression.expression);
+function defensiveValidationBindingNames(name: ts.BindingName): string[] {
+  if (ts.isIdentifier(name)) return [name.text];
+  return name.elements.flatMap((element) =>
+    ts.isOmittedExpression(element) ? [] : defensiveValidationBindingNames(element.name)
+  );
 }
 
-function defensiveValidationIsAssertionMatcher(call: ts.CallExpression): boolean {
-  if (!ts.isPropertyAccessExpression(call.expression)) return false;
-  if (call.expression.name.text.startsWith("to")) {
-    return defensiveValidationIsExpectChain(call.expression.expression);
+function defensiveValidationExpectRoots(source: ts.SourceFile): ReadonlySet<string> {
+  const roots = new Set<string>();
+  let topLevelExpectBinding = false;
+  for (const statement of source.statements) {
+    if (ts.isImportDeclaration(statement) && statement.importClause !== undefined) {
+      const moduleName = ts.isStringLiteral(statement.moduleSpecifier)
+        ? statement.moduleSpecifier.text
+        : undefined;
+      const clause = statement.importClause;
+      if (clause.name?.text === "expect") topLevelExpectBinding = true;
+      if (clause.namedBindings !== undefined) {
+        if (ts.isNamespaceImport(clause.namedBindings)) {
+          if (clause.namedBindings.name.text === "expect") topLevelExpectBinding = true;
+        } else {
+          for (const element of clause.namedBindings.elements) {
+            if (element.name.text === "expect") topLevelExpectBinding = true;
+            const importedName = element.propertyName?.text ?? element.name.text;
+            if (moduleName === "vitest" && importedName === "expect") {
+              roots.add(element.name.text);
+            }
+          }
+        }
+      }
+      continue;
+    }
+    if (ts.isVariableStatement(statement)) {
+      topLevelExpectBinding ||= statement.declarationList.declarations.some((declaration) =>
+        defensiveValidationBindingNames(declaration.name).includes("expect")
+      );
+      continue;
+    }
+    if ((ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement))
+      && statement.name?.text === "expect") topLevelExpectBinding = true;
   }
-  return ts.isIdentifier(call.expression.expression)
-    && call.expression.expression.text === "expect"
-    && [
-      "arrayContaining",
-      "objectContaining",
-      "stringContaining",
-      "stringMatching",
-    ].includes(call.expression.name.text);
+  if (!topLevelExpectBinding) roots.add("expect");
+  return roots;
 }
 
-function defensiveValidationLiteralIsExempt(node: ts.Node): boolean {
+function defensiveValidationCallIsExpectRooted(
+  call: ts.CallExpression,
+  expectRoots: ReadonlySet<string>,
+): boolean {
+  let expression = call.expression;
+  while (ts.isPropertyAccessExpression(expression)) expression = expression.expression;
+  return ts.isIdentifier(expression) && expectRoots.has(expression.text);
+}
+
+function defensiveValidationExpressionIsAssertionChain(
+  expression: ts.Expression,
+  expectRoots: ReadonlySet<string>,
+): boolean {
+  while (ts.isPropertyAccessExpression(expression)) expression = expression.expression;
+  return ts.isCallExpression(expression)
+    && defensiveValidationCallIsExpectRooted(expression, expectRoots);
+}
+
+function defensiveValidationIsAssertionMatcher(
+  call: ts.CallExpression,
+  expectRoots: ReadonlySet<string>,
+): boolean {
+  return ts.isPropertyAccessExpression(call.expression)
+    && defensiveValidationExpressionIsAssertionChain(
+      call.expression.expression,
+      expectRoots,
+    );
+}
+
+function defensiveValidationCallFeedsAssertionChain(call: ts.CallExpression): boolean {
+  let child: ts.Node = call;
+  let parent = call.parent;
+  while (ts.isPropertyAccessExpression(parent) && parent.expression === child) {
+    child = parent;
+    parent = parent.parent;
+  }
+  return ts.isCallExpression(parent) && parent.expression === child;
+}
+
+function defensiveValidationLiteralIsExempt(
+  node: ts.Node,
+  expectRoots: ReadonlySet<string>,
+): boolean {
   let child = node;
   for (let parent = node.parent; parent !== undefined; parent = parent.parent) {
     if (ts.isCallExpression(parent)) {
@@ -502,8 +566,16 @@ function defensiveValidationLiteralIsExempt(node: ts.Node): boolean {
       );
       if (!isArgument) return false;
       const callee = defensiveValidationCalleeName(parent);
-      return (callee !== undefined && DEFENSIVE_VALIDATION_LINT_FIXTURE_CALLEES.has(callee))
-        || defensiveValidationIsAssertionMatcher(parent);
+      if (callee !== undefined && DEFENSIVE_VALIDATION_LINT_FIXTURE_CALLEES.has(callee)) {
+        return true;
+      }
+      if (defensiveValidationIsAssertionMatcher(parent, expectRoots)) return true;
+      if (defensiveValidationCallIsExpectRooted(parent, expectRoots)
+        && !defensiveValidationCallFeedsAssertionChain(parent)) {
+        child = parent;
+        continue;
+      }
+      return false;
     }
     if (ts.isFunctionLike(parent) || ts.isStatement(parent)) return false;
     child = parent;
@@ -522,6 +594,7 @@ function lintDefensiveValidationLiteralTargets(
     true,
     ts.ScriptKind.TS,
   );
+  const expectRoots = defensiveValidationExpectRoots(source);
   const issues: DocsLintIssue[] = [];
   const visit = (node: ts.Node): void => {
     const literalText = ts.isTemplateExpression(node)
@@ -530,7 +603,7 @@ function lintDefensiveValidationLiteralTargets(
       ? node.text
       : undefined;
     if (literalText !== undefined) {
-      if (!defensiveValidationLiteralIsExempt(node)
+      if (!defensiveValidationLiteralIsExempt(node, expectRoots)
         && defensiveValidationLiteralIsUnsafe(literalText)) {
         issues.push({
           path,

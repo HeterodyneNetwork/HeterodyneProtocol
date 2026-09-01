@@ -500,6 +500,47 @@ it("BLUE TEAM VALIDATION: synthetic/local — rejects a hostile shared fixture",
   });
 
   it.each([
+    `expect.soft(actual).toBe(${JSON.stringify(restrictedFixtureText("live", "relay"))});`,
+    `expect.poll(() => actual).resolves.not.toEqual(${JSON.stringify(restrictedFixtureText("live", "relay"))});`,
+    `expect(actual).resolves.not.toBe(${JSON.stringify(restrictedFixtureText("live", "relay"))});`,
+    `expect(actual).toEqual(expect.not.objectContaining({ message: ${JSON.stringify(restrictedFixtureText("live", "relay"))} }));`,
+    `expect.soft(Promise.resolve(actual)).resolves.not.toEqual(expect.not.objectContaining({ message: ${JSON.stringify(restrictedFixtureText("live", "relay"))} }));`,
+  ])("BLUE TEAM VALIDATION: synthetic/local — structurally exempts Vitest assertion expected subtrees", (assertion) => {
+    const root = defensiveReviewRoot(`const actual = { message: "local relay" };\n${assertion}\n`);
+    expect(lintDefensiveValidationRepositoryTests(root)).toEqual([]);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local — recognizes an aliased Vitest expect import", () => {
+    const relay = JSON.stringify(restrictedFixtureText("live", "relay"));
+    const root = defensiveReviewRoot(`import { expect as assertThat } from "vitest";
+const actual = "local relay";
+assertThat.soft(actual).toBe(${relay});\n`);
+    expect(lintDefensiveValidationRepositoryTests(root)).toEqual([]);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local — does not exempt a locally shadowed expect chain", () => {
+    const relay = JSON.stringify(restrictedFixtureText("live", "relay"));
+    const root = defensiveReviewRoot(`const expect = fakeExpect;
+const actual = "local relay";
+expect.soft(actual).toBe(${relay});\n`);
+    expect(lintDefensiveValidationRepositoryTests(root)).toEqual([
+      expect.objectContaining({ code: "defensive-validation-target" }),
+    ]);
+  });
+
+  it.each([
+    `expect.soft(configure(${JSON.stringify(restrictedFixtureText("live", "relay"))})).toBeDefined();`,
+    `expect.soft({ relay: ${JSON.stringify(restrictedFixtureText("live", "relay"))} }).toBeDefined();`,
+    `expect.poll(() => configure(${JSON.stringify(restrictedFixtureText("live", "relay"))})).resolves.toBeDefined();`,
+    `expect(actual).toSatisfy(() => configure(${JSON.stringify(restrictedFixtureText("live", "relay"))}));`,
+  ])("BLUE TEAM VALIDATION: synthetic/local — keeps actual values and matcher callbacks under target lint", (assertion) => {
+    const root = defensiveReviewRoot(`const actual = "local relay";\n${assertion}\n`);
+    expect(lintDefensiveValidationRepositoryTests(root)).toEqual([
+      expect.objectContaining({ code: "defensive-validation-target" }),
+    ]);
+  });
+
+  it.each([
     `expect(makeLintFixture(${JSON.stringify(restrictedFixtureText("live", "relay"))})).toBeDefined();`,
     `expect(fake.lintDefensiveValidationText(${JSON.stringify(restrictedFixtureText("live", "relay"))})).toBeDefined();`,
   ])("BLUE TEAM VALIDATION: synthetic/local — does not exempt forbidden literals inside arbitrary helpers", (body) => {
