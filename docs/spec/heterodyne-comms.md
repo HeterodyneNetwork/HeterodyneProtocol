@@ -2399,6 +2399,65 @@ A projected JWT never replaces canonical private-ledger state. Client
 Credentials remains prohibited; a separately integrated sender-constrained
 HTTPS workload profile is required before that grant can be added.
 
+The workload-publication boundary is one atomic operation equivalent to
+`authorizeAndSignAgentPublication`; no conforming interface returns a
+caller-consumable pre-sign authorization, signing capability, private key, or
+post-validation boolean. Its constructor captures one authority identifier,
+trusted clock, exact issuer and audience, JWKS, current claim-view and token-
+status resolvers, DPoP consumer, mutual-TLS peer-identity reader, durable
+execute-once store, and signing callback. Replacing any constructor input or
+callback after construction MUST NOT affect an operation.
+
+For this boundary, `client_id` is the exact requested agent identifier and
+`credential_ledger_persona` is the exact represented persona. The access token
+MUST also carry the private claims
+`https://heterodyne.network/jwt/agent-selected-signer`,
+`https://heterodyne.network/jwt/agent-signer-key-class`, and, when present,
+`https://heterodyne.network/jwt/agent-association`. They respectively equal
+the current workload registration's `selected_signer`, `signer_key_class`,
+and complete optional `agent_association`. The signature-verified token's
+issuer, sole audience, pairwise `sub`, `client_id`, normalized scope, expiry,
+credential-ledger persona and generation, confirmation key, signer fields,
+and association are compared for exact equality with the request, current
+opaque verified workload-registration claim, current credential-ledger view,
+and current token-status result. Its `exp - iat` is at most 300 seconds. The
+current status is `active`, has the same generation, and binds the exact
+current claim-view checkpoint. A conflicted, revoked, expired, absent,
+non-opaque, multiply selected, or writer-unauthorized workload claim grants no
+publication authority.
+
+A DPoP request supplies the exact compact proof bytes plus method, target, and
+nonce to the constructor-captured consuming verifier. Its returned sender key
+MUST equal both `cnf.jkt` and the workload registration's subject thumbprint;
+the SHA-256 digest of the exact compact bytes is part of the durable binding,
+so the same proof cannot authorize a different token, request, publication, or
+authority. A mutual-TLS request instead captures the authenticated peer
+certificate identity from the constructor-captured reader and requires exact
+equality with both `cnf.x5t#S256` and that registered subject thumbprint. No
+peer identity or proof-validity assertion is accepted from the publication
+request.
+
+Before reading current state, the boundary descriptor-captures and bounds the
+complete closed request, including the compact JWT, proof, unsigned Nostr
+event and every nested tag. It verifies the JWT signature and complete
+bindings, consumes DPoP when applicable, then reloads and revalidates the
+claim view and token status immediately before the durable acquire/CAS. Any
+view, checkpoint, writer set, status, generation, or binding change fails
+closed. Only then does it mint a module-private one-use authorization bound to
+the exact attributed unsigned event. The signer is invoked only after a
+binding-equal `executing` record with the exact execution token is read back,
+and only by consuming that internal authorization inside the same call.
+
+The returned signer value is captured once, strict-verified as a NIP-01 event,
+and required to equal the attributed unsigned event in every unsigned member.
+The boundary durably commits that immutable event and reads back a binding-
+equal terminal before returning it. An exact committed retry returns the
+verified cached event without consuming DPoP or signing again. An executing
+reservation, signer throw, unverifiable signer return, unknown terminal write,
+or unverifiable readback returns a stable indeterminate reconciliation digest
+and never retries the signing effect. A proof conflict or any stale/mismatched
+authorization input rejects without calling the signer.
+
 An internal Social publication boundary MUST atomically validate, attribute,
 sign, and verify; it MUST NOT split those actions across caller-consumable
 pre-sign and post-sign capability producers. The embedding supplies a trusted
