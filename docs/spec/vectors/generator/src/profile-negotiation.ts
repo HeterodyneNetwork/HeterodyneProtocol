@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { types as utilTypes } from "node:util";
 import {
   validateRegisteredKindProfile,
   type Registry,
@@ -17,6 +18,7 @@ import { controlGroupAdmission } from "./marmot-admission.js";
 import { snapshotAndVerifyNostrEvent } from "./nostr.js";
 import { jcsCanonicalize } from "./jcs.js";
 import { proofBytes } from "./proof-bytes.js";
+import type { JsonValue } from "./claims.js";
 
 export type CurrentProfileWireProbe = Readonly<{
   content_is_heterodyne_json: boolean;
@@ -396,6 +398,148 @@ export function currentControlFrameRequestDigest(input: Readonly<{
     .digest("hex");
 }
 
+export type CurrentControlRequestBodyProjection = Readonly<{
+  profile: "human-jsonrpc" | "agent-mcp";
+  request_id: string;
+  expires_at: number | null;
+  authorization_method: string;
+  authorization_object: Readonly<{ class: string; id: string }> | null;
+  body: Readonly<Record<string, JsonValue>>;
+}>;
+
+const REQUEST_BODY_MAX_DEPTH = 16;
+const REQUEST_BODY_MAX_NODES = 8_192;
+const REQUEST_BODY_MAX_STRING_BYTES = 1_048_576;
+const CONTROL_OBJECT_CLASSES = new Set([
+  "none", "session", "repository", "config_namespace", "marmot_group",
+  "feed", "media", "device",
+]);
+
+function hasOnlyUnicodeScalars(value: string): boolean {
+  for (let index = 0; index < value.length; index += 1) {
+    const unit = value.charCodeAt(index);
+    if (unit >= 0xd800 && unit <= 0xdbff) {
+      const next = value.charCodeAt(index + 1);
+      if (next < 0xdc00 || next > 0xdfff) return false;
+      index += 1;
+    } else if (unit >= 0xdc00 && unit <= 0xdfff) return false;
+  }
+  return true;
+}
+
+function preflightRequestBody(value: unknown): value is JsonValue {
+  let nodes = 0;
+  let stringBytes = 0;
+  const active = new Set<object>();
+  const visit = (current: unknown, depth: number): boolean => {
+    nodes += 1;
+    if (nodes > REQUEST_BODY_MAX_NODES || depth > REQUEST_BODY_MAX_DEPTH) return false;
+    if (current === null || typeof current === "boolean") return true;
+    if (typeof current === "number") return Number.isFinite(current);
+    if (typeof current === "string") {
+      if (!hasOnlyUnicodeScalars(current)) return false;
+      stringBytes += Buffer.byteLength(current, "utf8");
+      return stringBytes <= REQUEST_BODY_MAX_STRING_BYTES;
+    }
+    if (typeof current !== "object" || utilTypes.isProxy(current) || active.has(current)) return false;
+    const prototype = Object.getPrototypeOf(current);
+    if (prototype !== Object.prototype && prototype !== Array.prototype) return false;
+    const descriptors = Object.getOwnPropertyDescriptors(current);
+    const keys = Reflect.ownKeys(descriptors);
+    if (keys.some((key) => typeof key !== "string" || !hasOnlyUnicodeScalars(key))) return false;
+    active.add(current);
+    try {
+      if (Array.isArray(current)) {
+        if (keys.length !== current.length + 1) return false;
+        for (let index = 0; index < current.length; index += 1) {
+          const descriptor = descriptors[String(index)];
+          if (descriptor === undefined || !("value" in descriptor)
+            || descriptor.enumerable !== true || !visit(descriptor.value, depth + 1)) return false;
+        }
+        return true;
+      }
+      for (const key of keys as string[]) {
+        const descriptor = descriptors[key];
+        if (descriptor === undefined || !("value" in descriptor) || descriptor.enumerable !== true
+          || !visit(key, depth + 1) || !visit(descriptor.value, depth + 1)) return false;
+      }
+      return true;
+    } finally {
+      active.delete(current);
+    }
+  };
+  return visit(value, 0);
+}
+
+function freezeJson(value: JsonValue): JsonValue {
+  if (value !== null && typeof value === "object") {
+    for (const child of Object.values(value)) freezeJson(child);
+    Object.freeze(value);
+  }
+  return value;
+}
+
+function projectedAuthorizationObject(
+  value: unknown,
+): Readonly<{ class: string; id: string }> | null {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return null;
+  if (!hasExactOwnMembers(value, ["class", "id"])) return null;
+  const candidate = value as Readonly<{ class: unknown; id: unknown }>;
+  return typeof candidate.class === "string" && CONTROL_OBJECT_CLASSES.has(candidate.class)
+    && typeof candidate.id === "string" && candidate.id.length > 0
+    ? Object.freeze({ class: candidate.class, id: candidate.id })
+    : null;
+}
+
+/** Captures the exact live Control JSON-RPC/MCP request and projects its authorization tuple. */
+export function projectCurrentControlRequestBody(
+  profile: string,
+  value: unknown,
+): CurrentControlRequestBodyProjection | null {
+  if ((profile !== "human-jsonrpc" && profile !== "agent-mcp")
+    || !preflightRequestBody(value) || value === null || Array.isArray(value)
+    || typeof value !== "object") return null;
+  try {
+    const body = freezeJson(structuredClone(value)) as Readonly<Record<string, JsonValue>>;
+    if (profile === "human-jsonrpc") {
+      validateControlRpcRequestSchemaOrThrow(body);
+      if (typeof body.id !== "string" || typeof body.method !== "string"
+        || !Number.isSafeInteger(body.expires_at)) return null;
+      const params = body.params as Readonly<Record<string, JsonValue>>;
+      return Object.freeze({
+        profile,
+        request_id: body.id,
+        expires_at: body.expires_at as number,
+        authorization_method: body.method,
+        authorization_object: projectedAuthorizationObject(params.object),
+        body,
+      });
+    }
+    validateControlMcpFrameSchemaOrThrow(body);
+    if (typeof body.id !== "string" || typeof body.method !== "string") return null;
+    const params = body.params !== null && typeof body.params === "object" && !Array.isArray(body.params)
+      ? body.params as Readonly<Record<string, JsonValue>>
+      : null;
+    const argumentsValue = params?.arguments;
+    const argumentsObject = argumentsValue !== null && typeof argumentsValue === "object"
+      && !Array.isArray(argumentsValue)
+      ? argumentsValue as Readonly<Record<string, JsonValue>>
+      : null;
+    return Object.freeze({
+      profile,
+      request_id: body.id,
+      expires_at: null,
+      authorization_method: body.method === "tools/call" && typeof params?.name === "string"
+        ? params.name
+        : body.method,
+      authorization_object: projectedAuthorizationObject(argumentsObject?.object),
+      body,
+    });
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Captures and verifies one exact signed kind-31017 Control request carried by
  * an already authenticated Marmot group.
@@ -473,21 +617,14 @@ export function validateCurrentControlFrameProfile(
       || typeof payload.request_digest !== "string"
       || !/^[0-9a-f]{64}$/u.test(payload.request_digest)
     ) return rejectCurrentControlFrame();
-    const body = payload.body as Readonly<Record<string, unknown>>;
-    if (candidate.profile === "human-jsonrpc") {
-      validateControlRpcRequestSchemaOrThrow(body);
-      if (
-        body.id !== candidate.request_id
-        || body.expires_at !== candidate.expires_at
-      ) return rejectCurrentControlFrame();
-    } else if (candidate.profile === "agent-mcp") {
-      validateControlMcpFrameSchemaOrThrow(body);
-      if (
-        typeof body.method !== "string"
-        || typeof body.id !== "string"
-        || body.id !== candidate.request_id
-      ) return rejectCurrentControlFrame();
-    } else return rejectCurrentControlFrame();
+    const projectedBody = projectCurrentControlRequestBody(
+      candidate.profile as string,
+      payload.body,
+    );
+    if (projectedBody === null || projectedBody.request_id !== candidate.request_id
+      || (projectedBody.profile === "human-jsonrpc"
+        && projectedBody.expires_at !== candidate.expires_at)) return rejectCurrentControlFrame();
+    const body = projectedBody.body;
     const derivedRequestDigest = currentControlFrameRequestDigest({
       profile: candidate.profile,
       version: candidate.version as string,

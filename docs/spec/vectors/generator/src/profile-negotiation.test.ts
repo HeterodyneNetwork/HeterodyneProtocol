@@ -7,6 +7,7 @@ import { getEventId, getPublicKey, type NostrUnsignedEvent } from "./nostr.js";
 import { proofBytes } from "./proof-bytes.js";
 import {
   type CurrentControlFrameVerificationContext,
+  projectCurrentControlRequestBody,
   validateCurrentControlFrameProfile,
 } from "./profile-negotiation.js";
 
@@ -112,6 +113,64 @@ function signedBytes(overrides: Readonly<{
 }
 
 describe("current Control frame profile", () => {
+  it("projects exact human JSON-RPC and agent MCP authorization requests", () => {
+    const object = { class: "config_namespace", id: "ui" };
+    expect(projectCurrentControlRequestBody("human-jsonrpc", {
+      id: REQUEST_ID,
+      method: "config.get",
+      params: { object },
+      expires_at: NOW + 60,
+    })).toEqual({
+      profile: "human-jsonrpc",
+      request_id: REQUEST_ID,
+      expires_at: NOW + 60,
+      authorization_method: "config.get",
+      authorization_object: object,
+      body: {
+        id: REQUEST_ID,
+        method: "config.get",
+        params: { object },
+        expires_at: NOW + 60,
+      },
+    });
+    expect(projectCurrentControlRequestBody("agent-mcp", {
+      jsonrpc: "2.0",
+      id: REQUEST_ID,
+      method: "tools/call",
+      params: { name: "config.get", arguments: { object } },
+    })).toEqual({
+      profile: "agent-mcp",
+      request_id: REQUEST_ID,
+      expires_at: null,
+      authorization_method: "config.get",
+      authorization_object: object,
+      body: {
+        jsonrpc: "2.0",
+        id: REQUEST_ID,
+        method: "tools/call",
+        params: { name: "config.get", arguments: { object } },
+      },
+    });
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects unsafe request projections before traps", () => {
+    let traps = 0;
+    const accessor = { ...HUMAN_BODY } as Record<string, unknown>;
+    Object.defineProperty(accessor, "method", {
+      enumerable: true,
+      get: () => { traps += 1; return "status"; },
+    });
+    const proxy = new Proxy(HUMAN_BODY, {
+      ownKeys: () => { traps += 1; return []; },
+      get: () => { traps += 1; return undefined; },
+    });
+    const invalidUnicode = { ...HUMAN_BODY, method: "status\ud800" };
+    expect(projectCurrentControlRequestBody("human-jsonrpc", accessor)).toBeNull();
+    expect(projectCurrentControlRequestBody("human-jsonrpc", proxy)).toBeNull();
+    expect(projectCurrentControlRequestBody("human-jsonrpc", invalidUnicode)).toBeNull();
+    expect(traps).toBe(0);
+  });
+
   it("accepts one exact signed, current, request-bound Marmot frame", () => {
     const result = validateCurrentControlFrameProfile(signedBytes(), context());
     expect(result).toEqual({
