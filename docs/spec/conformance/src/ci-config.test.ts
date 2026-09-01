@@ -265,7 +265,7 @@ describe("shared conformance CI configuration", () => {
     )).toBe(true);
   });
 
-  it("runs locked installs, draft validation, snapshot validation, manifest provenance, build, and tests in order", () => {
+  it("runs locked installs, draft validation, snapshot validation, build, and tests in order", () => {
     const root = initializeTemporaryRepository();
     const fake = installFakeNpm(root);
     const result = spawnSync(join(root, "scripts/conformance-ci.sh"), [], {
@@ -285,10 +285,34 @@ describe("shared conformance CI configuration", () => {
       `${root}\t--prefix docs/spec/conformance ci`,
       `${root}\t--prefix docs/spec/vectors/generator run draft:check -- ${root}`,
       `${root}\t--prefix docs/spec/vectors/generator run snapshot-check -- ${root}`,
-      `${root}\t--prefix docs/spec/vectors/generator run test:snapshot-manifest`,
       `${root}\t--prefix docs/spec/conformance run build`,
       `${root}\t--prefix docs/spec/conformance test`,
     ]);
+  });
+
+  it("keeps an ordinary current-catalog edit independent of the frozen snapshot", () => {
+    const root = initializeTemporaryRepository();
+    writeFileSync(join(root, "ordinary-current-catalog-edit"), "changed\n");
+    const fake = installFakeNpm(root, `
+if [[ -f ordinary-current-catalog-edit && "$*" == "--prefix docs/spec/vectors/generator run test:snapshot-manifest" ]]; then
+  printf 'HEAD-only snapshot manifest validation observed current catalog drift\\n' >&2
+  exit 41
+fi`);
+    const result = spawnSync(join(root, "scripts/conformance-ci.sh"), [], {
+      cwd: root,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        HETERODYNE_TEST_CALL_LOG: fake.callLog,
+        PATH: fake.path,
+      },
+    });
+    const calls = readFileSync(fake.callLog, "utf8");
+
+    expect(result.error).toBeUndefined();
+    expect(result.status, result.stderr).toBe(0);
+    expect(calls).toContain("run snapshot-check");
+    expect(calls).not.toContain("run test:snapshot-manifest");
   });
 
   it("stops with a snapshot failure before independent conformance runs", () => {
