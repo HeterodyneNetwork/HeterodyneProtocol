@@ -29,6 +29,7 @@ class DeviceStore implements DurableAuthorityStore<DeviceState> {
   nextAcquire: "acquired" | "replay" | "conflict" | "unavailable" | null = null;
   nextCommit: "committed" | "conflict" | "unknown" | null = null;
   nextMark: "indeterminate" | "conflict" | "unknown" | null = null;
+  markDigestOverride: string | null = null;
   persistUnknownCompare = false;
   failReadbackAfterCompare = false;
   loadFailures = 0;
@@ -160,7 +161,7 @@ class DeviceStore implements DurableAuthorityStore<DeviceState> {
       revision: current.revision + 1,
       binding_digest: input.binding_digest,
       execution_token: input.execution_token,
-      reconciliation_digest: input.reconciliation_digest,
+      reconciliation_digest: this.markDigestOverride ?? input.reconciliation_digest,
     }));
     return "indeterminate";
   }
@@ -254,6 +255,56 @@ function correctPoll(tx: Awaited<ReturnType<typeof transaction>>["tx"]) {
 
 function badPoll(tx: Awaited<ReturnType<typeof transaction>>["tx"]) {
   return { ...correctPoll(tx), user_code: "ZZZZ-ZZZZ" };
+}
+
+function installCommittedTerminal(
+  value: Awaited<ReturnType<typeof transaction>>,
+  poll: ReturnType<typeof correctPoll>,
+  overrides: Readonly<Record<string, unknown>>,
+  priorOverrides?: Readonly<Record<string, unknown>>,
+): void {
+  const current = value.store.records.get(value.tx.transaction_id);
+  if (current?.state !== "available") throw new Error("synthetic record unavailable");
+  const output = Object.freeze({
+    ...current.output as DeviceState & Readonly<Record<string, unknown>>,
+    terminal_poll_digest: testPollDigest(
+      "synthetic-local-control-device-authority-A",
+      poll,
+    ),
+    ...overrides,
+  }) as DeviceState & Readonly<Record<string, unknown>>;
+  const outputDigest = authorityBindingDigest(
+    "heterodyne-control-device-output-v1",
+    output,
+  );
+  const bindingDigest = priorOverrides === undefined ? current.binding_digest
+    : authorityBindingDigest("heterodyne-control-device-state-v1", {
+      ...output,
+      terminal_reason: null,
+      terminal_poll_digest: null,
+      ...priorOverrides,
+    });
+  value.store.records.set(value.tx.transaction_id, Object.freeze({
+    state: "committed" as const,
+    revision: current.revision + 2,
+    binding_digest: bindingDigest,
+    execution_token: authorityBindingDigest(
+      "heterodyne-control-device-execution-v1",
+      {
+        authority_id: "synthetic-local-control-device-authority-A",
+        transaction_id: value.tx.transaction_id,
+        expected_revision: current.revision,
+        prior_binding_digest: bindingDigest,
+        request_digest: output.terminal_poll_digest,
+        next_output_digest: outputDigest,
+        terminal_state: output.state,
+        terminal_reason: output.terminal_reason,
+        terminal_poll_digest: output.terminal_poll_digest,
+      },
+    ),
+    output_digest: outputDigest,
+    output: output as DeviceState,
+  }));
 }
 
 describe("Control device authorization authority", () => {
@@ -446,6 +497,8 @@ describe("Control device authorization authority", () => {
             transaction_id: value.tx.transaction_id,
             expected_revision: executing.revision - 1,
             prior_binding_digest: input.binding_digest,
+            request_digest:
+              (denied as Readonly<Record<string, unknown>>).terminal_poll_digest,
             next_output_digest: outputDigest,
             terminal_state: "denied",
             terminal_reason: "control-device-code-display-mismatch",
@@ -463,6 +516,69 @@ describe("Control device authorization authority", () => {
       reconciliation_digest: expect.stringMatching(/^[0-9a-f]{64}$/),
     });
     expect(value.store.output.state).toBe("denied");
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects a self-consistent approved terminal at the failure threshold", async () => {
+    const value = await transaction();
+    const poll = correctPoll(value.tx);
+    installCommittedTerminal(value, poll, {
+      state: "approved",
+      failed_guesses: 5,
+      terminal_reason: null,
+    }, {
+      state: "approved",
+      failed_guesses: 5,
+    });
+    await expect(pollControlDeviceAuthorization(value.authority, poll)).resolves.toEqual({
+      verdict: "indeterminate",
+      reconciliation_digest: expect.stringMatching(/^[0-9a-f]{64}$/),
+    });
+    expect(value.store.calls.acquire).toBe(0);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects contradictory terminal failure invariants", async () => {
+    const cases = [
+      {
+        pollFingerprint: "OTHER-DISPLAY",
+        output: {
+          state: "denied",
+          failed_guesses: 5,
+          terminal_reason: "control-device-code-display-mismatch",
+        },
+        prior: { state: "pending", failed_guesses: 5 },
+      },
+      {
+        pollFingerprint: "SYNTHETIC-CLIENT-FINGERPRINT",
+        output: {
+          state: "expired",
+          failed_guesses: 5,
+          terminal_reason: "control-device-code-invalid",
+        },
+        prior: { state: "pending", failed_guesses: 5 },
+      },
+      {
+        pollFingerprint: "SYNTHETIC-CLIENT-FINGERPRINT",
+        output: {
+          state: "denied",
+          failed_guesses: 4,
+          terminal_reason: "control-device-code-invalid",
+        },
+        prior: { state: "pending", failed_guesses: 3 },
+      },
+    ] as const;
+    for (const candidate of cases) {
+      const value = await transaction();
+      const poll = {
+        ...correctPoll(value.tx),
+        displayed_fingerprint: candidate.pollFingerprint,
+      };
+      installCommittedTerminal(value, poll, candidate.output, candidate.prior);
+      await expect(pollControlDeviceAuthorization(value.authority, poll)).resolves.toEqual({
+        verdict: "indeterminate",
+        reconciliation_digest: expect.stringMatching(/^[0-9a-f]{64}$/),
+      });
+      expect(value.store.calls.acquire).toBe(0);
+    }
   });
 
   it("BLUE TEAM VALIDATION: synthetic/local fails closed on a concurrent CAS conflict", async () => {
@@ -538,6 +654,54 @@ describe("Control device authorization authority", () => {
     const retry = await pollControlDeviceAuthorization(value.authority, correctPoll(value.tx));
     expect(retry).toEqual(first);
     expect(value.store.calls.commit).toBe(commits);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local ignores changing store-selected reconciliation digests on exact retry", async () => {
+    const value = await transaction();
+    await value.store.approve(value.tx.transaction_id);
+    value.setNow(value.now() + 5);
+    value.store.nextCommit = "unknown";
+    value.store.markDigestOverride = "c".repeat(64);
+    const first = await pollControlDeviceAuthorization(value.authority, correctPoll(value.tx));
+    const durable = value.store.records.get(value.tx.transaction_id);
+    if (durable?.state !== "indeterminate") {
+      throw new Error("synthetic transition did not enter the indeterminate fence");
+    }
+    value.store.records.set(value.tx.transaction_id, Object.freeze({
+      ...durable,
+      reconciliation_digest: "d".repeat(64),
+    }));
+    const retry = await pollControlDeviceAuthorization(value.authority, correctPoll(value.tx));
+    expect(retry).toEqual(first);
+    expect(first).toEqual({
+      verdict: "indeterminate",
+      reconciliation_digest: expect.stringMatching(/^[0-9a-f]{64}$/),
+    });
+    if (first.verdict !== "indeterminate") throw new Error("synthetic transition did not fail closed");
+    expect(first.reconciliation_digest).not.toBe("c".repeat(64));
+    expect(first.reconciliation_digest).not.toBe("d".repeat(64));
+    expect(value.store.calls.commit).toBe(1);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local binds reconciliation to the exact poll request", async () => {
+    const firstValue = await transaction();
+    const secondValue = await transaction();
+    firstValue.store.nextCompare = "conflict";
+    secondValue.store.nextCompare = "conflict";
+    const first = await pollControlDeviceAuthorization(
+      firstValue.authority,
+      correctPoll(firstValue.tx),
+    );
+    const second = await pollControlDeviceAuthorization(secondValue.authority, {
+      ...correctPoll(secondValue.tx),
+      displayed_fingerprint: "OTHER-DISPLAY",
+    });
+    expect(first).toMatchObject({ verdict: "indeterminate" });
+    expect(second).toMatchObject({ verdict: "indeterminate" });
+    if (first.verdict !== "indeterminate" || second.verdict !== "indeterminate") {
+      throw new Error("synthetic transitions did not fail closed");
+    }
+    expect(first.reconciliation_digest).not.toBe(second.reconciliation_digest);
   });
 
   it("BLUE TEAM VALIDATION: synthetic/local rejects mutation while retaining immutable captured inputs", async () => {
@@ -734,6 +898,8 @@ describe("Control device authorization authority", () => {
           transaction_id: value.tx.transaction_id,
           expected_revision: 0,
           prior_binding_digest: current.binding_digest,
+          request_digest:
+            (pendingTerminal as Readonly<Record<string, unknown>>).terminal_poll_digest,
           next_output_digest: pendingOutputDigest,
           terminal_state: "pending",
           terminal_reason: null,

@@ -276,18 +276,28 @@ commits an expired terminal and is `control-device-code-invalid`.
 
 Only the locally approved stored state can produce an `approved` result. Every
 poll mutation first acquires the exact complete pre-transition projection and
-request binding. A nonterminal transition reopens `available` only through an
+request binding. The execution token binds that request digest for terminal
+and nonterminal transitions. A nonterminal transition reopens `available` only
+through an
 exact compare-and-swap and binding-equal readback; a terminal transition uses
 commit and requires exact key, prior binding, execution token, terminal state,
 reason, poll digest, output digest, revision, and complete output on readback.
+The terminal must also reconstruct exactly one legal bound predecessor:
+approval, display-mismatch denial, and expiry require a failure count strictly
+below the denial threshold, while invalid-code denial requires the threshold
+and an immediately preceding count one lower. Any contradictory terminal is a
+malformed durable record and grants no authority.
 The decision is derived from that durable terminal, never from the attempted
 transition. An exact binding-equal committed retry returns the cached result
 without repeating the transition. An ambiguous nonterminal result returns its
 decision only when the exact proposed `available` record can be read back;
 otherwise the acquired record becomes an absorbing `indeterminate` fence. A
 conflicting or unknown store result, malformed record, or `executing` or
-`indeterminate` record fails closed with a stable reconciliation digest and
-MUST NOT repeat or reopen the transition. These internal failures do not mint
+`indeterminate` record fails closed with a stable reconciliation digest. That
+digest is domain-separated and authority-derived from the transaction key,
+exact prior binding, and execution token; a store-supplied digest is compared
+but never becomes return authority. Such a record MUST NOT repeat or reopen
+the transition. These internal failures do not mint
 any additional public `control-device-code-*` reason.
 
 Approval binds the pending record's `transaction_id`, `grant_id`,

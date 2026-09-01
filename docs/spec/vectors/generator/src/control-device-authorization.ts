@@ -176,12 +176,14 @@ function executionToken(
   authority: Readonly<{ authority_id: string }>,
   record: Readonly<{ revision: number; binding_digest: string }>,
   nextOutput: StoredTransaction,
+  requestDigest: string,
 ): string {
   return authorityBindingDigest("heterodyne-control-device-execution-v1", {
     authority_id: authority.authority_id,
     transaction_id: nextOutput.transaction_id,
     expected_revision: record.revision,
     prior_binding_digest: record.binding_digest,
+    request_digest: requestDigest,
     next_output_digest: storedOutputDigest(nextOutput),
     terminal_state: nextOutput.state,
     terminal_reason: nextOutput.terminal_reason,
@@ -192,13 +194,33 @@ function executionToken(
 function reconciliationDigest(
   authority: AuthorityRecord,
   key: string,
+  bindingDigest: string,
   token: string,
 ): string {
   return authorityBindingDigest("heterodyne-control-device-reconciliation-v1", {
     authority_id: authority.authority_id,
     transaction_id: key,
+    binding_digest: bindingDigest,
     execution_token: token,
   });
+}
+
+function reconciliationDecision(reconciliation: string): IndeterminateDecision {
+  return Object.freeze({
+    verdict: "indeterminate" as const,
+    reconciliation_digest: reconciliation,
+  });
+}
+
+function exactIndeterminateFence(
+  record: Extract<CapturedRecord, { state: "indeterminate" }>,
+  bindingDigest: string,
+  token: string,
+  reconciliation: string,
+): boolean {
+  return record.binding_digest === bindingDigest
+    && record.execution_token === token
+    && record.reconciliation_digest === reconciliation;
 }
 
 function indeterminate(
@@ -454,14 +476,39 @@ function liveOutput(output: StoredTransaction): boolean {
     && output.terminal_reason === null && output.terminal_poll_digest === null;
 }
 
-function terminalOutput(output: StoredTransaction): boolean {
+function terminalOutput(output: StoredTransaction, priorBindingDigest: string): boolean {
   if (output.terminal_poll_digest === null) return false;
-  if (output.state === "approved") return output.terminal_reason === null;
-  if (output.state === "expired") return output.terminal_reason === "control-device-code-invalid";
+  const candidate = (state: "pending" | "approved", failedGuesses: number): boolean => {
+    const prior = Object.freeze({
+      ...output,
+      state,
+      failed_guesses: failedGuesses,
+      terminal_reason: null,
+      terminal_poll_digest: null,
+    });
+    return liveOutput(prior) && stateBinding(prior) === priorBindingDigest;
+  };
+  if (output.state === "approved") {
+    return output.terminal_reason === null
+      && output.failed_guesses < output.max_failed_guesses
+      && candidate("approved", output.failed_guesses);
+  }
+  if (output.state === "expired") {
+    return output.terminal_reason === "control-device-code-invalid"
+      && output.failed_guesses < output.max_failed_guesses
+      && (candidate("pending", output.failed_guesses)
+        || candidate("approved", output.failed_guesses));
+  }
   if (output.state !== "denied" || output.terminal_reason === null) return false;
-  return output.terminal_reason === "control-device-code-display-mismatch"
-    || (output.terminal_reason === "control-device-code-invalid"
-      && output.failed_guesses === output.max_failed_guesses);
+  if (output.terminal_reason === "control-device-code-display-mismatch") {
+    return output.failed_guesses < output.max_failed_guesses
+      && (candidate("pending", output.failed_guesses)
+        || candidate("approved", output.failed_guesses));
+  }
+  return output.terminal_reason === "control-device-code-invalid"
+    && output.failed_guesses === output.max_failed_guesses
+    && (candidate("pending", output.failed_guesses - 1)
+      || candidate("approved", output.failed_guesses - 1));
 }
 
 function captureRecord(value: unknown): CapturedRecord | null {
@@ -501,13 +548,15 @@ function captureRecord(value: unknown): CapturedRecord | null {
         return null;
       }
       const output = captureStored(record.output);
-      if (output === null || !terminalOutput(output)
+      if (output === null || output.terminal_poll_digest === null
+        || !terminalOutput(output, record.binding_digest)
         || record.output_digest !== storedOutputDigest(output)) return null;
       const prior = { revision: (record.revision as number) - 2, binding_digest: record.binding_digest };
       if (prior.revision < 0 || record.execution_token !== executionToken(
         { authority_id: output.authority_id },
         prior,
         output,
+        output.terminal_poll_digest,
       )) return null;
       return Object.freeze({ ...record, output }) as CapturedRecord;
     }
@@ -677,7 +726,8 @@ function committedDecision(
   requestDigest: string,
 ): ControlDeviceDecision {
   const output = record.output;
-  if (output.authority_id !== authority.authority_id
+  if (!terminalOutput(output, record.binding_digest)
+    || output.authority_id !== authority.authority_id
     || output.terminal_poll_digest !== requestDigest
     || normalizedUserCode === null
     || output.user_code_sha256 !== rawHash(
@@ -699,7 +749,7 @@ async function markTransitionIndeterminate(
   bindingDigest: string,
   token: string,
 ): Promise<IndeterminateDecision> {
-  const reconciliation = reconciliationDigest(authority, key, token);
+  const reconciliation = reconciliationDigest(authority, key, bindingDigest, token);
   try {
     await authority.store.markIndeterminate({
       key,
@@ -708,17 +758,14 @@ async function markTransitionIndeterminate(
       reconciliation_digest: reconciliation,
     });
     const durable = await loadRecord(authority, key);
-    if (durable?.state === "indeterminate" && durable.binding_digest === bindingDigest
-      && durable.execution_token === token) {
-      return Object.freeze({
-        verdict: "indeterminate" as const,
-        reconciliation_digest: durable.reconciliation_digest,
-      });
+    if (durable?.state !== "indeterminate"
+      || !exactIndeterminateFence(durable, bindingDigest, token, reconciliation)) {
+      return reconciliationDecision(reconciliation);
     }
   } catch {
     // The executing record remains an absorbing no-repeat fence.
   }
-  return Object.freeze({ verdict: "indeterminate" as const, reconciliation_digest: reconciliation });
+  return reconciliationDecision(reconciliation);
 }
 
 async function acquireTransition(
@@ -745,14 +792,23 @@ async function acquireTransition(
   }
   if (result === "acquired") return "acquired";
   if (result === "replay") {
+    const reconciliation = reconciliationDigest(
+      authority,
+      record.output.transaction_id,
+      record.binding_digest,
+      token,
+    );
     try {
       const durable = await loadRecord(authority, record.output.transaction_id);
       if (durable?.state === "indeterminate" && durable.binding_digest === record.binding_digest
         && durable.execution_token === token) {
-        return Object.freeze({
-          verdict: "indeterminate" as const,
-          reconciliation_digest: durable.reconciliation_digest,
-        });
+        if (!exactIndeterminateFence(
+          durable,
+          record.binding_digest,
+          token,
+          reconciliation,
+        )) return reconciliationDecision(reconciliation);
+        return reconciliationDecision(reconciliation);
       }
       if (durable?.state === "executing" && durable.binding_digest === record.binding_digest
         && durable.execution_token === token) {
@@ -761,6 +817,7 @@ async function acquireTransition(
           reconciliation_digest: reconciliationDigest(
             authority,
             record.output.transaction_id,
+            record.binding_digest,
             token,
           ),
         });
@@ -783,8 +840,9 @@ async function nonterminalTransition(
   record: AvailableRecord,
   nextOutput: StoredTransaction,
   decision: ControlDeviceDecision,
+  requestDigest: string,
 ): Promise<ControlDeviceDecision> {
-  const token = executionToken(authority, record, nextOutput);
+  const token = executionToken(authority, record, nextOutput, requestDigest);
   const acquired = await acquireTransition(authority, record, token);
   if (acquired !== "acquired") return acquired;
   const expected: AvailableRecord = Object.freeze({
@@ -808,10 +866,19 @@ async function nonterminalTransition(
     if (exactAvailable(durable, expected)) return decision;
     if (durable?.state === "indeterminate" && durable.binding_digest === record.binding_digest
       && durable.execution_token === token) {
-      return Object.freeze({
-        verdict: "indeterminate" as const,
-        reconciliation_digest: durable.reconciliation_digest,
-      });
+      const reconciliation = reconciliationDigest(
+        authority,
+        nextOutput.transaction_id,
+        record.binding_digest,
+        token,
+      );
+      if (!exactIndeterminateFence(
+        durable,
+        record.binding_digest,
+        token,
+        reconciliation,
+      )) return reconciliationDecision(reconciliation);
+      return reconciliationDecision(reconciliation);
     }
     if (durable?.state === "executing" && durable.binding_digest === record.binding_digest
       && durable.execution_token === token) {
@@ -867,8 +934,9 @@ async function terminalTransition(
   record: AvailableRecord,
   nextOutput: StoredTransaction,
   request: ControlDevicePollRequest,
+  requestDigest: string,
 ): Promise<ControlDeviceDecision> {
-  const token = executionToken(authority, record, nextOutput);
+  const token = executionToken(authority, record, nextOutput, requestDigest);
   const acquired = await acquireTransition(authority, record, token);
   if (acquired !== "acquired") return acquired;
   const expected: CommittedRecord = Object.freeze({
@@ -946,24 +1014,28 @@ export async function pollControlDeviceAuthorization(
   if (record.state === "executing") {
     return Object.freeze({
       verdict: "indeterminate" as const,
-      reconciliation_digest: reconciliationDigest(retained, key, record.execution_token),
+      reconciliation_digest: reconciliationDigest(
+        retained,
+        key,
+        record.binding_digest,
+        record.execution_token,
+      ),
     });
   }
   if (record.state === "indeterminate") {
-    const expectedReconciliation = reconciliationDigest(retained, key, record.execution_token);
-    if (record.reconciliation_digest !== expectedReconciliation) {
-      return indeterminate(
-        retained,
-        key,
-        "indeterminate-record",
-        record.binding_digest,
-        record.execution_token,
-      );
-    }
-    return Object.freeze({
-      verdict: "indeterminate" as const,
-      reconciliation_digest: record.reconciliation_digest,
-    });
+    const expectedReconciliation = reconciliationDigest(
+      retained,
+      key,
+      record.binding_digest,
+      record.execution_token,
+    );
+    if (!exactIndeterminateFence(
+      record,
+      record.binding_digest,
+      record.execution_token,
+      expectedReconciliation,
+    )) return reconciliationDecision(expectedReconciliation);
+    return reconciliationDecision(expectedReconciliation);
   }
   const normalizedUserCode = normalizeUserCode(captured.user_code);
   const requestDigest = pollBinding(retained, captured);
@@ -989,7 +1061,7 @@ export async function pollControlDeviceAuthorization(
       state: "expired",
       terminal_reason: "control-device-code-invalid",
       terminal_poll_digest: requestDigest,
-    }), captured);
+    }), captured, requestDigest);
   }
   if (normalizedUserCode === null || output.user_code_sha256 !== rawHash(
     "heterodyne-control-user-code-v1",
@@ -1003,12 +1075,12 @@ export async function pollControlDeviceAuthorization(
         failed_guesses: failedGuesses,
         terminal_reason: "control-device-code-invalid",
         terminal_poll_digest: requestDigest,
-      }), captured);
+      }), captured, requestDigest);
     }
     return nonterminalTransition(retained, record, Object.freeze({
       ...output,
       failed_guesses: failedGuesses,
-    }), INVALID);
+    }), INVALID, requestDigest);
   }
   if (now < output.next_poll_at) {
     const interval = output.interval_seconds + 5;
@@ -1020,7 +1092,7 @@ export async function pollControlDeviceAuthorization(
       interval_seconds: interval,
       next_poll_at: now + interval,
       slow_down_count: output.slow_down_count + 1,
-    }), RATE_LIMITED);
+    }), RATE_LIMITED, requestDigest);
   }
   if (captured.displayed_fingerprint !== output.client_fingerprint) {
     return terminalTransition(retained, record, Object.freeze({
@@ -1028,13 +1100,13 @@ export async function pollControlDeviceAuthorization(
       state: "denied",
       terminal_reason: "control-device-code-display-mismatch",
       terminal_poll_digest: requestDigest,
-    }), captured);
+    }), captured, requestDigest);
   }
   if (output.state === "approved") {
     return terminalTransition(retained, record, Object.freeze({
       ...output,
       terminal_poll_digest: requestDigest,
-    }), captured);
+    }), captured, requestDigest);
   }
   if (now + output.interval_seconds > Number.MAX_SAFE_INTEGER) {
     return indeterminate(retained, key, "interval-overflow", record.binding_digest);
@@ -1046,5 +1118,5 @@ export async function pollControlDeviceAuthorization(
   return nonterminalTransition(retained, record, nextOutput, Object.freeze({
     verdict: "accept" as const,
     output: acceptedOutput(nextOutput),
-  }));
+  }), requestDigest);
 }
