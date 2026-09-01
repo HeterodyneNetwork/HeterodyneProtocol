@@ -2317,6 +2317,21 @@ const REQUIRED_VECTOR_GUIDE_EDGES = [
   "Social <- Workspace",
 ] as const;
 const VECTOR_GUIDE_SUPPORT_DIRECTORIES = new Set(["coverage", "generator", "schema"]);
+const VECTOR_GUIDE_AFFIRMATIVE_ANCHOR_CLAUSES = [
+  "anchors resolve in that vector's owning family document",
+  "anchors resolve in each vector's owning family document",
+  "anchors resolve in their owning family document",
+  "anchors resolve within each vector's owning family document",
+  "anchors resolve within their owning family document",
+  "anchors resolve to each vector's owning family document",
+  "anchors resolve to their owning family document",
+  "each vector's anchors resolve in its owning family document",
+  "each vector's anchors resolve within its owning family document",
+  "each vector's anchors resolve to its owning family document",
+] as const;
+const VECTOR_GUIDE_CURRENT_ANCHOR_SENTENCE =
+  "for every vector, the coverage manifest records qualified references whose "
+  + "anchors resolve in that vector's owning family document.";
 const RETIRED_VECTOR_TOPIC_PATH =
   /\b((?:interop|org|core-redundancy|marmot-radicle|claims|claim-ledger|oidc|token-status)\/)/giu;
 
@@ -2335,6 +2350,23 @@ function vectorGuideDagEdges(section: string): ReadonlySet<string> {
     }
   }
   return edges;
+}
+
+function vectorGuideHasAffirmativeAnchorRule(section: string): boolean {
+  const sentences = section
+    .replace(/[\r\n]+/gu, " ")
+    .split(/(?<=[.!?])\s+/u)
+    .map((sentence) => sentence
+      .replace(/[‘’]/gu, "'")
+      .replace(/\s+/gu, " ")
+      .trim()
+      .toLowerCase());
+  return sentences.some((sentence) =>
+    sentence === VECTOR_GUIDE_CURRENT_ANCHOR_SENTENCE
+    || VECTOR_GUIDE_AFFIRMATIVE_ANCHOR_CLAUSES.some((clause) =>
+      sentence === `${clause}.`
+    )
+  );
 }
 
 function findObsoleteVectorGuideIssues(text: string, path: string): FamilyDocIssue[] {
@@ -2438,7 +2470,7 @@ function findObsoleteVectorGuideIssues(text: string, path: string): FamilyDocIss
         );
       }
     }
-    if (!/\banchors?\b[^.\n]{0,100}\bowning family document\b/iu.test(coverageSection)) {
+    if (!vectorGuideHasAffirmativeAnchorRule(coverageSection)) {
       addIssue(
         coverageStart,
         "vector guide requires the owner-document anchor rule",

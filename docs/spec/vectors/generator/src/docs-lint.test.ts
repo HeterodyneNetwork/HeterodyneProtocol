@@ -64,6 +64,13 @@ function mutateVectorGuideRange(
   return text.slice(0, start) + mutate(text.slice(start, end)) + text.slice(end);
 }
 
+function replaceVectorGuideAnchorRule(text: string, replacement: string): string {
+  return text.replace(
+    /For every vector, the coverage manifest records qualified references whose\s+anchors resolve in that vector's owning family document\./u,
+    replacement,
+  );
+}
+
 type SnapshotGuidanceManifest = {
   snapshot_schema: "1";
   source_commit: string;
@@ -1087,6 +1094,37 @@ Coverage projections are [core.md](coverage/core.md),
       .toContainEqual(expect.objectContaining({
         path: vectorGuidePath,
         code: "retired-authoring-model",
+        message: expect.stringContaining("owner-document anchor rule"),
+      }));
+  });
+
+  it.each([
+    "Anchors do not resolve in their owning family document.",
+    "Anchors never resolve within their owning family document.",
+    "It is not true that anchors resolve in their owning family document.",
+    "Anchors resolve outside their owning family document.",
+    "Anchors resolve in a non-owning family document.",
+    "The owning family document resolves to its anchors.",
+    "Anchors resolve in another family document, not their owning family document.",
+  ])("rejects a non-affirmative owner-anchor claim: %s", (claim) => {
+    const guide = replaceVectorGuideAnchorRule(read(vectorGuidePath), claim);
+    expect(lintMaintainedGuides(repositoryRoot, { [vectorGuidePath]: guide }))
+      .toContainEqual(expect.objectContaining({
+        path: vectorGuidePath,
+        code: "retired-authoring-model",
+        message: expect.stringContaining("owner-document anchor rule"),
+      }));
+  });
+
+  it.each([
+    "For every vector, the coverage manifest records qualified references whose anchors resolve in that vector's owning family document.",
+    "Each vector's anchors resolve within its owning family document.",
+    "Anchors resolve to their owning family document.",
+  ])("accepts an affirmative owner-anchor claim: %s", (claim) => {
+    const guide = replaceVectorGuideAnchorRule(read(vectorGuidePath), claim);
+    expect(lintMaintainedGuides(repositoryRoot, { [vectorGuidePath]: guide }))
+      .not.toContainEqual(expect.objectContaining({
+        path: vectorGuidePath,
         message: expect.stringContaining("owner-document anchor rule"),
       }));
   });
