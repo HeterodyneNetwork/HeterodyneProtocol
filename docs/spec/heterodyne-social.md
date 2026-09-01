@@ -577,6 +577,18 @@ id. A relay-only candidate may therefore be current; carrier location does
 not grant or remove policy effect. An unauthorized Radicle ref is not a Core
 repository candidate.
 
+The subscriber-local evaluator MUST treat its supplied list, receipt, target,
+and correction collections as one atomic evidence input. Before hashing or
+semantic verification, it MUST descriptor-capture every exact ordinary event,
+tag, and collection container and MUST reject the whole input when any member
+is malformed, sparse, accessor-bearing, proxy-backed, or outside its declared
+work bounds. The reference evaluator admits at most 64 events per collection,
+128 events total, 65,536 UTF-8 bytes of content per event, 256 tags per event,
+8 strings per tag, 1,024 UTF-8 bytes per tag string, 131,072 counted string
+bytes per event, and 2,097,152 counted string bytes across the input. It MUST
+reject an invalid signature or invalid semantic member rather than silently
+discard it and continue with the remaining evidence.
+
 Only an explicitly subscribed policy list affects a client. An unsubscribed
 receipt or list remains visible information and MUST NOT silently change
 ranking or visibility. A reference client MAY ship a visible global
@@ -617,6 +629,12 @@ stale replaced list does not create a mute for a fresh evaluator. After a
 client has applied an adopted binding, a later removal is effective only when
 the exact correcting policy persona also signs a correction bound to the same
 receipt, event, event author, agent association, and policy id/version.
+The verified timestamps MUST place the target no later than its receipt and
+the receipt no later than its adopting list. A correction MUST be no earlier
+than its receipt, and a selected removal list MUST be no earlier than that
+correction. A future or backdated signed substitution that violates those
+edges invalidates the atomic evidence input before local subscription state is
+loaded.
 
 <a id="social-sets"></a>
 ### 7.3 Sets and private configuration

@@ -96,8 +96,16 @@ type ViewRecord = Readonly<{
 
 const AUTHORITIES = new WeakMap<object, CapturedAuthority>();
 const VIEWS = new WeakMap<object, ViewRecord>();
+const UTF8_ENCODER = new TextEncoder();
 const HEX_32 = /^[0-9a-f]{64}$/u;
-const MAX_COLLECTION = 256;
+const MAX_EVENTS_PER_COLLECTION = 64;
+const MAX_TOTAL_EVENTS = 128;
+const MAX_EVENT_CONTENT_BYTES = 65_536;
+const MAX_EVENT_TAGS = 256;
+const MAX_TAG_WIDTH = 8;
+const MAX_TAG_MEMBER_BYTES = 1_024;
+const MAX_EVENT_BYTES = 131_072;
+const MAX_TOTAL_INPUT_BYTES = 2_097_152;
 const FUTURE_BOUND_SECONDS = 900;
 const INPUT_KEYS = [
   "policy_persona",
@@ -153,18 +161,20 @@ export async function resolveSubscribedAgentPolicy(
   if (authority === null) return null;
 
   try {
-    const now = authority.trusted_now();
-    if (!Number.isSafeInteger(now) || now < 0) return invalidate(authority, null);
     const input = captureInput(inputValue);
     if (input === null) return invalidate(authority, null);
+    const now = authority.trusted_now();
+    if (!Number.isSafeInteger(now) || now < 0) return invalidate(authority, null);
 
     const targets = new Map<string, VerifiedAgentPolicyTarget>();
     for (const target of input.target_events) {
       const verified = snapshotAgentPolicyTarget(target);
       if (
-        verified !== null
-        && verified.event.created_at <= now + FUTURE_BOUND_SECONDS
-      ) targets.set(verified.event.id, verified);
+        verified === null
+        || verified.event.created_at > now + FUTURE_BOUND_SECONDS
+        || targets.has(verified.event.id)
+      ) return invalidate(authority, input.policy_persona);
+      targets.set(verified.event.id, verified);
     }
 
     const receipts = resolveReceipts(
@@ -173,12 +183,14 @@ export async function resolveSubscribedAgentPolicy(
       targets,
       now,
     );
+    if (receipts === null) return invalidate(authority, input.policy_persona);
     const lists = resolveLists(
       input.policy_persona,
       input.list_candidates,
       receipts,
       now,
     );
+    if (lists === null) return invalidate(authority, input.policy_persona);
     const selected = selectCurrentReplaceableEvent(
       authority.replaceable_selection,
       lists.map(({ event }) => event),
@@ -193,6 +205,16 @@ export async function resolveSubscribedAgentPolicy(
       receipts,
       now,
     );
+    if (corrections === null) return invalidate(authority, input.policy_persona);
+    const selectedReceipts = new Set(
+      selectedList.list.entries.map(({ receipt_id }) => receipt_id),
+    );
+    for (const [receiptId, correction] of corrections) {
+      if (
+        !selectedReceipts.has(receiptId)
+        && correction.created_at > selectedList.event.created_at
+      ) return invalidate(authority, input.policy_persona);
+    }
 
     const pending = authority.load_subscription(input.policy_persona);
     if (
@@ -305,18 +327,45 @@ function captureInput(value: unknown): Readonly<{
       "Social subscription input",
     );
     const policyPersona = captured.policy_persona;
-    const listCandidates = captureEventArray(captured.list_candidates);
-    const receiptEvents = captureEventArray(captured.receipt_events);
-    const targetEvents = captureEventArray(captured.target_events);
-    const correctionEvents = captureEventArray(captured.correction_events);
+    const rawCollections = [
+      captureRawEventArray(captured.list_candidates),
+      captureRawEventArray(captured.receipt_events),
+      captureRawEventArray(captured.target_events),
+      captureRawEventArray(captured.correction_events),
+    ] as const;
     if (
       typeof policyPersona !== "string"
       || !HEX_32.test(policyPersona)
-      || listCandidates === null
-      || receiptEvents === null
-      || targetEvents === null
-      || correctionEvents === null
+      || rawCollections.some((collection) => collection === null)
     ) return null;
+    const collections = rawCollections as readonly (readonly unknown[])[];
+    const totalEvents = collections.reduce((total, collection) => total + collection.length, 0);
+    if (totalEvents > MAX_TOTAL_EVENTS) return null;
+
+    const budget = { bytes: 0 };
+    const capturedCollections: NostrSignedEvent[][] = [];
+    for (const collection of collections) {
+      const events: NostrSignedEvent[] = [];
+      for (const event of collection) {
+        const snapshot = captureBoundedEvent(event, budget);
+        if (snapshot === null) return null;
+        events.push(snapshot);
+      }
+      capturedCollections.push(events);
+    }
+
+    const verifiedCollections: VerifiedNostrEvent[][] = [];
+    for (const collection of capturedCollections) {
+      const events: VerifiedNostrEvent[] = [];
+      for (const event of collection) {
+        const verified = snapshotAgentPolicyEvent(event);
+        if (verified === null) return null;
+        events.push(verified);
+      }
+      verifiedCollections.push(events);
+    }
+    const [listCandidates, receiptEvents, targetEvents, correctionEvents] =
+      verifiedCollections.map((collection) => Object.freeze(collection));
     return Object.freeze({
       policy_persona: policyPersona,
       list_candidates: listCandidates,
@@ -329,7 +378,7 @@ function captureInput(value: unknown): Readonly<{
   }
 }
 
-function captureEventArray(value: unknown): readonly VerifiedNostrEvent[] | null {
+function captureRawEventArray(value: unknown): readonly unknown[] | null {
   if (
     value === null
     || typeof value !== "object"
@@ -338,19 +387,21 @@ function captureEventArray(value: unknown): readonly VerifiedNostrEvent[] | null
   ) return null;
   try {
     if (Object.getPrototypeOf(value) !== Array.prototype) return null;
-    const descriptors = Object.getOwnPropertyDescriptors(value) as unknown as PropertyDescriptorMap;
-    const keys = Reflect.ownKeys(descriptors);
-    const lengthDescriptor = descriptors.length;
+    const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
     if (
-      keys.some((key) => typeof key !== "string")
-      || lengthDescriptor === undefined
+      lengthDescriptor === undefined
       || !("value" in lengthDescriptor)
       || !Number.isSafeInteger(lengthDescriptor.value)
       || lengthDescriptor.value < 0
-      || lengthDescriptor.value > MAX_COLLECTION
+      || lengthDescriptor.value > MAX_EVENTS_PER_COLLECTION
+    ) return null;
+    const descriptors = Object.getOwnPropertyDescriptors(value) as unknown as PropertyDescriptorMap;
+    const keys = Reflect.ownKeys(descriptors);
+    if (
+      keys.some((key) => typeof key !== "string")
       || keys.length !== lengthDescriptor.value + 1
     ) return null;
-    const events: VerifiedNostrEvent[] = [];
+    const events: unknown[] = [];
     for (let index = 0; index < lengthDescriptor.value; index += 1) {
       const descriptor = descriptors[String(index)];
       if (
@@ -358,8 +409,7 @@ function captureEventArray(value: unknown): readonly VerifiedNostrEvent[] | null
         || !("value" in descriptor)
         || descriptor.enumerable !== true
       ) return null;
-      const event = snapshotAgentPolicyEvent(descriptor.value);
-      if (event !== null) events.push(event);
+      events.push(descriptor.value);
     }
     return Object.freeze(events);
   } catch {
@@ -367,25 +417,166 @@ function captureEventArray(value: unknown): readonly VerifiedNostrEvent[] | null
   }
 }
 
+function captureBoundedEvent(
+  value: unknown,
+  budget: { bytes: number },
+): NostrSignedEvent | null {
+  if (
+    value === null
+    || typeof value !== "object"
+    || utilTypes.isProxy(value)
+    || Array.isArray(value)
+  ) return null;
+  try {
+    if (Object.getPrototypeOf(value) !== Object.prototype) return null;
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    const keys = Reflect.ownKeys(descriptors);
+    const eventKeys = ["content", "created_at", "id", "kind", "pubkey", "sig", "tags"] as const;
+    if (
+      keys.some((key) => typeof key !== "string")
+      || keys.length !== eventKeys.length
+      || !eventKeys.every((key) => Object.hasOwn(descriptors, key))
+    ) return null;
+    const read = (key: typeof eventKeys[number]): unknown => {
+      const descriptor = descriptors[key];
+      return descriptor !== undefined
+        && "value" in descriptor
+        && descriptor.enumerable === true
+        ? descriptor.value
+        : undefined;
+    };
+    const content = read("content");
+    const createdAt = read("created_at");
+    const id = read("id");
+    const kind = read("kind");
+    const pubkey = read("pubkey");
+    const sig = read("sig");
+    const tags = captureBoundedTags(read("tags"));
+    if (
+      typeof content !== "string"
+      || content.length > MAX_EVENT_CONTENT_BYTES
+      || !Number.isSafeInteger(createdAt)
+      || (createdAt as number) < 0
+      || typeof id !== "string"
+      || !HEX_32.test(id)
+      || !Number.isSafeInteger(kind)
+      || (kind as number) < 0
+      || (kind as number) > 65_535
+      || typeof pubkey !== "string"
+      || !HEX_32.test(pubkey)
+      || typeof sig !== "string"
+      || !/^[0-9a-f]{128}$/u.test(sig)
+      || tags === null
+    ) return null;
+    const contentBytes = utf8Length(content);
+    if (contentBytes > MAX_EVENT_CONTENT_BYTES) return null;
+    let eventBytes = contentBytes + utf8Length(id) + utf8Length(pubkey) + utf8Length(sig);
+    for (const tag of tags) {
+      for (const member of tag) eventBytes += utf8Length(member);
+    }
+    if (
+      eventBytes > MAX_EVENT_BYTES
+      || budget.bytes + eventBytes > MAX_TOTAL_INPUT_BYTES
+    ) return null;
+    budget.bytes += eventBytes;
+    return Object.freeze({
+      content,
+      created_at: createdAt as number,
+      id,
+      kind: kind as number,
+      pubkey,
+      sig,
+      tags,
+    });
+  } catch {
+    return null;
+  }
+}
+
+function captureBoundedTags(value: unknown): string[][] | null {
+  if (
+    value === null
+    || typeof value !== "object"
+    || utilTypes.isProxy(value)
+    || !Array.isArray(value)
+    || Object.getPrototypeOf(value) !== Array.prototype
+  ) return null;
+  const tags = captureDenseArray(value, MAX_EVENT_TAGS);
+  if (tags === null) return null;
+  const captured: string[][] = [];
+  for (const tagValue of tags) {
+    if (
+      tagValue === null
+      || typeof tagValue !== "object"
+      || utilTypes.isProxy(tagValue)
+      || !Array.isArray(tagValue)
+      || Object.getPrototypeOf(tagValue) !== Array.prototype
+    ) return null;
+    const members = captureDenseArray(tagValue, MAX_TAG_WIDTH);
+    if (
+      members === null
+      || members.length === 0
+      || members.some((member) =>
+        typeof member !== "string"
+        || member.length > MAX_TAG_MEMBER_BYTES
+        || utf8Length(member) > MAX_TAG_MEMBER_BYTES)
+    ) return null;
+    captured.push(Object.freeze(members as string[]) as string[]);
+  }
+  return Object.freeze(captured) as string[][];
+}
+
+function captureDenseArray(value: unknown[], maximum: number): readonly unknown[] | null {
+  const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
+  if (
+    lengthDescriptor === undefined
+    || !("value" in lengthDescriptor)
+    || !Number.isSafeInteger(lengthDescriptor.value)
+    || lengthDescriptor.value < 0
+    || lengthDescriptor.value > maximum
+  ) return null;
+  const descriptors = Object.getOwnPropertyDescriptors(value) as unknown as PropertyDescriptorMap;
+  const keys = Reflect.ownKeys(descriptors);
+  if (
+    keys.some((key) => typeof key !== "string")
+    || keys.length !== lengthDescriptor.value + 1
+  ) return null;
+  const result: unknown[] = [];
+  for (let index = 0; index < lengthDescriptor.value; index += 1) {
+    const descriptor = descriptors[String(index)];
+    if (
+      descriptor === undefined
+      || !("value" in descriptor)
+      || descriptor.enumerable !== true
+    ) return null;
+    result.push(descriptor.value);
+  }
+  return Object.freeze(result);
+}
+
+function utf8Length(value: string): number {
+  return UTF8_ENCODER.encode(value).byteLength;
+}
+
 function resolveReceipts(
   policyPersona: string,
   events: readonly VerifiedNostrEvent[],
   targets: ReadonlyMap<string, VerifiedAgentPolicyTarget>,
   now: number,
-): ReadonlyMap<string, ReceiptRecord> {
+): ReadonlyMap<string, ReceiptRecord> | null {
   const receipts = new Map<string, ReceiptRecord>();
   for (const event of events) {
-    if (event.pubkey !== policyPersona || event.created_at > now + FUTURE_BOUND_SECONDS) continue;
+    if (event.pubkey !== policyPersona || event.created_at > now + FUTURE_BOUND_SECONDS) return null;
     const targetId = exactTagValue(event, "e");
-    if (targetId === null) continue;
+    if (targetId === null) return null;
     const target = targets.get(targetId);
-    if (target === undefined) continue;
+    if (target === undefined || target.event.created_at > event.created_at) return null;
     try {
       const receipt = validateAgentPolicyReceipt(event, target);
-      if (receipt.observed_at !== event.created_at) continue;
+      if (receipt.observed_at !== event.created_at || receipts.has(event.id)) return null;
       receipts.set(event.id, Object.freeze({ receipt, event, target: target.event }));
     } catch {
-      // Invalid signed candidates remain non-authoritative public information.
+      return null;
     }
   }
   return receipts;
@@ -396,7 +587,7 @@ function resolveLists(
   events: readonly VerifiedNostrEvent[],
   receipts: ReadonlyMap<string, ReceiptRecord>,
   now: number,
-): readonly Readonly<{ event: VerifiedNostrEvent; list: AgentPolicyList }>[] {
+): readonly Readonly<{ event: VerifiedNostrEvent; list: AgentPolicyList }>[] | null {
   const parsed = new Map<string, Readonly<{ event: VerifiedNostrEvent; list: AgentPolicyList }>>();
   const receiptValues = new Map(
     [...receipts].map(([id, value]) => [id, value.receipt] as const),
@@ -406,12 +597,17 @@ function resolveLists(
       event.pubkey !== policyPersona
       || event.kind !== 10_000
       || event.created_at > now + FUTURE_BOUND_SECONDS
-    ) continue;
+      || parsed.has(event.id)
+    ) return null;
     try {
       const list = validateAgentPolicyList(event, receiptValues);
+      if (list.entries.some(({ receipt_id }) => {
+        const receipt = receipts.get(receipt_id);
+        return receipt === undefined || receipt.event.created_at > event.created_at;
+      })) return null;
       parsed.set(event.id, Object.freeze({ event, list }));
     } catch {
-      // Invalid list candidates cannot participate in current selection.
+      return null;
     }
   }
   return Object.freeze([...parsed.values()]);
@@ -422,19 +618,23 @@ function resolveCorrections(
   events: readonly VerifiedNostrEvent[],
   receipts: ReadonlyMap<string, ReceiptRecord>,
   now: number,
-): ReadonlySet<string> {
-  const corrected = new Set<string>();
+): ReadonlyMap<string, VerifiedNostrEvent> | null {
+  const corrected = new Map<string, VerifiedNostrEvent>();
   for (const event of events) {
-    if (event.pubkey !== policyPersona || event.created_at > now + FUTURE_BOUND_SECONDS) continue;
+    if (event.pubkey !== policyPersona || event.created_at > now + FUTURE_BOUND_SECONDS) return null;
     const receiptId = exactTagValue(event, "e");
-    if (receiptId === null) continue;
+    if (receiptId === null) return null;
     const record = receipts.get(receiptId);
-    if (record === undefined || event.created_at < record.event.created_at) continue;
+    if (
+      record === undefined
+      || event.created_at < record.event.created_at
+      || corrected.has(receiptId)
+    ) return null;
     try {
       validateAgentPolicyCorrection(event, record.receipt);
-      corrected.add(receiptId);
+      corrected.set(receiptId, event);
     } catch {
-      // Invalid correction candidates cannot retract a binding.
+      return null;
     }
   }
   return corrected;
@@ -444,7 +644,7 @@ function composeMutedBindings(
   selected: AgentPolicyList,
   receipts: ReadonlyMap<string, ReceiptRecord>,
   prior: readonly MutedBinding[],
-  corrections: ReadonlySet<string>,
+  corrections: ReadonlyMap<string, VerifiedNostrEvent>,
 ): readonly MutedBinding[] {
   const muted = new Map<string, MutedBinding>();
   for (const entry of selected.entries) {

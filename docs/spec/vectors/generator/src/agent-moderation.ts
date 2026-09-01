@@ -189,7 +189,18 @@ export function validateAgentPolicyList(
   ) {
     throw new Error("agent-policy-binding-invalid");
   }
-  const entries = tags(verified, "agent_violation").map((tag) => {
+  const violationTags = tags(verified, "agent_violation");
+  const authorReferences = tags(verified, "p");
+  const receiptReferences = tags(verified, "e");
+  if (
+    authorReferences.some((tag) => tag.length !== 2)
+    || receiptReferences.some((tag) => tag.length !== 2)
+    || authorReferences.length !== violationTags.length
+    || receiptReferences.length !== violationTags.length
+  ) throw new Error("agent-policy-binding-invalid");
+  const authorReferenceCounts = countValues(authorReferences.map((tag) => tag[1]));
+  const receiptReferenceCounts = countValues(receiptReferences.map((tag) => tag[1]));
+  const entries = violationTags.map((tag) => {
     if (
       tag.length !== 4
       || !HEX_32.test(tag[1])
@@ -204,8 +215,8 @@ export function validateAgentPolicyList(
       || receipt.issuer !== verified.pubkey
       || receipt.event_author !== tag[1]
       || receipt.reason !== tag[3]
-      || !hasReferenceTag(verified, "p", tag[1])
-      || !hasReferenceTag(verified, "e", tag[2])
+      || !authorReferenceCounts.has(tag[1])
+      || !receiptReferenceCounts.has(tag[2])
     ) {
       throw new Error("agent-policy-binding-invalid");
     }
@@ -215,14 +226,8 @@ export function validateAgentPolicyList(
       reason: tag[3] as AgentPolicyReason,
     };
   });
-  const authorReferences = tags(verified, "p");
-  const receiptReferences = tags(verified, "e");
   if (
-    authorReferences.some((tag) => tag.length !== 2)
-    || receiptReferences.some((tag) => tag.length !== 2)
-    || authorReferences.length !== entries.length
-    || receiptReferences.length !== entries.length
-    || new Set(entries.map(({ receipt_id }) => receipt_id)).size !== entries.length
+    new Set(entries.map(({ receipt_id }) => receipt_id)).size !== entries.length
     || !sameMultiset(
       authorReferences.map((tag) => tag[1]),
       entries.map(({ event_author }) => event_author),
@@ -340,10 +345,6 @@ function countExactTag(event: NostrSignedEvent, expected: string[]): number {
     && tag.every((value, index) => value === expected[index])).length;
 }
 
-function hasReferenceTag(event: NostrSignedEvent, name: string, value: string): boolean {
-  return tags(event, name).some((tag) => tag.length >= 2 && tag[1] === value);
-}
-
 function sameMultiset(left: readonly string[], right: readonly string[]): boolean {
   if (left.length !== right.length) return false;
   const counts = new Map<string, number>();
@@ -355,6 +356,12 @@ function sameMultiset(left: readonly string[], right: readonly string[]): boolea
     else counts.set(value, count - 1);
   }
   return counts.size === 0;
+}
+
+function countValues(values: readonly string[]): ReadonlyMap<string, number> {
+  const counts = new Map<string, number>();
+  for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1);
+  return counts;
 }
 
 function equalAssociation(

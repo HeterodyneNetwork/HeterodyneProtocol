@@ -324,7 +324,7 @@ describe("signed subscriber-local Social policy", () => {
       created_at: 1_200,
       entries: [{ author: DEVICE_KEY, receipt }],
     });
-    const removed = await signedList({ created_at: 1_201, entries: [] });
+    const removed = await signedList({ created_at: 1_400, entries: [] });
     const wrongCorrection = await signedCorrection({
       receipt,
       target,
@@ -352,8 +352,9 @@ describe("signed subscriber-local Social policy", () => {
         correction_events: [wrongCorrection],
       }),
     ) ?? null;
-    expect(module.applySubscribedAgentPolicy?.(wrongCorrectionView, target)?.muted)
-      .toBe(true);
+    expect(wrongCorrectionView).toBeNull();
+    expect(module.applySubscribedAgentPolicy?.(adoptedView, target))
+      .toEqual({ visible: true, muted: false });
 
     const corrected = await module.resolveSubscribedAgentPolicy?.(authority, inputOf({
       list_candidates: [adopted, removed],
@@ -699,5 +700,364 @@ describe("signed subscriber-local Social policy", () => {
     expect(module.applySubscribedAgentPolicy?.(Object.freeze({}), event))
       .toEqual({ visible: true, muted: false });
     expect(eventTrapCalls).toBe(0);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects a hostile member mixed into every evidence collection without executing traps or loading subscription state", async () => {
+    const module = await loadModule();
+    const target = await signedTarget();
+    const receipt = await signedReceipt({ target });
+    const adopted = await signedList({
+      created_at: 1_200,
+      entries: [{ author: DEVICE_KEY, receipt }],
+    });
+    const correction = await signedCorrection({ receipt, target, created_at: 1_300 });
+    const removed = await signedList({ created_at: 1_400, entries: [] });
+    const base = inputOf({
+      list_candidates: [adopted, removed],
+      receipt_events: [receipt],
+      target_events: [target],
+      correction_events: [correction],
+    });
+    const keys = [
+      "list_candidates",
+      "receipt_events",
+      "target_events",
+      "correction_events",
+    ] as const;
+
+    for (const key of keys) {
+      let trapCalls = 0;
+      let loadCalls = 0;
+      let clockCalls = 0;
+      const hostile = new Proxy(structuredClone(target), {
+        get() {
+          trapCalls += 1;
+          throw new Error("mixed evidence trap must not execute");
+        },
+      });
+      const authority = module.createSocialSubscriptionAuthority?.({
+        ...config(async () => {
+          loadCalls += 1;
+          return { revision: 1, subscribed: true, default_visible: true };
+        }),
+        trusted_now: () => {
+          clockCalls += 1;
+          return NOW;
+        },
+      }) ?? MISSING_AUTHORITY;
+      const mixed = {
+        ...base,
+        [key]: [...base[key], hostile],
+      } as SocialSubscriptionInput;
+
+      expect(await module.resolveSubscribedAgentPolicy?.(authority, mixed)).toBeNull();
+      expect(trapCalls).toBe(0);
+      expect(clockCalls).toBe(0);
+      expect(loadCalls).toBe(0);
+    }
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects every malformed mixed evidence shape atomically with zero accessor calls", async () => {
+    const module = await loadModule();
+    const target = await signedTarget();
+    const receipt = await signedReceipt({ target });
+    const list = await signedList({
+      created_at: 1_200,
+      entries: [{ author: DEVICE_KEY, receipt }],
+    });
+    const base = inputOf({
+      list_candidates: [list],
+      receipt_events: [receipt],
+      target_events: [target],
+    });
+    const keys = [
+      "list_candidates",
+      "receipt_events",
+      "target_events",
+      "correction_events",
+    ] as const;
+    const variants = ["accessor", "symbol", "extra", "sparse-tags"] as const;
+
+    for (const key of keys) {
+      for (const variant of variants) {
+        let getterCalls = 0;
+        let loadCalls = 0;
+        let hostile: NostrSignedEvent;
+        if (variant === "accessor") {
+          hostile = Object.defineProperty({ ...target }, "content", {
+            enumerable: true,
+            get() {
+              getterCalls += 1;
+              return target.content;
+            },
+          }) as NostrSignedEvent;
+        } else if (variant === "symbol") {
+          hostile = {
+            ...target,
+            [Symbol("synthetic-local-hostile")]: true,
+          } as NostrSignedEvent;
+        } else if (variant === "extra") {
+          hostile = { ...target, injected: true } as unknown as NostrSignedEvent;
+        } else {
+          const sparseTags = new Array<string[]>(2);
+          sparseTags[0] = ["L", "network.heterodyne.agent"];
+          hostile = { ...target, tags: sparseTags };
+        }
+        const authority = module.createSocialSubscriptionAuthority?.(config(async () => {
+          loadCalls += 1;
+          return { revision: 1, subscribed: true, default_visible: true };
+        })) ?? MISSING_AUTHORITY;
+        const mixed = {
+          ...base,
+          [key]: [...base[key], hostile],
+        } as SocialSubscriptionInput;
+
+        expect(await module.resolveSubscribedAgentPolicy?.(authority, mixed)).toBeNull();
+        expect(getterCalls).toBe(0);
+        expect(loadCalls).toBe(0);
+      }
+
+      let loadCalls = 0;
+      const sparseCollection = new Array<NostrSignedEvent>(2);
+      sparseCollection[0] = base[key][0] ?? target;
+      const authority = module.createSocialSubscriptionAuthority?.(config(async () => {
+        loadCalls += 1;
+        return { revision: 1, subscribed: true, default_visible: true };
+      })) ?? MISSING_AUTHORITY;
+      expect(await module.resolveSubscribedAgentPolicy?.(authority, {
+        ...base,
+        [key]: sparseCollection,
+      } as SocialSubscriptionInput)).toBeNull();
+      expect(loadCalls).toBe(0);
+    }
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects an invalid signature mixed into every evidence collection", async () => {
+    const module = await loadModule();
+    const target = await signedTarget();
+    const receipt = await signedReceipt({ target });
+    const adopted = await signedList({
+      created_at: 1_200,
+      entries: [{ author: DEVICE_KEY, receipt }],
+    });
+    const correction = await signedCorrection({ receipt, target, created_at: 1_300 });
+    const removed = await signedList({ created_at: 1_400, entries: [] });
+    const base = inputOf({
+      list_candidates: [adopted, removed],
+      receipt_events: [receipt],
+      target_events: [target],
+      correction_events: [correction],
+    });
+    const keys = [
+      "list_candidates",
+      "receipt_events",
+      "target_events",
+      "correction_events",
+    ] as const;
+
+    for (const key of keys) {
+      let loadCalls = 0;
+      const invalid = {
+        ...(base[key][0] ?? target),
+        sig: "00".repeat(64),
+      };
+      const authority = module.createSocialSubscriptionAuthority?.(config(async () => {
+        loadCalls += 1;
+        return { revision: 1, subscribed: true, default_visible: true };
+      })) ?? MISSING_AUTHORITY;
+      expect(await module.resolveSubscribedAgentPolicy?.(authority, {
+        ...base,
+        [key]: [...base[key], invalid],
+      } as SocialSubscriptionInput)).toBeNull();
+      expect(loadCalls).toBe(0);
+    }
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects target-receipt-list chronology inversions before loading local state", async () => {
+    const module = await loadModule();
+    const targetAfterReceipt = await signedTarget({ created_at: 1_200 });
+    const backdatedReceipt = await signedReceipt({
+      target: targetAfterReceipt,
+      created_at: 1_100,
+    });
+    const laterList = await signedList({
+      created_at: 1_300,
+      entries: [{ author: DEVICE_KEY, receipt: backdatedReceipt }],
+    });
+    const ordinaryTarget = await signedTarget({ created_at: 1_000 });
+    const ordinaryReceipt = await signedReceipt({
+      target: ordinaryTarget,
+      created_at: 1_200,
+    });
+    const backdatedList = await signedList({
+      created_at: 1_100,
+      entries: [{ author: DEVICE_KEY, receipt: ordinaryReceipt }],
+    });
+
+    for (const evidence of [
+      inputOf({
+        list_candidates: [laterList],
+        receipt_events: [backdatedReceipt],
+        target_events: [targetAfterReceipt],
+      }),
+      inputOf({
+        list_candidates: [backdatedList],
+        receipt_events: [ordinaryReceipt],
+        target_events: [ordinaryTarget],
+      }),
+    ]) {
+      let loadCalls = 0;
+      const authority = module.createSocialSubscriptionAuthority?.(config(async () => {
+        loadCalls += 1;
+        return { revision: 1, subscribed: true, default_visible: true };
+      })) ?? MISSING_AUTHORITY;
+      expect(await module.resolveSubscribedAgentPolicy?.(authority, evidence)).toBeNull();
+      expect(loadCalls).toBe(0);
+    }
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects a correction signed after its removal list", async () => {
+    const module = await loadModule();
+    const target = await signedTarget({ created_at: 1_000 });
+    const receipt = await signedReceipt({ target, created_at: 1_100 });
+    const adopted = await signedList({
+      created_at: 1_200,
+      entries: [{ author: DEVICE_KEY, receipt }],
+    });
+    const removedBeforeCorrection = await signedList({ created_at: 1_250, entries: [] });
+    const correction = await signedCorrection({ receipt, target, created_at: 1_300 });
+    let loadCalls = 0;
+    const authority = module.createSocialSubscriptionAuthority?.(config(async () => {
+      loadCalls += 1;
+      return { revision: 1, subscribed: true, default_visible: true };
+    })) ?? MISSING_AUTHORITY;
+    const adoptedView = await module.resolveSubscribedAgentPolicy?.(authority, inputOf({
+      list_candidates: [adopted],
+      receipt_events: [receipt],
+      target_events: [target],
+    })) ?? null;
+    expect(module.applySubscribedAgentPolicy?.(adoptedView, target)?.muted).toBe(true);
+    expect(loadCalls).toBe(1);
+
+    expect(await module.resolveSubscribedAgentPolicy?.(authority, inputOf({
+      list_candidates: [adopted, removedBeforeCorrection],
+      receipt_events: [receipt],
+      target_events: [target],
+      correction_events: [correction],
+    }))).toBeNull();
+    expect(loadCalls).toBe(1);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects future signed substitutions in every evidence collection", async () => {
+    const module = await loadModule();
+    const target = await signedTarget({ created_at: 1_000 });
+    const receipt = await signedReceipt({ target, created_at: 1_100 });
+    const list = await signedList({
+      created_at: 1_200,
+      entries: [{ author: DEVICE_KEY, receipt }],
+    });
+    const correction = await signedCorrection({ receipt, target, created_at: 1_300 });
+    const futureTarget = await signedTarget({ created_at: NOW + 901, content: "future" });
+    const futureReceipt = await signedReceipt({
+      target,
+      created_at: NOW + 901,
+    });
+    const futureList = await signedList({ created_at: NOW + 901, entries: [] });
+    const futureCorrection = await signedCorrection({
+      receipt,
+      target,
+      created_at: NOW + 901,
+    });
+    const variants: SocialSubscriptionInput[] = [
+      inputOf({
+        list_candidates: [list, futureList],
+        receipt_events: [receipt],
+        target_events: [target],
+      }),
+      inputOf({
+        list_candidates: [list],
+        receipt_events: [receipt, futureReceipt],
+        target_events: [target],
+      }),
+      inputOf({
+        list_candidates: [list],
+        receipt_events: [receipt],
+        target_events: [target, futureTarget],
+      }),
+      inputOf({
+        list_candidates: [list],
+        receipt_events: [receipt],
+        target_events: [target],
+        correction_events: [correction, futureCorrection],
+      }),
+    ];
+
+    for (const evidence of variants) {
+      let loadCalls = 0;
+      const authority = module.createSocialSubscriptionAuthority?.(config(async () => {
+        loadCalls += 1;
+        return { revision: 1, subscribed: true, default_visible: true };
+      })) ?? MISSING_AUTHORITY;
+      expect(await module.resolveSubscribedAgentPolicy?.(authority, evidence)).toBeNull();
+      expect(loadCalls).toBe(0);
+    }
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects oversized event and aggregate inputs before loading local state", async () => {
+    const module = await loadModule();
+    const target = await signedTarget();
+    const receipt = await signedReceipt({ target });
+    const list = await signedList({
+      created_at: 1_200,
+      entries: [{ author: DEVICE_KEY, receipt }],
+    });
+    const base = inputOf({
+      list_candidates: [list],
+      receipt_events: [receipt],
+      target_events: [target],
+    });
+    const multibyteOversize = await signedTarget({ content: "€".repeat(30_000) });
+    const hugeTags = Array.from({ length: 10_000 }, () => ["x"]);
+    const hugeWidth = [Array.from({ length: 100 }, () => "x")];
+    const cases: SocialSubscriptionInput[] = [
+      { ...base, target_events: [target, { ...target, content: "x".repeat(1_000_000) }] },
+      { ...base, target_events: [target, multibyteOversize] },
+      { ...base, target_events: [target, { ...target, tags: hugeTags }] },
+      { ...base, target_events: [target, { ...target, tags: hugeWidth }] },
+      { ...base, target_events: [target, { ...target, tags: [["x", "y".repeat(100_000)]] }] },
+      { ...base, target_events: Array.from({ length: 300 }, () => target) },
+      {
+        ...base,
+        target_events: Array.from(
+          { length: 64 },
+          () => ({ ...target, content: "x".repeat(60_000) }),
+        ),
+      },
+      {
+        ...base,
+        list_candidates: Array.from({ length: 64 }, () => list),
+        receipt_events: Array.from({ length: 64 }, () => receipt),
+        target_events: Array.from({ length: 64 }, () => target),
+        correction_events: Array.from({ length: 64 }, () => target),
+      },
+    ];
+
+    for (const evidence of cases) {
+      let loadCalls = 0;
+      let clockCalls = 0;
+      const authority = module.createSocialSubscriptionAuthority?.({
+        ...config(async () => {
+          loadCalls += 1;
+          return { revision: 1, subscribed: true, default_visible: true };
+        }),
+        trusted_now: () => {
+          clockCalls += 1;
+          return NOW;
+        },
+      }) ?? MISSING_AUTHORITY;
+      expect(await module.resolveSubscribedAgentPolicy?.(authority, evidence)).toBeNull();
+      expect(clockCalls).toBe(0);
+      expect(loadCalls).toBe(0);
+    }
   });
 });
