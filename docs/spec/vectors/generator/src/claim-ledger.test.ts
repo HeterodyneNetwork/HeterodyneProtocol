@@ -637,6 +637,60 @@ describe("reader lifecycle and metadata privacy", () => {
     }
   });
 
+  it("BLUE TEAM VALIDATION: synthetic/local retains signed claim expiry after duplicate-semantic mutation", () => {
+    // BLUE TEAM VALIDATION: synthetic/local mutates one in-memory duplicate semantic after merge; no external target or reusable payload exists.
+    const state = mergeClaimLedger(
+      [s.claimRecordOne, s.claimRecordTwo],
+      [],
+      s.baseRepository.checkpoint,
+      contextFor(s.baseRepository.repository),
+    );
+    const claimRecord = state.records.find(({ record_id }) =>
+      record_id === s.claimRecordOne.record_id)!;
+    const artifact = (claimRecord.payload as Record<string, unknown>)
+      .claim_artifact as Record<string, unknown>;
+    const semantic = artifact.semantic as Record<string, unknown>;
+    const signedExpiresAt = semantic.expires_at as number;
+    expect(resolveAuthoritativeClaimState(
+      s.claimOne.artifact.semantic.claim_id,
+      state,
+      signedExpiresAt,
+    )).toBe("expired");
+    try {
+      semantic.expires_at = signedExpiresAt + 1_000;
+      expect(resolveAuthoritativeClaimState(
+        s.claimOne.artifact.semantic.claim_id,
+        state,
+        signedExpiresAt,
+      )).toBe("expired");
+    } finally {
+      semantic.expires_at = signedExpiresAt;
+    }
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local retains signed revocation identity after duplicate-semantic mutation", () => {
+    // BLUE TEAM VALIDATION: synthetic/local mutates one in-memory duplicate revocation semantic after merge; no external target or reusable payload exists.
+    const state = mergeClaimLedger(
+      [s.claimRecordOne, s.claimRecordTwo],
+      [s.revocationRecord],
+      s.baseRepository.checkpoint,
+      contextFor(s.baseRepository.repository),
+    );
+    const revocationRecord = state.records.find(({ record_id }) =>
+      record_id === s.revocationRecord.record_id)!;
+    const artifact = (revocationRecord.payload as Record<string, unknown>)
+      .revocation_artifact as Record<string, unknown>;
+    const semantic = artifact.semantic as Record<string, unknown>;
+    const signedClaimId = semantic.claim_id as string;
+    expect(resolveAuthoritativeClaimState(signedClaimId, state)).toBe("revoked");
+    try {
+      semantic.claim_id = "ff".repeat(32);
+      expect(resolveAuthoritativeClaimState(signedClaimId, state)).toBe("revoked");
+    } finally {
+      semantic.claim_id = signedClaimId;
+    }
+  });
+
   it("materializes all fixed-size opaque buckets and changes every bucket per commit", () => {
     const one = materializeLedgerLayout(s.audienceKeyOne, 1, s.baseRepository.checkpoint.commit_oid, "11".repeat(32), [s.claimRecordOne]);
     const many = materializeLedgerLayout(s.audienceKeyOne, 1, s.baseRepository.checkpoint.commit_oid, "12".repeat(32), [s.claimRecordOne, s.claimRecordTwo, s.epochOneRecord]);

@@ -305,7 +305,18 @@ const VALIDATED_LEDGER_STATES = new WeakSet<object>();
 const VALIDATED_LEDGER_REPOSITORIES = new WeakMap<object, LedgerRepositoryEvidence>();
 const VALIDATED_LEDGER_CONTEXTS = new WeakMap<object, LedgerValidationContext>();
 const VALIDATED_LEDGER_SNAPSHOTS = new WeakMap<object, LedgerMergeResult>();
-const VERIFIED_LEDGER_NOSTR_EVENTS = new WeakMap<object, VerifiedNostrEvent>();
+const VERIFIED_LEDGER_NOSTR_EVENTS = new WeakMap<
+  LedgerRecord,
+  VerifiedNostrEvent
+>();
+const VERIFIED_LEDGER_CLAIM_SEMANTICS = new WeakMap<
+  LedgerRecord,
+  ClaimSemanticBody
+>();
+const VERIFIED_LEDGER_REVOCATION_SEMANTICS = new WeakMap<
+  LedgerRecord,
+  JsonValue
+>();
 type LedgerWriterAuthorityRecord = Readonly<{
   authority: CoreRepositoryWriterAuthority;
   binding: CurrentRepositoryWriterBinding;
@@ -2743,6 +2754,7 @@ function validateAuthenticatedArtifact(
     }
     const verifiedClaim = verifyLedgerClaimArtifact(claimArtifact, evidence.claim_envelope_context);
     const parsed = inspectVerifiedClaim(verifiedClaim);
+    VERIFIED_LEDGER_CLAIM_SEMANTICS.set(record, parsed);
     if (parsed.claim_class === "authorization" &&
         (parsed.credential_ledger_persona !== record.persona ||
          parsed.credential_ledger_generation !== record.credential_ledger_generation)) {
@@ -2770,6 +2782,19 @@ function validateAuthenticatedArtifact(
   }
   const verifiedArtifact = verifyLedgerClaimRevocationArtifact(revocationArtifact);
   const verified = inspectVerifiedClaimRevocation(verifiedArtifact);
+  const {
+    signer: _signer,
+    event_id: _eventId,
+    event_created_at: _eventCreatedAt,
+    ...verifiedRevocationSemantic
+  } = verified;
+  VERIFIED_LEDGER_REVOCATION_SEMANTICS.set(
+    record,
+    snapshotClosedDataTree(
+      verifiedRevocationSemantic,
+      "verified ledger revocation semantic",
+    ) as JsonValue,
+  );
   const target = Map.prototype.get.call(evidence.claims_by_id, verified.claim_id) as
     | VerifiedClaimArtifact
     | undefined;
@@ -2820,10 +2845,14 @@ function claimArtifactFromRecord(record: LedgerRecord): ClaimArtifact | null {
   const value = claimArtifactValueFromRecord(record);
   if (value === undefined) return null;
   const artifact = payloadObject(value);
-  const event = snapshotAndVerifyLedgerNostrEvent(artifact.event);
+  const event = snapshotAndVerifyLedgerNostrEvent(record, artifact.event);
+  const retainedSemantic = VERIFIED_LEDGER_CLAIM_SEMANTICS.get(record);
   return event === null
     ? null
-    : { event, semantic: artifact.semantic as unknown as ClaimSemanticBody };
+    : {
+      event,
+      semantic: retainedSemantic ?? artifact.semantic as unknown as ClaimSemanticBody,
+    };
 }
 
 function claimArtifactValueFromRecord(record: LedgerRecord): JsonValue | undefined {
@@ -2837,18 +2866,23 @@ function revocationArtifactFromRecord(record: LedgerRecord): RevocationArtifact 
   const value = revocationArtifactValueFromRecord(record);
   if (value === undefined) return null;
   const artifact = payloadObject(value);
-  const event = snapshotAndVerifyLedgerNostrEvent(artifact.event);
-  return event === null ? null : { event, semantic: artifact.semantic as JsonValue };
+  const event = snapshotAndVerifyLedgerNostrEvent(record, artifact.event);
+  const retainedSemantic = VERIFIED_LEDGER_REVOCATION_SEMANTICS.get(record);
+  return event === null ? null : {
+    event,
+    semantic: retainedSemantic ?? artifact.semantic as JsonValue,
+  };
 }
 
-function snapshotAndVerifyLedgerNostrEvent(value: unknown): VerifiedNostrEvent | null {
-  if (value !== null && typeof value === "object") {
-    const retained = VERIFIED_LEDGER_NOSTR_EVENTS.get(value);
-    if (retained !== undefined) return retained;
-  }
+function snapshotAndVerifyLedgerNostrEvent(
+  record: LedgerRecord,
+  value: unknown,
+): VerifiedNostrEvent | null {
+  const retained = VERIFIED_LEDGER_NOSTR_EVENTS.get(record);
+  if (retained !== undefined) return retained;
   const event = snapshotAndVerifyNostrEvent(value);
-  if (event !== null && value !== null && typeof value === "object") {
-    VERIFIED_LEDGER_NOSTR_EVENTS.set(value, event);
+  if (event !== null) {
+    VERIFIED_LEDGER_NOSTR_EVENTS.set(record, event);
   }
   return event;
 }
