@@ -346,7 +346,13 @@ uses ordinary Nostr state:
 5. optionally fetch the advertised profile repository or an Assurance chain.
 
 Repository and Assurance steps are optional. Failure of either leaves valid
-relay-derived Nostr state usable.
+relay-derived Nostr state usable as ordinary upstream Nostr state. When the
+selected kind `0` contains a valid `heterodyne.profile` RID, however, a client
+MUST NOT mint a repository-bound canonical Heterodyne profile view until the
+exact selected event is also observed on that RID through a currently
+authorized writer ref. This does not invalidate the signed relay event; it
+prevents an unauthenticated carrier from standing in for the advertised
+repository state.
 
 <a id="core-persona-profile"></a>
 ### 5.1 Kind `0` profile and the closed extension
@@ -372,6 +378,17 @@ or previously pinned Assurance state. Every extension value is a hint signed
 by the active key, not independent authority. A client MUST semantically
 validate canonical RID and `naddr` encodings in addition to the schema's
 structural boundary.
+
+A canonical-profile selection authority MUST capture bounded, closed
+candidate descriptors; verify every candidate's exact NIP-01 ID and signature;
+authenticate every repository candidate against its exact RID and ref; union
+relay and authenticated-repository candidates without carrier priority; and
+apply the NIP-01 replacement rule to that union. It derives the repository
+requirement solely from the selected signed profile's valid extension. A
+request boolean, repository label, cache entry, clone, or object mutation MUST
+NOT assert that requirement or satisfy it. If the selected profile advertises
+a repository but its exact event lacks current authenticated repository
+carriage, selection fails with `profile-repository-selection-required`.
 
 <a id="core-nip05-discovery"></a>
 ### 5.2 NIP-05
@@ -975,6 +992,26 @@ Core's current invariant meanings are:
 - **CORE-I-KEY-MATERIAL-AT-REST:** Active nsecs, NID secrets, repository
   grants, and sensitive cached state use the Core keys-repository protection
   profile, including NIP-49 wrapping where applicable.
+
+<a id="core-operational-authority-views"></a>
+### 12.1 Local operational authority views
+
+Security-sensitive operational checks consume verifier-minted local views,
+not caller-supplied booleans. A friend-cache candidate is usable only after
+its captured NIP-01 event verifies and its author equals the expected persona;
+otherwise the boundary returns `unauthorized_cache_content`. A relay profile
+carrier is conforming only when bounded retained UTF-8 event bytes parse to
+the exact same kind `0` fields, ID, author, and signature as the independently
+captured event; otherwise it returns `relay_profile_mutation`.
+
+The client captures its role, strict-profile selection, and effective route
+once at the local authority boundary. A strict profile over clearnet returns
+`strict_mode_tor_disabled`. Clearnet remains conforming for a disclosed
+non-strict reduced-assurance role. These views are frozen, opaque, and bound
+privately to the authority instance and captured evidence. Lookalikes, clones,
+proxies, accessors, post-capture mutation, cross-authority use, and callback
+substitution fail closed. This is client conformance over standard NIP-01 and
+Tor behavior; it defines neither a relay extension nor a new transport.
 
 <a id="core-retired-member-kel-and-role-delegation"></a>
 ### Retired member-KEL and role-delegation semantics

@@ -6,6 +6,16 @@ import {
   type NostrSignedEvent,
 } from "./nostr.js";
 
+export {
+  createCoreOperationalAssuranceAuthority,
+  verifyCacheCandidate,
+  verifyRelayProfileCarrier,
+  verifyStrictTransport,
+  type CoreOperationalAssuranceAuthority,
+  type CoreOperationalAssuranceAuthorityConfig,
+  type VerifiedCoreOperationalView,
+} from "./core-operational-assurance-authority.js";
+
 const GIT_REF_FORBIDDEN = new Set(["~", "^", ":", "?", "*", "[", "\\"]);
 
 export function isCanonicalCoreRepositoryRid(value: unknown): value is string {
@@ -149,7 +159,11 @@ type OperationalInput =
   | { operation: "relay-profile"; vanilla_nip01_unchanged: boolean }
   | { operation: "publish-surface"; config_rid: string; values: readonly string[] };
 
-/** Evaluate Core's non-cryptographic transport and disclosure fail-closed boundaries. */
+/**
+ * @deprecated Task-15 current-vector projection only. Authority-bearing cache,
+ * relay-profile, and strict-transport decisions use the opaque operational
+ * authority exported above; these booleans must not enter a secure path.
+ */
 export function evaluateCoreOperationalBoundary(input: OperationalInput):
   | { verdict: "accept" }
   | { verdict: "reject"; reason_code: "onion_dns_leak" | "strict_mode_tor_disabled" | "unauthorized_cache_content" | "relay_profile_mutation" | "config_rid_advertised" } {
