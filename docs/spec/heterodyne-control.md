@@ -169,12 +169,26 @@ signer audience, selected key and class, methods, kinds, limits, and expiry.
 ### 4.1 Marmot Control frame
 
 Registry profile `heterodyne-control-marmot-frame-v1` allocates inner
-application `kind:31017`. It remains an unsigned Nostr-shaped application
-event inside MLS and MUST NOT be published as a standalone Nostr event. Its
-content is JCS-canonical compact JSON conforming to
-`docs/spec/schemas/control/control-frame-v1.schema.json`; tags are empty and
-the inner `pubkey` equals the Marmot sender account authenticated for the MLS
-leaf.
+application `kind:31017`. It is a signed NIP-01 application event inside MLS
+and MUST NOT be published as a standalone event. The exact UTF-8 frame bytes
+encode only the closed NIP-01 event members; the event ID and BIP-340
+signature MUST verify, tags are empty, and `pubkey` MUST equal the Marmot
+sender account authenticated for the MLS leaf. Its `content` is JCS-canonical
+compact JSON conforming to
+`docs/spec/schemas/control/control-frame-v1.schema.json`.
+
+For a request, `payload` is the closed object
+`{group_id,request_digest,body}`. `group_id` MUST equal the authenticated
+Marmot group and `request_digest` MUST equal the server-derived digest of the
+exact bound request; `body` is the closed JSON-RPC or MCP request. Before
+dispatch, the receiver captures the exact bytes, decodes and parses the outer
+event once, verifies its closed shape, identifier, signature, `kind`, empty
+tags, sender, and non-future `created_at`, then parses and validates the closed
+Control content. It requires the expected profile and version, a non-expired
+request, the authenticated group, and the expected request digest. A signed
+frame replayed into another group, request, profile, version, sender, or time
+context fails as `control-frame-invalid`; transport authentication or a
+caller-supplied validity summary cannot replace those checks.
 
 The existing closed frame members and JSON-RPC/MCP payload distinction remain
 in force. A valid frame proves transport authenticity only. It MUST NOT be
@@ -419,6 +433,12 @@ reservation may replay its stored event ID; any other existing nonterminal or
 indeterminate reservation MUST NOT repeat the effect. The same request ID
 with different bound bytes is a conflict. Exhaustion is computed only from
 authoritative state.
+
+Executable conformance evidence for an uncertain signer effect invokes this
+same persisted execute-once boundary with an authoritative `executing`
+reservation. It retains the actual input and the opaque durable terminal; the
+registered `control-signer-effect-indeterminate` result cannot be supplied by
+a caller-selected effect-state or validity flag.
 
 The server derives the request digest; a caller never supplies it. The digest
 is SHA-256 over `UTF-8("heterodyne-control-nip46-request-v1") || 0x00 ||
@@ -702,6 +722,14 @@ to the consecutive evidence revision and binds a domain-separated completion
 state digest. The host MUST atomically persist that reset transition and its
 authoritative evidence before reporting completion or allowing successor
 authority.
+
+Executable conformance evidence for reset rejection invokes this validator
+with the actual signed grant and successor-signed completion plus the complete
+authoritative inventory, transition evidence, and optional pinned Assurance
+authority. Evidence adapters retain those exact inputs and the validator's
+result plus an opaque terminal identity; they cannot replace signature,
+inventory, evidence, or subordinate-reauthorization checks with
+caller-supplied booleans.
 
 The baseline authorization class is `active-account`. Optional Assurance may
 authorize or reinforce succession and reset, including when the old key is

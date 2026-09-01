@@ -8,8 +8,9 @@ import { ed25519 } from "@noble/curves/ed25519";
 import { schnorr } from "@noble/curves/secp256k1";
 import { hexToBytes } from "./hex.js";
 import { validateControlFrameSchemaOrThrow } from "./schema.js";
-import { validateControlFrameBoundary } from "./control-policy.js";
 import { controlGroupAdmission } from "./marmot-admission.js";
+import { snapshotAndVerifyNostrEvent } from "./nostr.js";
+import { jcsCanonicalize } from "./jcs.js";
 
 export type CurrentProfileWireProbe = Readonly<{
   content_is_heterodyne_json: boolean;
@@ -228,16 +229,146 @@ export function verifyCurrentClaimProofProfile(value: unknown):
     : { verdict: "reject", reason_code: "claim-subject-proof-invalid" };
 }
 
-/** Applies both the closed Control schema and live frame-policy boundary. */
-export function validateCurrentControlFrameProfile(value: unknown):
+type AuthorityDecision<R extends string, O> = Readonly<
+  | { verdict: "accept"; output: O }
+  | { verdict: "reject"; reason_code: R }
+>;
+
+export type CurrentControlFrameVerificationContext = Readonly<{
+  expected_profile: string;
+  expected_version: string;
+  expected_group_id: string;
+  expected_sender: string;
+  expected_request_digest: string;
+  trusted_now: number;
+}>;
+
+export type CurrentControlFrameDecision = AuthorityDecision<
+  "control-frame-invalid",
+  Readonly<{
+    event_id: string;
+    request_id: string;
+    request_digest: string;
+  }>
+>;
+
+const CONTROL_FRAME_MEMBERS = [
+  "expires_at",
+  "frame_type",
+  "payload",
+  "profile",
+  "request_id",
+  "version",
+] as const;
+const CONTROL_PAYLOAD_MEMBERS = ["body", "group_id", "request_digest"] as const;
+
+function hasExactOwnMembers(
+  value: object,
+  expected: readonly string[],
+): boolean {
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const keys = Reflect.ownKeys(descriptors);
+  return keys.every((key) => typeof key === "string")
+    && keys.length === expected.length
+    && expected.every((member) => {
+      const descriptor = descriptors[member];
+      return descriptor !== undefined
+        && "value" in descriptor
+        && descriptor.enumerable === true;
+    });
+}
+
+function rejectCurrentControlFrame(): CurrentControlFrameDecision {
+  return { verdict: "reject", reason_code: "control-frame-invalid" };
+}
+
+/**
+ * Captures and verifies one exact signed kind-31017 Control request carried by
+ * an already authenticated Marmot group.
+ */
+export function validateCurrentControlFrameProfile(
+  frame_bytes: Uint8Array,
+  context: CurrentControlFrameVerificationContext,
+): CurrentControlFrameDecision {
+  try {
+    if (
+      !(frame_bytes instanceof Uint8Array)
+      || Object.getPrototypeOf(frame_bytes) !== Uint8Array.prototype
+      || !Number.isSafeInteger(context.trusted_now)
+      || context.trusted_now < 0
+    ) return rejectCurrentControlFrame();
+    const capturedBytes = frame_bytes.slice();
+    const decoded = new TextDecoder("utf-8", { fatal: true }).decode(capturedBytes);
+    const parsed: unknown = JSON.parse(decoded);
+    const event = snapshotAndVerifyNostrEvent(parsed);
+    if (
+      event === null
+      || event.kind !== 31017
+      || event.pubkey !== context.expected_sender
+      || event.tags.length !== 0
+      || event.created_at > context.trusted_now
+    ) return rejectCurrentControlFrame();
+
+    const frame: unknown = JSON.parse(event.content);
+    if (frame === null || typeof frame !== "object" || Array.isArray(frame)) {
+      return rejectCurrentControlFrame();
+    }
+    if (jcsCanonicalize(frame) !== event.content) return rejectCurrentControlFrame();
+    validateControlFrameSchemaOrThrow(frame);
+    if (!hasExactOwnMembers(frame, CONTROL_FRAME_MEMBERS)) {
+      return rejectCurrentControlFrame();
+    }
+    const candidate = frame as Readonly<{
+      expires_at: unknown;
+      frame_type: unknown;
+      payload: unknown;
+      profile: unknown;
+      request_id: unknown;
+      version: unknown;
+    }>;
+    if (
+      candidate.frame_type !== "request"
+      || candidate.profile !== context.expected_profile
+      || candidate.version !== context.expected_version
+      || typeof candidate.request_id !== "string"
+      || candidate.request_id.length === 0
+      || !Number.isSafeInteger(candidate.expires_at)
+      || (candidate.expires_at as number) <= context.trusted_now
+      || candidate.payload === null
+      || typeof candidate.payload !== "object"
+      || Array.isArray(candidate.payload)
+      || !hasExactOwnMembers(candidate.payload, CONTROL_PAYLOAD_MEMBERS)
+    ) return rejectCurrentControlFrame();
+    const payload = candidate.payload as Readonly<{
+      body: unknown;
+      group_id: unknown;
+      request_digest: unknown;
+    }>;
+    if (
+      payload.body === null
+      || typeof payload.body !== "object"
+      || Array.isArray(payload.body)
+      || payload.group_id !== context.expected_group_id
+      || payload.request_digest !== context.expected_request_digest
+      || typeof payload.request_digest !== "string"
+      || !/^[0-9a-f]{64}$/u.test(payload.request_digest)
+    ) return rejectCurrentControlFrame();
+    return {
+      verdict: "accept",
+      output: {
+        event_id: event.id,
+        request_id: candidate.request_id,
+        request_digest: payload.request_digest,
+      },
+    };
+  } catch {
+    return rejectCurrentControlFrame();
+  }
+}
+
+function validateLegacyControlFrameProfile(value: unknown):
   | Readonly<{ verdict: "accept"; transport: "marmot-inner"; frame_type: string }>
-  | Readonly<{
-      verdict: "reject";
-      reason_code:
-        | "control-frame-invalid"
-        | "control-token-invalid"
-        | "control-refresh-prohibited";
-    }> {
+  | Readonly<{ verdict: "reject"; reason_code: "control-frame-invalid" }> {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     return { verdict: "reject", reason_code: "control-frame-invalid" };
   }
@@ -253,12 +384,6 @@ export function validateCurrentControlFrameProfile(value: unknown):
   } catch {
     return { verdict: "reject", reason_code: "control-frame-invalid" };
   }
-  const policy = validateControlFrameBoundary({
-    closed_schema_valid: true,
-    token_valid: true,
-    refresh_requested: false,
-  });
-  if (policy.verdict === "reject") return policy;
   const frameType = (input.frame as Readonly<{ frame_type: string }>).frame_type;
   return { verdict: "accept", transport: "marmot-inner", frame_type: frameType };
 }
@@ -305,7 +430,7 @@ export function validateCurrentControlGrantProfile(value: unknown):
       verdict: "reject";
       reason_code: "control-frame-invalid" | "control-token-invalid";
     }> {
-  const frame = validateCurrentControlFrameProfile(value);
+  const frame = validateLegacyControlFrameProfile(value);
   if (frame.verdict === "reject") {
     return {
       verdict: "reject",

@@ -1454,13 +1454,17 @@ export function prepareAutomatedExecution(input: {
   };
 }
 
-export function executePersistedAutomatedSigning<
+export type PersistedAutomatedSigningInput<
   T extends UnsignedEvent & { id: string; sig: string },
->(input: {
+> = Readonly<{
   authorization: Nip46AuthorizationInput;
   publication: AutomatedPublication;
   signer_execution: DurableSignerExecutionCapability<T>;
-}):
+}>;
+
+export function executePersistedAutomatedSigning<
+  T extends UnsignedEvent & { id: string; sig: string },
+>(input: PersistedAutomatedSigningInput<T>):
   | {
       verdict: "accept";
       event: T;
@@ -1859,14 +1863,16 @@ export function compromiseResetEvidenceBundleDigest(
     .digest("hex");
 }
 
-export function validateCompromiseReset(input: {
+export type CompromiseResetValidationInput = Readonly<{
   grant: CompromiseResetGrant;
   completion: CompromiseResetCompletion;
   authoritative_inventory: CompromiseResetInventory;
   authoritative_evidence: CompromiseResetEvidence;
   pinned_assurance_authority: PinnedAssuranceAuthority | null;
   now: number;
-}): {
+}>;
+
+export function validateCompromiseReset(input: CompromiseResetValidationInput): {
   verdict: "accept";
   reset_transition: {
     inventory_id: string;
