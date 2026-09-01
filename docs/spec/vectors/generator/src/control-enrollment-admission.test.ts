@@ -4,11 +4,10 @@ import {
   createControlEnrollmentAdmissionAuthority,
   type ControlEnrollmentAdmissionAuthorityConfig,
   type ControlEnrollmentAdmissionRequest,
+  type ControlEnrollmentReservationInput,
+  type ControlEnrollmentReservationRecord,
+  type ControlEnrollmentReservationStore,
 } from "./control-enrollment-admission.js";
-import type {
-  DurableAuthorityRecord,
-  DurableAuthorityStore,
-} from "./security-authority-support.js";
 
 type EnrollmentOutput = Readonly<{ enrollment_id: string; group_id: string }>;
 type Inventory = Awaited<ReturnType<ControlEnrollmentAdmissionAuthorityConfig["load_inventory"]>>;
@@ -18,76 +17,143 @@ type MutableConfig = {
     ControlEnrollmentAdmissionAuthorityConfig[K];
 };
 
-class EnrollmentStore implements DurableAuthorityStore<EnrollmentOutput> {
-  readonly records = new Map<string, DurableAuthorityRecord<EnrollmentOutput>>();
-  readonly calls = { load: 0, acquire: 0, compareAndSwap: 0, commit: 0, mark: 0 };
-  nextAcquire: "acquired" | "replay" | "conflict" | "unavailable" | null = null;
+class EnrollmentStore implements ControlEnrollmentReservationStore {
+  readonly records = new Map<string, ControlEnrollmentReservationRecord>();
+  readonly calls = { load: 0, reserve: 0, commit: 0, mark: 0 };
+  inventoryState: Inventory = inventory();
+  readonly inviteStates = new Map<string, Invite>([
+    ["synthetic-local-invite-A", invite()],
+  ]);
+  readonly accountPending = new Map<string, number>();
+  nextReserve: "acquired" | "replay" | "conflict" | "unavailable" | "unknown" | null = null;
   nextCommit: "committed" | "conflict" | "unknown" | null = null;
   nextMark: "indeterminate" | "conflict" | "unknown" | null = null;
   persistUnknownCommit = false;
   holdCommit: Promise<void> | null = null;
+  holdReserve: Promise<void> | null = null;
+  reserveEntered = 0;
+  beforeReserve: (() => void) | null = null;
 
   get effectCalls(): number {
     return this.calls.commit;
   }
 
-  async load(key: string): Promise<DurableAuthorityRecord<EnrollmentOutput> | null> {
+  async load(key: string): Promise<ControlEnrollmentReservationRecord | null> {
     this.calls.load += 1;
     return this.records.get(key) ?? null;
   }
 
-  async acquire(input: Readonly<{
-    key: string;
-    expected_revision: number | null;
-    binding_digest: string;
-    execution_token: string;
-  }>): Promise<"acquired" | "replay" | "conflict" | "unavailable"> {
-    this.calls.acquire += 1;
-    if (this.nextAcquire !== null) {
-      const result = this.nextAcquire;
-      this.nextAcquire = null;
-      return result;
-    }
-    const current = this.records.get(input.key);
-    if (current === undefined && input.expected_revision === null) {
-      this.records.set(input.key, Object.freeze({
-        state: "executing" as const,
-        revision: 0,
-        binding_digest: input.binding_digest,
-        execution_token: input.execution_token,
-      }));
-      return "acquired";
-    }
-    if (current?.binding_digest !== input.binding_digest) return "conflict";
-    if (current.state === "executing" || current.state === "committed"
-      || current.state === "indeterminate") return "replay";
-    if (current.state !== "available" || current.revision !== input.expected_revision) {
-      return "conflict";
-    }
-    this.records.set(input.key, Object.freeze({
-      state: "executing" as const,
-      revision: current.revision + 1,
-      binding_digest: input.binding_digest,
-      execution_token: input.execution_token,
-    }));
-    return "acquired";
+  private sameStrings(left: readonly string[], right: readonly string[]): boolean {
+    return left.length === right.length && left.every((value, index) => value === right[index]);
   }
 
-  async compareAndSwap(input: Readonly<{
-    key: string;
-    expected_revision: number | null;
-    next: DurableAuthorityRecord<EnrollmentOutput>;
-  }>): Promise<"committed" | "conflict" | "unknown"> {
-    this.calls.compareAndSwap += 1;
+  private currentPending(account: string): number {
+    return this.accountPending.get(account) ?? this.inventoryState.pending_for_account;
+  }
+
+  snapshotInventory(account = "synthetic-local-account-A"): Inventory {
+    return inventory({
+      ...this.inventoryState,
+      pending_for_account: this.currentPending(account),
+    });
+  }
+
+  async reserve(input: ControlEnrollmentReservationInput): Promise<
+    | "acquired" | "replay" | "conflict" | "unavailable" | "unknown"
+    | "keypackage-invalid" | "replenishment-paused"
+  > {
+    this.calls.reserve += 1;
+    this.reserveEntered += 1;
+    if (this.holdReserve !== null) await this.holdReserve;
+    if (this.beforeReserve !== null) {
+      const callback = this.beforeReserve;
+      this.beforeReserve = null;
+      callback();
+    }
     const current = this.records.get(input.key);
-    if ((current?.revision ?? null) !== input.expected_revision) return "conflict";
-    this.records.set(input.key, input.next);
-    return "committed";
+    if (current?.binding_digest !== undefined) {
+      if (current.binding_digest !== input.binding_digest) return "conflict";
+      return "replay";
+    }
+    const currentInvite = this.inviteStates.get(input.invite_id);
+    const state = this.inventoryState;
+    const exactSnapshot = currentInvite !== undefined
+      && input.inventory_revision === state.revision
+      && input.invite_revision === currentInvite.revision
+      && input.pending_for_account === this.currentPending(input.account)
+      && input.global_pending === state.global_pending
+      && input.global_pending_cap === state.global_pending_cap
+      && input.replenishment_state === state.replenishment_state
+      && input.rate_window_started_at === state.rate_window_started_at
+      && input.attempts_in_window === state.attempts_in_window
+      && input.attempt_budget === state.attempt_budget
+      && this.sameStrings(input.reserved_slots, state.reserved_slots)
+      && this.sameStrings(input.current_clients, state.current_clients)
+      && this.sameStrings(input.enrolled_accounts, state.enrolled_accounts)
+      && this.sameStrings(input.enrolled_devices, state.enrolled_devices)
+      && input.invite_state === currentInvite.state
+      && input.invite_purpose === currentInvite.purpose
+      && input.invite_account === currentInvite.account
+      && input.invite_client_key === currentInvite.client_key
+      && input.invite_expires_at === currentInvite.expires_at;
+    if (!exactSnapshot) {
+      if (state.current_clients.includes(input.client_key)) return "keypackage-invalid";
+      if (state.replenishment_state === "paused") return "replenishment-paused";
+      return "unavailable";
+    }
+    if (currentInvite.state !== "active"
+      || currentInvite.purpose !== "control-enrollment"
+      || currentInvite.account !== input.account
+      || currentInvite.client_key !== input.client_key
+      || input.trusted_now >= currentInvite.expires_at
+      || input.trusted_now >= input.key_package_expires_at
+      || state.enrolled_accounts.includes(input.account)
+      || state.enrolled_devices.includes(input.device_id)
+      || this.currentPending(input.account) > 0
+      || state.attempts_in_window >= state.attempt_budget
+      || state.global_pending > state.global_pending_cap
+      || (input.reserved_slot === null && state.global_pending >= state.global_pending_cap)
+      || (input.reserved_slot !== null && !state.reserved_slots.includes(input.reserved_slot))) {
+      return "unavailable";
+    }
+    if (state.current_clients.includes(input.client_key)) return "keypackage-invalid";
+    if (state.replenishment_state === "paused") return "replenishment-paused";
+    this.records.set(input.key, Object.freeze({
+      state: "executing" as const,
+      revision: 0,
+      binding_digest: input.binding_digest,
+      reservation_digest: input.reservation_digest,
+      execution_token: input.execution_token,
+    }));
+    const reservedSlots = input.reserved_slot === null ? state.reserved_slots
+      : state.reserved_slots.filter((slot) => slot !== input.reserved_slot);
+    this.accountPending.set(input.account, this.currentPending(input.account) + 1);
+    this.inventoryState = inventory({
+      ...state,
+      revision: state.revision + 1,
+      pending_for_account: this.currentPending(input.account),
+      global_pending: state.global_pending + 1,
+      reserved_slots: reservedSlots,
+      current_clients: [...state.current_clients, input.client_key],
+      attempts_in_window: state.attempts_in_window + 1,
+    });
+    this.inviteStates.set(input.invite_id, invite({
+      ...currentInvite,
+      revision: currentInvite.revision + 1,
+      state: "consumed",
+    }));
+    if (this.nextReserve !== null) {
+      const result = this.nextReserve;
+      this.nextReserve = null;
+      return result;
+    }
+    return "acquired";
   }
 
   async commit(input: Readonly<{
     key: string;
     binding_digest: string;
+    reservation_digest: string;
     execution_token: string;
     output_digest: string;
     output: EnrollmentOutput;
@@ -97,11 +163,13 @@ class EnrollmentStore implements DurableAuthorityStore<EnrollmentOutput> {
     const current = this.records.get(input.key);
     if (current?.state !== "executing"
       || current.binding_digest !== input.binding_digest
+      || current.reservation_digest !== input.reservation_digest
       || current.execution_token !== input.execution_token) return "conflict";
     const terminal = Object.freeze({
       state: "committed" as const,
       revision: current.revision + 1,
       binding_digest: input.binding_digest,
+      reservation_digest: input.reservation_digest,
       execution_token: input.execution_token,
       output_digest: input.output_digest,
       output: input.output,
@@ -121,6 +189,7 @@ class EnrollmentStore implements DurableAuthorityStore<EnrollmentOutput> {
   async markIndeterminate(input: Readonly<{
     key: string;
     binding_digest: string;
+    reservation_digest: string;
     execution_token: string;
     reconciliation_digest: string;
   }>): Promise<"indeterminate" | "conflict" | "unknown"> {
@@ -133,11 +202,13 @@ class EnrollmentStore implements DurableAuthorityStore<EnrollmentOutput> {
     const current = this.records.get(input.key);
     if (current?.state !== "executing"
       || current.binding_digest !== input.binding_digest
+      || current.reservation_digest !== input.reservation_digest
       || current.execution_token !== input.execution_token) return "conflict";
     this.records.set(input.key, Object.freeze({
       state: "indeterminate" as const,
       revision: current.revision + 1,
       binding_digest: input.binding_digest,
+      reservation_digest: input.reservation_digest,
       execution_token: input.execution_token,
       reconciliation_digest: input.reconciliation_digest,
     }));
@@ -196,8 +267,8 @@ function request(
 function setup(overrides: Partial<ControlEnrollmentAdmissionAuthorityConfig> = {}) {
   let now = 1_000;
   const store = (overrides.store as EnrollmentStore | undefined) ?? new EnrollmentStore();
-  let inventories = [inventory()];
-  let invites = [invite()];
+  let inventories: Inventory[] | null = null;
+  const inviteSequences = new Map<string, Invite[]>();
   let inventoryCalls = 0;
   let inviteCalls = 0;
   let verifyCalls = 0;
@@ -206,21 +277,33 @@ function setup(overrides: Partial<ControlEnrollmentAdmissionAuthorityConfig> = {
     trusted_now: () => now,
     store,
     load_inventory: async () => {
-      const value = inventories[Math.min(inventoryCalls, inventories.length - 1)];
+      const values = inventories;
+      const value = values === null
+        ? store.snapshotInventory()
+        : values[Math.min(inventoryCalls, values.length - 1)];
       inventoryCalls += 1;
       return value;
     },
-    load_invite_state: async () => {
-      const value = invites[Math.min(inviteCalls, invites.length - 1)];
+    load_invite_state: async (inviteId) => {
+      const values = inviteSequences.get(inviteId);
+      const value = values === undefined
+        ? store.inviteStates.get(inviteId)
+        : values[Math.min(inviteCalls, values.length - 1)];
       inviteCalls += 1;
+      if (value === undefined) throw new Error("synthetic local invite unavailable");
       return value;
     },
     verify_key_package: (bytes) => {
       verifyCalls += 1;
-      if (Buffer.from(bytes).toString("hex") !== "01020304") return null;
+      const hex = Buffer.from(bytes).toString("hex");
+      if (hex !== "01020304" && hex !== "05060708" && hex !== "090a0b0c") return null;
       return Object.freeze({
-        account: "synthetic-local-account-A",
-        reference: "synthetic-local-keypackage-ref-A",
+        account: hex === "05060708"
+          ? "synthetic-local-account-B"
+          : "synthetic-local-account-A",
+        reference: hex === "01020304"
+          ? "synthetic-local-keypackage-ref-A"
+          : "synthetic-local-keypackage-ref-B",
         expires_at: 1_100,
       });
     },
@@ -233,10 +316,37 @@ function setup(overrides: Partial<ControlEnrollmentAdmissionAuthorityConfig> = {
     inventoryCalls: () => inventoryCalls,
     inviteCalls: () => inviteCalls,
     verifyCalls: () => verifyCalls,
-    setInventories: (...values: Inventory[]) => { inventories = values; inventoryCalls = 0; },
-    setInvites: (...values: Invite[]) => { invites = values; inviteCalls = 0; },
+    setInventories: (...values: Inventory[]) => {
+      inventories = values;
+      store.inventoryState = values.at(-1) ?? inventory();
+      inventoryCalls = 0;
+    },
+    setInvites: (...values: Invite[]) => {
+      inviteSequences.set("synthetic-local-invite-A", values);
+      store.inviteStates.set("synthetic-local-invite-A", values.at(-1) ?? invite());
+      inviteCalls = 0;
+    },
+    setInvite: (inviteId: string, value: Invite) => {
+      inviteSequences.set(inviteId, [value]);
+      store.inviteStates.set(inviteId, value);
+    },
     setNow: (value: number) => { now = value; },
   };
+}
+
+function secondRequest(
+  overrides: Partial<ControlEnrollmentAdmissionRequest> = {},
+): ControlEnrollmentAdmissionRequest {
+  return request({
+    account: "synthetic-local-account-B",
+    device_id: "synthetic-local-device-B",
+    client_key: "synthetic-local-client-key-B",
+    group_id: "synthetic-local-group-B",
+    invite_id: "synthetic-local-invite-B",
+    key_package_bytes: Uint8Array.from([0x05, 0x06, 0x07, 0x08]),
+    expected_key_package_ref: "synthetic-local-keypackage-ref-B",
+    ...overrides,
+  });
 }
 
 const INVALID_KEY_PACKAGE = Object.freeze({
@@ -413,19 +523,116 @@ describe("Control enrollment admission authority", () => {
     expect(fixture.store.effectCalls).toBe(0);
   });
 
-  it("BLUE TEAM VALIDATION: synthetic/local lets the durable store arbitrate a concurrent reservation", async () => {
+  const contestedResources: readonly Readonly<{
+    name: string;
+    state: Inventory;
+    second: ControlEnrollmentAdmissionRequest;
+    secondInvite: Invite;
+  }>[] = [
+    {
+      name: "one account-pending slot",
+      state: inventory({ global_pending_cap: 10, reserved_slots: [] }),
+      second: secondRequest({
+        account: "synthetic-local-account-A",
+        key_package_bytes: Uint8Array.from([0x09, 0x0a, 0x0b, 0x0c]),
+        reserved_slot: null,
+      }),
+      secondInvite: invite({
+        account: "synthetic-local-account-A",
+        client_key: "synthetic-local-client-key-B",
+      }),
+    },
+    {
+      name: "one global slot",
+      state: inventory({ global_pending_cap: 1, reserved_slots: [] }),
+      second: secondRequest({ reserved_slot: null }),
+      secondInvite: invite({
+        account: "synthetic-local-account-B",
+        client_key: "synthetic-local-client-key-B",
+      }),
+    },
+    {
+      name: "one exact reserved slot",
+      state: inventory({ global_pending_cap: 0 }),
+      second: secondRequest(),
+      secondInvite: invite({
+        account: "synthetic-local-account-B",
+        client_key: "synthetic-local-client-key-B",
+      }),
+    },
+    {
+      name: "the last rate attempt",
+      state: inventory({
+        attempt_budget: 1,
+        global_pending_cap: 10,
+        reserved_slots: [],
+      }),
+      second: secondRequest({ reserved_slot: null }),
+      secondInvite: invite({
+        account: "synthetic-local-account-B",
+        client_key: "synthetic-local-client-key-B",
+      }),
+    },
+  ];
+
+  it.each(contestedResources)(
+    "BLUE TEAM VALIDATION: synthetic/local atomically arbitrates $name across different invites",
+    async (candidate) => {
+      const fixture = setup();
+      fixture.setInventories(candidate.state);
+      fixture.setInvite("synthetic-local-invite-B", candidate.secondInvite);
+      let release = (): void => undefined;
+      fixture.store.holdReserve = new Promise<void>((resolve) => { release = resolve; });
+      const decisions = [
+        admitControlEnrollment(fixture.authority, request({
+          reserved_slot: candidate.state.reserved_slots[0] ?? null,
+        })),
+        admitControlEnrollment(fixture.authority, candidate.second),
+      ];
+      for (let attempt = 0; attempt < 20 && fixture.store.reserveEntered < 2; attempt += 1) {
+        await new Promise<void>((resolve) => setImmediate(resolve));
+      }
+      expect(fixture.store.reserveEntered).toBe(2);
+      release();
+      const results = await Promise.all(decisions);
+      expect(results.filter((decision) => decision.verdict === "accept")).toHaveLength(1);
+      expect(results.filter((decision) => decision.verdict === "reject"))
+        .toEqual([UNAVAILABLE]);
+      expect(fixture.store.effectCalls).toBe(1);
+      expect(fixture.store.records.size).toBe(1);
+    },
+  );
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects state changed at the atomic reservation boundary", async () => {
     const fixture = setup();
-    let release = (): void => undefined;
-    fixture.store.holdCommit = new Promise<void>((resolve) => { release = resolve; });
-    const first = admitControlEnrollment(fixture.authority, request());
-    await new Promise<void>((resolve) => setImmediate(resolve));
-    const second = await admitControlEnrollment(fixture.authority, request({
-      device_id: "synthetic-local-device-B",
-    }));
-    expect(second).toEqual(UNAVAILABLE);
-    release();
-    await expect(first).resolves.toMatchObject({ verdict: "accept" });
-    expect(fixture.store.effectCalls).toBe(1);
+    fixture.store.beforeReserve = () => {
+      fixture.store.inventoryState = inventory({
+        ...fixture.store.inventoryState,
+        revision: fixture.store.inventoryState.revision + 1,
+        global_pending: fixture.store.inventoryState.global_pending_cap,
+        reserved_slots: [],
+      });
+    };
+    await expect(admitControlEnrollment(fixture.authority, request()))
+      .resolves.toEqual(UNAVAILABLE);
+    expect(fixture.store.effectCalls).toBe(0);
+    expect(fixture.store.records.size).toBe(0);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local makes ambiguous atomic reservation absorbing", async () => {
+    const fixture = setup();
+    fixture.store.nextReserve = "unknown";
+    const first = await admitControlEnrollment(fixture.authority, request());
+    expect(first).toEqual({
+      verdict: "indeterminate",
+      reconciliation_digest: expect.stringMatching(/^[0-9a-f]{64}$/),
+    });
+    expect(fixture.store.effectCalls).toBe(0);
+    const reservations = fixture.store.calls.reserve;
+    const retry = await admitControlEnrollment(fixture.authority, request());
+    expect(retry).toEqual(first);
+    expect(fixture.store.calls.reserve).toBe(reservations);
+    expect(fixture.store.effectCalls).toBe(0);
   });
 
   it("BLUE TEAM VALIDATION: synthetic/local makes effect uncertainty absorbing and retry-stable", async () => {
@@ -464,8 +671,83 @@ describe("Control enrollment admission authority", () => {
     await expect(admitControlEnrollment(
       fixture.authority,
       new Proxy(request(), {}),
-    )).resolves.toEqual(INVALID_KEY_PACKAGE);
+    )).resolves.toEqual(UNAVAILABLE);
     expect(fixture.store.effectCalls).toBe(0);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local keeps envelope failures out of KeyPackage reason ownership", async () => {
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+    const cases: unknown[] = [
+      { ...request(), persona: "" },
+      { ...request(), invite_purpose: "dm" },
+      { ...request(), reserved_slot: 7 },
+      { ...request(), unexpected: circular },
+    ];
+    for (const hostile of cases) {
+      const fixture = setup();
+      await expect(admitControlEnrollment(
+        fixture.authority,
+        hostile as ControlEnrollmentAdmissionRequest,
+      )).resolves.toEqual(UNAVAILABLE);
+      expect(fixture.verifyCalls()).toBe(0);
+      expect(fixture.store.calls.load).toBe(0);
+      expect(fixture.store.effectCalls).toBe(0);
+    }
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local bounds public strings and KeyPackage bytes before callbacks", async () => {
+    const oversizedEnvelope = setup();
+    await expect(admitControlEnrollment(oversizedEnvelope.authority, request({
+      persona: "p".repeat(513),
+    }))).resolves.toEqual(UNAVAILABLE);
+    expect(oversizedEnvelope.verifyCalls()).toBe(0);
+    expect(oversizedEnvelope.inventoryCalls()).toBe(0);
+    expect(oversizedEnvelope.store.calls.load).toBe(0);
+
+    const oversizedKeyPackage = setup();
+    await expect(admitControlEnrollment(oversizedKeyPackage.authority, request({
+      key_package_bytes: new Uint8Array(65_537),
+    }))).resolves.toEqual(INVALID_KEY_PACKAGE);
+    expect(oversizedKeyPackage.verifyCalls()).toBe(0);
+    expect(oversizedKeyPackage.inventoryCalls()).toBe(0);
+    expect(oversizedKeyPackage.store.calls.load).toBe(0);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects proxied KeyPackage bytes with zero proxy traps", async () => {
+    const fixture = setup();
+    let traps = 0;
+    const bytes = new Proxy(Uint8Array.from([1, 2, 3, 4]), {
+      getPrototypeOf: () => { traps += 1; throw new Error("synthetic proxy trap"); },
+    });
+    await expect(admitControlEnrollment(fixture.authority, request({
+      key_package_bytes: bytes,
+    }))).resolves.toEqual(INVALID_KEY_PACKAGE);
+    expect(traps).toBe(0);
+    expect(fixture.verifyCalls()).toBe(0);
+    expect(fixture.store.calls.load).toBe(0);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local bounds authenticated callback lists and aggregates", async () => {
+    const tooMany = setup();
+    tooMany.setInventories(inventory({
+      current_clients: Array.from({ length: 257 }, (_, index) => `client-${index}`),
+    }));
+    await expect(admitControlEnrollment(tooMany.authority, request())).resolves.toEqual(UNAVAILABLE);
+    expect(tooMany.store.calls.reserve).toBe(0);
+    expect(tooMany.store.effectCalls).toBe(0);
+
+    const aggregate = setup();
+    aggregate.setInventories(inventory({
+      enrolled_devices: Array.from(
+        { length: 200 },
+        (_, index) => `${index}-`.padEnd(512, "d"),
+      ),
+    }));
+    await expect(admitControlEnrollment(aggregate.authority, request()))
+      .resolves.toEqual(UNAVAILABLE);
+    expect(aggregate.store.calls.reserve).toBe(0);
+    expect(aggregate.store.effectCalls).toBe(0);
   });
 
   it("BLUE TEAM VALIDATION: synthetic/local captures exact request bytes before asynchronous mutation", async () => {
@@ -494,7 +776,7 @@ describe("Control enrollment admission authority", () => {
     await expect(admitControlEnrollment(
       fixture.authority,
       hostile as ControlEnrollmentAdmissionRequest,
-    )).resolves.toEqual(INVALID_KEY_PACKAGE);
+    )).resolves.toEqual(UNAVAILABLE);
     expect(reads).toBe(0);
     expect(fixture.store.effectCalls).toBe(0);
   });
@@ -531,5 +813,15 @@ describe("Control enrollment admission authority", () => {
       hostile as ControlEnrollmentAdmissionAuthorityConfig,
     )).toThrow(TypeError);
     expect(reads).toBe(0);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local bounds durable-store prototype traversal", () => {
+    const fixture = setup();
+    let deepStore: object = fixture.store;
+    for (let depth = 0; depth < 16; depth += 1) deepStore = Object.create(deepStore);
+    expect(() => createControlEnrollmentAdmissionAuthority({
+      ...fixture.config,
+      store: deepStore as ControlEnrollmentReservationStore,
+    })).toThrow(TypeError);
   });
 });

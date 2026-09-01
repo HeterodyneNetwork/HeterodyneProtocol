@@ -171,6 +171,18 @@ rate, enrollment, replay, callback, or persistence result. Accessor-backed,
 proxied, extended, malformed, or post-capture-mutated inputs grant no
 authority.
 
+Capture is shallow-first and bounded before any recursive copy, verifier,
+loader, durable read, or hash. The request and every callback result MUST be
+an ordinary exact-key data-property object. Each identifier is limited to 512
+characters; KeyPackage input is limited to 65,536 bytes; each inventory list
+is limited to 256 unique non-empty entries and 65,536 aggregate characters;
+and all inventory lists together have the same 65,536-character aggregate
+limit. The authority rejects unknown members before inspecting their values,
+and accepts no nested public object. An invalid request envelope, profile,
+purpose, non-KeyPackage identifier, or slot is
+`control-enrollment-unavailable`; it MUST NOT be reported as a KeyPackage
+failure.
+
 The authority verifies the captured KeyPackage bytes through its fixed
 standards adapter before consulting admission policy. The verified account
 and KeyPackageRef MUST equal the captured request, its exclusive expiry MUST
@@ -186,19 +198,31 @@ those authenticated results. A paused replenishment state is
 capacity, slot, rate, or current-enrollment condition is
 `control-enrollment-unavailable`.
 
-Before any admission effect, the authority creates or recognizes an exact
-durable available reservation by compare-and-swap, then reloads authenticated
-invite and inventory state immediately before atomic acquire. The reservation
-key is authority- and invite-bound; its binding covers the complete captured
-request and exact verified KeyPackage result. The constructor-captured store,
-not the caller, arbitrates concurrent global and reserved-slot capacity. An
-acquired record enters `executing` before the store commits the exact derived
-enrollment identifier and group. A binding-equal committed retry returns that
-cached result without another effect. A conflicting reservation cannot grant
-admission. An uncertain effect is reconciled only from an exact committed
+Before any admission effect, the authority reloads authenticated invite and
+inventory state and submits one transaction to its constructor-captured
+enrollment reservation store. That transaction binds the complete captured
+request and verified KeyPackage result plus trusted time, both authenticated
+revisions, the exact account-pending count, global count and cap, complete
+reserved-slot set and selected slot, replenishment state, current clients,
+enrolled accounts and devices, rate-window counters and budget, and complete
+invite state. In one atomic compare-and-reserve operation the store MUST
+compare every bound value to its own current authenticated state, consume the
+invite, account/global or exact named-slot capacity and rate attempt, record
+the new current client, and persist the request's `executing` fence. No
+process-local precheck is reservation authority. Different invite keys that
+contend for any account, global, named-slot, or rate resource therefore cannot
+both acquire it.
+
+The durable record carries separate request and exact reservation-state
+bindings. A binding-equal `executing`, `committed`, or `indeterminate` record
+is readable before any further action. After atomic acquisition the store
+commits the exact state-derived enrollment identifier and group. A committed
+retry returns that cached result without another reservation or effect. A
+conflicting or unavailable reservation grants nothing. An unknown atomic
+reservation or uncertain effect is reconciled only from an exact committed
 readback or becomes an absorbing `indeterminate` record with an
 authority-derived reconciliation digest; `executing`, malformed, conflicting,
-or uncertain state MUST NOT reopen or repeat the effect.
+or uncertain state MUST NOT reopen or repeat either reservation or effect.
 
 <a id="control-one-time-invites"></a>
 Purpose-bound invites use the provider-independent Comms one-time-invite
