@@ -16,7 +16,7 @@
 - Preserve the uncommitted Task 10 work in `current-vectors/{boundary-runners.ts,case-contracts.ts,index.ts,semantic-certificates.test.ts,semantic-certificates.ts}`. Tasks 1–14 must neither modify nor stage these files; Task 15 owns their integration and commit.
 - Every behavior change follows strict RED → observed expected failure → minimal GREEN → focused regression → `build:current`.
 - Every hostile test is labeled `BLUE TEAM VALIDATION: synthetic/local`, uses deterministic non-deployable fixtures, and contacts no live relay, Radicle node, Marmot deployment, identity provider, account, credential, user data, third-party system, or external service.
-- New authority modules use `type AuthorityDecision<R extends string = string, O = unknown> = Readonly<{ verdict: "accept"; output?: O } | { verdict: "reject"; reason_code: R } | { verdict: "indeterminate"; reason_code?: R }>` unless an existing protocol result type is stricter; `MarmotAdmissionDecision` is the alias `AuthorityDecision<"conversation-rejected">`.
+- `AuthorityDecision`, durable-store state, binding-digest helpers, and the reference consuming algorithm are defined only in `security-authority-support.ts`; Tasks 3–13 import them instead of declaring family-local variants. `MarmotAdmissionDecision` is `AuthorityDecision<"conversation-rejected", VerifiedMarmotAdmission>`.
 - Opaque public handles are frozen empty objects backed by module-private `WeakMap` records. Plain objects, clones, proxies, accessors, cross-authority handles, stale views, and post-capture mutations fail closed.
 - Consuming boundaries use caller-independent durable acquire/CAS state with `available`, `executing`, `committed`, and `indeterminate` behavior; exact committed retries return byte-identical cached output and unknown post-effect outcomes never repeat the effect.
 - No public security input may be a caller assertion named `valid`, `authorized`, `canonical`, `current`, `unused`, `durable`, `subscribed`, or `effect_applied`.
@@ -30,6 +30,728 @@
 - Registry revision 16 and older history remain byte-identical. Tasks 1–13 do not edit registry JSON; Task 14 authors immutable revision 17 exactly once after all semantics and anchors settle.
 - Generated rolling snapshot files, `snapshot.json`, projections, counts, baselines, and digests remain untouched. Snapshot reconciliation is deferred.
 - ADR-048 remains `Proposed`. Do not merge, push, create/update a PR, tag, publish, release, deploy, alter repository-host settings, or mutate live infrastructure.
+
+---
+
+## Exact local authority contracts and RED patterns
+
+Task 2 creates the only shared authority support surface. Use these exact types;
+all later authority modules import them from `./security-authority-support.js`:
+
+```ts
+export type AuthorityDecision<R extends string, O> = Readonly<
+  | { verdict: "accept"; output: O }
+  | { verdict: "reject"; reason_code: R }
+  | { verdict: "indeterminate"; reason_code: R; reconciliation_digest: string }
+>;
+
+export type DurableAuthorityRecord<O> = Readonly<
+  | { state: "available"; revision: number; binding_digest: string; output: O }
+  | { state: "executing"; revision: number; binding_digest: string; execution_token: string }
+  | { state: "committed"; revision: number; binding_digest: string; execution_token: string;
+      output_digest: string; output: O }
+  | { state: "indeterminate"; revision: number; binding_digest: string; execution_token: string;
+      reconciliation_digest: string }
+>;
+
+export interface DurableAuthorityStore<O> {
+  load(key: string): Promise<DurableAuthorityRecord<O> | null>;
+  acquire(input: Readonly<{
+    key: string; expected_revision: number | null;
+    binding_digest: string; execution_token: string;
+  }>): Promise<"acquired" | "replay" | "conflict" | "unavailable">;
+  compareAndSwap(input: Readonly<{
+    key: string; expected_revision: number | null; next: DurableAuthorityRecord<O>;
+  }>): Promise<"committed" | "conflict" | "unknown">;
+  commit(input: Readonly<{
+    key: string; binding_digest: string; execution_token: string;
+    output_digest: string; output: O;
+  }>): Promise<"committed" | "conflict" | "unknown">;
+  markIndeterminate(input: Readonly<{
+    key: string; binding_digest: string; execution_token: string;
+    reconciliation_digest: string;
+  }>): Promise<"indeterminate" | "conflict" | "unknown">;
+}
+
+export function authorityBindingDigest(
+  domain: string,
+  value: Readonly<Record<string, unknown>>,
+): string;
+export function captureAuthorityInput<T>(value: T): Readonly<T>;
+```
+
+`captureAuthorityInput` accepts only closed data trees with ordinary data
+properties, arrays, byte arrays, and `null`; it descriptor-walks before reading,
+copies bytes, deep-freezes the copy, and throws on proxies, accessors, symbols,
+cycles, non-finite numbers, or unsupported prototypes. Each constructor reads
+and binds callback descriptors once. Each consuming function follows this exact
+order: capture, verify, load current state, derive full binding/key/token,
+`acquire`, perform one effect, `commit`, re-read binding-equal terminal, return.
+Thrown effects, unknown effect outcomes, or unknown/conflicting terminal writes
+call `markIndeterminate`; they never retry the effect.
+
+The following contracts and RED bodies are normative implementation details for
+Tasks 2–13. Fixture constants use deterministic local keys/bytes from the
+owning test file; no fixture performs network I/O.
+Each new test file begins with
+`import { describe, expect, it } from "vitest";` and imports the exact symbols
+shown in its contract block from the adjacent `.js` production module.
+
+### Task 2 exact contract and RED
+
+```ts
+export type MarmotAdmissionAuthorityConfig = Readonly<{
+  authority_id: string;
+  trusted_now: () => number;
+  store: DurableAuthorityStore<VerifiedMarmotAdmission>;
+  load_conversation: (account: string, group_id: string) => Promise<Readonly<{
+    checkpoint: string; state: "unseen" | "held" | "accepted" | "rejected";
+  }>>;
+  verify_key_package: (bytes: Uint8Array) => Readonly<{
+    account: string; leaf_key: string; capabilities: readonly string[];
+  }> | null;
+}>;
+export type MarmotWelcomeInput = Readonly<{
+  welcome_bytes: Uint8Array; key_package_bytes: Uint8Array;
+  inviter_account: string; recipient_account: string; group_id: string;
+  member_accounts: readonly [string, string]; required_capabilities: readonly string[];
+}>;
+export type MarmotAdmissionAcceptance = Readonly<{
+  decision: "accept" | "hold" | "reject"; expected_checkpoint: string;
+}>;
+export type VerifiedMarmotAdmission = Readonly<{
+  group_id: string; checkpoint: string; terminal: "accepted" | "held";
+}>;
+export type VerifiedMarmotWelcome = Readonly<Record<never, never>>;
+export type MarmotAdmissionDecision = AuthorityDecision<
+  "conversation-rejected", VerifiedMarmotAdmission
+>;
+export type MarmotWelcomeDecision = AuthorityDecision<
+  "conversation-rejected", VerifiedMarmotWelcome
+>;
+export function createMarmotAdmissionAuthority(
+  config: MarmotAdmissionAuthorityConfig,
+): MarmotAdmissionAuthority;
+export function verifyMarmotWelcome(
+  authority: MarmotAdmissionAuthority,
+  input: MarmotWelcomeInput,
+): MarmotWelcomeDecision;
+export function admitOrdinaryMarmotWelcome(
+  authority: MarmotAdmissionAuthority,
+  welcome: VerifiedMarmotWelcome,
+  acceptance: MarmotAdmissionAcceptance,
+): Promise<MarmotAdmissionDecision>;
+```
+
+```ts
+it("BLUE TEAM VALIDATION: synthetic/local rejects a caller-shaped Welcome", async () => {
+  const authority = createMarmotAdmissionAuthority(admissionConfig());
+  const fake = Object.freeze({});
+  await expect(admitOrdinaryMarmotWelcome(
+    authority, fake as VerifiedMarmotWelcome,
+    { decision: "accept", expected_checkpoint: CHECKPOINT },
+  )).resolves.toEqual({ verdict: "reject", reason_code: "conversation-rejected" });
+  expect(admissionStore.effectCalls).toBe(0);
+});
+```
+
+`verifyMarmotWelcome` captures both byte arrays, verifies their cryptographic
+and schema bindings, then mints `Object.freeze({})` into a private `WeakMap`.
+`admitOrdinaryMarmotWelcome` accepts only that exact handle and returns accept
+only after a binding-equal committed record is readable.
+
+### Task 3 exact contract and RED
+
+```ts
+export type MarmotArchiveRetentionAuthorityConfig = Readonly<{
+  authority_id: string;
+  store: DurableAuthorityStore<Readonly<{
+    repository_rid: string; ref: string; object_digest: string;
+    source_digest: string; commit: string;
+  }>>;
+  resolve_writer: (rid: string, ref: string) => Promise<CurrentRepositoryWriterBinding>;
+  append_and_resolve: (input: Readonly<{
+    repository_rid: string; ref: string; bytes: Uint8Array;
+  }>) => Promise<Readonly<{ object_digest: string; commit: string; reachable: true }>>;
+}>;
+export type MarmotArchiveInput = Readonly<{
+  repository_rid: string; ref: string;
+  source: Readonly<{ kind: "signed-event"; event: NostrSignedEvent } |
+    { kind: "encrypted-media"; ciphertext: Uint8Array;
+      authorization_event: NostrSignedEvent }>;
+}>;
+export type MarmotArchiveAppendReceipt = Readonly<Record<never, never>>;
+export type MarmotArchiveReceiptData = Readonly<{
+  repository_rid: string; ref: string; object_digest: string;
+  source_digest: string; commit: string;
+}>;
+export type MarmotArchiveDecision = AuthorityDecision<
+  "marmot-premature-ack", MarmotArchiveAppendReceipt
+>;
+export function createMarmotArchiveRetentionAuthority(
+  config: MarmotArchiveRetentionAuthorityConfig,
+): MarmotArchiveRetentionAuthority;
+export function appendExactMarmotArchive(
+  authority: MarmotArchiveRetentionAuthority,
+  input: MarmotArchiveInput,
+): Promise<MarmotArchiveDecision>;
+export function acknowledgeMarmotArchive(
+  authority: MarmotArchiveRetentionAuthority,
+  receipt: MarmotArchiveAppendReceipt,
+): Promise<AuthorityDecision<"marmot-premature-ack", MarmotArchiveReceiptData>>;
+export function expireMarmotPresentation(
+  authority: MarmotArchiveRetentionAuthority,
+  receipt: MarmotArchiveAppendReceipt,
+): Promise<AuthorityDecision<"marmot-premature-ack", MarmotArchiveReceiptData>>;
+```
+
+```ts
+it("BLUE TEAM VALIDATION: synthetic/local forbids acknowledgement before durable reachability", async () => {
+  const authority = createMarmotArchiveRetentionAuthority(archiveConfig({ reachable: false }));
+  const appended = await appendExactMarmotArchive(authority, archiveInput());
+  expect(appended).toMatchObject({ verdict: "indeterminate" });
+  await expect(acknowledgeMarmotArchive(
+    authority, Object.freeze({}) as MarmotArchiveAppendReceipt,
+  )).resolves.toEqual({ verdict: "reject", reason_code: "marmot-premature-ack" });
+  expect(archiveStore.ackCalls).toBe(0);
+});
+```
+
+The append implementation recomputes signed-event ID/signature or binds media
+ciphertext to its verified authorization event, checks the writer, appends the
+captured bytes, compares returned object digest, and mints a receipt only for
+`reachable: true`. Expiration changes presentation state and then reloads the
+same object/commit; it never calls a delete operation.
+
+### Task 4 exact contracts and RED
+
+```ts
+export type PersonaInboxAdmissionAuthorityConfig = Readonly<{
+  authority_id: string;
+  trusted_now: () => number;
+  store: DurableAuthorityStore<Readonly<{ group_id: string; key_package_ref: string }>>;
+  load_inbox: (recipient: string) => Promise<Readonly<{
+    checkpoint: string; recipient_nid: string | null;
+    consumed_key_packages: readonly string[]; allowed_agent_scopes: readonly string[];
+  }>>;
+}>;
+export type PersonaInboxBundle = Readonly<{
+  recipient: string; sender: string; sender_kind: "persona" | "agent";
+  sender_ref: string; purpose: "marmot-first-contact";
+  required_agent_scope: string | null; key_package_bytes: Uint8Array;
+  key_package_ref: string; group_transition: Uint8Array;
+}>;
+export type OneTimeInviteAuthorityConfig = Readonly<{
+  authority_id: string; trusted_now: () => number;
+  store: DurableAuthorityStore<Readonly<{ group_id: string; response_digest: string }>>;
+  load_invite_state: (invite_id: string) => Promise<Readonly<{
+    state: "active" | "revoked"; revision: number;
+  }>>;
+  establish_group: (bytes: Uint8Array, execution_token: string) => Promise<Readonly<{
+    group_id: string; response_digest: string;
+  }>>;
+}>;
+export type OneTimeInviteRedemption = Readonly<{
+  envelope: InviteEnvelope; response_bytes: Uint8Array; response_purpose: InvitePurpose;
+  recipient: string; key_package_bytes: Uint8Array; group_transition: Uint8Array;
+}>;
+export type PersonaInboxAdmission = Readonly<{ group_id: string; key_package_ref: string }>;
+export function createPersonaInboxAdmissionAuthority(
+  config: PersonaInboxAdmissionAuthorityConfig,
+): PersonaInboxAdmissionAuthority;
+export function admitPersonaInboxBundle(
+  authority: PersonaInboxAdmissionAuthority,
+  bundle: PersonaInboxBundle,
+): Promise<AuthorityDecision<
+  "marmot-agent-scope-denied" | "marmot-keypackage-replayed" |
+    "marmot-private-inbox-nid-required",
+  PersonaInboxAdmission
+>>;
+export function createOneTimeInviteAuthority(
+  config: OneTimeInviteAuthorityConfig,
+): OneTimeInviteAuthority;
+export function redeemOneTimeInvite(
+  authority: OneTimeInviteAuthority,
+  input: OneTimeInviteRedemption,
+): Promise<AuthorityDecision<"invite-authentication-invalid", Readonly<{
+  group_id: string; response_digest: string;
+}>>>;
+```
+
+```ts
+it("BLUE TEAM VALIDATION: synthetic/local burns one KeyPackage under concurrent admission", async () => {
+  const authority = createPersonaInboxAdmissionAuthority(inboxConfig());
+  const [left, right] = await Promise.all([
+    admitPersonaInboxBundle(authority, inboxBundle()),
+    admitPersonaInboxBundle(authority, inboxBundle()),
+  ]);
+  expect([left, right].filter((x) => x.verdict === "accept")).toHaveLength(1);
+  expect([left, right].filter((x) => x.verdict === "reject"))
+    .toEqual([{ verdict: "reject", reason_code: "marmot-keypackage-replayed" }]);
+});
+```
+
+`redeemOneTimeInvite` independently verifies the descriptor signature, secret
+commitment, response proof, recipient/purpose/expiry/revocation, KeyPackage,
+and group bytes before acquire. Exact committed retries read cached output;
+changed transcript, recipient, purpose, or secret returns
+`invite-authentication-invalid`.
+
+### Task 5 exact contract and RED
+
+```ts
+export type AgentPublicationAuthorizationAuthorityConfig = Readonly<{
+  authority_id: string; trusted_now: () => number;
+  expected_issuer: string; expected_audience: string; jwks: JsonValue;
+  load_claim_view: () => Promise<CurrentClaimAuthorizationView>;
+  load_status: (subject: string) => Promise<Readonly<{
+    generation: number; state: "active" | "revoked"; checkpoint: string;
+  }>>;
+  consume_dpop: (proof: Readonly<{
+    compact: string; method: string; target: string; nonce: string;
+  }>) => Promise<Readonly<{
+    proof_digest: string; sender_key: string;
+  }> | null>;
+  read_mtls_peer_identity: () => string | null;
+  store: DurableAuthorityStore<NostrSignedEvent>;
+}>;
+export type AgentPublicationRequest = Readonly<{
+  compact_jwt: string; represented_persona: string; agent_id: string;
+  signer: string; scope: string; ledger_generation: number;
+  publication: NostrUnsignedEvent; attribution_profile: "heterodyne-agent-v1";
+  sender_proof: Readonly<{ kind: "dpop"; compact: string; method: string;
+    target: string; nonce: string }> | Readonly<{ kind: "mtls" }>;
+}>;
+export type AgentPublicationSigner = Readonly<{
+  signOnce(execution_token: string, event: NostrUnsignedEvent): Promise<NostrSignedEvent>;
+}>;
+export type AgentPublicationDecision = AuthorityDecision<
+  "agent-sender-proof-invalid" | "agent-signer-mismatch", NostrSignedEvent
+>;
+export function createAgentPublicationAuthorizationAuthority(
+  config: AgentPublicationAuthorizationAuthorityConfig,
+): AgentPublicationAuthorizationAuthority;
+export function authorizeAndSignAgentPublication(
+  authority: AgentPublicationAuthorizationAuthority,
+  request: AgentPublicationRequest,
+  signer: AgentPublicationSigner,
+): Promise<AgentPublicationDecision>;
+```
+
+```ts
+it("BLUE TEAM VALIDATION: synthetic/local never exposes authorize-then-sign", async () => {
+  expect(Object.keys(await import("./agent-publication-authorization.js")))
+    .not.toContain("VerifiedAgentPublicationAuthorization");
+  const result = await authorizeAndSignAgentPublication(
+    createAgentPublicationAuthorizationAuthority(agentConfig()),
+    agentRequest({ sender_proof: replayedDpop() }), signer,
+  );
+  expect(result).toEqual({ verdict: "reject", reason_code: "agent-sender-proof-invalid" });
+  expect(signer.calls).toBe(0);
+});
+```
+
+The function validates the real compact JWT, proof, current status/generation,
+claim view, exact publication, signer, and attribution in one call. Its internal
+authorization handle is minted and consumed without crossing the exported API.
+
+### Task 6 exact contract and RED
+
+```ts
+export type CurrentControlFrameVerificationContext = Readonly<{
+  expected_profile: string; expected_version: string; expected_group_id: string;
+  expected_sender: string; expected_request_digest: string; trusted_now: number;
+}>;
+export type CurrentControlFrameDecision = AuthorityDecision<"control-frame-invalid", Readonly<{
+  event_id: string; request_id: string; request_digest: string;
+}>>;
+export function validateCurrentControlFrameProfile(
+  frame_bytes: Uint8Array,
+  context: CurrentControlFrameVerificationContext,
+): CurrentControlFrameDecision;
+export type ControlResetEvidenceFixture = Readonly<{
+  input: Parameters<typeof validateCompromiseReset>[0];
+  expected_reason: "control-compromise-reset-evidence-invalid" |
+    "control-compromise-reset-inventory-mismatch" |
+    "control-compromise-reset-unauthenticated" |
+    "control-subordinate-reauthorization-required";
+}>;
+export type ControlSignerEvidenceFixture = Readonly<{
+  input: Parameters<typeof executePersistedAutomatedSigning>[0];
+  expected_reason: "control-signer-effect-indeterminate";
+}>;
+```
+
+```ts
+it("BLUE TEAM VALIDATION: synthetic/local rejects a signed frame rebound to another request", () => {
+  const bytes = signedControlFrameBytes({ request_digest: REQUEST_A });
+  expect(validateCurrentControlFrameProfile(bytes, frameContext({
+    expected_request_digest: REQUEST_B,
+  }))).toEqual({ verdict: "reject", reason_code: "control-frame-invalid" });
+});
+```
+
+The function parses UTF-8 JSON once, requires a closed NIP-01 event and closed
+Control payload, verifies ID/signature/profile/version/group/sender/time, and
+compares the request digest. Reset and signer fixtures directly retain the
+actual inputs/results of `validateCompromiseReset` and
+`executePersistedAutomatedSigning`; their adapters contain no validity fields.
+
+### Task 7 exact contract and RED
+
+```ts
+export type ControlDeviceAuthorizationAuthorityConfig = Readonly<{
+  authority_id: string; trusted_now: () => number;
+  random_bytes: (length: number) => Uint8Array;
+  store: DurableAuthorityStore<Readonly<{
+    transaction_id: string; state: "pending" | "approved" | "denied" | "expired";
+  }>>;
+}>;
+export type ControlDeviceTransactionRequest = Readonly<{
+  client_id: string; persona: string; verification_uri: string;
+  display_fingerprint: string; polling_interval_seconds: number;
+  expires_in_seconds: number; failure_budget: 5;
+}>;
+export type ControlDevicePollRequest = Readonly<{
+  device_code: string; user_code: string; displayed_fingerprint: string;
+}>;
+export type ControlDeviceTransaction = Readonly<{
+  transaction_id: string; device_code: string; user_code: string;
+  verification_uri: string; expires_at: number; interval_seconds: number;
+}>;
+export type ControlDeviceDecision = AuthorityDecision<
+  "control-device-code-invalid" | "control-device-code-rate-limited" |
+    "control-device-code-display-mismatch",
+  Readonly<{ transaction_id: string; state: "pending" | "approved" }>
+>;
+export function createControlDeviceAuthorizationAuthority(
+  config: ControlDeviceAuthorizationAuthorityConfig,
+): ControlDeviceAuthorizationAuthority;
+export function createControlDeviceTransaction(
+  authority: ControlDeviceAuthorizationAuthority,
+  request: ControlDeviceTransactionRequest,
+): Promise<AuthorityDecision<"control-device-code-invalid", ControlDeviceTransaction>>;
+export function pollControlDeviceAuthorization(
+  authority: ControlDeviceAuthorizationAuthority,
+  request: ControlDevicePollRequest,
+): Promise<ControlDeviceDecision>;
+```
+
+```ts
+it("BLUE TEAM VALIDATION: synthetic/local atomically invalidates the fifth bad code", async () => {
+  const authority = createControlDeviceAuthorizationAuthority(deviceConfig());
+  const created = await createControlDeviceTransaction(authority, deviceRequest());
+  expect(created.verdict).toBe("accept");
+  if (created.verdict !== "accept") throw new Error("synthetic transaction rejected");
+  const tx = created.output;
+  for (let attempt = 1; attempt <= 5; attempt += 1) {
+    expect(await pollControlDeviceAuthorization(authority, badPoll(tx)))
+      .toMatchObject({ verdict: "reject", reason_code: "control-device-code-invalid" });
+  }
+  expect((await deviceStore.load(tx.transaction_id))?.state).toBe("committed");
+  expect(deviceStore.output.state).toBe("denied");
+});
+```
+
+Transaction creation hashes stored codes, enforces at least 128 device-code
+bits and 34.5 user-code bits, and persists interval, rate, failure, display,
+expiry, client, and persona bindings. Polling changes them only by atomic store
+transition.
+
+### Task 8 exact contract and RED
+
+```ts
+export type ControlEnrollmentAdmissionAuthorityConfig = Readonly<{
+  authority_id: string; trusted_now: () => number;
+  store: DurableAuthorityStore<Readonly<{ enrollment_id: string; group_id: string }>>;
+  load_inventory: (persona: string) => Promise<Readonly<{
+    revision: number; pending_for_account: number; global_pending: number;
+    global_pending_cap: number; reserved_slots: readonly string[];
+    replenishment_state: "ready" | "paused"; current_clients: readonly string[];
+  }>>;
+  verify_key_package: (bytes: Uint8Array) => Readonly<{
+    account: string; reference: string; expires_at: number;
+  }> | null;
+}>;
+export type ControlEnrollmentAdmissionRequest = Readonly<{
+  persona: string; client_key: string; group_id: string; invite_purpose: "control-enrollment";
+  key_package_bytes: Uint8Array; expected_key_package_ref: string;
+  reserved_slot: string | null; rate_bucket: string;
+}>;
+export type ControlEnrollmentAdmissionDecision = AuthorityDecision<
+  "control-enrollment-unavailable" | "control-keypackage-invalid" |
+    "control-keypackage-replenishment-paused",
+  Readonly<{ enrollment_id: string; group_id: string }>
+>;
+export function createControlEnrollmentAdmissionAuthority(
+  config: ControlEnrollmentAdmissionAuthorityConfig,
+): ControlEnrollmentAdmissionAuthority;
+export function admitControlEnrollment(
+  authority: ControlEnrollmentAdmissionAuthority,
+  request: ControlEnrollmentAdmissionRequest,
+): Promise<ControlEnrollmentAdmissionDecision>;
+```
+
+```ts
+it("BLUE TEAM VALIDATION: synthetic/local reloads capacity before reservation", async () => {
+  const fixture = enrollmentConfigWithInventoryChange();
+  const result = await admitControlEnrollment(
+    createControlEnrollmentAdmissionAuthority(fixture.config), enrollmentRequest(),
+  );
+  expect(result).toEqual({ verdict: "reject", reason_code: "control-enrollment-unavailable" });
+  expect(fixture.store.effectCalls).toBe(0);
+});
+```
+
+The implementation verifies the exact KeyPackage first, reloads inventory
+immediately before acquire, and derives unavailable, invalid, and replenishment
+paused only from that authenticated state.
+
+### Task 9 exact contract and RED
+
+```ts
+export type ControlInvitePreauthorizationAuthorityConfig = Readonly<{
+  authority_id: string; trusted_now: () => number;
+  load_revocation: (invite_id: string) => Promise<Readonly<{
+    revision: number; state: "active" | "revoked";
+  }>>;
+}>;
+export type ControlInviteTemplate = Readonly<{
+  persona: string; audience: string; client_key: string;
+  client_class: "human-light" | "automated";
+  methods: readonly string[]; event_kinds: readonly number[];
+  limits: Readonly<Record<string, number>>; signer: string; expires_at: number;
+}>;
+export type ControlInviteRequest = Readonly<{
+  purpose: "control-enrollment"; persona: string; audience: string;
+  client_key: string; client_class: "human-light" | "automated";
+}>;
+export type VerifiedControlInvitePreauthorization = Readonly<Record<never, never>>;
+export function createControlInvitePreauthorizationAuthority(
+  config: ControlInvitePreauthorizationAuthorityConfig,
+): ControlInvitePreauthorizationAuthority;
+export function verifyControlInvitePreauthorization(
+  authority: ControlInvitePreauthorizationAuthority,
+  descriptor: InviteDescriptor,
+  template: ControlInviteTemplate,
+  request: ControlInviteRequest,
+): Promise<AuthorityDecision<
+  "invite-preauthorization-invalid", VerifiedControlInvitePreauthorization
+>>;
+```
+
+```ts
+it("BLUE TEAM VALIDATION: synthetic/local forbids prompt-free KERI device conversion", async () => {
+  const result = await verifyControlInvitePreauthorization(
+    createControlInvitePreauthorizationAuthority(inviteConfig()),
+    signedInviteDescriptor({ purpose: "device-enrollment" }),
+    inviteTemplate(), inviteRequest(),
+  );
+  expect(result).toEqual({ verdict: "reject", reason_code: "invite-preauthorization-invalid" });
+});
+```
+
+The implementation calls real invite signature/secret verification, requires
+closed template/request equality and current active revocation state, then
+mints an empty frozen handle bound to the authority and exact bytes.
+
+### Task 10 exact contract and RED
+
+```ts
+export type ControlTokenVerifierConfig = Readonly<{
+  authority_id: string; trusted_now: () => number;
+  expected_issuer: string; expected_audience: string; jwks: JsonValue;
+  load_grant_view: (authorization_id: string) => Promise<CurrentAuthorizationView>;
+  consume_proof: (input: Readonly<{
+    compact_proof: string; sender_key: string; operation_digest: string;
+  }>) => Promise<string | null>;
+  store: DurableAuthorityStore<Readonly<{ operation_id: string }>>;
+}>;
+export type ControlTokenUse = Readonly<{
+  sender_key: string; marmot_group_id: string; authorization_id: string;
+  grant_generation: number; required_scope: string; method: string;
+  object: ControlAuthorizationObject; compact_proof: string;
+}>;
+export type ControlTokenOperation = Readonly<{
+  operation_id: string; request_digest: string;
+  execute: (execution_token: string) => Promise<Readonly<{ operation_id: string }>>;
+}>;
+export type VerifiedControlToken = Readonly<Record<never, never>>;
+export function createControlTokenVerifier(
+  config: ControlTokenVerifierConfig,
+): ControlTokenVerifier;
+export function verifyControlToken(
+  verifier: ControlTokenVerifier,
+  compact_jwt: string,
+  use: ControlTokenUse,
+): Promise<AuthorityDecision<"control-token-invalid", VerifiedControlToken>>;
+export function consumeVerifiedControlToken(
+  verifier: ControlTokenVerifier,
+  token: VerifiedControlToken,
+  operation: ControlTokenOperation,
+): Promise<AuthorityDecision<"control-token-invalid", Readonly<{ operation_id: string }>>>;
+```
+
+```ts
+it("BLUE TEAM VALIDATION: synthetic/local consumes a verified token once", async () => {
+  const verifier = createControlTokenVerifier(tokenConfig());
+  const verified = await verifyControlToken(verifier, signedControlJwt(), tokenUse());
+  expect(verified.verdict).toBe("accept");
+  if (verified.verdict !== "accept") throw new Error("synthetic token rejected");
+  const first = await consumeVerifiedControlToken(verifier, verified.output, operation());
+  const second = await consumeVerifiedControlToken(verifier, verified.output, changedOperation());
+  expect(first.verdict).toBe("accept");
+  expect(second).toEqual({ verdict: "reject", reason_code: "control-token-invalid" });
+  expect(tokenEffect.calls).toBe(1);
+});
+```
+
+JWT verification uses `validateProjectedJwt`; current grant, checkpoint,
+generation, status, group, sender, scope, method, object, expiry, and per-use
+proof are compared before the one-use handle is minted.
+
+### Task 11 exact contract and RED
+
+```ts
+export type WorkspaceSecurityFixture = Readonly<{
+  authority: WorkspaceRepositoryResolverAuthority;
+  signed_repository_view: Readonly<Record<string, unknown>>;
+  grant_id: string; subject: string; resource: string; action: string;
+}>;
+export function buildWorkspaceSecurityFixture(input: Readonly<{
+  root_capabilities: readonly string[];
+  ancestor_capabilities: readonly (readonly string[])[];
+  grant_capabilities: readonly string[];
+  revoked: boolean;
+}>): WorkspaceSecurityFixture;
+```
+
+```ts
+it("BLUE TEAM VALIDATION: synthetic/local rejects a child wider than the signed root", () => {
+  const fixture = buildWorkspaceSecurityFixture({
+    root_capabilities: ["read"], ancestor_capabilities: [["read", "write"]],
+    grant_capabilities: ["read", "write"], revoked: false,
+  });
+  const current = authenticateWorkspaceRepositoryView(fixture.signed_repository_view);
+  expect(current).toEqual({ verdict: "reject", reason_code: "capability_escalation" });
+});
+```
+
+The complete-state validator finds the unique root role, requires every role
+and grant capability set to be a subset of root and every ancestor, and stores
+the resulting ceiling in opaque current state. Resolution and activation use
+only that stored intersection. Invitation tests use
+`ReferenceWorkspaceInvitationAcceptanceStore` and assert one activation.
+
+### Task 12 exact contract and RED
+
+```ts
+export type SocialSubscriptionAuthorityConfig = Readonly<{
+  authority_id: string; trusted_now: () => number;
+  replaceable_selection: ReplaceableSelectionAuthority;
+  load_subscription: (policy_persona: string) => Promise<Readonly<{
+    revision: number; subscribed: boolean; default_visible: boolean;
+  }>>;
+}>;
+export type SocialSubscriptionInput = Readonly<{
+  policy_persona: string; list_candidates: readonly NostrSignedEvent[];
+  receipt_events: readonly NostrSignedEvent[]; target_events: readonly NostrSignedEvent[];
+  correction_events: readonly NostrSignedEvent[];
+}>;
+export type SubscribedAgentPolicyView = Readonly<Record<never, never>>;
+export function createSocialSubscriptionAuthority(
+  config: SocialSubscriptionAuthorityConfig,
+): SocialSubscriptionAuthority;
+export function resolveSubscribedAgentPolicy(
+  authority: SocialSubscriptionAuthority,
+  input: SocialSubscriptionInput,
+): Promise<SubscribedAgentPolicyView | null>;
+export function applySubscribedAgentPolicy(
+  view: SubscribedAgentPolicyView | null,
+  event: NostrSignedEvent,
+): AgentPolicyDecision;
+```
+
+```ts
+it("BLUE TEAM VALIDATION: synthetic/local ignores an unsubscribed relay-selected list", async () => {
+  const authority = createSocialSubscriptionAuthority(socialConfig({ subscribed: false }));
+  const view = await resolveSubscribedAgentPolicy(authority, socialInput());
+  expect(view).toBeNull();
+  expect(applySubscribedAgentPolicy(view, TARGET_EVENT))
+    .toEqual({ visible: true, muted: false });
+});
+```
+
+Resolution verifies all signed events, performs source-neutral replaceable
+selection, applies corrections/removals, then reads explicit local subscription
+state. A view is minted only when subscribed and binds each receipt to the exact
+verified offending author/device key.
+
+### Task 13 exact contracts and RED
+
+```ts
+export type CanonicalProfileSelectionAuthorityConfig = Readonly<{
+  authority_id: string; trusted_now: () => number;
+  replaceable_selection: ReplaceableSelectionAuthority;
+  authenticate_repository_candidate: (event: NostrSignedEvent, rid: string,
+    ref: string) => Promise<CurrentRepositoryWriterBinding | null>;
+}>;
+export type CanonicalProfileSelectionInput = Readonly<{
+  relay_candidates: readonly NostrSignedEvent[];
+  repository_candidates: readonly Readonly<{
+    event: NostrSignedEvent; repository_rid: string; ref: string;
+  }>[];
+  repository_state_required: boolean;
+}>;
+export type CoreOperationalAssuranceAuthorityConfig = Readonly<{
+  authority_id: string; trusted_now: () => number;
+  capture_transport: () => Readonly<{
+    role: "public-reader" | "authenticated-light" | "full-node";
+    strict_profile: boolean; route: "tor" | "clearnet";
+  }>;
+}>;
+export type CanonicalProfileView = Readonly<Record<never, never>>;
+export type VerifiedCoreOperationalView = Readonly<Record<never, never>>;
+export function createCanonicalProfileSelectionAuthority(
+  config: CanonicalProfileSelectionAuthorityConfig,
+): CanonicalProfileSelectionAuthority;
+export function selectCanonicalProfile(
+  authority: CanonicalProfileSelectionAuthority,
+  input: CanonicalProfileSelectionInput,
+): Promise<AuthorityDecision<"profile-repository-selection-required", CanonicalProfileView>>;
+export function createCoreOperationalAssuranceAuthority(
+  config: CoreOperationalAssuranceAuthorityConfig,
+): CoreOperationalAssuranceAuthority;
+export function verifyCacheCandidate(
+  authority: CoreOperationalAssuranceAuthority,
+  input: Readonly<{ event: NostrSignedEvent; expected_persona: string }>,
+): AuthorityDecision<"unauthorized_cache_content", VerifiedCoreOperationalView>;
+export function verifyRelayProfileCarrier(
+  authority: CoreOperationalAssuranceAuthority,
+  input: Readonly<{ event: NostrSignedEvent; retained_bytes: Uint8Array }>,
+): AuthorityDecision<"relay_profile_mutation", VerifiedCoreOperationalView>;
+export function verifyStrictTransport(
+  authority: CoreOperationalAssuranceAuthority,
+): AuthorityDecision<"strict_mode_tor_disabled", VerifiedCoreOperationalView>;
+```
+
+```ts
+it("BLUE TEAM VALIDATION: synthetic/local rejects mutated retained relay bytes", () => {
+  const authority = createCoreOperationalAssuranceAuthority(coreOperationalConfig());
+  const original = signedProfileEvent();
+  const retained = new TextEncoder().encode(JSON.stringify({ ...original, content: "mutated" }));
+  expect(verifyRelayProfileCarrier(authority, { event: original, retained_bytes: retained }))
+    .toEqual({ verdict: "reject", reason_code: "relay_profile_mutation" });
+});
+```
+
+Canonical selection verifies every kind-0 event and repository writer, unions
+sources without carrier priority, then runs exact replaceable selection;
+required missing repository authentication yields
+`profile-repository-selection-required`. Operational functions return opaque
+views only after verifying actual persona authorship/raw event bytes or the
+constructor-captured role/transport snapshot; they derive the remaining three
+Core reasons without booleans.
 
 ---
 
@@ -90,22 +812,14 @@ git commit -m "spec: classify retired security diagnostics"
 - Modify: `docs/spec/heterodyne-comms.md`
 
 **Interfaces:**
-- Produces the shared durable contract used by Tasks 2–10:
+- Produces in `security-authority-support.ts` the exact `AuthorityDecision`,
+  `DurableAuthorityRecord`, `DurableAuthorityStore`,
+  `authorityBindingDigest`, and `captureAuthorityInput` declarations in the
+  preceding contract section; Tasks 3–13 import those declarations.
 
-```ts
-export type AuthorityDecision<R extends string, O = undefined> = Readonly<
-  | { verdict: "accept"; output: O }
-  | { verdict: "reject"; reason_code: R }
-  | { verdict: "indeterminate"; reason_code?: R }
->;
-export interface DurableAuthorityStore<O = unknown> {
-  load(key: string): Promise<unknown>;
-  acquire(input: Readonly<{ key: string; binding_digest: string; execution_token: string }>): Promise<unknown>;
-  commit(input: Readonly<{ key: string; binding_digest: string; execution_token: string; output: O }>): Promise<unknown>;
-}
-```
-
-- Produces: `createMarmotAdmissionAuthority(config): MarmotAdmissionAuthority`, `verifyMarmotWelcome(authority, input): VerifiedMarmotWelcome | MarmotAdmissionDecision`, and `admitOrdinaryMarmotWelcome(authority, welcome, acceptance): MarmotAdmissionDecision`.
+- Produces: `createMarmotAdmissionAuthority(config): MarmotAdmissionAuthority`,
+  `verifyMarmotWelcome(authority, input): MarmotWelcomeDecision`, and
+  `admitOrdinaryMarmotWelcome(authority, welcome, acceptance): Promise<MarmotAdmissionDecision>`.
 - `VerifiedMarmotWelcome` is an opaque handle binding exact Welcome/KeyPackage bytes, account, group, members, capabilities, and current conversation checkpoint.
 
 - [ ] **Step 1: Write the authority RED**
@@ -148,7 +862,9 @@ git commit -m "fix: verify Marmot admission authority"
 - Modify: `docs/spec/heterodyne-comms.md`
 
 **Interfaces:**
-- Produces: `createMarmotArchiveRetentionAuthority(config)`, `appendExactMarmotArchive(authority, input): MarmotArchiveAppendReceipt | AuthorityDecision`, `acknowledgeMarmotArchive(authority, receipt): AuthorityDecision`, and `expireMarmotPresentation(authority, receipt): AuthorityDecision`.
+- Produces the exact `MarmotArchiveRetentionAuthorityConfig`,
+  `MarmotArchiveInput`, `MarmotArchiveDecision`, and three function signatures
+  in the preceding Task 3 contract block.
 - The opaque receipt binds repository RID/ref, object digest, exact source-event/ciphertext digest, and durable commit identity.
 
 - [ ] **Step 1: Write RED**
@@ -232,7 +948,9 @@ git commit -m "fix: authorize Marmot inbox and invite use"
 - Modify: `docs/spec/heterodyne-comms.md`
 
 **Interfaces:**
-- Produces only `createAgentPublicationAuthorizationAuthority(config)` and `authorizeAndSignAgentPublication(authority, request, signer): Promise<AuthorityDecision>`.
+- Produces only the exact constructor and atomic
+  `authorizeAndSignAgentPublication(...): Promise<AgentPublicationDecision>`
+  signature in the preceding Task 5 contract block.
 - The internal `VerifiedAgentPublicationAuthorization` is not exported. It binds verified JWT bytes, issuer/audience/subject/persona/agent/signer/scope/expiry/status/generation, DPoP or configured mTLS identity, current opaque claim view, exact publication, and attribution profile.
 
 - [ ] **Step 1: Write RED**
@@ -388,7 +1106,9 @@ git commit -m "fix: authorize Control enrollment admission"
 - Modify: `docs/spec/heterodyne-control.md`
 
 **Interfaces:**
-- Produces: `createControlInvitePreauthorizationAuthority(config)` and `verifyControlInvitePreauthorization(authority, descriptor, template, request): VerifiedControlInvitePreauthorization | AuthorityDecision<"invite-preauthorization-invalid">`.
+- Produces the exact constructor and
+  `verifyControlInvitePreauthorization(...): Promise<AuthorityDecision<"invite-preauthorization-invalid", VerifiedControlInvitePreauthorization>>`
+  signature in the preceding Task 9 contract block.
 - The opaque result binds exact signed fragment, non-convertible purpose, client key, persona, audience, signer/class, methods, kinds, limits, expiry, and current revocation view.
 
 - [ ] **Step 1: Write and observe RED**
@@ -422,7 +1142,8 @@ git commit -m "fix: verify Control invite preauthorization"
 - Modify: `docs/spec/heterodyne-control.md`
 
 **Interfaces:**
-- Produces: `createControlTokenVerifier(config)`, `verifyControlToken(verifier, compactJwt, use): VerifiedControlToken | AuthorityDecision<"control-token-invalid">`, and `consumeVerifiedControlToken(verifier, token, operation): Promise<AuthorityDecision<"control-token-invalid", Readonly<{ operation_id: string }>>>`.
+- Produces the exact constructor, verifier, and consuming-operation signatures
+  in the preceding Task 10 contract block.
 - The opaque one-use result binds actual RS256 JWT verification, issuer/audience/token class, sender key, Marmot group, exact grant/checkpoint/generation/status, expiry, proof-of-possession, and current opaque grant view.
 
 - [ ] **Step 1: Write and observe RED**
