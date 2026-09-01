@@ -50,6 +50,20 @@ const manifestGuidance =
   + "`snapshot-check` derives the snapshot commit from the last commit that changed "
   + "that manifest. Current-draft and history-bound snapshot checks remain independent.\n";
 
+const vectorGuidePath = "docs/spec/vectors/README.md";
+
+function mutateVectorGuideRange(
+  text: string,
+  startMarker: string,
+  endMarker: string,
+  mutate: (section: string) => string,
+): string {
+  const start = text.indexOf(startMarker);
+  const end = text.indexOf(endMarker, start + startMarker.length);
+  if (start < 0 || end < 0) throw new Error(`missing vector guide range: ${startMarker}`);
+  return text.slice(0, start) + mutate(text.slice(start, end)) + text.slice(end);
+}
+
 type SnapshotGuidanceManifest = {
   snapshot_schema: "1";
   source_commit: string;
@@ -981,6 +995,100 @@ Coverage projections are [core.md](coverage/core.md),
       code: "retired-authoring-model",
       message: expect.stringContaining("Comms"),
     }));
+  });
+
+  it.each([
+    [
+      "Family",
+      (guide: string) => guide.replace(
+        /Family layering follows this DAG:[\s\S]*?(?=## Coverage authority)/u,
+        "",
+      ),
+    ],
+    [
+      "Coverage",
+      (guide: string) => guide.replace(
+        /## Coverage authority[\s\S]*?(?=## Reason codes)/u,
+        "",
+      ),
+    ],
+  ])("requires the complete %s section in the vector guide", (section, mutate) => {
+    const issues = lintMaintainedGuides(repositoryRoot, {
+      [vectorGuidePath]: mutate(read(vectorGuidePath)),
+    });
+    expect(issues).toContainEqual(expect.objectContaining({
+      path: vectorGuidePath,
+      code: "retired-authoring-model",
+      message: expect.stringContaining(`${section} section`),
+    }));
+  });
+
+  it.each([
+    ["Core <- Assurance", (guide: string) => guide.replace("Core <- Assurance\n", "")],
+    ["Core <- Comms", (guide: string) => guide.replaceAll("Core <- Comms <-", "Comms <-")],
+    ["Comms <- Control", (guide: string) => guide.replace(" <- Control", "")],
+    ["Comms <- Social", (guide: string) => guide.replace(" <- Social", "")],
+    ["Comms <- Workspace", (guide: string) => guide.replace("Core <- Comms <- Workspace", "Core <- Workspace")],
+    ["Control <- Workspace", (guide: string) => guide.replace("Control <- Workspace\n", "")],
+    ["Social <- Workspace", (guide: string) => guide.replace("Social <- Workspace\n", "")],
+  ])("requires vector-guide DAG edge %s", (edge, mutate) => {
+    const issues = lintMaintainedGuides(repositoryRoot, {
+      [vectorGuidePath]: mutate(read(vectorGuidePath)),
+    });
+    expect(issues).toContainEqual(expect.objectContaining({
+      path: vectorGuidePath,
+      code: "retired-authoring-model",
+      message: expect.stringContaining(edge),
+    }));
+  });
+
+  it.each(["Core", "Assurance", "Comms", "Control", "Social", "Workspace"])(
+    "requires owner %s in vector-guide family prose",
+    (owner) => {
+      const guide = mutateVectorGuideRange(
+        read(vectorGuidePath),
+        "Core vectors stand alone.",
+        "## Coverage authority",
+        (section) => section.replaceAll(owner, "Extension"),
+      );
+      expect(lintMaintainedGuides(repositoryRoot, { [vectorGuidePath]: guide }))
+        .toContainEqual(expect.objectContaining({
+          path: vectorGuidePath,
+          code: "retired-authoring-model",
+          message: expect.stringContaining(owner),
+        }));
+    },
+  );
+
+  it.each(["core", "assurance", "comms", "control", "social", "workspace"])(
+    "requires owner %s coverage projection and payload directory",
+    (owner) => {
+      const guide = read(vectorGuidePath);
+      for (const [inventory, mutation] of [
+        ["coverage", guide.replace(`coverage/${owner}.md`, "coverage/removed.md")],
+        ["payload", guide.replace(`\`${owner}/\``, "`removed/`")],
+      ] as const) {
+        expect(lintMaintainedGuides(repositoryRoot, { [vectorGuidePath]: mutation }))
+          .toContainEqual(expect.objectContaining({
+            path: vectorGuidePath,
+            code: "retired-authoring-model",
+            message: expect.stringContaining(`${inventory} inventory`),
+          }));
+      }
+    },
+  );
+
+  it("requires the owning-family-document anchor rule", () => {
+    const guide = read(vectorGuidePath).replace(
+      "anchors resolve in that vector's owning family document",
+      "anchors resolve in family documentation",
+    );
+    expect(lintMaintainedGuides(repositoryRoot, { [vectorGuidePath]: guide }))
+      .toContainEqual(expect.objectContaining({
+        path: vectorGuidePath,
+        code: "retired-authoring-model",
+        message: expect.stringContaining("owner-document anchor rule"),
+      }));
   });
 
   it("keeps accepted ADR-047 archived after the final closure review", () => {

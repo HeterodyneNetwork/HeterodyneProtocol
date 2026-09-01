@@ -2304,8 +2304,38 @@ export function findObsoletePrivacyTierGuidanceIssues(
 }
 
 const VECTOR_GUIDE_PATH = "docs/spec/vectors/README.md";
+const VECTOR_GUIDE_FAMILY_MARKER = "Family layering follows this DAG:";
+const VECTOR_GUIDE_COVERAGE_HEADING = "## Coverage authority";
+const VECTOR_GUIDE_REASON_CODES_HEADING = "## Reason codes";
+const REQUIRED_VECTOR_GUIDE_EDGES = [
+  "Core <- Assurance",
+  "Core <- Comms",
+  "Comms <- Control",
+  "Comms <- Social",
+  "Comms <- Workspace",
+  "Control <- Workspace",
+  "Social <- Workspace",
+] as const;
+const VECTOR_GUIDE_SUPPORT_DIRECTORIES = new Set(["coverage", "generator", "schema"]);
 const RETIRED_VECTOR_TOPIC_PATH =
   /\b((?:interop|org|core-redundancy|marmot-radicle|claims|claim-ledger|oidc|token-status)\/)/giu;
+
+function vectorGuideOwnerName(document: DocumentId): string {
+  return document[0]!.toUpperCase() + document.slice(1);
+}
+
+function vectorGuideDagEdges(section: string): ReadonlySet<string> {
+  const fence = /```text\s*\r?\n([\s\S]*?)\r?\n```/u.exec(section);
+  if (fence === null) return new Set();
+  const edges = new Set<string>();
+  for (const line of fence[1]!.split(/\r?\n/u)) {
+    const nodes = line.trim().split(/\s*<-\s*/u).filter(Boolean);
+    for (let index = 0; index + 1 < nodes.length; index += 1) {
+      edges.add(`${nodes[index]} <- ${nodes[index + 1]}`);
+    }
+  }
+  return edges;
+}
 
 function findObsoleteVectorGuideIssues(text: string, path: string): FamilyDocIssue[] {
   if (path !== VECTOR_GUIDE_PATH) return [];
@@ -2322,38 +2352,96 @@ function findObsoleteVectorGuideIssues(text: string, path: string): FamilyDocIss
     addIssue(match.index, `retired vector topic path guidance: ${match[1]}`);
   }
 
-  const familyStart = text.indexOf("Family layering follows this DAG:");
-  const coverageStart = text.indexOf("## Coverage authority");
-  if (familyStart >= 0 && coverageStart > familyStart) {
-    const familySection = text.slice(familyStart, coverageStart);
+  const familyStart = text.indexOf(VECTOR_GUIDE_FAMILY_MARKER);
+  const coverageStart = text.indexOf(VECTOR_GUIDE_COVERAGE_HEADING);
+  if (familyStart < 0) {
+    addIssue(0, "vector guide requires the complete Family section");
+  } else {
+    const reasonCodesStart = text.indexOf(VECTOR_GUIDE_REASON_CODES_HEADING, familyStart + 1);
+    const familyEnd = coverageStart > familyStart
+      ? coverageStart
+      : reasonCodesStart > familyStart
+      ? reasonCodesStart
+      : text.length;
+    const familySection = text.slice(familyStart, familyEnd);
     const familyProse = familySection.replace(/```[\s\S]*?```/gu, "");
-    const missingOwners = DOCUMENTS.filter((document) =>
-      !new RegExp(`\\b${document}\\b`, "iu").test(familyProse)
-    );
-    if (!/^Core\s*<-\s*Assurance\s*$/mu.test(familySection)
-      || missingOwners.length > 0
-      || !/\boptional\b[^.\n]{0,100}\bAssurance\b|\bAssurance\b[^.\n]{0,100}\boptional\b/iu
-        .test(familyProse)) {
+    const actualEdges = vectorGuideDagEdges(familySection);
+    for (const edge of REQUIRED_VECTOR_GUIDE_EDGES) {
+      if (!actualEdges.has(edge)) {
+        addIssue(familyStart, `vector guide family DAG is missing required edge ${edge}`);
+      }
+    }
+    for (const edge of actualEdges) {
+      if (!(REQUIRED_VECTOR_GUIDE_EDGES as readonly string[]).includes(edge)) {
+        addIssue(familyStart, `vector guide family DAG has unexpected edge ${edge}`);
+      }
+    }
+    for (const document of DOCUMENTS) {
+      const owner = vectorGuideOwnerName(document);
+      if (!new RegExp(`\\b${owner}\\b`, "u").test(familyProse)) {
+        addIssue(familyStart, `vector guide family prose is missing owner ${owner}`);
+      }
+    }
+    if (!/\boptional\b[^.\n]{0,100}\bAssurance\b|\bAssurance\b[^.\n]{0,100}\boptional\b/iu
+      .test(familyProse)) {
       addIssue(
         familyStart,
-        "vector guide must include optional Assurance in the six-owner family DAG and prose",
+        "vector guide family prose must identify Assurance as optional",
       );
     }
   }
 
-  if (coverageStart >= 0) {
-    const coverageEnd = text.indexOf("\n## ", coverageStart + 1);
+  if (coverageStart < 0) {
+    addIssue(0, "vector guide requires the complete Coverage section");
+  } else {
+    const coverageEnd = text.indexOf(VECTOR_GUIDE_REASON_CODES_HEADING, coverageStart + 1);
     const coverageSection = text.slice(
       coverageStart,
       coverageEnd < 0 ? text.length : coverageEnd,
     );
-    const missingCoverage = DOCUMENTS.filter((document) =>
-      !new RegExp(`(?:coverage/)?${document}\\.md`, "iu").test(coverageSection)
+    const coverageFiles = new Set(
+      [...coverageSection.matchAll(/\]\(coverage\/([a-z]+)\.md\)/gu)]
+        .map((match) => match[1]),
     );
-    if (missingCoverage.length > 0) {
+    const payloadDirectories = new Set(
+      [...coverageSection.matchAll(/`([a-z][a-z0-9-]*)\/`/gu)]
+        .map((match) => match[1]),
+    );
+    for (const document of DOCUMENTS) {
+      if (!coverageFiles.has(document)) {
+        addIssue(
+          coverageStart,
+          `vector coverage inventory is missing coverage/${document}.md`,
+        );
+      }
+      if (!payloadDirectories.has(document)) {
+        addIssue(
+          coverageStart,
+          `vector payload inventory is missing ${document}/`,
+        );
+      }
+    }
+    for (const coverageFile of coverageFiles) {
+      if (coverageFile !== "family" && !DOCUMENTS.includes(coverageFile as DocumentId)) {
+        addIssue(
+          coverageStart,
+          `vector coverage inventory has unexpected projection coverage/${coverageFile}.md`,
+        );
+      }
+    }
+    for (const directory of payloadDirectories) {
+      if (!DOCUMENTS.includes(directory as DocumentId)
+        && !VECTOR_GUIDE_SUPPORT_DIRECTORIES.has(directory)) {
+        addIssue(
+          coverageStart,
+          `vector payload inventory has unexpected directory ${directory}/`,
+        );
+      }
+    }
+    if (!/\banchors?\b[^.\n]{0,100}\bowning family document\b/iu.test(coverageSection)) {
       addIssue(
         coverageStart,
-        `vector coverage inventory must include ${missingCoverage.join(", ")} (including Assurance)`,
+        "vector guide requires the owner-document anchor rule",
       );
     }
   }
