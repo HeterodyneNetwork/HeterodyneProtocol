@@ -542,6 +542,57 @@ checkpoint and authorization-view bounds never excuses failing the other.
 This baseline composition depends on Core and Comms only; Workspace is not an
 authorization prerequisite.
 
+At token use, a conforming verifier MUST validate the compact JWT itself with
+the current RFC 9068 verification boundary and the node's constructor-fixed
+issuer, exact single resource audience, and JWKS. It MUST require protected
+type `at+jwt`, an RS256 signature from exactly one matching public key, current
+`iat` and exclusive `exp`, the exact pairwise `sub` and `client_id`, sender
+constraint, Marmot group, authorization ID, credential-ledger persona and
+generation, grant generation, private-state checkpoint, scope, method, and
+object. It MUST also validate the referenced current Token Status List through
+the exact authenticated continuity/status-mirror chain. A syntactically valid
+JWT, a decoded claim summary, or a caller-supplied signature, status,
+freshness, generation, or grant boolean is not authority.
+
+The current Control grant/status projection is an implementation-local opaque
+view. It is minted only by combining a genuine Comms current-authorization
+view, exact closed current grant fields, and the exact cryptographically
+validated JWT and Token Status List material. Its grant and status bindings
+remain private; it exposes no structural authority or validity boolean. An
+ordinary Comms view, plain lookalike, clone, proxy, accessor-backed object,
+post-validation mutation, or token/grant/status mismatch MUST fail closed.
+Immediately before a token handle is minted, and again immediately before
+durable acquisition and the protected effect, the verifier MUST reload the
+grant view, re-run Comms freshness, and require the same trusted time,
+manifest, checkpoint, active grant, generation, status, and complete token/use
+tuple. Every public failure in this boundary is `control-token-invalid`;
+internal mismatch detail MUST NOT be exposed.
+
+Successful validation mints only an empty opaque one-use token handle bound to
+the verifier instance, exact compact JWT, captured use tuple, and constructor-
+captured proof consumer. The per-use proof MUST be consumed for the exact
+sender key and canonical operation request digest before acquisition. A
+lookalike, clone, cross-verifier handle, reused proof for a new operation, or
+the same handle presented with another operation ID, request digest, or
+payload grants no authority. The operation input is closed data containing
+only its operation ID, request digest, and JSON payload; it MUST NOT contain a
+caller-supplied execution callback. The only execution capability is the
+callback captured when the verifier was constructed.
+
+Before that callback runs, a caller-independent durable store MUST atomically
+acquire the complete authority, token, proof, and operation binding and then
+return the exact binding-equal `executing` record on readback. The execution
+token is derived from that complete binding. Acceptance is exposed only after
+the callback returns the exact closed operation result, a `committed` terminal
+is durable, and key, binding, execution token, output digest, and cached output
+all read back equal. An exact committed retry, including after verifier
+reconstruction with the same authority identifier and store, returns the
+cached output without consuming the proof or executing again. An existing
+exact `executing` or `indeterminate` record, an uncertain or invalid effect,
+or an unknown or non-equal terminal write returns a stable reasonless
+`indeterminate` result and MUST NOT repeat the effect. A conflicting or
+malformed durable record fails closed and never grants operation authority.
+
 <a id="control-request-processing"></a>
 ## 6. Request and operation processing
 
