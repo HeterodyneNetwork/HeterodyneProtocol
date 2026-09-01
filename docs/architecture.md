@@ -148,11 +148,12 @@ The draft checker reads current specifications, registry entries, schemas, and
 current generator reference code. It does not execute the historical topic
 projection used to author the rolling snapshot.
 
-The independent snapshot checker instead materializes the snapshot source
-commit `2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43` and checks the 482 frozen
-vectors bound by snapshot commit
-`5d4bb5fb58b35c88d8a9db120a09f1087237f35c`. Those vectors are
-non-normative validation history and do not define the current draft.
+The closed `docs/spec/vectors/snapshot.json` manifest is the exact source of
+the snapshot's mutable facts: source pin, vector-schema version, vector count,
+artifact paths, and digests. `snapshot-check` derives snapshot identity from
+the last commit that changed that manifest, then materializes the pinned source
+and snapshot history. Those vectors are non-normative validation history and
+do not define the current draft.
 
 ```bash
 npm --prefix docs/spec/vectors/generator run draft:check -- "$PWD"

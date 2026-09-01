@@ -101,14 +101,13 @@ lower the baseline status of an unassured persona.
 semantics. It does not execute the frozen pre-redesign vector topic sources.
 
 The one rolling validation snapshot is non-normative historical evidence. It
-contains exactly 482 vectors, pins source commit
-`2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43`, and is history-bound to snapshot
-commit `5d4bb5fb58b35c88d8a9db120a09f1087237f35c`. The frozen snapshot and the
-current vector lane predate `heterodyne/0.6.0` and are regenerated in a
-follow-up change; until then the generator's current lane remains pinned at
-0.5.0. Historical generation,
-packaging, fixtures, vector schema/reason projections, coverage, and metadata
-belong to `snapshot-check`. Ordinary current-draft work does not rewrite them.
+gets its exact mutable facts from `docs/spec/vectors/snapshot.json`, including
+the source pin, vector-schema version, vector count, and artifact inventory.
+`snapshot-check` derives snapshot identity from the last commit that changed
+that manifest. Historical generation, packaging, fixtures, vector-schema and
+reason projections, coverage, and metadata belong to that history-bound lane.
+The current-draft and snapshot lanes remain independent, and ordinary
+current-draft work does not rewrite the snapshot.
 
 ```bash
 npm --prefix docs/spec/vectors/generator run draft:check -- "$PWD"

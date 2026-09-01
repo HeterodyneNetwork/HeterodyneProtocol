@@ -176,7 +176,7 @@ live registry and schemas govern when a short definition omits a condition.
   reference code. It does not execute frozen topic projections.
 
 **Rolling snapshot**
-: The non-normative set of 482 frozen historical vectors authored from source
-  commit `2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43` and bound by snapshot
-  commit `5d4bb5fb58b35c88d8a9db120a09f1087237f35c`. It records a past validation
-  surface and does not define current-draft conformance.
+: Non-normative historical validation whose exact mutable facts come from
+  `docs/spec/vectors/snapshot.json`. `snapshot-check` derives snapshot identity
+  from the last commit that changed that manifest. It records a past validation
+  surface, while current-draft and history-bound checks remain independent.

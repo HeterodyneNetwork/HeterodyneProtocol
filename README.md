@@ -109,11 +109,10 @@ profile for the six-document family.
 
 The live specifications, registry, schemas, and current reference semantics
 are validated independently from the one frozen historical vector snapshot.
-That snapshot is non-normative evidence for source commit
-`2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43`, is history-bound to snapshot
-commit `5d4bb5fb58b35c88d8a9db120a09f1087237f35c`, and contains exactly 482
-vectors. Ordinary draft work does not regenerate its vector payloads,
-fixtures, packaged schema, reason/coverage projections, or metadata.
+`docs/spec/vectors/snapshot.json` is the exact source of the snapshot's mutable
+facts: source pin, vector-schema version, vector count, artifact paths, and
+digests. Ordinary draft work does not regenerate its vector payloads, fixtures,
+packaged schema, reason/coverage projections, or metadata.
 
 Run the two read-only lanes separately:
 
@@ -124,8 +123,10 @@ npm --prefix docs/spec/vectors/generator run snapshot-check -- "$PWD"
 
 `draft:check` validates current prose, schemas, registry, and reference
 semantics without executing frozen pre-redesign topic projections.
-`snapshot-check` materializes the pinned source and snapshot history, uses the
-historical generator and packager, and verifies the exact 482-vector corpus.
+`snapshot-check` derives snapshot identity from the last commit that changed
+the manifest, materializes the pinned source and snapshot history, and uses the
+historical generator and packager. The current-draft and history-bound checks
+remain independent.
 A dedicated reconciliation maintainer alone selects a future stable source,
 runs `snapshot-author`, reviews the complete replacement, commits it, and then
 runs `snapshot-check`.

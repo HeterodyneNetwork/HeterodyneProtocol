@@ -8,6 +8,7 @@ import {
 import { relative, resolve, sep } from "node:path";
 import { Parser } from "commonmark";
 import type { Node as CommonmarkNode } from "commonmark";
+import ts from "typescript";
 import {
   assertAllowedDependency,
   DOCUMENTS,
@@ -17,6 +18,10 @@ import {
 import type { DocumentId } from "./types.js";
 import { computeRegistryDigest, loadRegistry } from "./registry.js";
 import { verifyMarmotArchive } from "./marmot-archive.js";
+import {
+  loadSnapshotManifest,
+  SNAPSHOT_MANIFEST_PATH,
+} from "./snapshot-manifest.js";
 
 /** The complete claims/OIDC invariant set required in the family threat model. */
 export const CLAIMS_OIDC_INVARIANT_IDS = [
@@ -58,7 +63,10 @@ export type FamilyDocIssue = {
     | "markdown-resource-limit"
     | "profile-revision-registry-context-missing"
     | "defensive-validation-scope"
-    | "defensive-validation-target";
+    | "defensive-validation-target"
+    | "snapshot-manifest-invalid"
+    | "snapshot-guidance-missing"
+    | "snapshot-guidance-stale";
   message: string;
 };
 
@@ -150,9 +158,11 @@ const APPROVED_CLOSURE_PLAN_PATH =
 const CREATED_CLOSURE_TEST_PATHS = [
   "docs/spec/vectors/generator/src/assurance-observation.test.ts",
   "docs/spec/vectors/generator/src/assurance-downgrade.test.ts",
+  "docs/spec/vectors/generator/src/authorization-freshness-boundary.test.ts",
   "docs/spec/vectors/generator/src/core-writer-binding.test.ts",
   "docs/spec/vectors/generator/src/claim-authorization.test.ts",
   "docs/spec/vectors/generator/src/current-vectors/semantic-certificates.test.ts",
+  "docs/spec/vectors/generator/src/workspace-assurance.test.ts",
 ] as const;
 const DEFENSIVE_REVIEW_PATH = /(?:\.test\.ts|(?:brief|review)\.(?:md|txt))$/iu;
 
@@ -195,18 +205,104 @@ export function lintDefensiveValidationText(
   return issues;
 }
 
+const BLUE_TEAM_TEST_PREFIX = "BLUE TEAM VALIDATION: synthetic/local";
+
+function isTestApi(expression: ts.Expression): boolean {
+  return ts.isIdentifier(expression)
+    && (expression.text === "it" || expression.text === "test");
+}
+
+function isTestDeclarationCall(node: ts.CallExpression): boolean {
+  const expression = node.expression;
+  if (isTestApi(expression)) return true;
+  if (ts.isPropertyAccessExpression(expression)) {
+    return isTestApi(expression.expression)
+      && ["only", "skip", "todo"].includes(expression.name.text);
+  }
+  if (!ts.isCallExpression(expression)
+    || !ts.isPropertyAccessExpression(expression.expression)) return false;
+  return isTestApi(expression.expression.expression)
+    && ["each", "for"].includes(expression.expression.name.text);
+}
+
+function literalTestTitle(node: ts.CallExpression): string | undefined {
+  const title = node.arguments[0];
+  if (title === undefined || !ts.isStringLiteralLike(title)) return undefined;
+  return title.text;
+}
+
+function declarationNamesHostileFixture(node: ts.CallExpression): boolean {
+  let hostile = false;
+  const visit = (child: ts.Node): void => {
+    if (hostile) return;
+    if (ts.isIdentifier(child)
+      && /^(?:hostile|adversarial)$/iu.test(child.text)) {
+      hostile = true;
+      return;
+    }
+    if (ts.isStringLiteralLike(child)
+      && /\b(?:hostile|adversarial)\b/iu.test(child.text)) {
+      hostile = true;
+      return;
+    }
+    ts.forEachChild(child, visit);
+  };
+  visit(node);
+  return hostile;
+}
+
+/** Require exact BLUE TEAM framing on each explicitly hostile test declaration. */
+export function lintDefensiveValidationTestDeclarations(
+  text: string,
+  path: string,
+): DocsLintIssue[] {
+  const source = ts.createSourceFile(
+    path,
+    text,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const issues: DocsLintIssue[] = [];
+  const visit = (node: ts.Node): void => {
+    if (ts.isCallExpression(node) && isTestDeclarationCall(node)) {
+      const title = literalTestTitle(node);
+      if (declarationNamesHostileFixture(node)
+        && (title === undefined || !title.startsWith(BLUE_TEAM_TEST_PREFIX))) {
+        issues.push({
+          path,
+          line: source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1,
+          code: "defensive-validation-scope",
+          message:
+            `hostile test title must start exactly ${BLUE_TEAM_TEST_PREFIX}`,
+        });
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return issues;
+}
+
 function lintDefensiveValidationReviews(
   repoRoot: string,
   contentOverrides: Readonly<Record<string, string>> = {},
 ): DocsLintIssue[] {
   const paths = [APPROVED_CLOSURE_PLAN_PATH, ...CREATED_CLOSURE_TEST_PATHS];
   const issues: DocsLintIssue[] = [];
+  const auditRepositoryReviews = Object.keys(contentOverrides).length === 0;
   for (const path of paths) {
+    if (!auditRepositoryReviews && !Object.hasOwn(contentOverrides, path)) continue;
     const text = contentOverrides[path]
       ?? (existsSync(resolve(repoRoot, path))
         ? readFileSync(resolve(repoRoot, path), "utf8")
         : undefined);
-    if (text !== undefined) issues.push(...lintDefensiveValidationText(text, path));
+    if (text !== undefined) {
+      issues.push(...lintDefensiveValidationText(text, path));
+      if (path.endsWith(".test.ts")) {
+        issues.push(...lintDefensiveValidationTestDeclarations(text, path));
+      }
+    }
   }
   for (const [path, text] of Object.entries(contentOverrides)) {
     if (paths.includes(path as (typeof paths)[number]) || !DEFENSIVE_REVIEW_PATH.test(path)) {
@@ -1181,6 +1277,167 @@ export function findStrictProfileClosureIssues(
   }
   return issues.sort();
 }
+
+const MAINTAINED_SNAPSHOT_GUIDANCE_PATHS = [
+  "docs/spec/heterodyne-core.md",
+  "docs/spec/heterodyne.md",
+  "README.md",
+  "docs/spec/vectors/README.md",
+  "docs/architecture.md",
+  "docs/glossary.md",
+  "docs/security/threat-model.md",
+  "AGENTS.md",
+  "CHANGELOG.md",
+] as const;
+const SOURCE_COMMIT_STATEMENT = /\bsource commit(?:\s+is)?\s+`?([0-9a-f]{40})`?/giu;
+const SNAPSHOT_COMMIT_STATEMENT = /\bsnapshot commit(?:\s+is)?\s+`?([0-9a-f]{40})`?/giu;
+const VECTOR_COUNT_STATEMENT = /(?<![A-Za-z0-9-])([0-9]+)[-\s]+vectors?\b/giu;
+const ARTIFACT_COUNT_STATEMENT =
+  /(?<![A-Za-z0-9-])([0-9]+)[-\s]+(?:(?:manifest[-\s]+listed|digest[-\s]+bound)\s+)?artifacts?\b/giu;
+const VECTOR_SCHEMA_STATEMENT =
+  /\b(?:vector[-\s]+)?schema[-\s]+([0-9]+\.[0-9]+\.[0-9]+)\b/giu;
+const STALE_SNAPSHOT_GUIDANCE = [
+  /\bcurrent(?:[-\s]+(?:draft|lane|generator))?[^.\n]{0,80}\b0\.5(?:\.0)?\b/iu,
+  /\b(?:source root|snapshot)[^.\n]{0,100}\bfive documents?\b/iu,
+  /\bschema[-\s]+2(?:\.0\.0)?\b/iu,
+  /\bzero (?:declared )?(?:reference[-\s]+checker|executable)(?: cases?| declarations?)?\b/iu,
+] as const;
+
+function currentChangelogText(text: string): string {
+  const datedRelease = text.search(/^## \[[0-9]+\.[0-9]+\.[0-9]+\]\s+[-—]/mu);
+  return datedRelease < 0 ? text : text.slice(0, datedRelease);
+}
+
+/** Lint current snapshot guidance against the closed manifest and history mechanism. */
+export function lintMaintainedSnapshotGuidance(
+  repoRoot: string,
+): DocsLintIssue[] {
+  let manifest;
+  try {
+    manifest = loadSnapshotManifest(repoRoot);
+  } catch (error) {
+    return [{
+      path: SNAPSHOT_MANIFEST_PATH,
+      line: 1,
+      code: "snapshot-manifest-invalid",
+      message: `snapshot guidance cannot load the closed manifest: ${String(error)}`,
+    }];
+  }
+
+  const issues: DocsLintIssue[] = [];
+  const addIssue = (
+    path: string,
+    text: string,
+    offset: number,
+    code: "snapshot-guidance-missing" | "snapshot-guidance-stale",
+    message: string,
+  ): void => {
+    issues.push({
+      path,
+      line: text.slice(0, offset).split(/\r?\n/u).length,
+      code,
+      message,
+    });
+  };
+
+  for (const path of MAINTAINED_SNAPSHOT_GUIDANCE_PATHS) {
+    const source = readFileSync(resolve(repoRoot, path), "utf8");
+    const text = path === "CHANGELOG.md" ? currentChangelogText(source) : source;
+    if (!text.includes(SNAPSHOT_MANIFEST_PATH)
+      || !/\bexact\b[\s\S]{0,160}\b(?:fact|source|identity|authority)/iu.test(text)) {
+      addIssue(
+        path,
+        text,
+        0,
+        "snapshot-guidance-missing",
+        `guide must identify ${SNAPSHOT_MANIFEST_PATH} as the exact source of mutable snapshot facts`,
+      );
+    }
+    if (!/(?:`snapshot-check`[\s\S]{0,220}\blast commit that changed|last commit that changed[\s\S]{0,220}`snapshot-check`)/iu
+      .test(text)) {
+      addIssue(
+        path,
+        text,
+        0,
+        "snapshot-guidance-missing",
+        "guide must state that snapshot-check derives snapshot identity from the last manifest-changing commit",
+      );
+    }
+    if (!/\b(?:current[-\s]+draft|draft)[\s\S]{0,200}\bindependent/iu.test(text)
+      && !/\bindependent[\s\S]{0,200}\b(?:current[-\s]+draft|draft)/iu.test(text)) {
+      addIssue(
+        path,
+        text,
+        0,
+        "snapshot-guidance-missing",
+        "guide must keep current-draft and history-bound snapshot checks independent",
+      );
+    }
+
+    for (const match of text.matchAll(SOURCE_COMMIT_STATEMENT)) {
+      if (match[1] === manifest.source_commit) continue;
+      addIssue(
+        path,
+        text,
+        match.index,
+        "snapshot-guidance-stale",
+        "copied snapshot source commit disagrees with the closed manifest",
+      );
+    }
+    for (const match of text.matchAll(SNAPSHOT_COMMIT_STATEMENT)) {
+      addIssue(
+        path,
+        text,
+        match.index,
+        "snapshot-guidance-stale",
+        "snapshot commit must be history-derived and must not be copied into maintained prose",
+      );
+    }
+    for (const match of text.matchAll(VECTOR_COUNT_STATEMENT)) {
+      if (Number(match[1]) === manifest.vector_count) continue;
+      addIssue(
+        path,
+        text,
+        match.index,
+        "snapshot-guidance-stale",
+        "copied snapshot vector count disagrees with the closed manifest",
+      );
+    }
+    for (const match of text.matchAll(ARTIFACT_COUNT_STATEMENT)) {
+      if (Number(match[1]) === manifest.artifacts.length) continue;
+      addIssue(
+        path,
+        text,
+        match.index,
+        "snapshot-guidance-stale",
+        "copied snapshot artifact count disagrees with the closed manifest",
+      );
+    }
+    for (const match of text.matchAll(VECTOR_SCHEMA_STATEMENT)) {
+      if (match[1] === manifest.vector_schema_version) continue;
+      addIssue(
+        path,
+        text,
+        match.index,
+        "snapshot-guidance-stale",
+        "copied snapshot vector schema version disagrees with the closed manifest",
+      );
+    }
+    for (const pattern of STALE_SNAPSHOT_GUIDANCE) {
+      const match = pattern.exec(text);
+      if (match === null) continue;
+      addIssue(
+        path,
+        text,
+        match.index,
+        "snapshot-guidance-stale",
+        `retired current snapshot guidance: ${match[0]}`,
+      );
+    }
+  }
+  return issues;
+}
+
 /** Lint the maintained authoring guides against the single-family model. */
 export function lintMaintainedGuides(
   repoRoot: string,

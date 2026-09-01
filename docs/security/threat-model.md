@@ -234,9 +234,10 @@ payloads.
 
 The current-draft lane evaluates current specifications, registry entries,
 schemas, and current reference code. It does not execute the frozen historical
-topic projection. The rolling snapshot contains 482 non-normative vectors from
-source commit `2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43`, bound by snapshot
-commit `5d4bb5fb58b35c88d8a9db120a09f1087237f35c`.
+topic projection. The rolling snapshot's exact mutable facts come from
+`docs/spec/vectors/snapshot.json`. `snapshot-check` derives snapshot identity
+from the last commit that changed that manifest. The current-draft and
+history-bound checks remain independent.
 
 The frozen claim schema member `profile_revision` has value `2`, distinct from the current family registry revision 17. Neither that historical wire value nor
 the snapshot count is a substitute for current registry or specification

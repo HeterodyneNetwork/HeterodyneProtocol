@@ -1089,17 +1089,16 @@ trust, NIP-42, protected storage, version negotiation, and Core invariants.
 ### 13.1 Rolling pre-1.0 validation snapshot
 
 Vector JSON under `docs/spec/vectors/` is the single non-normative rolling
-pre-1.0 validation snapshot. The closed `snapshot.json` pins an exact
-path/digest inventory. The current historical bootstrap remains bound to
-source commit `2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43`; it contains 482 vectors
-among 493 manifest-listed artifacts and declares zero reference-checker cases.
+pre-1.0 validation snapshot. The closed
+`docs/spec/vectors/snapshot.json` manifest is the exact source of its mutable
+facts: `source_commit`, `vector_schema_version`, `vector_count`, and every
+artifact path and digest.
 
-The snapshot lane derives its snapshot commit from the last commit that
-changed `snapshot.json`; it does not trust uncommitted metadata. Its historical
-source root contains the five documents that existed at that pinned commit.
-The current-draft lane independently validates the live six-document family.
-Optional Assurance discovery MUST NOT rewrite or add authority to the
-historical snapshot.
+`snapshot-check` derives snapshot identity from the last commit that changed
+that manifest; it does not trust uncommitted metadata. The pinned source root
+supplies the family that exists at `source_commit`. The current-draft lane and
+history-bound snapshot lane remain independent. Optional Assurance discovery
+MUST NOT rewrite or add authority to the historical snapshot.
 
 Ordinary 0.x authoring does not update snapshot payloads, fixtures, coverage,
 topics, or metadata. A dedicated reconciliation selects a stable full source

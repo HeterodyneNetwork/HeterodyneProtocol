@@ -8,22 +8,76 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { performance } from "node:perf_hooks";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   findInvariantEvidenceIssues,
   findRetiredNormativeClaimIssues,
   findStrictProfileClosureIssues,
+  lintDefensiveValidationTestDeclarations,
   lintDefensiveValidationText,
   lintFamilyDocs,
   lintMaintainedGuides,
+  lintMaintainedSnapshotGuidance,
 } from "./docs-lint.js";
 import { loadRegistry } from "./registry.js";
 
 const repositoryRoot = resolve(import.meta.dirname, "../../../../../");
 const read = (path: string) => readFileSync(resolve(repositoryRoot, path), "utf8");
 const temps: string[] = [];
+
+const snapshotGuidancePaths = [
+  "docs/spec/heterodyne-core.md",
+  "docs/spec/heterodyne.md",
+  "README.md",
+  "docs/spec/vectors/README.md",
+  "docs/architecture.md",
+  "docs/glossary.md",
+  "docs/security/threat-model.md",
+  "AGENTS.md",
+  "CHANGELOG.md",
+] as const;
+
+const manifestGuidance =
+  "The exact mutable snapshot facts come from `docs/spec/vectors/snapshot.json`. "
+  + "`snapshot-check` derives the snapshot commit from the last commit that changed "
+  + "that manifest. Current-draft and history-bound snapshot checks remain independent.\n";
+
+type SnapshotGuidanceManifest = {
+  snapshot_schema: "1";
+  source_commit: string;
+  vector_schema_version: string;
+  vector_count: number;
+  artifacts: { path: string; sha256: string }[];
+};
+
+function snapshotGuidanceRoot(): string {
+  const root = mkdtempSync(resolve(tmpdir(), "heterodyne-snapshot-guidance-"));
+  temps.push(root);
+  const manifest = JSON.parse(
+    read("docs/spec/vectors/snapshot.json"),
+  ) as SnapshotGuidanceManifest;
+  for (const { path } of manifest.artifacts) {
+    mkdirSync(dirname(resolve(root, path)), { recursive: true });
+    cpSync(resolve(repositoryRoot, path), resolve(root, path));
+  }
+  mkdirSync(resolve(root, "docs/spec/vectors"), { recursive: true });
+  cpSync(
+    resolve(repositoryRoot, "docs/spec/vectors/snapshot.json"),
+    resolve(root, "docs/spec/vectors/snapshot.json"),
+  );
+  for (const path of snapshotGuidancePaths) {
+    mkdirSync(dirname(resolve(root, path)), { recursive: true });
+    writeFileSync(
+      resolve(root, path),
+      path === "CHANGELOG.md"
+        ? `# Changelog\n\n## [Unreleased]\n\n${manifestGuidance}\n## [0.4.0] - 2026-07-01\n\nHistorical record.\n`
+        : manifestGuidance,
+    );
+  }
+  return root;
+}
 
 function currentVersionLintRoot(): string {
   const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-version-lint-"));
@@ -160,6 +214,46 @@ describe("canonical family documentation", () => {
       "synthetic-boundary.test.ts",
     );
     expect(issues.map(({ code }) => code)).toContain("defensive-validation-target");
+  });
+
+  it("requires each hostile or adversarial test declaration to carry the exact prefix", () => {
+    const issues = lintDefensiveValidationTestDeclarations(
+      `
+        it("rejects a dangerous fixture", () => {
+          const fixture = { mode: "hostile" };
+          expect(fixture).toBeDefined();
+        });
+        test.each([{ mode: "adversarial" }])(
+          "rejects matrix row $mode",
+          ({ mode }) => expect(mode).toBeDefined(),
+        );
+        const dynamicTitle = "rejects a dynamic fixture";
+        it(dynamicTitle, () => {
+          expect("hostile").toBeDefined();
+        });
+        it("BLUE TEAM VALIDATION: synthetic/local rejects hostile input", () => {
+          expect("hostile").toBeDefined();
+        });
+      `,
+      "synthetic-boundary.test.ts",
+    );
+    expect(issues).toEqual([
+      expect.objectContaining({
+        path: "synthetic-boundary.test.ts",
+        code: "defensive-validation-scope",
+        line: 2,
+      }),
+      expect.objectContaining({
+        path: "synthetic-boundary.test.ts",
+        code: "defensive-validation-scope",
+        line: 6,
+      }),
+      expect.objectContaining({
+        path: "synthetic-boundary.test.ts",
+        code: "defensive-validation-scope",
+        line: 11,
+      }),
+    ]);
   });
 
   it("rejects an earlier prohibition that does not govern a later live target", () => {
@@ -987,8 +1081,95 @@ BLUE TEAM VALIDATION: synthetic/local hostile case uses a live relay
     expect(maintained).toMatch(/full node[\s\S]{0,180}(?:signer|signing)/i);
     expect(maintained).toMatch(/seven days[\s\S]{0,160}warning/i);
     expect(maintained).toMatch(/compromise[\s\S]{0,180}(?:complete|full) reset/i);
-    expect(maintained).toContain("2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43");
-    expect(maintained).toContain("5d4bb5fb58b35c88d8a9db120a09f1087237f35c");
+    expect(lintMaintainedSnapshotGuidance(repositoryRoot)).toEqual([]);
+  });
+
+  it("accepts manifest-derived snapshot guidance without copied mutable facts", () => {
+    expect(lintMaintainedSnapshotGuidance(snapshotGuidanceRoot())).toEqual([]);
+  });
+
+  it("marks an intentionally retained source statement stale when the manifest changes", () => {
+    const root = snapshotGuidanceRoot();
+    const manifestPath = resolve(root, "docs/spec/vectors/snapshot.json");
+    const manifest = JSON.parse(
+      readFileSync(manifestPath, "utf8"),
+    ) as SnapshotGuidanceManifest;
+    writeFileSync(
+      resolve(root, "README.md"),
+      `${manifestGuidance}The recorded source commit is \`${manifest.source_commit}\`.\n`,
+    );
+    expect(lintMaintainedSnapshotGuidance(root)).toEqual([]);
+
+    manifest.source_commit = "1".repeat(40);
+    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+    expect(lintMaintainedSnapshotGuidance(root)).toContainEqual(
+      expect.objectContaining({
+        path: "README.md",
+        code: "snapshot-guidance-stale",
+      }),
+    );
+  });
+
+  it("rejects copied vector and artifact counts that disagree with the manifest", () => {
+    const root = snapshotGuidanceRoot();
+    const manifest = JSON.parse(
+      readFileSync(resolve(root, "docs/spec/vectors/snapshot.json"), "utf8"),
+    ) as SnapshotGuidanceManifest;
+    writeFileSync(
+      resolve(root, "docs/architecture.md"),
+      `${manifestGuidance}The snapshot contains ${manifest.vector_count + 1} vectors and ${manifest.artifacts.length + 1} artifacts.\n`,
+    );
+    expect(lintMaintainedSnapshotGuidance(root)).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        path: "docs/architecture.md",
+        code: "snapshot-guidance-stale",
+      }),
+    ]));
+  });
+
+  it("excludes dated history while checking current changelog assertions", () => {
+    const root = snapshotGuidanceRoot();
+    const historical = resolve(
+      root,
+      "docs/superpowers/specs/2026-08-21-rolling-vector-snapshot-design.md",
+    );
+    mkdirSync(dirname(historical), { recursive: true });
+    writeFileSync(
+      historical,
+      "Historical source commit `2222222222222222222222222222222222222222` had 999 vectors.\n",
+    );
+    writeFileSync(
+      resolve(root, "CHANGELOG.md"),
+      `# Changelog\n\n## [Unreleased]\n\n${manifestGuidance}\n## [0.4.0] - 2026-07-01\n\nHistorical source commit \`2222222222222222222222222222222222222222\` had 999 vectors.\n`,
+    );
+    expect(lintMaintainedSnapshotGuidance(root)).toEqual([]);
+
+    writeFileSync(
+      resolve(root, "CHANGELOG.md"),
+      `# Changelog\n\n## [Unreleased]\n\n${manifestGuidance}Current snapshot has 999 vectors.\n\n## [0.4.0] - 2026-07-01\n`,
+    );
+    expect(lintMaintainedSnapshotGuidance(root)).toContainEqual(
+      expect.objectContaining({
+        path: "CHANGELOG.md",
+        code: "snapshot-guidance-stale",
+      }),
+    );
+  });
+
+  it("fails closed when the snapshot manifest does not validate", () => {
+    const root = snapshotGuidanceRoot();
+    const manifestPath = resolve(root, "docs/spec/vectors/snapshot.json");
+    const manifest = JSON.parse(
+      readFileSync(manifestPath, "utf8"),
+    ) as SnapshotGuidanceManifest;
+    manifest.artifacts[0]!.sha256 = "0".repeat(64);
+    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+    expect(lintMaintainedSnapshotGuidance(root)).toContainEqual(
+      expect.objectContaining({
+        path: "docs/spec/vectors/snapshot.json",
+        code: "snapshot-manifest-invalid",
+      }),
+    );
   });
 
   it("documents every document strict profile without a singular family profile", () => {

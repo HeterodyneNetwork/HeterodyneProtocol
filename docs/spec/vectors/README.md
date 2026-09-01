@@ -14,22 +14,20 @@ comparison surface for `round-trip` input at the pinned source commit. During
 place. Vector-ID immutability, retained historical sets, and release
 compatibility are deferred to the future 1.0 release policy.
 
-## Closed snapshot and bootstrap
+## Closed snapshot
 
-[`snapshot.json`](snapshot.json) is a closed, canonical manifest containing one
-full source commit, one packaged vector-schema version, the vector count, and a
-strictly sorted inventory of every artifact path and SHA-256 digest. It pins
-source commit `2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43`. The bootstrap contains
-482 vectors and 493 manifest-listed artifacts: the vectors plus fixtures, the
-packaged vector-envelope schema, reason-code projections, and coverage
-manifest/projections. The schema-2.0.0 bootstrap is a behavior-neutral package
-of the source commit's schema-1.0.0 output.
+The closed, canonical `docs/spec/vectors/snapshot.json` manifest is the exact
+source of mutable snapshot facts: `source_commit`, `vector_schema_version`,
+`vector_count`, and the strictly sorted inventory of every artifact path and
+SHA-256 digest. `snapshot-check` derives snapshot identity from the last commit
+that changed that manifest. Current-draft checks and the history-bound snapshot
+check remain independent.
 
 The three isolated roots have different authority:
 
 - The **source root**, materialized from the exact source pin, supplies the
-  five specifications, registry, protocol schemas, and all behavioral
-  generator inputs.
+  specification family, registry, protocol schemas, and behavioral generator
+  inputs that exist at that source commit.
 - The **snapshot root** supplies the committed vectors, fixtures, packaged
   vector schema, reason/coverage projections, and closed manifest.
 - The **snapshot-tool root**, materialized from the snapshot commit, supplies
@@ -40,19 +38,19 @@ and prints that runtime identity as the last commit that changed `snapshot.json`
 it may change when commits are squashed. The check requires the working
 manifest bytes to match that commit and passes explicit source/snapshot roots
 and both commit identities to the independent conformance runtime. The pinned
-source predates executable `conformance_checks`, so this bootstrap executes
-zero declared reference-checker cases. Corpus-wide static gates still execute.
+source determines which `conformance_checks` exist and execute. Corpus-wide
+static gates execute independently.
 
 ## Snapshot envelope
 
 Every packaged vector validates against
 [`schema/vector.schema.json`](schema/vector.schema.json) and carries the closed
-schema-2 envelope:
+envelope version named by the manifest:
 
 ```json
 {
   "vector_id": "<topic>/<stable-id>",
-  "vector_schema_version": "2.0.0",
+  "vector_schema_version": "<snapshot manifest value>",
   "owner_document": "core | comms | control | social | workspace",
   "profile": "<optional immutable profile id>",
   "spec_refs": ["heterodyne:<document>#<permanent-anchor>"],
@@ -65,8 +63,8 @@ schema-2 envelope:
 
 Any `spec_version` inside a tested event's `input` or `expected_output` is part
 of that event's wire format, not snapshot-envelope authority. The current-draft
-generator can author 499 vectors, while this independently pinned snapshot has
-482. Draft count changes do not require or imply a snapshot update.
+generator may produce a different corpus. Draft count changes do not require or
+imply a snapshot update.
 
 ### Explicit checker applicability
 

@@ -109,7 +109,7 @@ describe("authorization freshness hostile-object boundary", () => {
       name: "proxy",
       value: new Proxy({ ...source }, {}),
     },
-  ])("rejects a source with a $name", ({ value }) => {
+  ])("BLUE TEAM VALIDATION: synthetic/local rejects a hostile source with a $name", ({ value }) => {
     expect(() => createAuthorizationFreshnessAuthority(binding, value)).toThrow(/exact ordinary data object/i);
   });
 

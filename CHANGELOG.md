@@ -34,7 +34,7 @@ matrix, including current conformance vectors, is green.
   repository selection, warning-only seven-day staleness, concurrent trusted
   seeds, optional full-node relay service, pre-signing automation attribution,
   and complete compromise reset.
-- Separated live-draft validation from the 482-vector rolling historical
+- Separated live-draft validation from the rolling historical
   snapshot. Current checks no longer execute the frozen pre-redesign topic
   projection; `snapshot-check` continues to materialize and verify its pinned
   historical source independently.
@@ -53,7 +53,7 @@ matrix, including current conformance vectors, is green.
 - [ADR-047](docs/adr/archive/2026-08-24-047-nostr-first-interoperability.md)
   records the accepted Nostr-first semantic replacement. The live six-document
   family and normative machine-readable artifacts are self-contained, while
-  the frozen 482-vector snapshot remains historical and unreconciled.
+  the rolling snapshot remains historical and independently reproducible.
 - [ADR-045](docs/adr/archive/2026-08-15-045-conformance-harness-independence.md)
   records the accepted independent conformance gate. Acceptance followed
   implementation, security and specification review waves,
@@ -66,11 +66,11 @@ matrix, including current conformance vectors, is green.
   generator and independent conformance checks in a fixed, fail-fast order.
   The gate performs no publishing, deployment, release, tag, push, or remote
   configuration operation.
-- No pre-1.0 release manifest exists. The rolling, non-normative snapshot pins
-  source commit `2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43` and contains 482
-  vectors, 493 digest-bound artifacts, and zero executable declarations.
-  Reconciliation is author, review, commit, then `snapshot-check`; ordinary
-  draft changes remain independent of it.
+- No pre-1.0 release manifest exists. The rolling, non-normative snapshot gets
+  its exact mutable facts from `docs/spec/vectors/snapshot.json`.
+  `snapshot-check` derives snapshot identity from the last commit that changed
+  that manifest. Reconciliation is author, review, commit, then the read-only
+  history check; ordinary current-draft changes remain independent of it.
 
 ### Accepted protocol stabilization
 

@@ -270,7 +270,7 @@ describe("Workspace optional Assurance authority", () => {
     expect(getterCalls).toBe(0);
   });
 
-  it("rejects proxy, accessor, and open callback results without reading hostile members", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local rejects proxy, accessor, and open callback results without reading hostile members", () => {
     let proxyTraps = 0;
     const proxied = new Proxy(verifiedEnrollment(), {
       ownKeys(target) {
