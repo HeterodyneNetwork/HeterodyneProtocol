@@ -51,6 +51,10 @@ async function signedEvent(
 
 async function eventInput(): Promise<MarmotArchiveInput> {
   const event = await signedEvent();
+  return eventInputFrom(event);
+}
+
+function eventInputFrom(event: NostrSignedEvent): MarmotArchiveInput {
   return {
     repository_rid: RID,
     ref: REF,
@@ -512,6 +516,142 @@ describe("Marmot archive retention authority", () => {
         ...valid,
         source: { ...valid.source, authorization_event: authorizationEvent },
       })).resolves.toEqual({ verdict: "reject", reason_code: "marmot-premature-ack" });
+      expect(fixture.store.acquireCalls).toBe(0);
+      expect(fixture.appendCalls()).toBe(0);
+    }
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects a U+D800 encrypted-media filename", async () => {
+    const valid = await mediaInput();
+    if (valid.source.kind !== "encrypted-media") throw new Error("synthetic fixture error");
+    const imeta = valid.source.authorization_event.tags[0];
+    if (imeta === undefined) throw new Error("synthetic fixture error");
+    const authorizationEvent = await signEvent({
+      secretKey: SECRET,
+      auxRand: AUX_RAND,
+      created_at: 1_800_000_006,
+      kind: 9,
+      tags: [[
+        "imeta",
+        ...imeta.slice(1).map((field) =>
+          field.startsWith("filename ") ? "filename \ud800" : field),
+      ]],
+      content: "synthetic local surrogate filename",
+    });
+    const fixture = harness();
+    const authority = createMarmotArchiveRetentionAuthority(fixture.config);
+
+    await expect(appendExactMarmotArchive(authority, {
+      ...valid,
+      source: { ...valid.source, authorization_event: authorizationEvent },
+    })).resolves.toEqual({ verdict: "reject", reason_code: "marmot-premature-ack" });
+    expect(fixture.store.acquireCalls).toBe(0);
+    expect(fixture.appendCalls()).toBe(0);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects U+D800 elsewhere in a signed media event", async () => {
+    const valid = await mediaInput();
+    if (valid.source.kind !== "encrypted-media") throw new Error("synthetic fixture error");
+    const cases = [
+      {
+        tags: valid.source.authorization_event.tags,
+        content: "\ud800",
+      },
+      {
+        tags: [...valid.source.authorization_event.tags, ["synthetic", "\ud800"]],
+        content: "synthetic local surrogate tag",
+      },
+    ];
+
+    for (const invalid of cases) {
+      const authorizationEvent = await signEvent({
+        secretKey: SECRET,
+        auxRand: AUX_RAND,
+        created_at: 1_800_000_007,
+        kind: 9,
+        tags: invalid.tags,
+        content: invalid.content,
+      });
+      const fixture = harness();
+      const authority = createMarmotArchiveRetentionAuthority(fixture.config);
+
+      await expect(appendExactMarmotArchive(authority, {
+        ...valid,
+        source: { ...valid.source, authorization_event: authorizationEvent },
+      })).resolves.toEqual({ verdict: "reject", reason_code: "marmot-premature-ack" });
+      expect(fixture.store.acquireCalls).toBe(0);
+      expect(fixture.appendCalls()).toBe(0);
+    }
+  });
+
+  it("accepts canonical uint64 maximum and near-maximum Marmot expirations", async () => {
+    for (const expiration of ["18446744073709551614", "18446744073709551615"]) {
+      const event = await signEvent({
+        secretKey: SECRET,
+        auxRand: AUX_RAND,
+        created_at: 1_800_000_008,
+        kind: 445,
+        tags: [["h", MARMOT_GROUP_ID], ["expiration", expiration]],
+        content: MARMOT_EVENT_CONTENT,
+      });
+      const fixture = harness();
+      const authority = createMarmotArchiveRetentionAuthority(fixture.config);
+
+      await expect(appendExactMarmotArchive(authority, eventInputFrom(event))).resolves.toMatchObject({
+        verdict: "accept",
+      });
+      expect(fixture.appendCalls()).toBe(1);
+    }
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects out-of-range or noncanonical Marmot expirations", async () => {
+    for (const expiration of [
+      "18446744073709551616",
+      "-1",
+      "+1",
+      "01",
+      "1.0",
+    ]) {
+      const event = await signEvent({
+        secretKey: SECRET,
+        auxRand: AUX_RAND,
+        created_at: 1_800_000_009,
+        kind: 445,
+        tags: [["h", MARMOT_GROUP_ID], ["expiration", expiration]],
+        content: MARMOT_EVENT_CONTENT,
+      });
+      const fixture = harness();
+      const authority = createMarmotArchiveRetentionAuthority(fixture.config);
+
+      await expect(appendExactMarmotArchive(authority, eventInputFrom(event))).resolves.toEqual({
+        verdict: "reject",
+        reason_code: "marmot-premature-ack",
+      });
+      expect(fixture.store.acquireCalls).toBe(0);
+      expect(fixture.appendCalls()).toBe(0);
+    }
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects numeric unsafe, fractional, or negative expirations", async () => {
+    for (const expiration of [Number.MAX_SAFE_INTEGER + 1, 1.5, -1]) {
+      const event = await signEvent({
+        secretKey: SECRET,
+        auxRand: AUX_RAND,
+        created_at: 1_800_000_010,
+        kind: 445,
+        tags: [["h", MARMOT_GROUP_ID], [
+          "expiration",
+          expiration as unknown as string,
+        ]],
+        content: MARMOT_EVENT_CONTENT,
+      });
+      const fixture = harness();
+      const authority = createMarmotArchiveRetentionAuthority(fixture.config);
+
+      await expect(appendExactMarmotArchive(authority, eventInputFrom(event))).resolves.toEqual({
+        verdict: "reject",
+        reason_code: "marmot-premature-ack",
+      });
       expect(fixture.store.acquireCalls).toBe(0);
       expect(fixture.appendCalls()).toBe(0);
     }

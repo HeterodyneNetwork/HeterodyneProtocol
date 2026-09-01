@@ -5,6 +5,7 @@ import {
   isCanonicalCoreRepositoryRid,
 } from "./core-policy.js";
 import type { CurrentRepositoryWriterBinding } from "./core-writer-binding.js";
+import { jcsCanonicalize } from "./jcs.js";
 import {
   snapshotAndVerifyNostrEvent,
   type NostrSignedEvent,
@@ -23,6 +24,7 @@ const REJECT = Object.freeze({
 });
 const HEX_32 = /^[0-9a-f]{64}$/u;
 const COMMIT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/u;
+const UINT64_MAX = 18_446_744_073_709_551_615n;
 const SIGNED_EVENT_MEMBERS = [
   "id", "pubkey", "created_at", "kind", "tags", "content", "sig",
 ] as const;
@@ -343,6 +345,21 @@ function isCanonicalMarmotMediaType(value: string): boolean {
     && MEDIA_TYPE_TOKEN.test(segments[1]);
 }
 
+function hasOnlyUnicodeScalarStrings(event: NostrSignedEvent): boolean {
+  try {
+    jcsCanonicalize(event);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function isCanonicalUint64(value: string): boolean {
+  return /^(?:0|[1-9][0-9]*)$/u.test(value)
+    && value.length <= 20
+    && BigInt(value) <= UINT64_MAX;
+}
+
 function structurallyValidLocator(value: string): boolean {
   const separator = value.indexOf(" ");
   if (separator <= 0 || separator === value.length - 1) return false;
@@ -419,7 +436,7 @@ function validMarmotSignedEvent(event: NostrSignedEvent): boolean {
     || !HEX_32.test(groupTags[0][1] ?? "")
     || expirationTags.length > 1
     || expirationTags.some((tag) =>
-      tag.length !== 2 || !/^(?:0|[1-9][0-9]*)$/u.test(tag[1] ?? ""))
+      tag.length !== 2 || !isCanonicalUint64(tag[1] ?? ""))
     || event.tags.some((tag) => tag[0] !== "h" && tag[0] !== "expiration")
     || event.content.length === 0
     || !STANDARD_PADDED_BASE64.test(event.content)
@@ -469,6 +486,7 @@ function captureArchiveInput(value: MarmotArchiveInput): CapturedArchiveInput | 
         event === null
         || encoded === null
         || !sameEvent(event, encoded)
+        || !hasOnlyUnicodeScalarStrings(event)
         || !validMarmotSignedEvent(event)
       ) return null;
       bytes = new Uint8Array(source.event_bytes);
@@ -482,7 +500,11 @@ function captureArchiveInput(value: MarmotArchiveInput): CapturedArchiveInput | 
       ) return null;
       const event = snapshotAndVerifyNostrEvent(source.authorization_event);
       bytes = new Uint8Array(source.ciphertext);
-      if (event === null || !mediaEventBindsCiphertext(event, sha256(bytes))) return null;
+      if (
+        event === null
+        || !hasOnlyUnicodeScalarStrings(event)
+        || !mediaEventBindsCiphertext(event, sha256(bytes))
+      ) return null;
       sourceDigest = sha256(bytes);
       authorizationEventId = event.id;
     } else {

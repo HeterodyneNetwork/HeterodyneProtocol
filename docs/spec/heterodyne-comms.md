@@ -1034,14 +1034,19 @@ NIP-01 ID, verifies the BIP-340 signature, and requires the closed Marmot
 kind-445 transport profile: one exact lowercase 32-byte `h`, no tag other than
 the optional singleton NIP-40 `expiration`, and canonical padded standard
 base64 content decoding to at least the 12-byte nonce plus 16-byte AEAD tag.
-For ciphertext it verifies the signed regular Marmot kind-9 media event and
-requires exactly one complete encrypted-media v2 `imeta` attachment that
-binds the exact lowercase `ciphertext_sha256`. That attachment MUST also carry
-its singleton version, plaintext digest, nonce, canonical media type, and
-filename fields plus at least one structurally valid locator; repeated
-non-locator fields, an unknown field, or any missing or malformed required
-field is invalid. A caller assertion that bytes, authorization, reachability,
-or durability is valid has no effect.
+Every string in the signed event, including content and every tag member, MUST
+be a Unicode scalar sequence and therefore exactly UTF-8 representable; lone
+UTF-16 surrogates are invalid. An `expiration` value MUST be the canonical
+unsigned decimal encoding of a checked uint64, including zero through
+`18446744073709551615`; a sign, fraction, leading zero, unsafe numeric value,
+or larger integer is invalid. For ciphertext it verifies the signed regular
+Marmot kind-9 media event and requires exactly one complete encrypted-media v2
+`imeta` attachment that binds the exact lowercase `ciphertext_sha256`. That
+attachment MUST also carry its singleton version, plaintext digest, nonce,
+canonical media type, and filename fields plus at least one structurally valid
+locator; repeated non-locator fields, an unknown field, any non-scalar string,
+or any missing or malformed required field is invalid. A caller assertion that
+bytes, authorization, reachability, or durability is valid has no effect.
 
 Before append, the boundary MUST resolve authenticated current Core writer
 authority for the exact captured RID and ref. It then acquires a durable
