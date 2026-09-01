@@ -151,6 +151,20 @@ const DEFENSIVE_VALIDATION_DIRECT_PROHIBITION_BEFORE =
   /\b(?:no|without|never)\s+(?:(?:any|a|an|the)\s+)?$|\b(?:must|shall|do)\s+not\s+(?:(?:use|contact|target|access|exercise|interact\s+with|test|create|produce|generate|deliver|send|run|deploy|connect)\s+)?(?:(?:any|a|an|the)\s+)?$|\b(?:avoid|exclude|excluding|excluded?|prohibit(?:s|ed)?|forbid(?:s|den)?)\s*$/iu;
 const DEFENSIVE_VALIDATION_DIRECT_PROHIBITION_AFTER =
   /^\s*(?:(?:is|are|was|were|must|shall)\s+)?(?:prohibited|forbidden|disallowed|excluded|not\s+(?:allowed|permitted)|must\s+not\s+be\s+used)\b/iu;
+const DEFENSIVE_VALIDATION_COORDINATED_PROHIBITION_BEFORE =
+  /\b(?:no|without|never|do\s+not|must\s+not|shall\s+not)\b(?:(?!\bthen\b)[^.;\n]){0,96}$/iu;
+
+function defensiveValidationTargetIsProhibited(
+  text: string,
+  matchStart: number,
+  matchEnd: number,
+): boolean {
+  const before = text.slice(Math.max(0, matchStart - 128), matchStart);
+  const after = text.slice(matchEnd, matchEnd + 96);
+  return DEFENSIVE_VALIDATION_DIRECT_PROHIBITION_BEFORE.test(before)
+    || DEFENSIVE_VALIDATION_COORDINATED_PROHIBITION_BEFORE.test(before)
+    || DEFENSIVE_VALIDATION_DIRECT_PROHIBITION_AFTER.test(after);
+}
 
 const APPROVED_CLOSURE_PLAN_PATH =
   "docs/superpowers/plans/2026-08-29-heterodyne-0.6-final-security-closure.md";
@@ -178,10 +192,7 @@ export function lintDefensiveValidationText(
       for (const match of text.matchAll(pattern)) {
         const matchStart = match.index;
         const matchEnd = matchStart + match[0].length;
-        const before = text.slice(Math.max(0, matchStart - 96), matchStart);
-        const after = text.slice(matchEnd, matchEnd + 96);
-        if (DEFENSIVE_VALIDATION_DIRECT_PROHIBITION_BEFORE.test(before)
-          || DEFENSIVE_VALIDATION_DIRECT_PROHIBITION_AFTER.test(after)) continue;
+        if (defensiveValidationTargetIsProhibited(text, matchStart, matchEnd)) continue;
         issues.push({
           path,
           line: 1,
@@ -315,32 +326,52 @@ function generatorTestPaths(repoRoot: string): string[] {
   return visit(sourceRoot).sort();
 }
 
+function defensiveValidationFileText(text: string, path: string): string {
+  const source = ts.createSourceFile(
+    path,
+    text,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const excluded: Array<readonly [number, number]> = [];
+  const visit = (node: ts.Node): void => {
+    if (ts.isTemplateExpression(node)) {
+      excluded.push([node.getStart(source), node.end]);
+      return;
+    }
+    if (ts.isStringLiteralLike(node)) {
+      const parent = node.parent;
+      const isTitle = ts.isCallExpression(parent)
+        && isTestDeclarationCall(parent)
+        && parent.arguments[0] === node;
+      if (!isTitle) excluded.push([node.getStart(source), node.end]);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  if (excluded.length === 0) return text;
+  const characters = text.split("");
+  for (const [start, end] of excluded) {
+    for (let index = start; index < end; index += 1) {
+      if (characters[index] !== "\n" && characters[index] !== "\r") {
+        characters[index] = " ";
+      }
+    }
+  }
+  return characters.join("");
+}
+
 /** Review every generator test declaration, excluding non-source dependency/build trees. */
 export function lintDefensiveValidationRepositoryTests(
   repoRoot: string,
 ): DocsLintIssue[] {
   return generatorTestPaths(repoRoot).flatMap((path) => {
     const text = readFileSync(resolve(repoRoot, path), "utf8");
-    const source = ts.createSourceFile(
-      path,
-      text,
-      ts.ScriptTarget.Latest,
-      true,
-      ts.ScriptKind.TS,
-    );
-    let hasDeclaration = false;
-    const visit = (node: ts.Node): void => {
-      if (hasDeclaration) return;
-      if (ts.isCallExpression(node) && isTestDeclarationCall(node)) {
-        hasDeclaration = true;
-        return;
-      }
-      ts.forEachChild(node, visit);
-    };
-    visit(source);
-    return hasDeclaration
-      ? lintDefensiveValidationTestDeclarations(text, path)
-      : lintDefensiveValidationText(text, path);
+    return [
+      ...lintDefensiveValidationText(defensiveValidationFileText(text, path), path),
+      ...lintDefensiveValidationTestDeclarations(text, path),
+    ];
   });
 }
 

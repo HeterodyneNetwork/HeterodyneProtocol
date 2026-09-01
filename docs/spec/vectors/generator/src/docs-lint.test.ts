@@ -81,6 +81,18 @@ function snapshotGuidanceRoot(): string {
   return root;
 }
 
+function defensiveReviewRoot(source: string): string {
+  const root = mkdtempSync(resolve(tmpdir(), "heterodyne-defensive-review-"));
+  temps.push(root);
+  const path = resolve(
+    root,
+    "docs/spec/vectors/generator/src/synthetic-boundary.test.ts",
+  );
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, source);
+  return root;
+}
+
 function currentVersionLintRoot(): string {
   const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-version-lint-"));
   temps.push(root);
@@ -210,7 +222,7 @@ describe("canonical family documentation", () => {
     ).map(({ code }) => code)).toContain("defensive-validation-scope");
   });
 
-  it("BLUE TEAM VALIDATION: synthetic/local — rejects hostile validation directed at live targets or reusable payloads", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local — rejects unsafe validation target wording", () => {
     const issues = lintDefensiveValidationText(
       "BLUE TEAM VALIDATION: synthetic/local hostile accessor mutation uses a live relay and real credentials to deliver reusable exploit directions",
       "synthetic-boundary.test.ts",
@@ -309,6 +321,46 @@ it("reports an ordinary diagnostic", () => {
     ]);
   });
 
+  it("BLUE TEAM VALIDATION: synthetic/local — retains file-level target lint for marked declarations", () => {
+    const root = defensiveReviewRoot(`it(
+  "BLUE TEAM VALIDATION: synthetic/local — rejects a hostile fixture",
+  () => {
+    // This fixture uses a live relay.
+    const hostileFixture = true;
+    expect(hostileFixture).toBe(true);
+  },
+);\n`);
+    expect(lintDefensiveValidationRepositoryTests(root)).toEqual([
+      expect.objectContaining({
+        path: "docs/spec/vectors/generator/src/synthetic-boundary.test.ts",
+        code: "defensive-validation-target",
+      }),
+    ]);
+  });
+
+  it("accepts a clean exact-prefixed synthetic/local repository test", () => {
+    const root = defensiveReviewRoot(`it(
+  "BLUE TEAM VALIDATION: synthetic/local — rejects a hostile local fixture",
+  () => { const hostileFixture = true; expect(hostileFixture).toBe(true); },
+);\n`);
+    expect(lintDefensiveValidationRepositoryTests(root)).toEqual([]);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local — reports title and target findings together", () => {
+    const root = defensiveReviewRoot(`it(
+  "BLUE TEAM VALIDATION: synthetic/locality rejects a hostile fixture",
+  () => {
+    // This fixture uses a live relay.
+    const hostileFixture = true;
+    expect(hostileFixture).toBe(true);
+  },
+);\n`);
+    expect(lintDefensiveValidationRepositoryTests(root)).toEqual([
+      expect.objectContaining({ code: "defensive-validation-target" }),
+      expect.objectContaining({ code: "defensive-validation-scope", line: 1 }),
+    ]);
+  });
+
   it("BLUE TEAM VALIDATION: synthetic/local — lints each hostile declaration in an arbitrary test-file override", () => {
     const path = "docs/spec/vectors/generator/src/arbitrary-review.test.ts";
     const issues = lintMaintainedGuides(repositoryRoot, {
@@ -356,7 +408,7 @@ it("checks the second declaration", () => {
     )).toEqual([]);
   });
 
-  it("rejects an earlier prohibition that does not govern a later live target", () => {
+  it("rejects a prohibition that does not govern a later unsafe phrase", () => {
     const issues = lintDefensiveValidationText(
       "BLUE TEAM VALIDATION: synthetic/local hostile case makes no state change, then attacks a live relay",
       "synthetic-boundary.test.ts",
@@ -364,7 +416,7 @@ it("checks the second declaration", () => {
     expect(issues.map(({ code }) => code)).toContain("defensive-validation-target");
   });
 
-  it("allows explicit prohibition of live targets and reusable payloads", () => {
+  it("allows directly governed safety prohibitions", () => {
     expect(lintDefensiveValidationText(
       "BLUE TEAM VALIDATION: synthetic/local hostile accessor mutation; no live targets; production deployments are prohibited; production services are prohibited; production relays are prohibited; real credentials are prohibited; real accounts are prohibited; external systems are prohibited; reusable exploit directions are prohibited; reusable payload directions are prohibited",
       "synthetic-boundary.test.ts",
