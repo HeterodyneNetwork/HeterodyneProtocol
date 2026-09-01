@@ -13,6 +13,7 @@ import { performance } from "node:perf_hooks";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   findInvariantEvidenceIssues,
+  findObsoletePrivacyTierGuidanceIssues,
   findRetiredNormativeClaimIssues,
   findStrictProfileClosureIssues,
   lintDefensiveValidationTestDeclarations,
@@ -272,6 +273,21 @@ describe("canonical family documentation", () => {
     ]);
   });
 
+  it("BLUE TEAM VALIDATION: synthetic/local — requires hostile suite declarations to carry the exact prefix", () => {
+    const issues = lintDefensiveValidationTestDeclarations(
+      `describe("authorization freshness hostile-object boundary", () => {});
+describe.only("an adversarial suite", () => {});
+describe.skip("BLUE TEAM VALIDATION: synthetic/local — a marked attacker suite", () => {});
+describe.each([{ attackFixture: true }])("an unmarked matrix suite", () => {});\n`,
+      "synthetic-boundary.test.ts",
+    );
+    expect(issues).toEqual([
+      expect.objectContaining({ line: 1, code: "defensive-validation-scope" }),
+      expect.objectContaining({ line: 2, code: "defensive-validation-scope" }),
+      expect.objectContaining({ line: 4, code: "defensive-validation-scope" }),
+    ]);
+  });
+
   it("BLUE TEAM VALIDATION: synthetic/local — requires attacker and attack fixture declarations to carry the exact prefix", () => {
     const issues = lintDefensiveValidationTestDeclarations(
       `it("rejects a dangerous fixture", () => {
@@ -414,6 +430,60 @@ it("checks the second declaration", () => {
       "synthetic-boundary.test.ts",
     );
     expect(issues.map(({ code }) => code)).toContain("defensive-validation-target");
+  });
+
+  it.each([
+    "BLUE TEAM VALIDATION: synthetic/local hostile case makes no state change and uses a live relay",
+    "BLUE TEAM VALIDATION: synthetic/local hostile case has no disclosure while it contacts an external system",
+  ])("rejects unrelated negative clauses before a restricted target: %s", (text) => {
+    expect(lintDefensiveValidationText(text, "synthetic-boundary.test.ts")
+      .map(({ code }) => code)).toContain("defensive-validation-target");
+  });
+
+  it.each([
+    ["live target", "no live target is used"],
+    ["live relay", "no live relay is used"],
+    ["live node", "no live node is used"],
+    ["live service", "no live service is used"],
+    ["live deployment", "no live deployment is used"],
+    ["live identity provider", "no live identity provider is used"],
+    ["live account", "no live account is used"],
+    ["production deployment", "no production deployment is used"],
+    ["production service", "no production service is used"],
+    ["production relay", "no production relay is used"],
+    ["production node", "no production node is used"],
+    ["production system", "no production system is used"],
+    ["real account", "no real account is used"],
+    ["real credential", "no real credential is used"],
+    ["real data", "no real data is used"],
+    ["external account", "no external account is used"],
+    ["external credential", "no external credential is used"],
+    ["external data", "no external data is used"],
+    ["external system", "no external system is used"],
+    ["third-party system", "no third-party system is used"],
+    ["reusable exploit", "no reusable exploit is used"],
+    ["reusable payload directions", "no reusable payload directions are used"],
+    ["functional exploit", "no functional exploit is used"],
+    ["functional payload", "no functional payload is used"],
+    ["deployable exploit", "no deployable exploit is used"],
+    ["deployable payload directions", "no deployable payload directions are used"],
+  ])("detects and directly governs restricted target category %s", (target, prohibited) => {
+    const prefix = "BLUE TEAM VALIDATION: synthetic/local hostile case ";
+    expect(lintDefensiveValidationText(
+      `${prefix}uses a ${target}`,
+      "synthetic-boundary.test.ts",
+    ).map(({ code }) => code)).toContain("defensive-validation-target");
+    expect(lintDefensiveValidationText(
+      `${prefix}${prohibited}`,
+      "synthetic-boundary.test.ts",
+    )).toEqual([]);
+  });
+
+  it("allows a directly governed closed list of restricted target categories", () => {
+    expect(lintDefensiveValidationText(
+      "BLUE TEAM VALIDATION: synthetic/local hostile case: no live targets, real credentials, or external systems are used",
+      "synthetic-boundary.test.ts",
+    )).toEqual([]);
   });
 
   it("allows directly governed safety prohibitions", () => {
@@ -1234,6 +1304,37 @@ BLUE TEAM VALIDATION: synthetic/local hostile case uses a live relay
     expect(maintained).toMatch(/seven days[\s\S]{0,160}warning/i);
     expect(maintained).toMatch(/compromise[\s\S]{0,180}(?:complete|full) reset/i);
     expect(lintMaintainedSnapshotGuidance(repositoryRoot)).toEqual([]);
+  });
+
+  it("rejects obsolete privacy-tier claims in maintained current guidance", () => {
+    const obsolete = `## Privacy
+
+**Tier 2**
+: Plaintext selectively replicated through private repositories.
+
+**Tier 3**
+: Audience- or group-encrypted content whose carriers do not receive plaintext.
+`;
+    expect(findObsoletePrivacyTierGuidanceIssues(
+      obsolete,
+      "docs/glossary.md",
+    )).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        path: "docs/glossary.md",
+        code: "retired-authoring-model",
+      }),
+    ]));
+    expect(findObsoletePrivacyTierGuidanceIssues(
+      read("docs/architecture.md"),
+      "docs/architecture.md",
+    )).toEqual([]);
+  });
+
+  it("preserves dated privacy-tier history outside maintained current guides", () => {
+    expect(findObsoletePrivacyTierGuidanceIssues(
+      "Tier 2 plaintext private repository; Tier 3 group-encrypted content.",
+      "CHANGELOG.md",
+    )).toEqual([]);
   });
 
   it("accepts manifest-derived snapshot guidance without copied mutable facts", () => {

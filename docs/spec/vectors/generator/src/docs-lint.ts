@@ -139,31 +139,73 @@ const RETIRED_MAINTAINED_GUIDE_PATTERNS = [
   /recheck the named family release/i,
 ];
 
-const DEFENSIVE_VALIDATION_TARGET_PATTERNS = [
-  /\blive[-\s]+targets?\b/giu,
-  /\blive\s+(?:relay|node|service|deployment)s?\b/giu,
-  /\bproduction\s+(?:deployment|service|relay|node|system)s?\b/giu,
-  /\breal\s+(?:credential|account)s?\b/giu,
-  /\bexternal\s+systems?\b/giu,
-  /\b(?:reusable|functional|deployable)\s+(?:exploit|payload)s?(?:\s+directions?)?\b/giu,
+const DEFENSIVE_VALIDATION_TARGET_CATEGORIES = [
+  {
+    item: "live[-\\s]+targets?",
+    affirmative: /\blive[-\s]+targets?\b/giu,
+  },
+  {
+    item: "live\\s+(?:relays?|nodes?|services?|deployments?|identity\\s+providers?|accounts?|credentials?)",
+    affirmative:
+      /\blive\s+(?:relays?|nodes?|services?|deployments?|identity\s+providers?|accounts?|credentials?)\b/giu,
+  },
+  {
+    item: "production\\s+(?:deployments?|services?|relays?|nodes?|systems?)",
+    affirmative: /\bproduction\s+(?:deployments?|services?|relays?|nodes?|systems?)\b/giu,
+  },
+  {
+    item: "(?:real|external)\\s+(?:accounts?|credentials?|data)",
+    affirmative: /\b(?:real|external)\s+(?:accounts?|credentials?|data)\b/giu,
+  },
+  {
+    item: "(?:external|third[-\\s]+party)\\s+systems?",
+    affirmative: /\b(?:external|third[-\s]+party)\s+systems?\b/giu,
+  },
+  {
+    item: "external\\s+targets?",
+    affirmative:
+      /\b(?:use|contact|access|scan|exercise|test|reach)(?:s|ed|ing)?\s+(?:(?:any|a|an|the)\s+)?(?<target>external\s+targets?)\b/giu,
+  },
+  {
+    item: "(?:reusable|functional|deployable)\\s+(?:exploits?|payloads?)(?:\\s+directions?)?",
+    affirmative:
+      /\b(?:reusable|functional|deployable)\s+(?:exploits?|payloads?)(?:\s+directions?)?\b/giu,
+  },
+  {
+    item: "targets?",
+    affirmative:
+      /\b(?:use|contact|access|scan|exercise|test|reach)(?:s|ed|ing)?\s+(?:(?:any|a|an|the)\s+)?(?<target>targets?)\b/giu,
+  },
 ] as const;
+const DEFENSIVE_VALIDATION_TARGET_ITEM =
+  `(?:${DEFENSIVE_VALIDATION_TARGET_CATEGORIES.map(({ item }) => item).join("|")})`;
+const DEFENSIVE_VALIDATION_PROHIBITED_LIST = new RegExp(
+  String.raw`\b(?:no|without)\s+${DEFENSIVE_VALIDATION_TARGET_ITEM}`
+    + String.raw`(?:\s*,\s*${DEFENSIVE_VALIDATION_TARGET_ITEM})*`
+    + String.raw`(?:\s*,?\s*(?:or|and)\s+${DEFENSIVE_VALIDATION_TARGET_ITEM})?`
+    + String.raw`(?:\s+(?:is|are)\s+(?:used|contacted|accessed|tested|created|produced|generated|delivered|deployed))?\b`,
+  "giu",
+);
 const DEFENSIVE_VALIDATION_DIRECT_PROHIBITION_BEFORE =
   /\b(?:no|without|never)\s+(?:(?:any|a|an|the)\s+)?$|\b(?:must|shall|do)\s+not\s+(?:(?:use|contact|target|access|exercise|interact\s+with|test|create|produce|generate|deliver|send|run|deploy|connect)\s+)?(?:(?:any|a|an|the)\s+)?$|\b(?:avoid|exclude|excluding|excluded?|prohibit(?:s|ed)?|forbid(?:s|den)?)\s*$/iu;
 const DEFENSIVE_VALIDATION_DIRECT_PROHIBITION_AFTER =
   /^\s*(?:(?:is|are|was|were|must|shall)\s+)?(?:prohibited|forbidden|disallowed|excluded|not\s+(?:allowed|permitted)|must\s+not\s+be\s+used)\b/iu;
-const DEFENSIVE_VALIDATION_COORDINATED_PROHIBITION_BEFORE =
-  /\b(?:no|without|never|do\s+not|must\s+not|shall\s+not)\b(?:(?!\bthen\b)[^.;\n]){0,96}$/iu;
-
+const DEFENSIVE_VALIDATION_DIRECT_ACTION_PROHIBITION_BEFORE =
+  /\b(?:never|do\s+not|must\s+not|shall\s+not)\s+(?:(?:use|contact|target|access|exercise|test|create|produce|generate|deliver|send|run|deploy|connect|scan)(?:s|ed|ing)?|sign(?:s|ed|ing)?\s+for)(?:\s+or\s+(?:(?:use|contact|target|access|exercise|test|create|produce|generate|deliver|send|run|deploy|connect|scan)(?:s|ed|ing)?|sign(?:s|ed|ing)?\s+for))*\s+(?:(?:any|a|an|the)\s+)?$/iu;
 function defensiveValidationTargetIsProhibited(
   text: string,
   matchStart: number,
   matchEnd: number,
+  prohibitedListRanges: readonly (readonly [number, number])[],
 ): boolean {
   const before = text.slice(Math.max(0, matchStart - 128), matchStart);
   const after = text.slice(matchEnd, matchEnd + 96);
   return DEFENSIVE_VALIDATION_DIRECT_PROHIBITION_BEFORE.test(before)
-    || DEFENSIVE_VALIDATION_COORDINATED_PROHIBITION_BEFORE.test(before)
-    || DEFENSIVE_VALIDATION_DIRECT_PROHIBITION_AFTER.test(after);
+    || DEFENSIVE_VALIDATION_DIRECT_ACTION_PROHIBITION_BEFORE.test(before)
+    || DEFENSIVE_VALIDATION_DIRECT_PROHIBITION_AFTER.test(after)
+    || prohibitedListRanges.some(([start, end]) =>
+      start <= matchStart && end >= matchEnd
+    );
 }
 
 const APPROVED_CLOSURE_PLAN_PATH =
@@ -188,11 +230,19 @@ export function lintDefensiveValidationText(
     });
   }
   if (hostile) {
-    for (const pattern of DEFENSIVE_VALIDATION_TARGET_PATTERNS) {
-      for (const match of text.matchAll(pattern)) {
-        const matchStart = match.index;
-        const matchEnd = matchStart + match[0].length;
-        if (defensiveValidationTargetIsProhibited(text, matchStart, matchEnd)) continue;
+    const prohibitedListRanges = [...text.matchAll(DEFENSIVE_VALIDATION_PROHIBITED_LIST)]
+      .map((match) => [match.index, match.index + match[0].length] as const);
+    for (const { affirmative } of DEFENSIVE_VALIDATION_TARGET_CATEGORIES) {
+      for (const match of text.matchAll(affirmative)) {
+        const target = match.groups?.target ?? match[0];
+        const matchStart = match.index + match[0].lastIndexOf(target);
+        const matchEnd = matchStart + target.length;
+        if (defensiveValidationTargetIsProhibited(
+          text,
+          matchStart,
+          matchEnd,
+          prohibitedListRanges,
+        )) continue;
         issues.push({
           path,
           line: 1,
@@ -210,7 +260,9 @@ const BLUE_TEAM_TEST_PREFIX = "BLUE TEAM VALIDATION: synthetic/local";
 
 function isTestApi(expression: ts.Expression): boolean {
   return ts.isIdentifier(expression)
-    && (expression.text === "it" || expression.text === "test");
+    && (expression.text === "it"
+      || expression.text === "test"
+      || expression.text === "describe");
 }
 
 function isTestDeclarationCall(node: ts.CallExpression): boolean {
@@ -224,6 +276,19 @@ function isTestDeclarationCall(node: ts.CallExpression): boolean {
     || !ts.isPropertyAccessExpression(expression.expression)) return false;
   return isTestApi(expression.expression.expression)
     && ["each", "for"].includes(expression.expression.name.text);
+}
+
+function isSuiteDeclarationCall(node: ts.CallExpression): boolean {
+  const expression = node.expression;
+  if (ts.isIdentifier(expression)) return expression.text === "describe";
+  if (ts.isPropertyAccessExpression(expression)) {
+    return ts.isIdentifier(expression.expression)
+      && expression.expression.text === "describe";
+  }
+  return ts.isCallExpression(expression)
+    && ts.isPropertyAccessExpression(expression.expression)
+    && ts.isIdentifier(expression.expression.expression)
+    && expression.expression.expression.text === "describe";
 }
 
 function literalTestTitle(node: ts.CallExpression): string | undefined {
@@ -266,7 +331,7 @@ function declarationNamesHostileFixture(node: ts.CallExpression): boolean {
     }
     ts.forEachChild(child, visit);
   };
-  visit(node);
+  visit(isSuiteDeclarationCall(node) ? node.expression : node);
   return hostile;
 }
 
@@ -1809,6 +1874,37 @@ export function lintMaintainedSnapshotGuidance(
   return issues;
 }
 
+const CURRENT_PRIVACY_TIER_GUIDE_PATHS = new Set([
+  "README.md",
+  "docs/spec/heterodyne.md",
+  "docs/architecture.md",
+  "docs/glossary.md",
+  "docs/security/threat-model.md",
+]);
+const OBSOLETE_PRIVACY_TIER_GUIDANCE = [
+  /\bTier\s*2\b(?:(?!\bTier\s*3\b)[\s\S]){0,180}\bplaintext\b(?:(?!\bTier\s*3\b)[\s\S]){0,120}\bprivate repositor/iu,
+  /\bTier\s*2\b(?:(?!\bTier\s*3\b)[\s\S]){0,180}\bprivate repositor(?:(?!\bTier\s*3\b)[\s\S]){0,120}\bplaintext\b/iu,
+  /\bTier\s*3\b[\s\S]{0,180}\b(?:audience|group)[-\s]+encrypted\b[\s\S]{0,160}\bcarriers?\b[\s\S]{0,80}\bdo not receive plaintext\b/iu,
+] as const;
+
+/** Reject the superseded privacy-tier model only in maintained current guides. */
+export function findObsoletePrivacyTierGuidanceIssues(
+  text: string,
+  path: string,
+): DocsLintIssue[] {
+  if (!CURRENT_PRIVACY_TIER_GUIDE_PATHS.has(path)) return [];
+  return OBSOLETE_PRIVACY_TIER_GUIDANCE.flatMap((pattern) => {
+    const match = pattern.exec(text);
+    if (match === null) return [];
+    return [{
+      path,
+      line: text.slice(0, match.index).split(/\r?\n/u).length,
+      code: "retired-authoring-model" as const,
+      message: "obsolete privacy-tier guidance conflicts with the current Comms carrier model",
+    }];
+  });
+}
+
 /** Lint the maintained authoring guides against the single-family model. */
 export function lintMaintainedGuides(
   repoRoot: string,
@@ -1836,6 +1932,9 @@ export function lintMaintainedGuides(
       contentOverrides[path] ?? readFileSync(resolve(repoRoot, path), "utf8"),
     ]),
   );
+  for (const [path, text] of contents) {
+    issues.push(...findObsoletePrivacyTierGuidanceIssues(text, path));
+  }
   issues.push(...lintDefensiveValidationReviews(repoRoot, contentOverrides));
   const corpusBytes = [...contents.values()].reduce(
     (total, text) => total + Buffer.byteLength(text, "utf8"),

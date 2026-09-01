@@ -239,6 +239,6 @@ topic projection. The rolling snapshot's exact mutable facts come from
 from the last commit that changed that manifest. The current-draft and
 history-bound checks remain independent.
 
-The frozen claim schema member `profile_revision` has value `2`, distinct from the current family registry revision 17. Neither that historical wire value nor
+The frozen claim schema member `profile_revision` has value `2`, distinct from the current family registry revision 18. Neither that historical wire value nor
 the snapshot count is a substitute for current registry or specification
 authority.

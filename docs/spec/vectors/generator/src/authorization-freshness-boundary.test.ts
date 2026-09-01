@@ -66,7 +66,7 @@ const source = {
   }),
 };
 
-describe("authorization freshness hostile-object boundary", () => {
+describe("BLUE TEAM VALIDATION: synthetic/local — authorization freshness hostile-object boundary", () => {
   it("rejects binding and source accessors without invoking them", () => {
     let bindingReads = 0;
     const accessorBinding = {

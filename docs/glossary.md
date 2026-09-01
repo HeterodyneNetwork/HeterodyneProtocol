@@ -57,7 +57,7 @@ live registry and schemas govern when a short definition omits a condition.
   registry entry set. It is not a wire member and is not a released version.
 
 **Claim profile revision**
-: The frozen claim schema member `profile_revision` has value `2`, distinct from the current family registry revision 17. It labels the claim-profile
+: The frozen claim schema member `profile_revision` has value `2`, distinct from the current family registry revision 18. It labels the claim-profile
   wire shape and does not track registry authoring changes.
 
 ## Discovery and storage
@@ -106,11 +106,20 @@ live registry and schemas govern when a short definition omits a condition.
 : Public, locally verified signed content.
 
 **Tier 2**
-: Plaintext selectively replicated through private repositories. This is an
-  access boundary, not encryption; every repository reader may observe it.
+: NIP-44-v2-profile audience-encrypted ciphertext carried by public
+  repositories and/or ordinary public relays. Content is blind to carriers;
+  the distribution graph, membership, timing, and volume remain public.
 
 **Tier 3**
-: Audience- or group-encrypted content whose carriers do not receive plaintext.
+: NIP-44-v2-profile audience-encrypted ciphertext confined to authorized
+  private-repository interfaces. Content is blind to carriers, while
+  ciphertext, audience wraps, rosters, and fetch patterns are visible only to
+  allowed nodes.
+
+**Private-repository plaintext**
+: An orthogonal repository-visibility setting, not a confidentiality tier.
+  Every node admitted by `visibility.allow` may read and replicate the
+  plaintext.
 
 **Marmot account**
 : The standard Marmot account identified by the active persona key. The active
