@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { schnorr } from "@noble/curves/secp256k1";
 import { injectAgentAttribution } from "./agent-authorship.js";
+import { captureExactDataObject, snapshotClosedDataTree } from "./closed-data.js";
 import {
   compromiseResetCompletionProofBytes,
   compromiseResetEvidenceBundleDigest,
@@ -31,7 +32,11 @@ import {
   type NostrSignedEvent,
   type NostrUnsignedEvent,
 } from "./nostr.js";
-import type { CurrentControlFrameVerificationContext } from "./profile-negotiation.js";
+import { proofBytes } from "./proof-bytes.js";
+import {
+  currentControlFrameRequestDigest,
+  type CurrentControlFrameVerificationContext,
+} from "./profile-negotiation.js";
 
 type ResetReason =
   | "control-compromise-reset-evidence-invalid"
@@ -66,26 +71,117 @@ export type ControlSignerEvidenceExecution = Readonly<{
   terminal: ControlSecurityEvidenceTerminal;
 }>;
 
+type EvidenceBoundary = typeof validateCompromiseReset
+  | typeof executePersistedAutomatedSigning;
+
+type BoundaryInputCapture = Readonly<{
+  snapshot: unknown;
+  signer_execution: object | null;
+}>;
+
 type EvidenceRecord = Readonly<{
-  boundary: Function;
+  boundary: EvidenceBoundary;
+  boundary_id: string;
   input: object;
-  results: WeakSet<object>;
+  result: object;
+  input_snapshot: unknown;
+  result_snapshot: unknown;
+  signer_execution: object | null;
+  input_digest: string;
+  result_digest: string;
+  binding_digest: string;
 }>;
 
 const EVIDENCE_TERMINALS = new WeakMap<object, EvidenceRecord>();
-const SIGNER_TERMINALS = new WeakMap<object, Map<string, ControlSecurityEvidenceTerminal>>();
+
+function boundaryIdentifier(boundary: Function): string | undefined {
+  if (boundary === validateCompromiseReset) {
+    return "control-signing.validateCompromiseReset";
+  }
+  if (boundary === executePersistedAutomatedSigning) {
+    return "control-signing.executePersistedAutomatedSigning";
+  }
+  return undefined;
+}
+
+function captureBoundaryInput(
+  boundary: EvidenceBoundary,
+  input: object,
+): BoundaryInputCapture {
+  if (boundary === validateCompromiseReset) {
+    const captured = captureExactDataObject(input, [[
+      "authoritative_evidence",
+      "authoritative_inventory",
+      "completion",
+      "grant",
+      "now",
+      "pinned_assurance_authority",
+    ]], "Control reset evidence input");
+    return Object.freeze({
+      snapshot: snapshotClosedDataTree(captured, "Control reset evidence input"),
+      signer_execution: null,
+    });
+  }
+  const captured = captureExactDataObject(input, [[
+    "authorization",
+    "publication",
+    "signer_execution",
+  ]], "Control signer evidence input");
+  if (
+    captured.signer_execution === null
+    || typeof captured.signer_execution !== "object"
+  ) throw new Error("Control signer evidence input requires a signer capability");
+  return Object.freeze({
+    snapshot: snapshotClosedDataTree({
+      authorization: captured.authorization,
+      publication: captured.publication,
+    }, "Control signer evidence security input"),
+    signer_execution: captured.signer_execution,
+  });
+}
+
+function evidenceDigest(domain: string, value: unknown): string {
+  return createHash("sha256").update(proofBytes(domain, value)).digest("hex");
+}
 
 function mintTerminal(
-  boundary: Function,
+  boundary: EvidenceBoundary,
   input: object,
+  inputCapture: BoundaryInputCapture,
   result: object,
 ): ControlSecurityEvidenceTerminal {
+  const boundaryId = boundaryIdentifier(boundary);
+  if (boundaryId === undefined) throw new Error("unsupported Control evidence boundary");
+  const resultSnapshot = snapshotClosedDataTree(result, "Control evidence result");
+  const inputDigest = evidenceDigest(
+    "heterodyne-control-security-evidence-input-v1",
+    { boundary_id: boundaryId, input: inputCapture.snapshot },
+  );
+  const resultDigest = evidenceDigest(
+    "heterodyne-control-security-evidence-result-v1",
+    { boundary_id: boundaryId, result: resultSnapshot },
+  );
+  const bindingDigest = evidenceDigest(
+    "heterodyne-control-security-evidence-binding-v1",
+    {
+      boundary_id: boundaryId,
+      input_digest: inputDigest,
+      result_digest: resultDigest,
+    },
+  );
   const terminal = Object.freeze({});
-  EVIDENCE_TERMINALS.set(terminal, {
+  EVIDENCE_TERMINALS.set(terminal, Object.freeze({
     boundary,
+    boundary_id: boundaryId,
     input,
-    results: new WeakSet([result]),
-  });
+    result,
+    input_snapshot: inputCapture.snapshot,
+    result_snapshot: resultSnapshot,
+    signer_execution: inputCapture.signer_execution,
+    input_digest: inputDigest,
+    result_digest: resultDigest,
+    binding_digest: bindingDigest,
+  }));
   return terminal;
 }
 
@@ -96,17 +192,71 @@ export function isControlSecurityEvidenceTerminal(
   result: object,
 ): boolean {
   const retained = EVIDENCE_TERMINALS.get(terminal);
-  return retained !== undefined
-    && retained.boundary === boundary
-    && retained.input === input
-    && retained.results.has(result);
+  if (
+    retained === undefined
+    || retained.boundary !== boundary
+    || retained.input !== input
+    || retained.result !== result
+  ) return false;
+  try {
+    const boundaryId = boundaryIdentifier(boundary);
+    if (boundaryId === undefined || boundaryId !== retained.boundary_id) return false;
+    const currentInput = captureBoundaryInput(retained.boundary, input);
+    if (currentInput.signer_execution !== retained.signer_execution) return false;
+    const currentResult = snapshotClosedDataTree(result, "Control evidence result");
+    const inputDigest = evidenceDigest(
+      "heterodyne-control-security-evidence-input-v1",
+      { boundary_id: boundaryId, input: currentInput.snapshot },
+    );
+    const resultDigest = evidenceDigest(
+      "heterodyne-control-security-evidence-result-v1",
+      { boundary_id: boundaryId, result: currentResult },
+    );
+    const bindingDigest = evidenceDigest(
+      "heterodyne-control-security-evidence-binding-v1",
+      {
+        boundary_id: boundaryId,
+        input_digest: inputDigest,
+        result_digest: resultDigest,
+      },
+    );
+    return inputDigest === retained.input_digest
+      && resultDigest === retained.result_digest
+      && bindingDigest === retained.binding_digest
+      && evidenceDigest("heterodyne-control-security-evidence-input-v1", {
+        boundary_id: boundaryId,
+        input: retained.input_snapshot,
+      }) === retained.input_digest
+      && evidenceDigest("heterodyne-control-security-evidence-result-v1", {
+        boundary_id: boundaryId,
+        result: retained.result_snapshot,
+      }) === retained.result_digest;
+  } catch {
+    return false;
+  }
 }
 
 const FRAME_SECRET = "21".repeat(32);
 const FRAME_SENDER = getPublicKey(FRAME_SECRET);
 const FRAME_GROUP = "31".repeat(32);
-const FRAME_REQUEST_DIGEST = "41".repeat(32);
 const FRAME_NOW = 1_800_000_000;
+const FRAME_REQUEST_ID = "control-evidence-request";
+const FRAME_EXPIRES_AT = FRAME_NOW + 60;
+const FRAME_BODY = Object.freeze({
+  id: FRAME_REQUEST_ID,
+  method: "status",
+  params: {},
+  expires_at: FRAME_EXPIRES_AT,
+});
+const FRAME_REQUEST_DIGEST = currentControlFrameRequestDigest({
+  profile: "human-jsonrpc",
+  version: "heterodyne/0.6.0",
+  group_id: FRAME_GROUP,
+  sender: FRAME_SENDER,
+  request_id: FRAME_REQUEST_ID,
+  expires_at: FRAME_EXPIRES_AT,
+  body: FRAME_BODY,
+});
 
 export function controlFrameContext(
   overrides: Partial<CurrentControlFrameVerificationContext> = {},
@@ -132,16 +282,36 @@ export function signedControlFrameBytes(overrides: Readonly<{
   body?: Readonly<Record<string, unknown>>;
 }> = {}): Uint8Array {
   const now = overrides.trusted_now ?? FRAME_NOW;
+  const profile = overrides.profile ?? "human-jsonrpc";
+  const version = overrides.version ?? "heterodyne/0.6.0";
+  const groupId = overrides.group_id ?? FRAME_GROUP;
+  const requestId = overrides.request_id ?? FRAME_REQUEST_ID;
+  const expiresAt = now + 60;
+  const body = overrides.body ?? {
+    id: requestId,
+    method: "status",
+    params: {},
+    expires_at: expiresAt,
+  };
+  const requestDigest = currentControlFrameRequestDigest({
+    profile,
+    version,
+    group_id: groupId,
+    sender: FRAME_SENDER,
+    request_id: requestId,
+    expires_at: expiresAt,
+    body,
+  });
   const frame = {
-    version: overrides.version ?? "heterodyne/0.6.0",
-    profile: overrides.profile ?? "human-jsonrpc",
+    version,
+    profile,
     frame_type: "request",
-    request_id: overrides.request_id ?? "control-evidence-request",
-    expires_at: now + 60,
+    request_id: requestId,
+    expires_at: expiresAt,
     payload: {
-      group_id: overrides.group_id ?? FRAME_GROUP,
-      request_digest: overrides.request_digest ?? FRAME_REQUEST_DIGEST,
-      body: overrides.body ?? { method: "status" },
+      group_id: groupId,
+      request_digest: overrides.request_digest ?? requestDigest,
+      body,
     },
   };
   const unsigned: NostrUnsignedEvent = {
@@ -366,11 +536,17 @@ export function controlResetEvidenceFixtures(): readonly ControlResetEvidenceFix
 export function executeControlResetEvidenceFixture(
   fixture: ControlResetEvidenceFixture,
 ): ControlResetEvidenceExecution {
+  const inputCapture = captureBoundaryInput(validateCompromiseReset, fixture.input);
   const result = validateCompromiseReset(fixture.input);
   return Object.freeze({
     input: fixture.input,
     result,
-    terminal: mintTerminal(validateCompromiseReset, fixture.input, result),
+    terminal: mintTerminal(
+      validateCompromiseReset,
+      fixture.input,
+      inputCapture,
+      result,
+    ),
   });
 }
 
@@ -378,6 +554,14 @@ const SIGNER_PERSONA_SECRET = "13".repeat(32);
 const SIGNER_AGENT_SECRET = "14".repeat(32);
 const SIGNER_PERSONA = getPublicKey(SIGNER_PERSONA_SECRET);
 const SIGNER_AGENT = getPublicKey(SIGNER_AGENT_SECRET);
+
+type SignerFixtureState = Readonly<{
+  store: ReferenceSignerExecutionStore<NostrSignedEvent>;
+  key_operation: (event: NostrUnsignedEvent) => NostrSignedEvent;
+  invocation_count: () => number;
+}>;
+
+const SIGNER_FIXTURE_STATES = new WeakMap<object, SignerFixtureState>();
 
 function buildSignerInput(): Parameters<typeof executePersistedAutomatedSigning>[0] {
   const automationPolicy = {
@@ -511,13 +695,17 @@ function buildSignerInput(): Parameters<typeof executePersistedAutomatedSigning>
       failure_digest: null,
     }],
   };
+  const store = new ReferenceSignerExecutionStore<NostrSignedEvent>();
+  let invocationCount = 0;
+  const keyOperation = (_event: NostrUnsignedEvent): NostrSignedEvent => {
+    invocationCount += 1;
+    throw new Error("synthetic local signer outcome unknown");
+  };
   const signerExecution = new ReferenceSignerExecutionFence<NostrSignedEvent>(
-    new ReferenceSignerExecutionStore<NostrSignedEvent>(),
-    (_event: NostrUnsignedEvent): NostrSignedEvent => {
-      throw new Error("synthetic local signer outcome unknown");
-    },
+    store,
+    keyOperation,
   );
-  return {
+  const input: Parameters<typeof executePersistedAutomatedSigning>[0] = {
     authorization: {
       grant_candidates: [grant],
       usage_state: usageState,
@@ -541,6 +729,12 @@ function buildSignerInput(): Parameters<typeof executePersistedAutomatedSigning>
     publication,
     signer_execution: signerExecution,
   };
+  SIGNER_FIXTURE_STATES.set(input, Object.freeze({
+    store,
+    key_operation: keyOperation,
+    invocation_count: () => invocationCount,
+  }));
+  return input;
 }
 
 export function controlSignerEvidenceFixture(): ControlSignerEvidenceFixture {
@@ -550,32 +744,44 @@ export function controlSignerEvidenceFixture(): ControlSignerEvidenceFixture {
   });
 }
 
+export function reconstructControlSignerEvidenceFixture(
+  fixture: ControlSignerEvidenceFixture,
+): ControlSignerEvidenceFixture {
+  const state = SIGNER_FIXTURE_STATES.get(fixture.input);
+  if (state === undefined) throw new Error("unknown Control signer evidence fixture");
+  const input = {
+    authorization: fixture.input.authorization,
+    publication: fixture.input.publication,
+    signer_execution: new ReferenceSignerExecutionFence<NostrSignedEvent>(
+      state.store,
+      state.key_operation,
+    ),
+  };
+  SIGNER_FIXTURE_STATES.set(input, state);
+  return Object.freeze({ input, expected_reason: fixture.expected_reason });
+}
+
+export function controlSignerInvocationCount(
+  fixture: ControlSignerEvidenceFixture,
+): number {
+  const state = SIGNER_FIXTURE_STATES.get(fixture.input);
+  if (state === undefined) throw new Error("unknown Control signer evidence fixture");
+  return state.invocation_count();
+}
+
 export function executeControlSignerEvidenceFixture(
   fixture: ControlSignerEvidenceFixture,
 ): ControlSignerEvidenceExecution {
+  const inputCapture = captureBoundaryInput(
+    executePersistedAutomatedSigning,
+    fixture.input,
+  );
   const result = executePersistedAutomatedSigning(fixture.input);
-  let terminal: ControlSecurityEvidenceTerminal;
-  if (result.verdict === "indeterminate") {
-    let byDigest = SIGNER_TERMINALS.get(fixture.input);
-    if (byDigest === undefined) {
-      byDigest = new Map();
-      SIGNER_TERMINALS.set(fixture.input, byDigest);
-    }
-    const digest = result.completion_transition.failure_digest;
-    const retained = byDigest.get(digest);
-    if (retained === undefined) {
-      terminal = mintTerminal(
-        executePersistedAutomatedSigning,
-        fixture.input,
-        result,
-      );
-      byDigest.set(digest, terminal);
-    } else {
-      terminal = retained;
-      EVIDENCE_TERMINALS.get(terminal)?.results.add(result);
-    }
-  } else {
-    terminal = mintTerminal(executePersistedAutomatedSigning, fixture.input, result);
-  }
+  const terminal = mintTerminal(
+    executePersistedAutomatedSigning,
+    fixture.input,
+    inputCapture,
+    result,
+  );
   return Object.freeze({ input: fixture.input, result, terminal });
 }

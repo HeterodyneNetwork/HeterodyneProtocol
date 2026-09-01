@@ -4,9 +4,11 @@ import {
   controlFrameContext,
   controlResetEvidenceFixtures,
   controlSignerEvidenceFixture,
+  controlSignerInvocationCount,
   executeControlResetEvidenceFixture,
   executeControlSignerEvidenceFixture,
   isControlSecurityEvidenceTerminal,
+  reconstructControlSignerEvidenceFixture,
   signedControlFrameBytes,
 } from "./control-security-evidence.js";
 import {
@@ -18,12 +20,11 @@ import {
 import { hexToBytes } from "./hex.js";
 import { validateCurrentControlFrameProfile } from "./profile-negotiation.js";
 
-const REQUEST_A = "aa".repeat(32);
 const REQUEST_B = "bb".repeat(32);
 
 describe("real Control security evidence", () => {
   it("BLUE TEAM VALIDATION: synthetic/local rejects a signed frame rebound to another request", () => {
-    const bytes = signedControlFrameBytes({ request_digest: REQUEST_A });
+    const bytes = signedControlFrameBytes();
 
     expect(validateCurrentControlFrameProfile(bytes, controlFrameContext({
       expected_request_digest: REQUEST_B,
@@ -78,8 +79,11 @@ describe("real Control security evidence", () => {
 
   it("BLUE TEAM VALIDATION: synthetic/local retains the durable indeterminate signer terminal without repeating the key effect", () => {
     const fixture = controlSignerEvidenceFixture();
+    expect(controlSignerInvocationCount(fixture)).toBe(0);
     const first = executeControlSignerEvidenceFixture(fixture);
-    const retry = executeControlSignerEvidenceFixture(fixture);
+    expect(controlSignerInvocationCount(fixture)).toBe(1);
+    const reconstructed = reconstructControlSignerEvidenceFixture(fixture);
+    const retry = executeControlSignerEvidenceFixture(reconstructed);
 
     expect(first.input).toBe(fixture.input);
     expect(first.result).toMatchObject({
@@ -102,7 +106,9 @@ describe("real Control security evidence", () => {
           : "unreachable",
       },
     });
-    expect(retry.terminal).toBe(first.terminal);
+    expect(controlSignerInvocationCount(fixture)).toBe(1);
+    expect(controlSignerInvocationCount(reconstructed)).toBe(1);
+    expect(retry.terminal).not.toBe(first.terminal);
     expect(isControlSecurityEvidenceTerminal(
       first.terminal,
       executePersistedAutomatedSigning,
@@ -110,10 +116,91 @@ describe("real Control security evidence", () => {
       first.result,
     )).toBe(true);
     expect(isControlSecurityEvidenceTerminal(
-      first.terminal,
+      retry.terminal,
       executePersistedAutomatedSigning,
       retry.input,
       retry.result,
     )).toBe(true);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects post-mint reset input and result mutation", () => {
+    const inputFixture = controlResetEvidenceFixtures()[0];
+    const inputExecution = executeControlResetEvidenceFixture(inputFixture);
+    inputFixture.input.authoritative_evidence.evidence_revision += 1;
+    expect(isControlSecurityEvidenceTerminal(
+      inputExecution.terminal,
+      validateCompromiseReset,
+      inputExecution.input,
+      inputExecution.result,
+    )).toBe(false);
+
+    const verdictFixture = controlResetEvidenceFixtures()[1];
+    const verdictExecution = executeControlResetEvidenceFixture(verdictFixture);
+    (verdictExecution.result as { verdict: string }).verdict = "accept";
+    expect(isControlSecurityEvidenceTerminal(
+      verdictExecution.terminal,
+      validateCompromiseReset,
+      verdictExecution.input,
+      verdictExecution.result,
+    )).toBe(false);
+
+    const reasonFixture = controlResetEvidenceFixtures()[2];
+    const reasonExecution = executeControlResetEvidenceFixture(reasonFixture);
+    (reasonExecution.result as { reason_code: string }).reason_code =
+      "control-compromise-reset-evidence-invalid";
+    expect(isControlSecurityEvidenceTerminal(
+      reasonExecution.terminal,
+      validateCompromiseReset,
+      reasonExecution.input,
+      reasonExecution.result,
+    )).toBe(false);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects post-mint nested signer-terminal mutation", () => {
+    const fixture = controlSignerEvidenceFixture();
+    const execution = executeControlSignerEvidenceFixture(fixture);
+    if (execution.result.verdict !== "indeterminate") {
+      throw new Error("synthetic signer fixture did not reach indeterminate");
+    }
+    execution.result.completion_transition.failure_digest = "ff".repeat(32);
+
+    expect(isControlSecurityEvidenceTerminal(
+      execution.terminal,
+      executePersistedAutomatedSigning,
+      execution.input,
+      execution.result,
+    )).toBe(false);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects cloned, cross-input, and cross-boundary evidence", () => {
+    const [fixture, otherFixture] = controlResetEvidenceFixtures();
+    const execution = executeControlResetEvidenceFixture(fixture);
+    const clonedInput = structuredClone(execution.input);
+    const clonedResult = structuredClone(execution.result);
+
+    expect(isControlSecurityEvidenceTerminal(
+      execution.terminal,
+      validateCompromiseReset,
+      clonedInput,
+      execution.result,
+    )).toBe(false);
+    expect(isControlSecurityEvidenceTerminal(
+      execution.terminal,
+      validateCompromiseReset,
+      execution.input,
+      clonedResult,
+    )).toBe(false);
+    expect(isControlSecurityEvidenceTerminal(
+      execution.terminal,
+      validateCompromiseReset,
+      otherFixture.input,
+      execution.result,
+    )).toBe(false);
+    expect(isControlSecurityEvidenceTerminal(
+      execution.terminal,
+      executePersistedAutomatedSigning,
+      execution.input,
+      execution.result,
+    )).toBe(false);
   });
 });

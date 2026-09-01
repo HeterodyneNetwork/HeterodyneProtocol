@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   validateRegisteredKindProfile,
   type Registry,
@@ -7,10 +8,15 @@ import { stampOwner } from "./stamping.js";
 import { ed25519 } from "@noble/curves/ed25519";
 import { schnorr } from "@noble/curves/secp256k1";
 import { hexToBytes } from "./hex.js";
-import { validateControlFrameSchemaOrThrow } from "./schema.js";
+import {
+  validateControlFrameSchemaOrThrow,
+  validateControlMcpFrameSchemaOrThrow,
+  validateControlRpcRequestSchemaOrThrow,
+} from "./schema.js";
 import { controlGroupAdmission } from "./marmot-admission.js";
 import { snapshotAndVerifyNostrEvent } from "./nostr.js";
 import { jcsCanonicalize } from "./jcs.js";
+import { proofBytes } from "./proof-bytes.js";
 
 export type CurrentProfileWireProbe = Readonly<{
   content_is_heterodyne_json: boolean;
@@ -261,6 +267,15 @@ const CONTROL_FRAME_MEMBERS = [
   "version",
 ] as const;
 const CONTROL_PAYLOAD_MEMBERS = ["body", "group_id", "request_digest"] as const;
+const SIGNED_EVENT_MEMBERS = [
+  "content",
+  "created_at",
+  "id",
+  "kind",
+  "pubkey",
+  "sig",
+  "tags",
+] as const;
 
 function hasExactOwnMembers(
   value: object,
@@ -282,6 +297,95 @@ function rejectCurrentControlFrame(): CurrentControlFrameDecision {
   return { verdict: "reject", reason_code: "control-frame-invalid" };
 }
 
+function topLevelJsonObjectKeys(source: string): string[] | undefined {
+  let index = 0;
+  const skipWhitespace = () => {
+    while (/\s/.test(source[index] ?? "")) index += 1;
+  };
+  const scanString = (): string | undefined => {
+    const start = index;
+    if (source[index] !== '"') return undefined;
+    index += 1;
+    while (index < source.length) {
+      if (source[index] === "\\") index += 2;
+      else if (source[index] === '"') {
+        index += 1;
+        try {
+          return JSON.parse(source.slice(start, index)) as string;
+        } catch {
+          return undefined;
+        }
+      } else index += 1;
+    }
+    return undefined;
+  };
+  const skipValue = (): boolean => {
+    let objectDepth = 0;
+    let arrayDepth = 0;
+    let inString = false;
+    let escaped = false;
+    for (; index < source.length; index += 1) {
+      const character = source[index];
+      if (inString) {
+        if (escaped) escaped = false;
+        else if (character === "\\") escaped = true;
+        else if (character === '"') inString = false;
+        continue;
+      }
+      if (character === '"') inString = true;
+      else if (character === "{") objectDepth += 1;
+      else if (character === "[") arrayDepth += 1;
+      else if (character === "}") {
+        if (objectDepth === 0 && arrayDepth === 0) return true;
+        objectDepth -= 1;
+      } else if (character === "]") arrayDepth -= 1;
+      else if (character === "," && objectDepth === 0 && arrayDepth === 0) return true;
+      if (objectDepth < 0 || arrayDepth < 0) return false;
+    }
+    return true;
+  };
+  skipWhitespace();
+  if (source[index] !== "{") return undefined;
+  index += 1;
+  const keys: string[] = [];
+  for (;;) {
+    skipWhitespace();
+    if (source[index] === "}") {
+      index += 1;
+      skipWhitespace();
+      return index === source.length ? keys : undefined;
+    }
+    const key = scanString();
+    if (key === undefined || keys.includes(key)) return undefined;
+    keys.push(key);
+    skipWhitespace();
+    if (source[index] !== ":") return undefined;
+    index += 1;
+    skipWhitespace();
+    if (!skipValue()) return undefined;
+    skipWhitespace();
+    if (source[index] === ",") {
+      index += 1;
+      continue;
+    }
+    if (source[index] !== "}") return undefined;
+  }
+}
+
+export function currentControlFrameRequestDigest(input: Readonly<{
+  profile: string;
+  version: string;
+  group_id: string;
+  sender: string;
+  request_id: string;
+  expires_at: number;
+  body: Readonly<Record<string, unknown>>;
+}>): string {
+  return createHash("sha256")
+    .update(proofBytes("heterodyne-control-frame-request-v1", input))
+    .digest("hex");
+}
+
 /**
  * Captures and verifies one exact signed kind-31017 Control request carried by
  * an already authenticated Marmot group.
@@ -299,6 +403,12 @@ export function validateCurrentControlFrameProfile(
     ) return rejectCurrentControlFrame();
     const capturedBytes = frame_bytes.slice();
     const decoded = new TextDecoder("utf-8", { fatal: true }).decode(capturedBytes);
+    const outerKeys = topLevelJsonObjectKeys(decoded);
+    if (
+      outerKeys === undefined
+      || outerKeys.length !== SIGNED_EVENT_MEMBERS.length
+      || !SIGNED_EVENT_MEMBERS.every((member) => outerKeys.includes(member))
+    ) return rejectCurrentControlFrame();
     const parsed: unknown = JSON.parse(decoded);
     const event = snapshotAndVerifyNostrEvent(parsed);
     if (
@@ -353,6 +463,33 @@ export function validateCurrentControlFrameProfile(
       || typeof payload.request_digest !== "string"
       || !/^[0-9a-f]{64}$/u.test(payload.request_digest)
     ) return rejectCurrentControlFrame();
+    const body = payload.body as Readonly<Record<string, unknown>>;
+    if (candidate.profile === "human-jsonrpc") {
+      validateControlRpcRequestSchemaOrThrow(body);
+      if (
+        body.id !== candidate.request_id
+        || body.expires_at !== candidate.expires_at
+      ) return rejectCurrentControlFrame();
+    } else if (candidate.profile === "agent-mcp") {
+      validateControlMcpFrameSchemaOrThrow(body);
+      if (
+        typeof body.method !== "string"
+        || typeof body.id !== "string"
+        || body.id !== candidate.request_id
+      ) return rejectCurrentControlFrame();
+    } else return rejectCurrentControlFrame();
+    const derivedRequestDigest = currentControlFrameRequestDigest({
+      profile: candidate.profile,
+      version: candidate.version as string,
+      group_id: payload.group_id as string,
+      sender: event.pubkey,
+      request_id: candidate.request_id,
+      expires_at: candidate.expires_at as number,
+      body,
+    });
+    if (payload.request_digest !== derivedRequestDigest) {
+      return rejectCurrentControlFrame();
+    }
     return {
       verdict: "accept",
       output: {

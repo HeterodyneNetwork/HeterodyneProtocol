@@ -1,8 +1,10 @@
+import { createHash } from "node:crypto";
 import { schnorr } from "@noble/curves/secp256k1";
 import { describe, expect, it } from "vitest";
 import { bytesToHex, hexToBytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
 import { getEventId, getPublicKey, type NostrUnsignedEvent } from "./nostr.js";
+import { proofBytes } from "./proof-bytes.js";
 import {
   type CurrentControlFrameVerificationContext,
   validateCurrentControlFrameProfile,
@@ -11,8 +13,38 @@ import {
 const SECRET = "31".repeat(32);
 const SENDER = getPublicKey(SECRET);
 const GROUP = "42".repeat(32);
-const REQUEST = "53".repeat(32);
 const NOW = 1_800_000_000;
+const REQUEST_ID = "request-1";
+const HUMAN_BODY = Object.freeze({
+  id: REQUEST_ID,
+  method: "status",
+  params: {},
+  expires_at: NOW + 60,
+});
+
+function requestDigest(input: Readonly<{
+  profile: string;
+  version: string;
+  group_id: string;
+  sender: string;
+  request_id: string;
+  expires_at: number;
+  body: Readonly<Record<string, unknown>>;
+}>): string {
+  return createHash("sha256")
+    .update(proofBytes("heterodyne-control-frame-request-v1", input))
+    .digest("hex");
+}
+
+const REQUEST = requestDigest({
+  profile: "human-jsonrpc",
+  version: "heterodyne/0.6.0",
+  group_id: GROUP,
+  sender: SENDER,
+  request_id: REQUEST_ID,
+  expires_at: NOW + 60,
+  body: HUMAN_BODY,
+});
 
 function context(
   overrides: Partial<CurrentControlFrameVerificationContext> = {},
@@ -33,18 +65,32 @@ function signedBytes(overrides: Readonly<{
   frame?: Readonly<Record<string, unknown>>;
   payload?: Readonly<Record<string, unknown>>;
 }> = {}): Uint8Array {
+  const profile = overrides.frame?.profile ?? "human-jsonrpc";
+  const version = overrides.frame?.version ?? "heterodyne/0.6.0";
+  const requestId = overrides.frame?.request_id ?? REQUEST_ID;
+  const expiresAt = overrides.frame?.expires_at ?? NOW + 60;
+  const body = overrides.payload?.body ?? HUMAN_BODY;
+  const groupId = overrides.payload?.group_id ?? GROUP;
   const payload = {
-    group_id: GROUP,
-    request_digest: REQUEST,
-    body: { method: "status" },
+    group_id: groupId,
+    request_digest: requestDigest({
+      profile: String(profile),
+      version: String(version),
+      group_id: String(groupId),
+      sender: overrides.event?.pubkey ?? SENDER,
+      request_id: String(requestId),
+      expires_at: Number(expiresAt),
+      body: body as Readonly<Record<string, unknown>>,
+    }),
+    body,
     ...overrides.payload,
   };
   const frame = {
-    version: "heterodyne/0.6.0",
-    profile: "human-jsonrpc",
+    version,
+    profile,
     frame_type: "request",
-    request_id: "request-1",
-    expires_at: NOW + 60,
+    request_id: requestId,
+    expires_at: expiresAt,
     payload,
     ...overrides.frame,
   };
@@ -72,7 +118,7 @@ describe("current Control frame profile", () => {
       verdict: "accept",
       output: {
         event_id: JSON.parse(new TextDecoder().decode(signedBytes())).id,
-        request_id: "request-1",
+        request_id: REQUEST_ID,
         request_digest: REQUEST,
       },
     });
@@ -123,6 +169,92 @@ describe("current Control frame profile", () => {
         reason_code: "control-frame-invalid",
       });
     }
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects a valid signed same-value duplicate outer member", () => {
+    const ordinary = new TextDecoder().decode(signedBytes());
+    const event = JSON.parse(ordinary) as { id: string };
+    const duplicate = ordinary.replace(
+      `"id":"${event.id}"`,
+      `"id":"${event.id}","id":"${event.id}"`,
+    );
+
+    expect(validateCurrentControlFrameProfile(
+      new TextEncoder().encode(duplicate),
+      context(),
+    )).toEqual({ verdict: "reject", reason_code: "control-frame-invalid" });
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects changed or extended human requests carrying the old digest", () => {
+    const changed = signedBytes({
+      payload: {
+        request_digest: REQUEST,
+        body: { ...HUMAN_BODY, method: "delete" },
+      },
+    });
+    const extended = signedBytes({
+      payload: {
+        request_digest: REQUEST,
+        body: { ...HUMAN_BODY, authorized: true },
+      },
+    });
+
+    for (const bytes of [changed, extended]) {
+      expect(validateCurrentControlFrameProfile(bytes, context())).toEqual({
+        verdict: "reject",
+        reason_code: "control-frame-invalid",
+      });
+    }
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects a human request body under the agent MCP profile", () => {
+    const profile = "agent-mcp";
+    const digest = requestDigest({
+      profile,
+      version: "heterodyne/0.6.0",
+      group_id: GROUP,
+      sender: SENDER,
+      request_id: REQUEST_ID,
+      expires_at: NOW + 60,
+      body: HUMAN_BODY,
+    });
+    const bytes = signedBytes({
+      frame: { profile },
+      payload: { body: HUMAN_BODY, request_digest: digest },
+    });
+
+    expect(validateCurrentControlFrameProfile(bytes, context({
+      expected_profile: profile,
+      expected_request_digest: digest,
+    }))).toEqual({ verdict: "reject", reason_code: "control-frame-invalid" });
+  });
+
+  it("accepts one complete request under the agent MCP profile", () => {
+    const profile = "agent-mcp";
+    const body = {
+      jsonrpc: "2.0",
+      id: REQUEST_ID,
+      method: "tools/call",
+      params: { name: "status", arguments: {} },
+    };
+    const digest = requestDigest({
+      profile,
+      version: "heterodyne/0.6.0",
+      group_id: GROUP,
+      sender: SENDER,
+      request_id: REQUEST_ID,
+      expires_at: NOW + 60,
+      body,
+    });
+    const bytes = signedBytes({
+      frame: { profile },
+      payload: { body, request_digest: digest },
+    });
+
+    expect(validateCurrentControlFrameProfile(bytes, context({
+      expected_profile: profile,
+      expected_request_digest: digest,
+    }))).toMatchObject({ verdict: "accept" });
   });
 
   it("BLUE TEAM VALIDATION: synthetic/local rejects a recomputed event carrying a forged signature", () => {

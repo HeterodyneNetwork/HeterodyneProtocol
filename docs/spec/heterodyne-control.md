@@ -180,15 +180,24 @@ compact JSON conforming to
 For a request, `payload` is the closed object
 `{group_id,request_digest,body}`. `group_id` MUST equal the authenticated
 Marmot group and `request_digest` MUST equal the server-derived digest of the
-exact bound request; `body` is the closed JSON-RPC or MCP request. Before
-dispatch, the receiver captures the exact bytes, decodes and parses the outer
-event once, verifies its closed shape, identifier, signature, `kind`, empty
-tags, sender, and non-future `created_at`, then parses and validates the closed
-Control content. It requires the expected profile and version, a non-expired
-request, the authenticated group, and the expected request digest. A signed
-frame replayed into another group, request, profile, version, sender, or time
-context fails as `control-frame-invalid`; transport authentication or a
-caller-supplied validity summary cannot replace those checks.
+exact bound request. That digest is SHA-256 over
+`UTF-8("heterodyne-control-frame-request-v1") || 0x00 ||
+UTF-8(JCS({profile,version,group_id,sender,request_id,expires_at,body}))`.
+For `human-jsonrpc`, `body` MUST be the exact closed
+`control-rpc-request-v1` request and its `id` and `expires_at` MUST equal the
+outer frame members. For `agent-mcp`, `body` MUST be a closed request form of
+`control-mcp-frame-v1`, with a string `id` equal to the outer `request_id`.
+
+Before dispatch, the receiver captures the exact bytes, duplicate-aware
+decodes the outer event once, rejects duplicate or non-closed outer members,
+and verifies its identifier, signature, `kind`, empty tags, sender, and
+non-future `created_at`. It then parses the JCS-canonical closed Control
+content, selects the body schema from the authenticated profile, recomputes
+the request digest, and requires the expected profile, version, non-expired
+request, authenticated group, and expected digest. A signed frame replayed
+into another group, request, profile, version, sender, or time context fails
+as `control-frame-invalid`; transport authentication or a caller-supplied
+validity summary cannot replace those checks.
 
 The existing closed frame members and JSON-RPC/MCP payload distinction remain
 in force. A valid frame proves transport authenticity only. It MUST NOT be
@@ -436,9 +445,15 @@ authoritative state.
 
 Executable conformance evidence for an uncertain signer effect invokes this
 same persisted execute-once boundary with an authoritative `executing`
-reservation. It retains the actual input and the opaque durable terminal; the
-registered `control-signer-effect-indeterminate` result cannot be supplied by
-a caller-selected effect-state or validity flag.
+reservation. A reconstructed fence over the same durable store MUST return
+the cached terminal without invoking the key operation again. The evidence
+adapter descriptor-captures and privately deep-freezes the exact security
+input and returned result, and binds their canonical digests, object
+identities, signer-capability identity, and real boundary identity to a fresh
+opaque terminal. Mutation, cloning, or substitution across inputs or
+boundaries invalidates that terminal. The registered
+`control-signer-effect-indeterminate` result cannot be supplied by a
+caller-selected effect-state or validity flag.
 
 The server derives the request digest; a caller never supplies it. The digest
 is SHA-256 over `UTF-8("heterodyne-control-nip46-request-v1") || 0x00 ||
@@ -726,10 +741,12 @@ authority.
 Executable conformance evidence for reset rejection invokes this validator
 with the actual signed grant and successor-signed completion plus the complete
 authoritative inventory, transition evidence, and optional pinned Assurance
-authority. Evidence adapters retain those exact inputs and the validator's
-result plus an opaque terminal identity; they cannot replace signature,
-inventory, evidence, or subordinate-reauthorization checks with
-caller-supplied booleans.
+authority. Evidence adapters descriptor-capture and privately deep-freeze
+those exact inputs and the validator result, then bind their canonical
+digests and object and boundary identities to an opaque terminal. Post-mint
+mutation, cloning, or cross-input or cross-boundary substitution invalidates
+the terminal; adapters cannot replace signature, inventory, evidence, or
+subordinate-reauthorization checks with caller-supplied booleans.
 
 The baseline authorization class is `active-account`. Optional Assurance may
 authorize or reinforce succession and reset, including when the old key is
