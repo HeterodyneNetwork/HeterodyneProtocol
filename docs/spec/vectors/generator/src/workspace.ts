@@ -173,6 +173,7 @@ const WORKSPACE_CURRENT_RELATIONSHIPS = new WeakMap<object, WorkspaceCurrentRela
 export type WorkspaceInvitationStoreRecord = Readonly<{
   revision: number;
   state: "prepared" | "executing" | "committed" | "indeterminate" | "rejected";
+  store_key: string;
   acceptance_binding: string;
   authority_fingerprint: string;
   current_fingerprint: string;
@@ -183,6 +184,7 @@ export type WorkspaceInvitationStoreRecord = Readonly<{
   authority_checkpoint: string;
   expires_at: number;
   activation_binding: string | null;
+  execution_token: string | null;
   terminal: Readonly<Record<string, unknown>> | null;
   terminal_digest: string | null;
 }>;
@@ -1714,6 +1716,7 @@ function invitationStoreRecordSnapshot(value: unknown): WorkspaceInvitationStore
   if (snapshot === null || !hasExactMembers(snapshot, [
     "revision",
     "state",
+    "store_key",
     "acceptance_binding",
     "authority_fingerprint",
     "current_fingerprint",
@@ -1724,12 +1727,15 @@ function invitationStoreRecordSnapshot(value: unknown): WorkspaceInvitationStore
     "authority_checkpoint",
     "expires_at",
     "activation_binding",
+    "execution_token",
     "terminal",
     "terminal_digest",
   ])
     || !isSafeNonNegativeInteger(snapshot.revision)
     || !["prepared", "executing", "committed", "indeterminate", "rejected"]
       .includes(String(snapshot.state))
+    || typeof snapshot.store_key !== "string"
+    || snapshot.store_key.length < 1
     || !isH64(snapshot.acceptance_binding)
     || !isH64(snapshot.authority_fingerprint)
     || !isH64(snapshot.current_fingerprint)
@@ -1740,6 +1746,7 @@ function invitationStoreRecordSnapshot(value: unknown): WorkspaceInvitationStore
     || !isH64(snapshot.authority_checkpoint)
     || !isSafeNonNegativeInteger(snapshot.expires_at)
     || !(snapshot.activation_binding === null || isH64(snapshot.activation_binding))
+    || !(snapshot.execution_token === null || isH64(snapshot.execution_token))
     || !(snapshot.terminal === null || isRecord(snapshot.terminal))
     || !(snapshot.terminal_digest === null || isH64(snapshot.terminal_digest))) return null;
   return deepFreeze(snapshot) as WorkspaceInvitationStoreRecord;
@@ -1767,6 +1774,7 @@ function exactInvitationStoreBinding(
   expected: WorkspaceInvitationStoreRecord,
 ): boolean {
   return record.acceptance_binding === expected.acceptance_binding
+    && record.store_key === expected.store_key
     && record.authority_fingerprint === expected.authority_fingerprint
     && record.current_fingerprint === expected.current_fingerprint
     && record.root_role_id === expected.root_role_id
@@ -1775,6 +1783,44 @@ function exactInvitationStoreBinding(
     && record.predecessor === expected.predecessor
     && record.authority_checkpoint === expected.authority_checkpoint
     && record.expires_at === expected.expires_at;
+}
+
+function exactInvitationStoreRecord(
+  actual: WorkspaceInvitationStoreRecord,
+  expected: WorkspaceInvitationStoreRecord,
+): boolean {
+  return jcsCanonicalize(actual) === jcsCanonicalize(expected);
+}
+
+function workspaceInvitationTerminalDigest(
+  activationBinding: string,
+  terminal: Readonly<Record<string, unknown>>,
+): string {
+  return bytesToHex(sha256(proofBytes(
+    "heterodyne-workspace-invitation-terminal-v1",
+    { activation_binding: activationBinding, output: terminal },
+  )));
+}
+
+function persistWorkspaceInvitationIndeterminate(
+  store: WorkspaceInvitationStoreCapability,
+  token: string,
+  current: WorkspaceInvitationStoreRecord,
+  activationBinding: string,
+  executionToken: string,
+): void {
+  if (current.state !== "prepared" && current.state !== "executing") return;
+  try {
+    store.compare_and_swap(token, current.revision, {
+      ...current,
+      revision: current.revision + 1,
+      state: "indeterminate",
+      activation_binding: activationBinding,
+      execution_token: executionToken,
+    });
+  } catch {
+    // Absence of a confirmed terminal remains fail-closed.
+  }
 }
 
 function abortWorkspaceInvitationReservation(value: unknown): void {
@@ -2028,8 +2074,35 @@ function commitWorkspaceInvitationReservation(
     || workspaceCurrentFingerprint(currentRecord) !== record.current_fingerprint) {
     return { ok: false, reason_code: "workspace_replay" };
   }
+  const activationBinding = workspaceInvitationActivationBinding(request, record);
+  if (activationBinding === null) return { ok: false, reason_code: "workspace_replay" };
+  const loaded = loadWorkspaceInvitationStoreRecord(record.store, record.token);
+  if (!loaded.ok || loaded.value === null) return { ok: false, reason_code: "workspace_replay" };
+  const stored = loaded.value;
+  const expectedBase: WorkspaceInvitationStoreRecord = {
+    revision: stored.revision,
+    state: stored.state,
+    store_key: record.token,
+    acceptance_binding: record.acceptance_binding,
+    authority_fingerprint: config.authority_fingerprint,
+    current_fingerprint: record.current_fingerprint,
+    root_role_id: record.root_role_id,
+    root_capability_ceiling: record.root_capability_ceiling,
+    policy_head: record.policy_head,
+    predecessor: record.predecessor,
+    authority_checkpoint: record.authority_checkpoint,
+    expires_at: record.expires_at,
+    activation_binding: stored.activation_binding,
+    execution_token: stored.execution_token,
+    terminal: stored.terminal,
+    terminal_digest: stored.terminal_digest,
+  };
+  if (!exactInvitationStoreBinding(stored, expectedBase)) {
+    return { ok: false, reason_code: "workspace_replay" };
+  }
 
-  // Current state is intentionally revalidated immediately before durable acquire.
+  // The store load is external authority. Revalidate the exact signed current
+  // state after it returns and immediately before durable acquire/effect.
   const trusted = readWorkspaceTrustedNow(request.authority);
   if (!trusted.ok) {
     abortWorkspaceInvitationReservation(value);
@@ -2044,117 +2117,127 @@ function commitWorkspaceInvitationReservation(
     abortWorkspaceInvitationReservation(value);
     return { ok: false, reason_code: "workspace_replay" };
   }
-  const activationBinding = workspaceInvitationActivationBinding(request, record);
-  if (activationBinding === null) return { ok: false, reason_code: "workspace_replay" };
-  const loaded = loadWorkspaceInvitationStoreRecord(record.store, record.token);
-  if (!loaded.ok || loaded.value === null) return { ok: false, reason_code: "workspace_replay" };
-  const stored = loaded.value;
-  const expectedBase: WorkspaceInvitationStoreRecord = {
-    revision: stored.revision,
-    state: stored.state,
-    acceptance_binding: record.acceptance_binding,
-    authority_fingerprint: config.authority_fingerprint,
-    current_fingerprint: record.current_fingerprint,
-    root_role_id: record.root_role_id,
-    root_capability_ceiling: record.root_capability_ceiling,
-    policy_head: record.policy_head,
-    predecessor: record.predecessor,
-    authority_checkpoint: record.authority_checkpoint,
-    expires_at: record.expires_at,
-    activation_binding: stored.activation_binding,
-    terminal: stored.terminal,
-    terminal_digest: stored.terminal_digest,
-  };
-  if (!exactInvitationStoreBinding(stored, expectedBase)) {
-    return { ok: false, reason_code: "workspace_replay" };
-  }
+  const terminal = validated.value.normalized;
+  const terminalDigest = workspaceInvitationTerminalDigest(activationBinding, terminal);
   if (stored.state === "committed") {
     if (stored.activation_binding !== activationBinding
+      || stored.execution_token === null
       || stored.terminal === null
-      || stored.terminal_digest !== workspaceObjectId(stored.terminal)) {
+      || stored.terminal_digest !== terminalDigest
+      || jcsCanonicalize(stored.terminal) !== jcsCanonicalize(terminal)) {
       return { ok: false, reason_code: "workspace_replay" };
     }
     return {
       ok: true,
-      value: deepFreeze({ invitation_acceptance: value, normalized: stored.terminal }),
+      value: deepFreeze({ invitation_acceptance: value, normalized: terminal }),
     };
   }
   if (stored.state === "executing" || stored.state === "indeterminate") {
-    return stored.activation_binding === activationBinding
+    return stored.activation_binding === activationBinding && stored.execution_token !== null
       ? { indeterminate: true }
       : { ok: false, reason_code: "workspace_replay" };
   }
-  if (stored.state !== "prepared" || stored.activation_binding !== null) {
+  if (stored.state !== "prepared"
+    || stored.activation_binding !== null
+    || stored.execution_token !== null
+    || stored.terminal !== null
+    || stored.terminal_digest !== null) {
     return { ok: false, reason_code: "workspace_replay" };
   }
+  const executionToken = bytesToHex(sha256(proofBytes(
+    "heterodyne-workspace-invitation-execution-token-v1",
+    {
+      acceptance_binding: record.acceptance_binding,
+      activation_binding: activationBinding,
+      executing_revision: stored.revision + 1,
+      store_key: record.token,
+    },
+  )));
   const executing: WorkspaceInvitationStoreRecord = {
     ...stored,
     revision: stored.revision + 1,
     state: "executing",
     activation_binding: activationBinding,
+    execution_token: executionToken,
   };
-  let acquired: "committed" | "conflict" | "unknown";
   try {
-    acquired = record.store.compare_and_swap(record.token, stored.revision, executing);
+    record.store.compare_and_swap(record.token, stored.revision, executing);
   } catch {
-    acquired = "unknown";
+    // Exact readback below, not the callback response, decides acquisition.
   }
-  if (acquired !== "committed") {
-    const afterAcquire = loadWorkspaceInvitationStoreRecord(record.store, record.token);
-    if (afterAcquire.ok && afterAcquire.value !== null
-      && exactInvitationStoreBinding(afterAcquire.value, expectedBase)
-      && (afterAcquire.value.state === "prepared" || afterAcquire.value.state === "executing")) {
-      try {
-        record.store.compare_and_swap(record.token, afterAcquire.value.revision, {
-          ...afterAcquire.value,
-          revision: afterAcquire.value.revision + 1,
-          state: "indeterminate",
-          activation_binding: activationBinding,
-        });
-      } catch {
-        // The durable prepared/executing record remains fail-closed.
-      }
+  const acquiredRecord = loadWorkspaceInvitationStoreRecord(record.store, record.token);
+  if (!acquiredRecord.ok || acquiredRecord.value === null
+    || !exactInvitationStoreRecord(acquiredRecord.value, executing)) {
+    if (acquiredRecord.ok && acquiredRecord.value !== null
+      && exactInvitationStoreBinding(acquiredRecord.value, expectedBase)) {
+      persistWorkspaceInvitationIndeterminate(
+        record.store,
+        record.token,
+        acquiredRecord.value,
+        activationBinding,
+        executionToken,
+      );
     }
     return { indeterminate: true };
   }
-  const terminal = validated.value.normalized;
+
+  // Exact executing readback is also external; it cannot move current state
+  // between authorization and the terminal activation effect.
+  const effectTrusted = readWorkspaceTrustedNow(request.authority);
+  if (!effectTrusted.ok || effectTrusted.value.now < trusted.value.now) {
+    persistWorkspaceInvitationIndeterminate(
+      record.store,
+      record.token,
+      acquiredRecord.value,
+      activationBinding,
+      executionToken,
+    );
+    return effectTrusted.ok
+      ? { ok: false, reason_code: "checkpoint_stale" }
+      : effectTrusted;
+  }
+  const effectValidated = validateWorkspaceGrantActivationAtTime(
+    request,
+    effectTrusted.value.now,
+  );
+  if (!effectValidated.ok
+    || effectValidated.value.invitation_acceptance !== value
+    || effectTrusted.value.now >= record.expires_at
+    || jcsCanonicalize(effectValidated.value.normalized) !== jcsCanonicalize(terminal)) {
+    persistWorkspaceInvitationIndeterminate(
+      record.store,
+      record.token,
+      acquiredRecord.value,
+      activationBinding,
+      executionToken,
+    );
+    return !effectValidated.ok ? effectValidated : { ok: false, reason_code: "workspace_replay" };
+  }
   const committed: WorkspaceInvitationStoreRecord = {
     ...executing,
     revision: executing.revision + 1,
     state: "committed",
     terminal,
-    terminal_digest: workspaceObjectId(terminal),
+    terminal_digest: terminalDigest,
   };
-  let persisted: "committed" | "conflict" | "unknown";
   try {
-    persisted = record.store.compare_and_swap(record.token, executing.revision, committed);
+    record.store.compare_and_swap(record.token, executing.revision, committed);
   } catch {
-    persisted = "unknown";
+    // Exact readback below, not the callback response, decides completion.
   }
-  if (persisted === "committed") return validated;
   const after = loadWorkspaceInvitationStoreRecord(record.store, record.token);
-  if (after.ok && after.value !== null
-    && exactInvitationStoreBinding(after.value, committed)
-    && after.value.state === "committed"
-    && after.value.activation_binding === activationBinding
-    && after.value.terminal !== null
-    && after.value.terminal_digest === workspaceObjectId(after.value.terminal)) {
-    return {
-      ok: true,
-      value: deepFreeze({ invitation_acceptance: value, normalized: after.value.terminal }),
-    };
+  if (after.ok && after.value !== null && exactInvitationStoreRecord(after.value, committed)) {
+    return validated;
   }
-  if (after.ok && after.value !== null && after.value.state === "executing"
-    && after.value.activation_binding === activationBinding) {
-    try {
-      record.store.compare_and_swap(record.token, after.value.revision, {
-        ...after.value,
-        revision: after.value.revision + 1,
-        state: "indeterminate",
-      });
-    } catch {
-      // The executing fence itself is already non-reacquirable.
-    }
+  if (after.ok && after.value !== null
+    && exactInvitationStoreBinding(after.value, expectedBase)) {
+    persistWorkspaceInvitationIndeterminate(
+      record.store,
+      record.token,
+      after.value,
+      activationBinding,
+      executionToken,
+    );
   }
   return { indeterminate: true };
 }
@@ -2230,10 +2313,21 @@ export function evaluateGrantActivation(value: unknown): WorkspaceVerdict {
       return rejectActivation("workspace_replay");
     }
     const loaded = loadWorkspaceInvitationStoreRecord(record.store, record.token);
-    if (!loaded.ok || loaded.value === null) return rejectActivation("workspace_replay");
+    if (!loaded.ok || loaded.value === null) return indeterminate("workspace_replay");
+    const afterLoadCurrent = requireFreshCurrentView(
+      request.authority,
+      request.current_state,
+      trusted.value.now,
+      "authority",
+    );
+    if (!afterLoadCurrent.ok) return rejectActivation(afterLoadCurrent.reason_code);
+    if (workspaceCurrentFingerprint(afterLoadCurrent.value) !== record.current_fingerprint) {
+      return rejectActivation("workspace_replay");
+    }
     const expected: WorkspaceInvitationStoreRecord = {
       revision: loaded.value.revision,
       state: loaded.value.state,
+      store_key: record.token,
       acceptance_binding: record.acceptance_binding,
       authority_fingerprint: config.authority_fingerprint,
       current_fingerprint: record.current_fingerprint,
@@ -2244,6 +2338,7 @@ export function evaluateGrantActivation(value: unknown): WorkspaceVerdict {
       authority_checkpoint: record.authority_checkpoint,
       expires_at: record.expires_at,
       activation_binding: loaded.value.activation_binding,
+      execution_token: loaded.value.execution_token,
       terminal: loaded.value.terminal,
       terminal_digest: loaded.value.terminal_digest,
     };
@@ -2254,14 +2349,20 @@ export function evaluateGrantActivation(value: unknown): WorkspaceVerdict {
     if (activationBinding === null) return rejectActivation("workspace_replay");
     if (loaded.value.state === "committed") {
       if (loaded.value.activation_binding !== activationBinding
+        || loaded.value.execution_token === null
         || loaded.value.terminal === null
-        || loaded.value.terminal_digest !== workspaceObjectId(loaded.value.terminal)) {
+        || loaded.value.terminal_digest !== workspaceInvitationTerminalDigest(
+          activationBinding,
+          loaded.value.terminal,
+        )) {
         return rejectActivation("workspace_replay");
       }
-      return accepted(loaded.value.terminal as Record<string, unknown>);
+      // Full activation validation below recomputes the exact closed output;
+      // the durable cache is never accepted from a self-consistent hash alone.
     }
     if (loaded.value.state === "executing" || loaded.value.state === "indeterminate") {
       return loaded.value.activation_binding === activationBinding
+        && loaded.value.execution_token !== null
         ? indeterminate("workspace_replay")
         : rejectActivation("workspace_replay");
     }
@@ -2568,6 +2669,7 @@ export function consumeWorkspaceInvitationAcceptance(value: unknown):
   const preparedBase: WorkspaceInvitationStoreRecord = {
     revision: 0,
     state: "prepared",
+    store_key: token,
     acceptance_binding: acceptanceBinding,
     authority_fingerprint: config.authority_fingerprint,
     current_fingerprint: currentFingerprint,
@@ -2578,18 +2680,35 @@ export function consumeWorkspaceInvitationAcceptance(value: unknown):
     authority_checkpoint: current.state.authority_checkpoint,
     expires_at: acceptanceValue.expires_at,
     activation_binding: null,
+    execution_token: null,
     terminal: null,
     terminal_digest: null,
   };
   const loaded = loadWorkspaceInvitationStoreRecord(invitationStore, token);
   if (!loaded.ok) return { verdict: "reject", reason_code: loaded.reason_code };
+  const afterStoreLoad = requireFreshCurrentView(
+    authority as WorkspaceRepositoryResolverAuthority,
+    currentState as WorkspaceCurrentState,
+    now,
+    "authority",
+  );
+  if (!afterStoreLoad.ok) {
+    return { verdict: "reject", reason_code: afterStoreLoad.reason_code };
+  }
+  if (workspaceCurrentFingerprint(afterStoreLoad.value) !== currentFingerprint) {
+    return { verdict: "reject", reason_code: "workspace_replay" };
+  }
   let expectedRevision: number | null = null;
   if (loaded.value !== null) {
     if (loaded.value.state === "committed") {
       if (!exactInvitationStoreBinding(loaded.value, preparedBase)
         || loaded.value.activation_binding === null
+        || loaded.value.execution_token === null
         || loaded.value.terminal === null
-        || loaded.value.terminal_digest !== workspaceObjectId(loaded.value.terminal)) {
+        || loaded.value.terminal_digest !== workspaceInvitationTerminalDigest(
+          loaded.value.activation_binding,
+          loaded.value.terminal,
+        )) {
         return { verdict: "reject", reason_code: "workspace_replay" };
       }
       const cachedAcceptance = Object.freeze({}) as WorkspaceInvitationAcceptance;

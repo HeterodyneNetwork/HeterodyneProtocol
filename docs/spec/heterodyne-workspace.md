@@ -574,8 +574,10 @@ resolver constructor captures the store callbacks; later replacement of host
 methods cannot alter the authority. Each closed store record binds the exact
 acceptance, resolver-authority fingerprint, root role and capability ceiling,
 policy head, predecessor, authority checkpoint, and repository-view
-fingerprint. Its state is `prepared`, `executing`, `committed`, `rejected`, or
-`indeterminate`. The resolver commits the reservation atomically only after
+fingerprint, as well as the exact store key, activation binding, execution
+token, terminal output, and domain-separated terminal-output digest. Its state
+is `prepared`, `executing`, `committed`, `rejected`, or `indeterminate`. The
+resolver commits the reservation atomically only after
 sampling its configured trusted clock inside the commit operation and
 rerunning one complete pure activation validation over the immutable request
 and exact latest view at that new time.
@@ -583,8 +585,15 @@ That validation rechecks signed policy freshness, effective authorization,
 membership and exact successor bindings, grant activation and expiry,
 grant/account/device/resource/host revocations, capability/resource/
 delegability intersections, and every approval's time, signature, signer, and
-threshold. Only then does the store confirm the exact prepared holder,
-atomically enter `executing`, and persist the terminal. A validation failure
+threshold. Every external store load is followed by exact current-state,
+root-ceiling, checkpoint, and view-fingerprint revalidation before the next
+acquire or activation effect. Only then does the store confirm the exact
+prepared holder, atomically enter `executing`, and persist the terminal. A CAS
+success response has no authority by itself: the resolver MUST reload and
+match the complete closed executing record before any effect and reload the
+complete closed committed record before exposing acceptance. Missing,
+malformed, or binding-unequal readback is indeterminate and cannot activate.
+A validation failure
 records a retryable rejection so a still-valid exact acceptance may prepare
 again; no partial activation takes effect. An unknown acquire response,
 unknown post-effect outcome, callback exception after possible acquisition,
@@ -595,7 +604,10 @@ expiry and retains a committed terminal bound to the exact signed acceptance
 and activation request. Only after revalidating the exact minting authority,
 opaque holder, current root ceiling, checkpoint, repository-view fingerprint,
 and durable terminal does an exact committed retry return a byte-identical
-cached terminal without a second activation. A changed acceptance, mismatched
+cached terminal without a second activation. The resolver recomputes that
+exact closed output from current signed state and matches it byte-for-byte;
+a self-consistent stored output and digest alone do not authorize. A changed
+acceptance, mismatched
 request, cross-authority holder, terminal conflict, or already-prepared
 attempt fails with `workspace_replay`. A caller-supplied
 acceptance ID, consumed-ID list, replay boolean, or cached time has no

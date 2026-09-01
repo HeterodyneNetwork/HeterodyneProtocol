@@ -487,4 +487,268 @@ describe("Workspace signed current state security evidence", () => {
     });
     expect(executingTransitions).toBe(1);
   });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects a store that lies about durable invitation acquire", () => {
+    const records = new Map<string, WorkspaceInvitationStoreRecord>();
+    let executingClaims = 0;
+    let terminalClaims = 0;
+    const backend = {
+      load(token: string): WorkspaceInvitationStoreRecord | null {
+        const record = records.get(token);
+        return record === undefined ? null : structuredClone(record);
+      },
+      compareAndSwap(
+        token: string,
+        expectedRevision: number | null,
+        next: WorkspaceInvitationStoreRecord | null,
+      ): "committed" | "conflict" | "unknown" {
+        const existing = records.get(token);
+        if ((existing?.revision ?? null) !== expectedRevision) return "conflict";
+        if (next?.state === "executing") {
+          executingClaims += 1;
+          return "committed";
+        }
+        if (next?.state === "committed") {
+          terminalClaims += 1;
+          return "committed";
+        }
+        if (next === null) records.delete(token);
+        else records.set(token, structuredClone(next));
+        return "committed";
+      },
+    };
+    const fixture = buildWorkspaceSecurityFixtureWithInvitationStore({
+      root_capabilities: ["invite", "read"],
+      ancestor_capabilities: [],
+      grant_capabilities: ["invite", "read"],
+      revoked: false,
+    }, new ReferenceWorkspaceInvitationAcceptanceStore(backend));
+    const state = authenticate(fixture);
+    const authorization = activationAuthorization(fixture, state);
+    const reserved = consumeWorkspaceInvitationAcceptance({
+      authority: fixture.authority,
+      current_state: state,
+      acceptance: invitationAcceptance(fixture),
+    });
+    expect(reserved).toMatchObject({ verdict: "accept", acceptance: expect.any(Object) });
+    if (reserved.verdict !== "accept") throw new Error("invitation reservation rejected");
+    const request = activationRequest(fixture, state, authorization, reserved.acceptance);
+    expect(evaluateGrantActivation(request)).toEqual({
+      verdict: "indeterminate",
+      reason_code: "workspace_replay",
+    });
+    expect(evaluateGrantActivation(request)).toEqual({
+      verdict: "indeterminate",
+      reason_code: "workspace_replay",
+    });
+    expect(executingClaims).toBe(1);
+    expect(terminalClaims).toBe(0);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects a store that lies about durable invitation terminal commit", () => {
+    const records = new Map<string, WorkspaceInvitationStoreRecord>();
+    let executingTransitions = 0;
+    let terminalClaims = 0;
+    const backend = {
+      load(token: string): WorkspaceInvitationStoreRecord | null {
+        const record = records.get(token);
+        return record === undefined ? null : structuredClone(record);
+      },
+      compareAndSwap(
+        token: string,
+        expectedRevision: number | null,
+        next: WorkspaceInvitationStoreRecord | null,
+      ): "committed" | "conflict" | "unknown" {
+        const existing = records.get(token);
+        if ((existing?.revision ?? null) !== expectedRevision) return "conflict";
+        if (next?.state === "committed") {
+          terminalClaims += 1;
+          return "committed";
+        }
+        if (next === null) records.delete(token);
+        else records.set(token, structuredClone(next));
+        if (next?.state === "executing") executingTransitions += 1;
+        return "committed";
+      },
+    };
+    const fixture = buildWorkspaceSecurityFixtureWithInvitationStore({
+      root_capabilities: ["invite", "read"],
+      ancestor_capabilities: [],
+      grant_capabilities: ["invite", "read"],
+      revoked: false,
+    }, new ReferenceWorkspaceInvitationAcceptanceStore(backend));
+    const state = authenticate(fixture);
+    const authorization = activationAuthorization(fixture, state);
+    const reserved = consumeWorkspaceInvitationAcceptance({
+      authority: fixture.authority,
+      current_state: state,
+      acceptance: invitationAcceptance(fixture),
+    });
+    expect(reserved).toMatchObject({ verdict: "accept", acceptance: expect.any(Object) });
+    if (reserved.verdict !== "accept") throw new Error("invitation reservation rejected");
+    const request = activationRequest(fixture, state, authorization, reserved.acceptance);
+    expect(evaluateGrantActivation(request)).toEqual({
+      verdict: "indeterminate",
+      reason_code: "workspace_replay",
+    });
+    expect(evaluateGrantActivation(request)).toEqual({
+      verdict: "indeterminate",
+      reason_code: "workspace_replay",
+    });
+    expect(executingTransitions).toBe(1);
+    expect(terminalClaims).toBe(1);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects a self-consistent but wrong cached activation output", () => {
+    const records = new Map<string, WorkspaceInvitationStoreRecord>();
+    const backend = {
+      load(token: string): WorkspaceInvitationStoreRecord | null {
+        const record = records.get(token);
+        return record === undefined ? null : structuredClone(record);
+      },
+      compareAndSwap(
+        token: string,
+        expectedRevision: number | null,
+        next: WorkspaceInvitationStoreRecord | null,
+      ): "committed" | "conflict" {
+        const existing = records.get(token);
+        if ((existing?.revision ?? null) !== expectedRevision) return "conflict";
+        if (next === null) records.delete(token);
+        else records.set(token, structuredClone(next));
+        return "committed";
+      },
+    };
+    const fixture = buildWorkspaceSecurityFixtureWithInvitationStore({
+      root_capabilities: ["invite", "read"],
+      ancestor_capabilities: [],
+      grant_capabilities: ["invite", "read"],
+      revoked: false,
+    }, new ReferenceWorkspaceInvitationAcceptanceStore(backend));
+    const state = authenticate(fixture);
+    const authorization = activationAuthorization(fixture, state);
+    const reserved = consumeWorkspaceInvitationAcceptance({
+      authority: fixture.authority,
+      current_state: state,
+      acceptance: invitationAcceptance(fixture),
+    });
+    expect(reserved).toMatchObject({ verdict: "accept", acceptance: expect.any(Object) });
+    if (reserved.verdict !== "accept") throw new Error("invitation reservation rejected");
+    const request = activationRequest(fixture, state, authorization, reserved.acceptance);
+    expect(evaluateGrantActivation(request)).toMatchObject({ verdict: "accept" });
+    const entry = [...records.entries()][0];
+    if (entry === undefined || entry[1].activation_binding === null || entry[1].terminal === null) {
+      throw new Error("committed terminal fixture missing");
+    }
+    const wrongOutput = { ...entry[1].terminal, active: false };
+    records.set(entry[0], {
+      ...entry[1],
+      terminal: wrongOutput,
+      terminal_digest: bytesToHex(sha256(proofBytes(
+        "heterodyne-workspace-invitation-terminal-v1",
+        { activation_binding: entry[1].activation_binding, output: wrongOutput },
+      ))),
+    });
+    expect(evaluateGrantActivation(request)).toEqual({
+      verdict: "reject",
+      reason_code: "workspace_replay",
+    });
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local revalidates current Workspace state after replay-store load", () => {
+    const records = new Map<string, WorkspaceInvitationStoreRecord>();
+    let activationLoads = 0;
+    let executingTransitions = 0;
+    let mutateOnLoad = false;
+    let fixture: WorkspaceSecurityFixture | null = null;
+    const backend = {
+      load(token: string): WorkspaceInvitationStoreRecord | null {
+        if (mutateOnLoad) {
+          activationLoads += 1;
+          if (activationLoads === 2 && fixture !== null) {
+            expect(authenticateWorkspaceRepositoryView(supersedingRepositoryView(fixture)))
+              .toMatchObject({ verdict: "accept", state: expect.any(Object) });
+          }
+        }
+        const record = records.get(token);
+        return record === undefined ? null : structuredClone(record);
+      },
+      compareAndSwap(
+        token: string,
+        expectedRevision: number | null,
+        next: WorkspaceInvitationStoreRecord | null,
+      ): "committed" | "conflict" | "unknown" {
+        const existing = records.get(token);
+        if ((existing?.revision ?? null) !== expectedRevision) return "conflict";
+        if (next === null) records.delete(token);
+        else records.set(token, structuredClone(next));
+        if (next?.state === "executing") executingTransitions += 1;
+        return "committed";
+      },
+    };
+    fixture = buildWorkspaceSecurityFixtureWithInvitationStore({
+      root_capabilities: ["invite", "read"],
+      ancestor_capabilities: [],
+      grant_capabilities: ["invite", "read"],
+      revoked: false,
+    }, new ReferenceWorkspaceInvitationAcceptanceStore(backend));
+    const state = authenticate(fixture);
+    const authorization = activationAuthorization(fixture, state);
+    const reserved = consumeWorkspaceInvitationAcceptance({
+      authority: fixture.authority,
+      current_state: state,
+      acceptance: invitationAcceptance(fixture),
+    });
+    expect(reserved).toMatchObject({ verdict: "accept", acceptance: expect.any(Object) });
+    if (reserved.verdict !== "accept") throw new Error("invitation reservation rejected");
+    mutateOnLoad = true;
+    expect(evaluateGrantActivation(activationRequest(
+      fixture,
+      state,
+      authorization,
+      reserved.acceptance,
+    ))).toEqual({ verdict: "reject", reason_code: "checkpoint_stale" });
+    expect(executingTransitions).toBe(0);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local revalidates current Workspace state before invitation reservation CAS", () => {
+    const records = new Map<string, WorkspaceInvitationStoreRecord>();
+    let fixture: WorkspaceSecurityFixture | null = null;
+    let mutateOnLoad = false;
+    const backend = {
+      load(token: string): WorkspaceInvitationStoreRecord | null {
+        if (mutateOnLoad && fixture !== null) {
+          mutateOnLoad = false;
+          expect(authenticateWorkspaceRepositoryView(supersedingRepositoryView(fixture)))
+            .toMatchObject({ verdict: "accept", state: expect.any(Object) });
+        }
+        const record = records.get(token);
+        return record === undefined ? null : structuredClone(record);
+      },
+      compareAndSwap(
+        token: string,
+        expectedRevision: number | null,
+        next: WorkspaceInvitationStoreRecord | null,
+      ): "committed" | "conflict" {
+        const existing = records.get(token);
+        if ((existing?.revision ?? null) !== expectedRevision) return "conflict";
+        if (next === null) records.delete(token);
+        else records.set(token, structuredClone(next));
+        return "committed";
+      },
+    };
+    fixture = buildWorkspaceSecurityFixtureWithInvitationStore({
+      root_capabilities: ["invite", "read"],
+      ancestor_capabilities: [],
+      grant_capabilities: ["invite", "read"],
+      revoked: false,
+    }, new ReferenceWorkspaceInvitationAcceptanceStore(backend));
+    const state = authenticate(fixture);
+    mutateOnLoad = true;
+    expect(consumeWorkspaceInvitationAcceptance({
+      authority: fixture.authority,
+      current_state: state,
+      acceptance: invitationAcceptance(fixture),
+    })).toEqual({ verdict: "reject", reason_code: "checkpoint_stale" });
+    expect(records.size).toBe(0);
+  });
 });
