@@ -556,13 +556,15 @@ function snapshotOpaqueArray<T>(value: unknown, maximum: number): readonly T[] {
   if (!Array.isArray(value) || utilTypes.isProxy(value) || Object.getPrototypeOf(value) !== Array.prototype) {
     throw new TypeError("ordinary dense array required");
   }
-  const descriptors = Object.getOwnPropertyDescriptors(value);
   const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
   const length = lengthDescriptor !== undefined && "value" in lengthDescriptor
     ? lengthDescriptor.value
     : undefined;
-  if (!Number.isSafeInteger(length) || length < 0 || length > maximum
-    || Reflect.ownKeys(descriptors).length !== length + 1) {
+  if (!Number.isSafeInteger(length) || length < 0 || length > maximum) {
+    throw new TypeError("bounded dense array required");
+  }
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  if (Reflect.ownKeys(descriptors).length !== length + 1) {
     throw new TypeError("bounded dense array required");
   }
   const result: T[] = [];

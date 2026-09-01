@@ -1,6 +1,6 @@
 import { createHash, createPrivateKey, createPublicKey, sign, verify, type JsonWebKey } from "node:crypto";
 import { nip19 } from "nostr-tools";
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import {
   authorizeAndSignAgentPublication,
   createAgentPublicationAuthorizationAuthority,
@@ -880,5 +880,70 @@ describe("agent workload publication authorization", () => {
     const result = await authorizeAndSignAgentPublication(value.authority, value.request);
     expect(result.verdict).toBe("indeterminate");
     expect(value.counts.signer()).toBe(1);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local length-caps opaque callback arrays before descriptor enumeration", async () => {
+    const oversizedClaims = Array.from({ length: 257 }, () => dpopWorkload);
+    let getterCalls = 0;
+    let elementTraps = 0;
+    const oversizedRevocations = new Array(1_000_000_000);
+    Object.defineProperty(oversizedRevocations, "0", {
+      enumerable: true,
+      get: () => { getterCalls += 1; return undefined; },
+    });
+    oversizedRevocations[1] = new Proxy({}, {
+      getPrototypeOf: () => { elementTraps += 1; throw new Error("element trap must remain cold"); },
+      ownKeys: () => { elementTraps += 1; throw new Error("element trap must remain cold"); },
+    });
+    const originalDescriptors = Object.getOwnPropertyDescriptors;
+    let oversizedEnumerations = 0;
+    const descriptorSpy = vi.spyOn(Object, "getOwnPropertyDescriptors").mockImplementation(
+      ((value: object) => {
+        if (value === oversizedClaims || value === oversizedRevocations) {
+          oversizedEnumerations += 1;
+          throw new Error("oversized array descriptors must not be enumerated");
+        }
+        return originalDescriptors(value);
+      }) as typeof Object.getOwnPropertyDescriptors,
+    );
+    try {
+      const claimsValue = await harness({
+        claimViews: [exactView(dpopWorkload, {
+          claims: oversizedClaims as readonly VerifiedClaimArtifact[],
+        })],
+      });
+      await expectRejected(claimsValue, claimsValue.request);
+      expect(claimsValue.counts.dpop()).toBe(0);
+      expect(claimsValue.store.acquireInputs).toHaveLength(0);
+
+      const revocationsValue = await harness({
+        claimViews: [exactView(dpopWorkload, {
+          revocations: oversizedRevocations as readonly VerifiedClaimRevocationArtifact[],
+        })],
+      });
+      await expectRejected(revocationsValue, revocationsValue.request);
+      expect(revocationsValue.counts.dpop()).toBe(0);
+      expect(revocationsValue.store.acquireInputs).toHaveLength(0);
+    } finally {
+      descriptorSpy.mockRestore();
+    }
+    expect(oversizedEnumerations).toBe(0);
+    expect(getterCalls).toBe(0);
+    expect(elementTraps).toBe(0);
+
+    let arrayProxyTraps = 0;
+    const proxiedClaims = new Proxy(oversizedClaims, {
+      getPrototypeOf: () => { arrayProxyTraps += 1; throw new Error("array trap must remain cold"); },
+      ownKeys: () => { arrayProxyTraps += 1; throw new Error("array trap must remain cold"); },
+    });
+    const proxiedValue = await harness({
+      claimViews: [exactView(dpopWorkload, {
+        claims: proxiedClaims as readonly VerifiedClaimArtifact[],
+      })],
+    });
+    await expectRejected(proxiedValue, proxiedValue.request);
+    expect(arrayProxyTraps).toBe(0);
+    expect(proxiedValue.counts.dpop()).toBe(0);
+    expect(proxiedValue.store.acquireInputs).toHaveLength(0);
   });
 });
