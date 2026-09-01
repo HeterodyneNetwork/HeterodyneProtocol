@@ -1027,13 +1027,21 @@ operation once at construction. Each append request is a closed exact input
 containing only the target private RID and writer ref plus either one signed
 Marmot event with its original serialized bytes, or encrypted-media v2
 ciphertext with its signed Marmot media event. The boundary captures that
-complete input before any asynchronous operation. For an event it parses the
-captured bytes as the same closed signed event, recomputes its NIP-01 ID, and
-verifies the BIP-340 signature. For ciphertext it verifies the signed regular
-Marmot kind-9 media event and requires exactly one encrypted-media v2 `imeta`
-attachment that binds the exact lowercase `ciphertext_sha256`. A caller
-assertion that bytes, authorization, reachability, or durability is valid has
-no effect.
+complete input before any asynchronous operation. For an event it performs
+duplicate-aware JSON decoding of exactly the seven NIP-01 event members,
+parses the captured bytes as the same closed signed event, recomputes its
+NIP-01 ID, verifies the BIP-340 signature, and requires the closed Marmot
+kind-445 transport profile: one exact lowercase 32-byte `h`, no tag other than
+the optional singleton NIP-40 `expiration`, and canonical padded standard
+base64 content decoding to at least the 12-byte nonce plus 16-byte AEAD tag.
+For ciphertext it verifies the signed regular Marmot kind-9 media event and
+requires exactly one complete encrypted-media v2 `imeta` attachment that
+binds the exact lowercase `ciphertext_sha256`. That attachment MUST also carry
+its singleton version, plaintext digest, nonce, canonical media type, and
+filename fields plus at least one structurally valid locator; repeated
+non-locator fields, an unknown field, or any missing or malformed required
+field is invalid. A caller assertion that bytes, authorization, reachability,
+or durability is valid has no effect.
 
 Before append, the boundary MUST resolve authenticated current Core writer
 authority for the exact captured RID and ref. It then acquires a durable
@@ -1053,11 +1061,14 @@ or commit grants no acknowledgement authority. Acknowledgement reloads the
 same durable object and commit and succeeds only for a genuine capability and
 an exact committed or expired-but-retained terminal. An exact committed retry,
 including after reconstruction under the same stable authority and store, MAY
-return the cached result without appending again. An executing or indeterminate
-record, unavailable persistence, malformed or unequal terminal, thrown append,
-unreachable object, or unknown or conflicting post-effect write is
-indeterminate with a deterministic reconciliation digest and MUST NOT repeat
-the repository effect.
+return the cached result without appending again. This remains true when
+acquisition reports that another attempt won: the immediate reload MUST be an
+exact binding-equal committed terminal before a new local receipt is minted.
+An expired-but-retained `available` terminal never remints presentation
+authority. An executing or indeterminate record, unavailable persistence,
+malformed or unequal terminal, thrown append, unreachable object, or unknown
+or conflicting post-effect write is indeterminate with a deterministic
+reconciliation digest and MUST NOT repeat the repository effect.
 
 Only after durable acknowledgement may the sender apply the new Marmot epoch
 and `h` and publish the encrypted directory entry. A standard-compatible

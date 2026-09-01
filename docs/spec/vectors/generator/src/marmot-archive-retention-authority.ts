@@ -23,6 +23,11 @@ const REJECT = Object.freeze({
 });
 const HEX_32 = /^[0-9a-f]{64}$/u;
 const COMMIT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/u;
+const SIGNED_EVENT_MEMBERS = [
+  "id", "pubkey", "created_at", "kind", "tags", "content", "sig",
+] as const;
+const STANDARD_PADDED_BASE64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u;
+const MEDIA_TYPE_TOKEN = /^[a-z0-9!#$%&'*+\-.^_`|~]+$/u;
 
 export type MarmotArchiveRetentionAuthorityConfig = Readonly<{
   authority_id: string;
@@ -232,9 +237,90 @@ function sameEvent(left: NostrSignedEvent, right: NostrSignedEvent): boolean {
     });
 }
 
+function topLevelJsonObjectKeys(source: string): string[] | undefined {
+  let index = 0;
+  const skipWhitespace = () => {
+    while (/\s/u.test(source[index] ?? "")) index += 1;
+  };
+  const scanString = (): string | undefined => {
+    const start = index;
+    if (source[index] !== '"') return undefined;
+    index += 1;
+    while (index < source.length) {
+      if (source[index] === "\\") index += 2;
+      else if (source[index] === '"') {
+        index += 1;
+        try {
+          return JSON.parse(source.slice(start, index)) as string;
+        } catch {
+          return undefined;
+        }
+      } else index += 1;
+    }
+    return undefined;
+  };
+  const skipValue = (): boolean => {
+    let objectDepth = 0;
+    let arrayDepth = 0;
+    let inString = false;
+    let escaped = false;
+    for (; index < source.length; index += 1) {
+      const character = source[index];
+      if (inString) {
+        if (escaped) escaped = false;
+        else if (character === "\\") escaped = true;
+        else if (character === '"') inString = false;
+        continue;
+      }
+      if (character === '"') inString = true;
+      else if (character === "{") objectDepth += 1;
+      else if (character === "[") arrayDepth += 1;
+      else if (character === "}") {
+        if (objectDepth === 0 && arrayDepth === 0) return true;
+        objectDepth -= 1;
+      } else if (character === "]") arrayDepth -= 1;
+      else if (character === "," && objectDepth === 0 && arrayDepth === 0) return true;
+      if (objectDepth < 0 || arrayDepth < 0) return false;
+    }
+    return true;
+  };
+  skipWhitespace();
+  if (source[index] !== "{") return undefined;
+  index += 1;
+  const keys: string[] = [];
+  for (;;) {
+    skipWhitespace();
+    if (source[index] === "}") {
+      index += 1;
+      skipWhitespace();
+      return index === source.length ? keys : undefined;
+    }
+    const key = scanString();
+    if (key === undefined || keys.includes(key)) return undefined;
+    keys.push(key);
+    skipWhitespace();
+    if (source[index] !== ":") return undefined;
+    index += 1;
+    skipWhitespace();
+    if (!skipValue()) return undefined;
+    skipWhitespace();
+    if (source[index] === ",") {
+      index += 1;
+      continue;
+    }
+    if (source[index] !== "}") return undefined;
+  }
+}
+
 function eventFromExactBytes(bytes: Uint8Array): NostrSignedEvent | null {
   try {
     const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    const keys = topLevelJsonObjectKeys(text);
+    if (
+      keys === undefined
+      || keys.length !== SIGNED_EVENT_MEMBERS.length
+      || !SIGNED_EVENT_MEMBERS.every((member) => keys.includes(member))
+    ) return null;
     const parsed: unknown = JSON.parse(text);
     return snapshotAndVerifyNostrEvent(parsed);
   } catch {
@@ -242,13 +328,109 @@ function eventFromExactBytes(bytes: Uint8Array): NostrSignedEvent | null {
   }
 }
 
+function isCanonicalMarmotMediaType(value: string): boolean {
+  if (value.includes(";") || value !== value.toLowerCase() || value === "image/jpg") return false;
+  const segments = value.split("/");
+  return segments.length === 2
+    && segments[0] !== undefined
+    && segments[1] !== undefined
+    && segments[0].length > 0
+    && segments[0].length <= 64
+    && segments[1].length > 0
+    && segments[1].length <= 64
+    && value.length <= 128
+    && MEDIA_TYPE_TOKEN.test(segments[0])
+    && MEDIA_TYPE_TOKEN.test(segments[1]);
+}
+
+function structurallyValidLocator(value: string): boolean {
+  const separator = value.indexOf(" ");
+  if (separator <= 0 || separator === value.length - 1) return false;
+  const kind = value.slice(0, separator);
+  const locator = value.slice(separator + 1);
+  if (!/^[a-z0-9-]{1,64}$/u.test(kind)) return false;
+  try {
+    const parsed = new URL(locator);
+    return parsed.protocol.length > 1
+      && (kind !== "blossom-v1"
+        || ((parsed.protocol === "https:" || parsed.protocol === "http:")
+          && parsed.hostname.length > 0));
+  } catch {
+    return false;
+  }
+}
+
+function validEncryptedMediaV2Tag(tag: readonly string[], digest: string): boolean {
+  if (tag[0] !== "imeta") return false;
+  const values = new Map<string, string[]>();
+  for (const field of tag.slice(1)) {
+    const separator = field.indexOf(" ");
+    if (separator <= 0 || separator === field.length - 1) return false;
+    const name = field.slice(0, separator);
+    const value = field.slice(separator + 1);
+    if (![
+      "v", "locator", "ciphertext_sha256", "plaintext_sha256", "nonce",
+      "m", "filename", "dim", "thumbhash",
+    ].includes(name)) return false;
+    const prior = values.get(name) ?? [];
+    prior.push(value);
+    values.set(name, prior);
+  }
+  const exactlyOne = (name: string): string | null => {
+    const matches = values.get(name);
+    return matches?.length === 1 && matches[0] !== undefined ? matches[0] : null;
+  };
+  const version = exactlyOne("v");
+  const ciphertextDigest = exactlyOne("ciphertext_sha256");
+  const plaintextDigest = exactlyOne("plaintext_sha256");
+  const nonce = exactlyOne("nonce");
+  const mediaType = exactlyOne("m");
+  const filename = exactlyOne("filename");
+  const locators = values.get("locator") ?? [];
+  const filenameLength = filename === null
+    ? 0
+    : new TextEncoder().encode(filename).length;
+  return version === "encrypted-media-v2"
+    && ciphertextDigest === digest
+    && HEX_32.test(ciphertextDigest)
+    && plaintextDigest !== null
+    && HEX_32.test(plaintextDigest)
+    && nonce !== null
+    && /^[0-9a-f]{24}$/u.test(nonce)
+    && mediaType !== null
+    && isCanonicalMarmotMediaType(mediaType)
+    && filename !== null
+    && filenameLength >= 1
+    && filenameLength <= 255
+    && !filename.includes("\u0000")
+    && locators.length >= 1
+    && locators.every(structurallyValidLocator)
+    && (values.get("dim")?.length ?? 0) <= 1
+    && (values.get("thumbhash")?.length ?? 0) <= 1;
+}
+
+function validMarmotSignedEvent(event: NostrSignedEvent): boolean {
+  if (event.kind !== 445) return false;
+  const groupTags = event.tags.filter((tag) => tag[0] === "h");
+  const expirationTags = event.tags.filter((tag) => tag[0] === "expiration");
+  if (
+    groupTags.length !== 1
+    || groupTags[0]?.length !== 2
+    || !HEX_32.test(groupTags[0][1] ?? "")
+    || expirationTags.length > 1
+    || expirationTags.some((tag) =>
+      tag.length !== 2 || !/^(?:0|[1-9][0-9]*)$/u.test(tag[1] ?? ""))
+    || event.tags.some((tag) => tag[0] !== "h" && tag[0] !== "expiration")
+    || event.content.length === 0
+    || !STANDARD_PADDED_BASE64.test(event.content)
+  ) return false;
+  const decoded = Buffer.from(event.content, "base64");
+  return decoded.length >= 28 && decoded.toString("base64") === event.content;
+}
+
 function mediaEventBindsCiphertext(event: NostrSignedEvent, digest: string): boolean {
   if (event.kind !== 9) return false;
-  const matches = event.tags.filter((tag) =>
-    tag[0] === "imeta"
-    && tag.includes("v encrypted-media-v2")
-    && tag.includes(`ciphertext_sha256 ${digest}`)
-  );
+  const matches = event.tags.filter((tag) => validEncryptedMediaV2Tag(tag, digest));
   return matches.length === 1;
 }
 
@@ -283,7 +465,12 @@ function captureArchiveInput(value: MarmotArchiveInput): CapturedArchiveInput | 
       ) return null;
       const event = snapshotAndVerifyNostrEvent(source.event);
       const encoded = eventFromExactBytes(source.event_bytes);
-      if (event === null || encoded === null || !sameEvent(event, encoded)) return null;
+      if (
+        event === null
+        || encoded === null
+        || !sameEvent(event, encoded)
+        || !validMarmotSignedEvent(event)
+      ) return null;
       bytes = new Uint8Array(source.event_bytes);
       sourceDigest = event.id;
       authorizationEventId = event.id;
@@ -591,7 +778,11 @@ export async function appendExactMarmotArchive(
     }
     if (loaded !== undefined && loaded !== null) {
       const cached = terminalOutput(loaded, request);
-      if (cached !== null && outputMatchesInput(cached, captured)) {
+      if (
+        loaded.state === "committed"
+        && cached !== null
+        && outputMatchesInput(cached, captured)
+      ) {
         return mintReceipt(authority, request, cached);
       }
     }

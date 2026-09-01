@@ -26,6 +26,10 @@ const RID = "rad:z3gqcJUoA1n9HaHKufZs5FCSGazv5";
 const REF = "refs/xyz.heterodyne.marmot/writers/synthetic-local";
 const COMMIT = "ab".repeat(20);
 const SECRET = "31".repeat(32);
+const MARMOT_GROUP_ID = "44".repeat(32);
+const MARMOT_EVENT_CONTENT = Buffer.from(
+  Uint8Array.from({ length: 28 }, (_, index) => index),
+).toString("base64");
 
 function sha256(bytes: Uint8Array): string {
   return createHash("sha256").update(bytes).digest("hex");
@@ -39,8 +43,8 @@ async function signedEvent(
     auxRand: AUX_RAND,
     created_at: 1_800_000_000,
     kind: 445,
-    tags: [["h", "synthetic-routing-id"]],
-    content: "synthetic-local-ciphertext",
+    tags: [["h", MARMOT_GROUP_ID]],
+    content: MARMOT_EVENT_CONTENT,
   });
   return { ...event, ...overrides };
 }
@@ -100,6 +104,7 @@ class ArchiveStore implements DurableAuthorityStore<MarmotArchiveReceiptData> {
   commitResult: "committed" | "conflict" | "unknown" = "committed";
   casResult: "committed" | "conflict" | "unknown" = "committed";
   markResult: "indeterminate" | "conflict" | "unknown" = "indeterminate";
+  availableAfterFailedAcquire: MarmotArchiveReceiptData | null = null;
   commitConflictWritesExact = false;
   casConflictWritesExact = false;
   loadCalls = 0;
@@ -126,6 +131,13 @@ class ArchiveStore implements DurableAuthorityStore<MarmotArchiveReceiptData> {
         revision: (input.expected_revision ?? -1) + 1,
         binding_digest: input.binding_digest,
         execution_token: input.execution_token,
+      });
+    } else if (this.availableAfterFailedAcquire !== null) {
+      this.records.set(input.key, {
+        state: "available",
+        revision: 0,
+        binding_digest: input.binding_digest,
+        output: this.availableAfterFailedAcquire,
       });
     }
     return this.acquireResult;
@@ -331,6 +343,54 @@ describe("Marmot archive retention authority", () => {
     }
   });
 
+  it("BLUE TEAM VALIDATION: synthetic/local rejects a generic signed kind-1 source", async () => {
+    const event = await signEvent({
+      secretKey: SECRET,
+      auxRand: AUX_RAND,
+      created_at: 1_800_000_004,
+      kind: 1,
+      tags: [],
+      content: "synthetic local generic note",
+    });
+    const fixture = harness();
+    const authority = createMarmotArchiveRetentionAuthority(fixture.config);
+
+    await expect(appendExactMarmotArchive(authority, {
+      repository_rid: RID,
+      ref: REF,
+      source: {
+        kind: "signed-event",
+        event,
+        event_bytes: new TextEncoder().encode(JSON.stringify(event)),
+      },
+    })).resolves.toEqual({ verdict: "reject", reason_code: "marmot-premature-ack" });
+    expect(fixture.store.acquireCalls).toBe(0);
+    expect(fixture.appendCalls()).toBe(0);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects duplicate-key outer signed-event JSON", async () => {
+    const input = await eventInput();
+    if (input.source.kind !== "signed-event") throw new Error("synthetic fixture error");
+    const encoded = JSON.stringify(input.source.event);
+    const duplicateId = encoded.replace(
+      `"id":"${input.source.event.id}"`,
+      `"id":"${input.source.event.id}","id":"${input.source.event.id}"`,
+    );
+    if (duplicateId === encoded) throw new Error("synthetic duplicate fixture error");
+    const fixture = harness();
+    const authority = createMarmotArchiveRetentionAuthority(fixture.config);
+
+    await expect(appendExactMarmotArchive(authority, {
+      ...input,
+      source: {
+        ...input.source,
+        event_bytes: new TextEncoder().encode(duplicateId),
+      },
+    })).resolves.toEqual({ verdict: "reject", reason_code: "marmot-premature-ack" });
+    expect(fixture.store.acquireCalls).toBe(0);
+    expect(fixture.appendCalls()).toBe(0);
+  });
+
   it("BLUE TEAM VALIDATION: synthetic/local rejects an unauthorized repository writer before append", async () => {
     const fixture = harness({ resolveThrows: true });
     const authority = createMarmotArchiveRetentionAuthority(fixture.config);
@@ -418,6 +478,45 @@ describe("Marmot archive retention authority", () => {
     }
   });
 
+  it("BLUE TEAM VALIDATION: synthetic/local rejects every missing encrypted-media-v2 required field", async () => {
+    const valid = await mediaInput();
+    if (valid.source.kind !== "encrypted-media") throw new Error("synthetic fixture error");
+    const imeta = valid.source.authorization_event.tags[0];
+    if (imeta === undefined) throw new Error("synthetic fixture error");
+    const requiredPrefixes = [
+      "v ",
+      "locator ",
+      "ciphertext_sha256 ",
+      "plaintext_sha256 ",
+      "nonce ",
+      "m ",
+      "filename ",
+    ];
+
+    for (const missingPrefix of requiredPrefixes) {
+      const authorizationEvent = await signEvent({
+        secretKey: SECRET,
+        auxRand: AUX_RAND,
+        created_at: 1_800_000_005,
+        kind: 9,
+        tags: [[
+          "imeta",
+          ...imeta.slice(1).filter((field) => !field.startsWith(missingPrefix)),
+        ]],
+        content: `synthetic local missing ${missingPrefix.trim()}`,
+      });
+      const fixture = harness();
+      const authority = createMarmotArchiveRetentionAuthority(fixture.config);
+
+      await expect(appendExactMarmotArchive(authority, {
+        ...valid,
+        source: { ...valid.source, authorization_event: authorizationEvent },
+      })).resolves.toEqual({ verdict: "reject", reason_code: "marmot-premature-ack" });
+      expect(fixture.store.acquireCalls).toBe(0);
+      expect(fixture.appendCalls()).toBe(0);
+    }
+  });
+
   it("BLUE TEAM VALIDATION: synthetic/local prevents another signed media event from inheriting a ciphertext receipt", async () => {
     const fixture = harness();
     const authority = createMarmotArchiveRetentionAuthority(fixture.config);
@@ -498,6 +597,31 @@ describe("Marmot archive retention authority", () => {
       verdict: "indeterminate",
       reconciliation_digest: expect.stringMatching(/^[0-9a-f]{64}$/),
     });
+    expect(fixture.appendCalls()).toBe(0);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local refuses available state after null-load and not-acquired replay", async () => {
+    const store = new ArchiveStore();
+    store.acquireResult = "replay";
+    const input = await eventInput();
+    if (input.source.kind !== "signed-event") throw new Error("synthetic fixture error");
+    store.availableAfterFailedAcquire = {
+      repository_rid: RID,
+      ref: REF,
+      object_digest: sha256(input.source.event_bytes),
+      source_digest: input.source.event.id,
+      commit: COMMIT,
+    };
+    const fixture = harness({ store });
+    const authority = createMarmotArchiveRetentionAuthority(fixture.config);
+
+    await expect(appendExactMarmotArchive(authority, input)).resolves.toEqual({
+      verdict: "indeterminate",
+      reconciliation_digest: expect.stringMatching(/^[0-9a-f]{64}$/),
+    });
+    expect(fixture.store.loadCalls).toBe(2);
+    expect(fixture.store.acquireCalls).toBe(1);
+    expect(fixture.store.commitCalls).toBe(0);
     expect(fixture.appendCalls()).toBe(0);
   });
 
