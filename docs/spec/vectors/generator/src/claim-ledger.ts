@@ -35,7 +35,11 @@ import {
   isCredentialLedgerBinding,
   type CredentialLedgerBinding,
 } from "./credential-generation.js";
-import { type NostrSignedEvent } from "./nostr.js";
+import {
+  snapshotAndVerifyNostrEvent,
+  type NostrSignedEvent,
+  type VerifiedNostrEvent,
+} from "./nostr.js";
 import {
   captureExactDataObject,
   snapshotClosedDataTree,
@@ -301,6 +305,7 @@ const VALIDATED_LEDGER_STATES = new WeakSet<object>();
 const VALIDATED_LEDGER_REPOSITORIES = new WeakMap<object, LedgerRepositoryEvidence>();
 const VALIDATED_LEDGER_CONTEXTS = new WeakMap<object, LedgerValidationContext>();
 const VALIDATED_LEDGER_SNAPSHOTS = new WeakMap<object, LedgerMergeResult>();
+const VERIFIED_LEDGER_NOSTR_EVENTS = new WeakMap<object, VerifiedNostrEvent>();
 type LedgerWriterAuthorityRecord = Readonly<{
   authority: CoreRepositoryWriterAuthority;
   binding: CurrentRepositoryWriterBinding;
@@ -2815,10 +2820,10 @@ function claimArtifactFromRecord(record: LedgerRecord): ClaimArtifact | null {
   const value = claimArtifactValueFromRecord(record);
   if (value === undefined) return null;
   const artifact = payloadObject(value);
-  return {
-    event: artifact.event as unknown as NostrSignedEvent,
-    semantic: artifact.semantic as unknown as ClaimSemanticBody,
-  };
+  const event = snapshotAndVerifyLedgerNostrEvent(artifact.event);
+  return event === null
+    ? null
+    : { event, semantic: artifact.semantic as unknown as ClaimSemanticBody };
 }
 
 function claimArtifactValueFromRecord(record: LedgerRecord): JsonValue | undefined {
@@ -2832,10 +2837,20 @@ function revocationArtifactFromRecord(record: LedgerRecord): RevocationArtifact 
   const value = revocationArtifactValueFromRecord(record);
   if (value === undefined) return null;
   const artifact = payloadObject(value);
-  return {
-    event: artifact.event as unknown as NostrSignedEvent,
-    semantic: artifact.semantic as JsonValue,
-  };
+  const event = snapshotAndVerifyLedgerNostrEvent(artifact.event);
+  return event === null ? null : { event, semantic: artifact.semantic as JsonValue };
+}
+
+function snapshotAndVerifyLedgerNostrEvent(value: unknown): VerifiedNostrEvent | null {
+  if (value !== null && typeof value === "object") {
+    const retained = VERIFIED_LEDGER_NOSTR_EVENTS.get(value);
+    if (retained !== undefined) return retained;
+  }
+  const event = snapshotAndVerifyNostrEvent(value);
+  if (event !== null && value !== null && typeof value === "object") {
+    VERIFIED_LEDGER_NOSTR_EVENTS.set(value, event);
+  }
+  return event;
 }
 
 function revocationArtifactValueFromRecord(record: LedgerRecord): JsonValue | undefined {

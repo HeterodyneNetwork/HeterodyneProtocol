@@ -29,8 +29,10 @@ import { jcsCanonicalize } from "./jcs.js";
 import {
   getEventId,
   getPublicKey,
+  snapshotAndVerifyNostrEvent,
   type NostrSignedEvent,
   type NostrUnsignedEvent,
+  type VerifiedNostrEvent,
 } from "./nostr.js";
 import { proofBytes } from "./proof-bytes.js";
 import {
@@ -360,12 +362,7 @@ export function signedControlFrameBytes(overrides: Readonly<{
     tags: [],
     content: jcsCanonicalize(frame),
   };
-  const id = getEventId(unsigned);
-  const event: NostrSignedEvent = {
-    ...unsigned,
-    id,
-    sig: bytesToHex(schnorr.sign(id, hexToBytes(FRAME_SECRET), "00".repeat(32))),
-  };
+  const event = signNostrEvent(unsigned, FRAME_SECRET);
   return new TextEncoder().encode(JSON.stringify(event));
 }
 
@@ -407,13 +404,15 @@ function signResetCompletion(
 function signNostrEvent(
   unsigned: NostrUnsignedEvent,
   secret: string,
-): NostrSignedEvent {
+): VerifiedNostrEvent {
   const id = getEventId(unsigned);
-  return {
+  const event = snapshotAndVerifyNostrEvent({
     ...unsigned,
     id,
     sig: bytesToHex(schnorr.sign(id, hexToBytes(secret), "00".repeat(32))),
-  };
+  });
+  if (event === null) throw new Error("synthetic Nostr fixture signing invariant failed");
+  return event;
 }
 
 function buildResetInput(

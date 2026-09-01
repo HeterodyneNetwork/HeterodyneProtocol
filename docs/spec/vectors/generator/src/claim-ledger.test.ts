@@ -601,6 +601,42 @@ describe("reader lifecycle and metadata privacy", () => {
     expect(bundle.authorization.event_id).toBe(originalEventId);
   });
 
+  it("BLUE TEAM VALIDATION: synthetic/local retains snapshotted claim authorization after source-event mutation", () => {
+    // BLUE TEAM VALIDATION: synthetic/local mutates one in-memory fixture source after validation; no external target or reusable payload exists.
+    const state = mergeClaimLedger(
+      [s.claimRecordOne, s.claimRecordTwo, s.epochOneRecord],
+      [],
+      s.epochOneRepository.checkpoint,
+      contextFor(s.epochOneRepository.repository),
+    );
+    const claimRecord = state.records.find(({ record_id }) =>
+      record_id === s.claimRecordOne.record_id)!;
+    const artifact = (claimRecord.payload as Record<string, unknown>)
+      .claim_artifact as Record<string, unknown>;
+    const event = artifact.event as Record<string, unknown>;
+    const originalEventId = event.id;
+    try {
+      event.id = "00".repeat(32);
+      const request = s.requestFor(s.claimRecordOne, s.claimOne);
+      request.verification_context.now = s.now + 60;
+      const bundle = buildReaderOnboardingBundle({
+        reader_nid: s.writerOne.did_key,
+        request,
+        audience_key: s.audienceKeyOne,
+        compact_state: {
+          confirmed_claim_ids: [s.claimOne.artifact.semantic.claim_id],
+        },
+      }, state);
+      expect(bundle.authorization.event_id).toBe(originalEventId);
+      expect(resolveAuthoritativeClaimState(
+        s.claimOne.artifact.semantic.claim_id,
+        state,
+      )).toBe("active");
+    } finally {
+      event.id = originalEventId;
+    }
+  });
+
   it("materializes all fixed-size opaque buckets and changes every bucket per commit", () => {
     const one = materializeLedgerLayout(s.audienceKeyOne, 1, s.baseRepository.checkpoint.commit_oid, "11".repeat(32), [s.claimRecordOne]);
     const many = materializeLedgerLayout(s.audienceKeyOne, 1, s.baseRepository.checkpoint.commit_oid, "12".repeat(32), [s.claimRecordOne, s.claimRecordTwo, s.epochOneRecord]);
