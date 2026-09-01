@@ -217,7 +217,7 @@ reviewers can trace the threat control to its owner and feature binding.
 - **WORKSPACE-I-RADICLE-BACKSTOP:** Every effective role retains an authorized Radicle locator and eligible Radicle-backed relay host independent of optional Nostr relays.
 - **WORKSPACE-I-DEVICE-LEAF-SEPARATION:** Each active account device has an independently revocable Marmot MLS leaf and receives only uniquely identified envelopes bound to that exact grant, single path admission epoch, account, device, leaf, role, resource, checkpoint, and custody host.
 - **WORKSPACE-I-OPTIONAL-ASSURANCE:** A Workspace remains valid under a bare active key with no Assurance profile; once an optional Assurance profile is activated, ordinary active-key governance alone cannot weaken, replace, or remove it, and any transition requires matching current Assurance authorization over the same canonical policy-transition digest.
-- **ASSURANCE-I-ENROLLMENT-WINDOWED:** No enrollment is pin-eligible before 604800 seconds of one authority's durable trusted-clock ingestion chronology; signed/public times are audit-only, cross-authority receipt replay starts independent chronology, a pre-pin active-key contest or reciprocal competitor is absorbing, and post-pin initial-enrollment evidence is warning-only.
+- **ASSURANCE-I-ENROLLMENT-WINDOWED:** No enrollment is pin-eligible before 604800 seconds of authenticated observation; a timely active-key contest or fully reciprocal competing enrollment is absorbing, and later initial-enrollment evidence cannot unpin an authoritative verified enrollment.
 
 - **COMMS-I-TIER3-CONFINED:** Tier 3 posts, audience wraps, rosters, and rotation records are carried only via the private repository's authorized interfaces, never ordinary public relays, confining audience membership metadata to allowed nodes.
 
@@ -238,6 +238,6 @@ topic projection. The rolling snapshot contains 482 non-normative vectors from
 source commit `2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43`, bound by snapshot
 commit `5d4bb5fb58b35c88d8a9db120a09f1087237f35c`.
 
-The frozen claim schema member `profile_revision` has value `2`, distinct from the current family registry revision 15. Neither that historical wire value nor
+The frozen claim schema member `profile_revision` has value `2`, distinct from the current family registry revision 17. Neither that historical wire value nor
 the snapshot count is a substitute for current registry or specification
 authority.

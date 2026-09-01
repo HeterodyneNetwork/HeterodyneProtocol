@@ -57,7 +57,7 @@ live registry and schemas govern when a short definition omits a condition.
   registry entry set. It is not a wire member and is not a released version.
 
 **Claim profile revision**
-: The frozen claim schema member `profile_revision` has value `2`, distinct from the current family registry revision 15. It labels the claim-profile
+: The frozen claim schema member `profile_revision` has value `2`, distinct from the current family registry revision 17. It labels the claim-profile
   wire shape and does not track registry authoring changes.
 
 ## Discovery and storage
