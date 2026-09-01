@@ -239,6 +239,50 @@ replace OIDC approval, the exact signer grant, or current revocation state.
 Preauthorization MUST bind the expected NIP-46 client public key, persona,
 signer audience, selected key and class, methods, kinds, limits, and expiry.
 
+For prompt-free Control enrollment, the generic signed Comms
+`preauthorization` member is the exact closed Control template
+`{persona,audience,client_key,client_class,methods,event_kinds,limits,signer,expires_at}`.
+The template has no unknown members; `methods` and `event_kinds` are nonempty,
+duplicate-free bounded lists, `limits` is a nonempty closed map of positive
+finite integers, `client_class` is `human-light` or `automated`, `client_key`
+equals the descriptor's `expected_client_pubkey`, `signer` equals the signed
+inviter account, and `expires_at` equals the signed descriptor expiry. A
+prompt-free descriptor MUST use the non-convertible `control-enrollment`
+purpose and `preauthorized` approval mode. A `device-enrollment` purpose,
+including any attempt to convert this authority into prompt-free enrollment
+of a KERI-authorized device, is invalid.
+
+The Control preauthorization verifier descriptor-captures the complete closed
+envelope, template, and request before reading any member or invoking an
+asynchronous callback. It independently verifies the Comms BIP-340 descriptor
+signature and 256-bit secret commitment. The response proof is the Comms
+one-time-invite HMAC over a closed transcript binding the invite ID,
+descriptor digest, SHA-256 digest of the exact JCS template, purpose, persona,
+audience, client key and class, and the response's `now`, expiry, expected and
+actual purpose, seal and rumor public keys, and response digest. The two
+response keys MUST equal the expected client key, both response purposes MUST
+be `control-enrollment`, and the response expiry MUST equal the signed expiry.
+Legacy caller-supplied descriptor, secret, seal, proof, KeyPackage,
+capability, group-establishment, or other validity booleans are captured only
+as untrusted request data and MUST NOT grant authority. Because this interface
+receives no NIP-59 seal bytes, it MUST NOT claim to verify a NIP-59 seal; the
+separate consuming Comms invite authority remains responsible for that proof.
+
+The verifier uses a constructor-captured trusted clock and authenticated
+revocation loader. It requires the signed issue/expiry window, loads an active
+nonnegative revision, reloads the same active revision immediately before
+mint, and resamples trusted time around those reads. Failure, malformed state,
+revocation, revision change, or processing at or after expiry returns
+`invite-preauthorization-invalid`. Success returns only a frozen empty opaque
+`VerifiedControlInvitePreauthorization` bound privately to the minting
+authority, exact canonical envelope, descriptor and template digests, complete
+captured request, purpose, client, persona, audience, signer and class,
+methods, kinds, limits, expiry, and current revision. A plain lookalike,
+clone, proxy, accessor-bearing value, post-call mutation, or artifact from
+another authority grants nothing. This verifier is non-consuming; the
+separate Control enrollment admission authority performs the atomic invite,
+capacity, rate, and KeyPackage reservation before any enrollment effect.
+
 <a id="control-frame"></a>
 ### 4.1 Marmot Control frame
 
