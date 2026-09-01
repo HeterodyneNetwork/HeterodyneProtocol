@@ -529,6 +529,66 @@ expect.soft(actual).toBe(${relay});\n`);
   });
 
   it.each([
+    `function check() {
+  const expect = fakeExpect;
+  expect.soft("local relay").toBe(RESTRICTED);
+}`,
+    `const check = (expect: typeof fakeExpect) => {
+  expect.soft("local relay").toBe(RESTRICTED);
+};`,
+    `import { expect as assertThat } from "vitest";
+function check() {
+  const assertThat = fakeExpect;
+  assertThat.soft("local relay").toBe(RESTRICTED);
+}`,
+    `{
+  const expect = fakeExpect;
+  expect.soft("local relay").toBe(RESTRICTED);
+}`,
+    `try { throw new Error("local"); } catch (expect) {
+  expect.soft("local relay").toBe(RESTRICTED);
+}`,
+    `function check(helpers: { expect: typeof fakeExpect }) {
+  const { expect } = helpers;
+  expect.soft("local relay").toBe(RESTRICTED);
+}`,
+    `function check() {
+  expect.soft("local relay").toBe(RESTRICTED);
+  const expect = fakeExpect;
+}`,
+    `import { expect as assertThat } from "vitest";
+assertThat = fakeExpect;
+assertThat.soft("local relay").toBe(RESTRICTED);`,
+  ])("BLUE TEAM VALIDATION: synthetic/local — rejects lexically shadowed or reassigned Vitest expect roots", (fixture) => {
+    const relay = JSON.stringify(restrictedFixtureText("live", "relay"));
+    const root = defensiveReviewRoot(`${fixture.replace("RESTRICTED", relay)}\n`);
+    expect(lintDefensiveValidationRepositoryTests(root)).toEqual([
+      expect.objectContaining({ code: "defensive-validation-target" }),
+    ]);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local — keeps out-of-scope shadows separate from global and imported expect roots", () => {
+    const relay = JSON.stringify(restrictedFixtureText("live", "relay"));
+    const root = defensiveReviewRoot(`import { expect as assertThat } from "vitest";
+const actual = "local relay";
+{
+  const expect = fakeExpect;
+  void expect;
+}
+try { throw new Error("local"); } catch (assertThat) {
+  void assertThat;
+}
+function useFakeExpect() {
+  let expect = fakeExpect;
+  expect = fakeExpect;
+  void expect;
+}
+expect.soft(actual).toBe(${relay});
+assertThat.poll(() => actual).resolves.toEqual(${relay});\n`);
+    expect(lintDefensiveValidationRepositoryTests(root)).toEqual([]);
+  });
+
+  it.each([
     `expect.soft(configure(${JSON.stringify(restrictedFixtureText("live", "relay"))})).toBeDefined();`,
     `expect.soft({ relay: ${JSON.stringify(restrictedFixtureText("live", "relay"))} }).toBeDefined();`,
     `expect.poll(() => configure(${JSON.stringify(restrictedFixtureText("live", "relay"))})).resolves.toBeDefined();`,
