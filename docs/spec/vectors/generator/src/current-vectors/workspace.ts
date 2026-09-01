@@ -1,4 +1,5 @@
 import { schnorr } from "@noble/curves/secp256k1";
+import { sha256 } from "@noble/hashes/sha2";
 import { bytesToHex, hexToBytes } from "../hex.js";
 import { proofBytes } from "../proof-bytes.js";
 import { QUALIFIED_VERSION } from "../family.js";
@@ -6,6 +7,18 @@ import { createWorkspaceAssuranceAuthority, evaluateWorkspaceAssuranceTransition
 import { authenticateWorkspaceRepositoryView, evaluateFreshness, evaluatePrivateProjection, evaluateRoleLeafChange, evaluateWorkspaceObject, resolveEffectiveHosts, signWorkspaceObject, workspaceObjectId, } from "../workspace.js";
 import { evaluateWorkspaceAffiliationBoundary, evaluateWorkspaceCapabilityBoundary, evaluateWorkspaceResourceDeliveryBoundary, evaluateWorkspaceResourceKeySeparation, evaluateWorkspaceStateTransitionBoundary, } from "../workspace-policy.js";
 import { currentSpecRef, type CurrentCaseFixture } from "./types.js";
+import {
+    registerPrivateCurrentFixture,
+} from "./boundary-runners.js";
+import { definePrivateCurrentFixtureSpecification } from "./private-fixture-specification.js";
+const WORKSPACE_PRIVATE_FIXTURES = definePrivateCurrentFixtureSpecification([
+    "workspace/carrier-not-ambient-authority",
+    "workspace/current-capability-intersection",
+    "workspace/inheritance-escalation-rejected",
+    "workspace/invitation-replay",
+    "workspace/revocation-blocks-future-effect",
+]);
+import { buildWorkspaceSecurityFixture, type WorkspaceSecurityFixture } from "../workspace-security-evidence.js";
 const WORKSPACE_KEY = "11".repeat(32);
 const INCEPTION_EVENT_ID = "22".repeat(32);
 const PREVIOUS_POLICY_HEAD = "33".repeat(32);
@@ -235,6 +248,86 @@ export function buildWorkspaceCases(): CurrentCaseFixture[] {
         invitation_nonce_unused: false,
     };
     const replayDecision = evaluateWorkspaceStateTransitionBoundary(replayInput);
+    const securityFixture = buildWorkspaceSecurityFixture({
+        root_capabilities: ["invite", "read", "write"],
+        ancestor_capabilities: [["invite", "read"]],
+        grant_capabilities: ["invite", "read"],
+        revoked: false,
+    });
+    const revokedSecurityFixture = buildWorkspaceSecurityFixture({
+        root_capabilities: ["invite", "read"],
+        ancestor_capabilities: [],
+        grant_capabilities: ["invite", "read"],
+        revoked: true,
+    });
+    const securityView = securityFixture.signed_repository_view as Readonly<{
+        evidence: Readonly<Record<string, unknown>>;
+        objects: readonly Readonly<Record<string, unknown>>[];
+    }>;
+    const securityGrant = securityView.objects.find((object) =>
+        object.object_type === "role-grant-v1"
+    );
+    if (securityGrant === undefined) throw new Error("Workspace security fixture grant missing");
+    const grantOperation = { ...securityGrant };
+    delete grantOperation.signature;
+    delete grantOperation.approval_ids;
+    const grantOperationDigest = bytesToHex(sha256(proofBytes(
+        "heterodyne-workspace-grant-operation-v1",
+        grantOperation,
+    )));
+    const workspaceDevice = "81".repeat(32);
+    const workspaceLeaf = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+    const approvalUnsigned = {
+        profile: "heterodyne.workspace-grant-approval.v1",
+        spec_version: QUALIFIED_VERSION,
+        workspace_key: securityGrant.workspace_key,
+        policy_head: securityGrant.policy_head,
+        predecessor: securityGrant.predecessor,
+        authority_checkpoint: securityGrant.authority_checkpoint,
+        operation_digest: grantOperationDigest,
+        approver_key: bytesToHex(schnorr.getPublicKey("01".repeat(32))),
+        issued_at: 1_720_000_200,
+        expires_at: 1_720_000_650,
+    };
+    const securityApproval = {
+        ...approvalUnsigned,
+        signature: bytesToHex(schnorr.sign(
+            proofBytes("heterodyne-workspace-grant-approval-v1", approvalUnsigned),
+            "01".repeat(32),
+            AUX_RAND,
+        )),
+    };
+    const makeAcceptance = (issued_at: number) => {
+        const invitation = securityGrant.invitation as Readonly<Record<string, unknown>>;
+        const unsigned = {
+            profile: "heterodyne.workspace-invitation-acceptance.v1",
+            spec_version: QUALIFIED_VERSION,
+            grant_id: securityFixture.grant_id,
+            grant_operation_digest: grantOperationDigest,
+            workspace_key: securityGrant.workspace_key,
+            subject_account: securityFixture.subject,
+            target_device: workspaceDevice,
+            target_leaf: workspaceLeaf,
+            policy_head: securityGrant.policy_head,
+            predecessor: securityGrant.predecessor,
+            authority_checkpoint: securityGrant.authority_checkpoint,
+            repository_view_id: workspaceObjectId(securityView.evidence),
+            nonce_opening: "b1".repeat(32),
+            nonce_commitment: invitation.nonce_commitment,
+            issued_at,
+            expires_at: 1_720_000_600,
+        };
+        return {
+            ...unsigned,
+            signature: bytesToHex(schnorr.sign(
+                proofBytes("heterodyne-workspace-invitation-acceptance-v1", unsigned),
+                "02".repeat(32),
+                AUX_RAND,
+            )),
+        };
+    };
+    const securityAcceptance = makeAcceptance(1_720_000_200);
+    const mismatchedSecurityAcceptance = makeAcceptance(1_720_000_201);
     const deliveryInput = {
         resource_id: "resource-a",
         known_resource_ids: ["resource-a"],
@@ -261,13 +354,30 @@ export function buildWorkspaceCases(): CurrentCaseFixture[] {
         ["history-denied", historyDeniedInput],
         ["resource-unknown", unknownResourceInput],
         ["host-unauthorized", unauthorizedHostInput],
-        ["invitation-replay", replayInput]
+        ["invitation-replay", { evidence: "genuine first consume and activation followed by mismatched second acceptance" }]
     ].map(([id, input]) => ({
         vector_id: "workspace/" + String(String(id)),
         description: `The current Workspace semantic boundary rejects ${String(id).replaceAll("-", " ")}.`,
         direction: "consume" as const,
             input: input as Record<string, unknown>
     }));
+    const privateBoundaryArgs = new Map<string, readonly unknown[]>([
+        ...(["workspace/carrier-not-ambient-authority", "workspace/current-capability-intersection",
+            "workspace/inheritance-escalation-rejected", "workspace/invitation-replay"] as const)
+            .map((vectorId) => [vectorId, [
+                securityFixture,
+                grantOperationDigest,
+                securityApproval,
+                securityAcceptance,
+                mismatchedSecurityAcceptance,
+                workspaceDevice,
+                workspaceLeaf,
+            ]] as const),
+        ["workspace/revocation-blocks-future-effect",
+            [revokedSecurityFixture, grantOperationDigest, securityApproval, securityAcceptance,
+                mismatchedSecurityAcceptance, workspaceDevice, workspaceLeaf],
+        ],
+    ]);
     const boundaryArgs = new Map<string, readonly unknown[]>([
         ["workspace/repository-invalid", [repositoryInput]],
         ["workspace/bare-key-baseline", [null, bareTransition]],
@@ -352,25 +462,25 @@ export function buildWorkspaceCases(): CurrentCaseFixture[] {
             vector_id: "workspace/current-capability-intersection",
             description: "Authenticated current Workspace state and one explicit grant intersect the workspace, every role path, and grant ceiling before authorizing read.",
             direction: "consume",
-            input: capabilityInput
+            input: { actor_account: securityFixture.subject, requested_capabilities: ["invite", "read"], requested_resources: [securityFixture.resource], current_state: "authenticated-private" }
         },
         {
             vector_id: "workspace/carrier-not-ambient-authority",
             description: "Carrier-only evidence cannot replace an explicit current Workspace grant.",
             direction: "consume",
-            input: ambientAuthorityInput
+            input: { actor_account: "a2".repeat(32), actor_source: "carrier", current_state: "authenticated-private" }
         },
         {
             vector_id: "workspace/inheritance-escalation-rejected",
             description: "A request outside one inherited role-path ceiling is rejected even when a wider workspace ceiling contains it.",
             direction: "consume",
-            input: escalatedCapabilityInput
+            input: { actor_account: securityFixture.subject, requested_capabilities: ["write"], current_state: "authenticated-private" }
         },
         {
             vector_id: "workspace/revocation-blocks-future-effect",
             description: "An effective current revocation blocks the next authority effect without asserting deletion of previously delivered material.",
             direction: "consume",
-            input: revokedCapabilityInput
+            input: { actor_account: revokedSecurityFixture.subject, grant_id: revokedSecurityFixture.grant_id, current_state: "authenticated-private-revoked" }
         },
         {
             vector_id: "workspace/independent-resource-content-keys",
@@ -415,10 +525,13 @@ export function buildWorkspaceCases(): CurrentCaseFixture[] {
             input: staleInput
         },
     ];
-    return cases.map((fixture) => ({
-        ...fixture,
-        ...(boundaryArgs.has(fixture.vector_id)
-            ? { boundary_args: boundaryArgs.get(fixture.vector_id) }
-            : {}),
-    }));
+    return cases.map((fixture) => {
+        const privateArgs = privateBoundaryArgs.get(fixture.vector_id);
+        if (privateArgs !== undefined) {
+            registerPrivateCurrentFixture(WORKSPACE_PRIVATE_FIXTURES, fixture, privateArgs);
+            return fixture;
+        }
+        const args = boundaryArgs.get(fixture.vector_id);
+        return args === undefined ? fixture : { ...fixture, boundary_args: args };
+    });
 }

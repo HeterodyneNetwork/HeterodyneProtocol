@@ -14,6 +14,7 @@ import {
 import { buildClaimLedgerScenario } from "./claim-ledger-test-support.js";
 import { inspectVerifiedClaim } from "./claims.js";
 import { invokeCurrentBoundary } from "./current-vectors/boundary-runners.js";
+import { buildCommsCases } from "./current-vectors/comms.js";
 import { buildFixtures } from "./fixtures.js";
 
 const fixtures = buildFixtures();
@@ -40,35 +41,18 @@ describe("claim-ledger remediation security contexts", () => {
 
   it("BLUE TEAM VALIDATION: synthetic/local exposes the coarse current-vector writer rejection", async () => {
     // BLUE TEAM VALIDATION: synthetic/local invokes one deterministic in-process boundary fixture with no repository or network access.
-    const scenario = await buildClaimLedgerScenario(fixtures);
-    const context = scenario.makeContext(scenario.baseRepository.repository);
-    const load = context.load_record_location;
-    context.load_record_location = (record) => {
-      const location = load(record);
-      return {
-        ...location,
-        writer_binding: { ...location.writer_binding, owner_signature: "00".repeat(64) },
-      };
-    };
-    await expect(invokeCurrentBoundary("claim-ledger.mergeClaimLedger", {
-      vector_id: "comms/claim-ledger-writer-unauthorized",
-      description: "current synthetic/local writer rejection",
-      direction: "consume",
-      input: {},
-      boundary_args: [
-        [scenario.claimRecordOne, scenario.claimRecordTwo],
-        [],
-        scenario.baseRepository.checkpoint,
-        context,
-      ],
-    }))
+    const fixture = (await buildCommsCases()).find(({ vector_id }) =>
+      vector_id === "comms/claim-ledger-writer-unauthorized"
+    );
+    if (fixture === undefined) throw new Error("missing current writer rejection fixture");
+    await expect(invokeCurrentBoundary("claim-ledger.mergeClaimLedger", fixture))
       .resolves.toMatchObject({
         projected_output: {
           verdict: "reject",
           reason_code: "claim-ledger-writer-unauthorized",
         },
       });
-  });
+  }, 30_000);
 
   it("BLUE TEAM VALIDATION: synthetic/local rejects self-signed writers without current owner delegation", async () => {
     // BLUE TEAM VALIDATION: synthetic/local records and repository evidence are deterministic, non-deployable, and never contact an external target.

@@ -5,6 +5,12 @@ import { bytesToHex, hexToBytes } from "../hex.js";
 import type { CurrentProfileWireProbe } from "../profile-negotiation.js";
 import type { RegisteredKindProfile } from "../registry.js";
 import type { DocumentId } from "../types.js";
+import { createSocialSubscriptionAuthority } from "../social-subscription-authority.js";
+import { createReplaceableSelectionAuthority } from "../replaceable-selection.js";
+import type { NostrSignedEvent } from "../nostr.js";
+import type { CurrentCaseFixture } from "./types.js";
+import { registerPrivateCurrentFixture } from "./boundary-runners.js";
+import { definePrivateCurrentFixtureSpecification } from "./private-fixture-specification.js";
 
 export type CurrentProfileOracle = Readonly<{
   vector_id: string;
@@ -27,6 +33,39 @@ const CORE_BREADCRUMB_SECRET = "33".repeat(32);
 const TIER3_PRIVATE_REPOSITORY_RID = "rad:z3CurrentPrivateRepository";
 const TIER3_PRIVATE_INTERFACE_ID = "radicle-native-private";
 const TIER3_PRIVATE_ROUTE = TIER3_PRIVATE_REPOSITORY_RID;
+export const CURRENT_SOCIAL_PROFILE_PRIVATE_CASE_IDS = Object.freeze([
+  "social/profile-heterodyne-social-agent-policy-list-v1",
+  "social/profile-heterodyne-social-agent-policy-receipt-v1",
+]);
+const SOCIAL_PROFILE_PRIVATE_FIXTURES = definePrivateCurrentFixtureSpecification(
+  CURRENT_SOCIAL_PROFILE_PRIVATE_CASE_IDS,
+);
+
+function socialSignedEvent(secretHex: string, createdAt: number, kind: number, tags: string[][], content: string): NostrSignedEvent {
+  const secret = hexToBytes(secretHex);
+  const pubkey = bytesToHex(schnorr.getPublicKey(secret));
+  const serialized = JSON.stringify([0, pubkey, createdAt, kind, tags, content]);
+  const id = bytesToHex(sha256(new TextEncoder().encode(serialized)));
+  return Object.freeze({ pubkey, created_at: createdAt, kind, tags: Object.freeze(tags.map((tag) => Object.freeze([...tag]))) as string[][], content, id, sig: bytesToHex(schnorr.sign(hexToBytes(id), secret, hexToBytes("00".repeat(32)))) });
+}
+
+function currentSocialProfilePrivateArgs(
+  vectorId: string,
+): readonly unknown[] | undefined {
+  if (!CURRENT_SOCIAL_PROFILE_PRIVATE_CASE_IDS.includes(vectorId)) {
+    return undefined;
+  }
+  const policySecret = "0d".repeat(32), deviceSecret = "0e".repeat(32);
+  const policyPersona = bytesToHex(schnorr.getPublicKey(hexToBytes(policySecret)));
+  const device = bytesToHex(schnorr.getPublicKey(hexToBytes(deviceSecret)));
+  const target = socialSignedEvent(deviceSecret, 1_000, 1, [["L", "network.heterodyne.agent"], ["l", "ai", "network.heterodyne.agent"], ["heterodyne_agent", "v1", "key", device], ["agent_action", "publish"]], "Synthetic local current profile publication.");
+  const receiptContent = JSON.stringify({ profile: "heterodyne.social.agent-policy-receipt.v1", spec_version: CURRENT_PROFILE_VERSION, event_id: target.id, event_author: device, agent_association: { kind: "key", value: device }, policy: { id: "network.heterodyne.agent-policy", version: "1.0.0" }, decision: "advisory-violation", reason: "agent-attribution-missing", observed_at: 1_100, evidence: ["sha256:synthetic-local-current-profile"], explanation: "Synthetic local current profile boundary evidence.", remediation: "replace-signing-key" });
+  const receipt = socialSignedEvent(policySecret, 1_100, 1_985, [["L", "network.heterodyne.agent-policy"], ["l", "agent-attribution-missing", "network.heterodyne.agent-policy"], ["e", target.id], ["p", device]], receiptContent);
+  const list = socialSignedEvent(policySecret, 1_200, 10_000, [["heterodyne", "social-agent-policy-list-v1"], ["spec_version", CURRENT_PROFILE_VERSION], ["p", device], ["e", receipt.id], ["agent_violation", device, receipt.id, "agent-attribution-missing"]], "");
+  const authority = createSocialSubscriptionAuthority({ authority_id: `synthetic-local-current-${vectorId}`, trusted_now: () => 2_000, replaceable_selection: createReplaceableSelectionAuthority({ trusted_now: () => 2_000 }), load_subscription: async () => ({ revision: 1, subscribed: true, default_visible: true }) });
+  const input = Object.freeze({ policy_persona: policyPersona, list_candidates: Object.freeze([list]), receipt_events: Object.freeze([receipt]), target_events: Object.freeze([target]), correction_events: Object.freeze([]) });
+  return Object.freeze([authority, input, target]);
+}
 
 function fixedTuple(
   kind: number,
@@ -423,23 +462,12 @@ for (const [kind, profileId, discriminator] of [
     "tag:heterodyne=social-agent-policy-list-v1",
   ],
 ] as const) {
+  const vectorId = `social/profile-${profileId}`;
   rows.push(oracle(
     fixedTuple(kind, profileId, "social", discriminator, true),
-    "agent-authorship.injectAgentAttribution+agent-moderation.applySubscribedAgentPolicy",
+    "social-subscription-authority.resolveSubscribedAgentPolicy+applySubscribedAgentPolicy",
     ["SOCIAL-I-AGENT-AUTHORSHIP-EXACT", "SOCIAL-I-AGENT-POLICY-LOCAL"],
-    {
-      publication: attributionInput(1),
-      policy: {
-        subscribed: true,
-        policy_persona: KEY,
-        policy_event_selected: true,
-        event_author: OTHER_KEY,
-        muted_event_authors: [OTHER_KEY],
-        default_subscription: false,
-        default_visible: true,
-        can_disable_default: true,
-      },
-    },
+    { evidence: "signed subscribed local agent policy list and receipt resolve before exact application" },
   ));
 }
 
@@ -486,4 +514,28 @@ export function currentProfileOracleForVector(
   vectorId: string,
 ): CurrentProfileOracle | undefined {
   return oracleByVectorId.get(vectorId);
+}
+
+/** Constructs and privately binds one exact oracle-owned fixture without exposing its arguments. */
+export function buildCurrentProfileOracleFixture(
+  oracle: CurrentProfileOracle,
+  input: Readonly<Record<string, unknown>>,
+  boundaryArgs?: readonly unknown[],
+): CurrentCaseFixture {
+  if (oracleByVectorId.get(oracle.vector_id) !== oracle) {
+    throw new Error(`unknown current profile oracle identity: ${oracle.vector_id}`);
+  }
+  const fixture: CurrentCaseFixture = {
+    vector_id: oracle.vector_id,
+    description:
+      `The fixed ${oracle.tuple.profile_id} allocation is checked separately from its live semantic boundary.`,
+    direction: "consume",
+    input,
+    ...(boundaryArgs === undefined ? {} : { boundary_args: boundaryArgs }),
+  };
+  const privateArgs = currentSocialProfilePrivateArgs(fixture.vector_id);
+  if (privateArgs !== undefined) {
+    registerPrivateCurrentFixture(SOCIAL_PROFILE_PRIVATE_FIXTURES, fixture, privateArgs);
+  }
+  return fixture;
 }

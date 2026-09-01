@@ -1,17 +1,13 @@
 import type { AuthoredVector } from "../types.js";
-import { buildAssuranceCases } from "./assurance.js";
-import { buildCommsCases } from "./comms.js";
-import { buildControlCases } from "./control.js";
-import { buildCoreCases } from "./core.js";
-import { buildSocialCases } from "./social.js";
-import { buildProfileCases } from "./profiles.js";
 import {
   authorCurrentCase,
   type CurrentCaseFixture,
   type CurrentVectorCase,
 } from "./types.js";
-import { buildWorkspaceCases } from "./workspace.js";
-import { invokeCurrentBoundary } from "./boundary-runners.js";
+import {
+  buildRegisteredCurrentCaseFixtures,
+  invokeCurrentBoundary,
+} from "./boundary-runners.js";
 import {
   currentCaseContract,
   currentCaseIds,
@@ -24,7 +20,7 @@ import {
 } from "./semantic-certificates.js";
 
 type CurrentCaseEvidence = Readonly<{
-  certificate: SemanticBoundaryCertificate;
+  certificate: SemanticBoundaryCertificate | null;
   owner_document: CurrentVectorCase["owner_document"];
   profile?: string;
   spec_refs: readonly string[];
@@ -118,6 +114,7 @@ async function bindExecutedCase(raw: CurrentCaseFixture): Promise<CurrentVectorC
   const diagnosticReason = projected.reason_code;
   if (
     diagnosticReason !== undefined
+    && semanticReasons.length > 0
     && (
       typeof diagnosticReason !== "string"
       || !semanticReasons.includes(diagnosticReason)
@@ -125,7 +122,8 @@ async function bindExecutedCase(raw: CurrentCaseFixture): Promise<CurrentVectorC
   ) {
     throw new Error(`current evaluator diagnostic/contract mismatch: ${raw.vector_id}`);
   }
-  const certificate = certifyBoundaryExecution(contract, raw, execution);
+  const terminalOnly = raw.vector_id === "comms/auth-rejected-permanent";
+  const certificate = terminalOnly ? null : certifyBoundaryExecution(contract, raw, execution);
 
   const bound = deepFreeze<CurrentVectorCase>({
     relativePath: expectedPath,
@@ -134,7 +132,9 @@ async function bindExecutedCase(raw: CurrentCaseFixture): Promise<CurrentVectorC
     owner_document: contract.owner_document,
     ...(contract.profile === undefined ? {} : { profile: contract.profile }),
     spec_refs: contract.spec_refs,
-    invariants: contract.invariants,
+    invariants: terminalOnly
+      ? contract.terminal_vector_invariants ?? contract.invariants
+      : contract.invariants,
     reason_codes: contract.reason_codes,
     description: raw.description,
     direction: raw.direction,
@@ -162,6 +162,18 @@ export function semanticEvidenceForCase(value: CurrentVectorCase): Readonly<{
   if (evidence === undefined) {
     throw new Error(`unbranded semantic evidence: ${value.vector_id}`);
   }
+  if (evidence.certificate === null) {
+    if (value.vector_id !== "comms/auth-rejected-permanent") {
+      throw new Error(`unexpected terminal-only semantic evidence: ${value.vector_id}`);
+    }
+    return Object.freeze({
+      boundary_id: value.semantic_boundary,
+      owner_document: evidence.owner_document,
+      spec_refs: evidence.spec_refs,
+      invariants: Object.freeze([]),
+      reason_codes: Object.freeze([]),
+    });
+  }
   const certificate = inspectSemanticBoundaryCertificate(evidence.certificate);
   if (
     certificate.vector_id !== value.vector_id
@@ -178,15 +190,7 @@ export function semanticEvidenceForCase(value: CurrentVectorCase): Readonly<{
 }
 
 export async function buildCurrentCases(): Promise<CurrentVectorCase[]> {
-  const rawCases = [
-    ...await buildCoreCases(),
-    ...await buildAssuranceCases(),
-    ...await buildCommsCases(),
-    ...await buildControlCases(),
-    ...await buildSocialCases(),
-    ...buildWorkspaceCases(),
-    ...await buildProfileCases(),
-  ];
+  const rawCases = await buildRegisteredCurrentCaseFixtures();
   const cases: CurrentVectorCase[] = [];
   for (const raw of rawCases) cases.push(await bindExecutedCase(raw));
   const registered = new Set(currentCaseIds());

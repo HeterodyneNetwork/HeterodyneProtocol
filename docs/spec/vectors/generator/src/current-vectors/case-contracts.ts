@@ -10,6 +10,8 @@ export type CurrentCaseContract = Readonly<{
   reason_codes: readonly string[];
   /** Executed diagnostic reasons, including non-reject terminal results. */
   semantic_reason_codes?: readonly string[];
+  /** Schema-required vector traceability retained without a semantic claim. */
+  terminal_vector_invariants?: readonly string[];
 }>;
 
 /**
@@ -364,19 +366,6 @@ const CURRENT_CASE_CONTRACTS = {
     ],
     "reason_codes": [
       "assurance-reciprocal-proof-invalid"
-    ]
-  },
-  "assurance/retired-key-post-compromise": {
-    "boundary_id": "follow-up-hardening.classifyRetiredKeyObservation",
-    "owner_document": "assurance",
-    "spec_refs": [
-      "heterodyne:0.6.0#assurance-retired-wire-profiles"
-    ],
-    "invariants": [
-      "ASSURANCE-I-COMPROMISE-CUTOFF"
-    ],
-    "reason_codes": [
-      "revoked_key_post_compromise"
     ]
   },
   "assurance/succession-authority-invalid": {
@@ -1004,32 +993,6 @@ const CURRENT_CASE_CONTRACTS = {
     ],
     "reason_codes": [
       "conversation-rejected"
-    ]
-  },
-  "comms/dm-invite-revoked-device": {
-    "boundary_id": "comms-policy.validateDmInviteDevice",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:0.6.0#comms-direct-messages"
-    ],
-    "invariants": [
-      "COMMS-I-MARMOT-UPSTREAM-AUTHORITY"
-    ],
-    "reason_codes": [
-      "dm_invite_revoked_device"
-    ]
-  },
-  "comms/dm-invite-unbound-device": {
-    "boundary_id": "comms-policy.validateDmInviteDevice",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:0.6.0#comms-direct-messages"
-    ],
-    "invariants": [
-      "COMMS-I-MARMOT-UPSTREAM-AUTHORITY"
-    ],
-    "reason_codes": [
-      "dm_invite_unbound_device"
     ]
   },
   "comms/invite-already-reserved": {
@@ -1962,32 +1925,6 @@ const CURRENT_CASE_CONTRACTS = {
       "control-activation-binding-mismatch"
     ]
   },
-  "control/agent-attribution-bypass-prohibited": {
-    "boundary_id": "control-policy.evaluateAutomatedControlGrant",
-    "owner_document": "control",
-    "spec_refs": [
-      "heterodyne:0.6.0#control-agent-requirements"
-    ],
-    "invariants": [
-      "CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING"
-    ],
-    "reason_codes": [
-      "agent-attribution-bypass-prohibited"
-    ]
-  },
-  "control/agent-human-profile-prohibited": {
-    "boundary_id": "control-policy.evaluateAutomatedControlGrant",
-    "owner_document": "control",
-    "spec_refs": [
-      "heterodyne:0.6.0#control-agent-requirements"
-    ],
-    "invariants": [
-      "CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING"
-    ],
-    "reason_codes": [
-      "agent-human-profile-prohibited"
-    ]
-  },
   "control/agent-intent-invalid": {
     "boundary_id": "control-signing.prepareAutomatedSigning",
     "owner_document": "control",
@@ -2001,32 +1938,6 @@ const CURRENT_CASE_CONTRACTS = {
       "control-agent-intent-invalid"
     ]
   },
-  "control/agent-key-access-prohibited": {
-    "boundary_id": "control-policy.evaluateAutomatedControlGrant",
-    "owner_document": "control",
-    "spec_refs": [
-      "heterodyne:0.6.0#control-agent-requirements"
-    ],
-    "invariants": [
-      "CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING"
-    ],
-    "reason_codes": [
-      "agent-key-access-prohibited"
-    ]
-  },
-  "control/agent-method-prohibited": {
-    "boundary_id": "control-policy.evaluateAutomatedControlGrant",
-    "owner_document": "control",
-    "spec_refs": [
-      "heterodyne:0.6.0#control-agent-requirements"
-    ],
-    "invariants": [
-      "CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING"
-    ],
-    "reason_codes": [
-      "agent-method-prohibited"
-    ]
-  },
   "control/agent-rate-limited": {
     "boundary_id": "control-policy.evaluateAutomatedControlGrant",
     "owner_document": "control",
@@ -2038,19 +1949,6 @@ const CURRENT_CASE_CONTRACTS = {
     ],
     "reason_codes": [
       "agent-rate-limited"
-    ]
-  },
-  "control/agent-resource-denied": {
-    "boundary_id": "control-policy.evaluateAutomatedControlGrant",
-    "owner_document": "control",
-    "spec_refs": [
-      "heterodyne:0.6.0#control-agent-requirements"
-    ],
-    "invariants": [
-      "CONTROL-I-EXACT-SIGNER-GRANT"
-    ],
-    "reason_codes": [
-      "agent-resource-denied"
     ]
   },
   "control/agent-size-exceeded": {
@@ -2507,32 +2405,6 @@ const CURRENT_CASE_CONTRACTS = {
     ],
     "reason_codes": [
       "control-request-expired"
-    ]
-  },
-  "control/request-id-conflict": {
-    "boundary_id": "control-policy.evaluateControlOperationRequest",
-    "owner_document": "control",
-    "spec_refs": [
-      "heterodyne:0.6.0#control-request-processing"
-    ],
-    "invariants": [
-      "CONTROL-I-OPERATION-AT-MOST-ONCE"
-    ],
-    "reason_codes": [
-      "control-request-id-conflict"
-    ]
-  },
-  "control/signed-event-invalid": {
-    "boundary_id": "control-policy.validateControlSignedEffect",
-    "owner_document": "control",
-    "spec_refs": [
-      "heterodyne:0.6.0#control-agent-requirements"
-    ],
-    "invariants": [
-      "CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING"
-    ],
-    "reason_codes": [
-      "control-signed-event-invalid"
     ]
   },
   "control/signer-binding-mismatch": {
@@ -3001,19 +2873,6 @@ const CURRENT_CASE_CONTRACTS = {
     ],
     "reason_codes": [
       "repository-writer-binding-invalid"
-    ]
-  },
-  "core/retired-key-authority-window-invalid": {
-    "boundary_id": "follow-up-hardening.classifyRetiredKeyObservation",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:0.6.0#core-retired-key-observation"
-    ],
-    "invariants": [
-      "CORE-I-IDENTITY-INTEGRITY"
-    ],
-    "reason_codes": [
-      "retired-key-authority-window-invalid"
     ]
   },
   "core/strict-mode-without-tor": {
@@ -3587,23 +3446,91 @@ for (const contract of Object.values(CURRENT_CASE_CONTRACTS)) {
 }
 Object.freeze(CURRENT_CASE_CONTRACTS);
 
+const NO_SEMANTIC_CLAIMS = Object.freeze([]) as readonly string[];
+const TASK_FIFTEEN_BOUNDARIES: Readonly<Record<string, string>> = Object.freeze({
+  "comms/agent-sender-proof-invalid": "agent-publication-authorization.authorizeAndSignAgentPublication",
+  "comms/agent-workload-token-accepted": "agent-publication-authorization.authorizeAndSignAgentPublication",
+  "comms/conversation-rejected": "marmot-admission-authority.verifyMarmotWelcome+admitOrdinaryMarmotWelcome",
+  "comms/invite-authentication-invalid": "one-time-invite-authority.redeemOneTimeInvite",
+  "comms/marmot-agent-scope-denied": "persona-inbox-admission-authority.admitPersonaInboxBundle",
+  "comms/marmot-exact-bytes-durable": "marmot-archive-retention-authority.appendExactMarmotArchive",
+  "comms/marmot-expiration-not-erasure": "marmot-archive-retention-authority.appendExactMarmotArchive+expireMarmotPresentation+acknowledgeMarmotArchive",
+  "comms/marmot-keypackage-replayed": "persona-inbox-admission-authority.admitPersonaInboxBundle",
+  "comms/marmot-ordinary-welcome-held": "marmot-admission-authority.verifyMarmotWelcome+admitOrdinaryMarmotWelcome",
+  "comms/marmot-premature-ack": "marmot-archive-retention-authority.acknowledgeMarmotArchive",
+  "comms/marmot-private-inbox-nid-required": "persona-inbox-admission-authority.admitPersonaInboxBundle",
+  "control/compromise-reset-evidence-invalid": "control-signing.validateCompromiseReset",
+  "control/compromise-reset-inventory-mismatch": "control-signing.validateCompromiseReset",
+  "control/compromise-reset-unauthenticated": "control-signing.validateCompromiseReset",
+  "control/subordinate-reauthorization-required": "control-signing.validateCompromiseReset",
+  "control/device-code-display-mismatch": "control-device-authorization.createControlDeviceTransaction+pollControlDeviceAuthorization",
+  "control/device-code-invalid": "control-device-authorization.createControlDeviceTransaction+pollControlDeviceAuthorization",
+  "control/device-code-rate-limited": "control-device-authorization.createControlDeviceTransaction+pollControlDeviceAuthorization",
+  "control/enrollment-unavailable": "control-enrollment-admission.admitControlEnrollment",
+  "control/frame-invalid": "profile-negotiation.validateCurrentControlFrameProfile",
+  "control/invite-preauthorization-invalid": "control-invite-preauthorization.verifyControlInvitePreauthorization",
+  "control/keypackage-invalid": "control-enrollment-admission.admitControlEnrollment",
+  "control/keypackage-replenishment-paused": "control-enrollment-admission.admitControlEnrollment",
+  "control/signer-effect-indeterminate": "control-signing.executePersistedAutomatedSigning+executePersistedAutomatedSigning",
+  "control/token-invalid": "control-token-verifier.verifyControlToken+consumeVerifiedControlToken",
+  "core/friend-cache-unsigned": "core-operational-assurance-authority.verifyCacheCandidate",
+  "core/profile-repository-selection-required": "canonical-profile-selection-authority.selectCanonicalProfile",
+  "core/relay-profile-mutated": "core-operational-assurance-authority.verifyRelayProfileCarrier",
+  "core/strict-mode-without-tor": "core-operational-assurance-authority.verifyStrictTransport",
+  "workspace/carrier-not-ambient-authority": "workspace.authenticateWorkspaceRepositoryView+resolveWorkspaceEffectiveAuthorization",
+  "workspace/current-capability-intersection": "workspace.authenticateWorkspaceRepositoryView+resolveWorkspaceEffectiveAuthorization+consumeWorkspaceInvitationAcceptance+evaluateGrantActivation",
+  "workspace/inheritance-escalation-rejected": "workspace.authenticateWorkspaceRepositoryView+resolveWorkspaceEffectiveAuthorization",
+  "workspace/invitation-replay": "workspace.authenticateWorkspaceRepositoryView+resolveWorkspaceEffectiveAuthorization+consumeWorkspaceInvitationAcceptance+evaluateGrantActivation+consumeWorkspaceInvitationAcceptance",
+  "workspace/revocation-blocks-future-effect": "workspace.authenticateWorkspaceRepositoryView+resolveWorkspaceEffectiveAuthorization",
+});
+
+const RESOLVED_CURRENT_CASE_CONTRACTS = new Map<string, CurrentCaseContract>();
+
 export function currentCaseContract(vectorId: string): CurrentCaseContract {
+  const cached = RESOLVED_CURRENT_CASE_CONTRACTS.get(vectorId);
+  if (cached !== undefined) return cached;
   const contract = CURRENT_CASE_CONTRACTS[vectorId as keyof typeof CURRENT_CASE_CONTRACTS];
   if (contract === undefined) {
     throw new Error(`unregistered current vector case: ${vectorId}`);
   }
   const profileOracle = currentProfileOracleForVector(vectorId);
-  if (profileOracle !== undefined) {
-    return Object.freeze({
+  const resolved: CurrentCaseContract = profileOracle !== undefined
+    ? Object.freeze({
       ...contract,
       boundary_id: profileOracle.semantic_boundary,
       owner_document: profileOracle.tuple.owner,
       profile: profileOracle.tuple.profile_id,
       invariants: profileOracle.exercised_invariants,
       reason_codes: Object.freeze([]),
+    })
+    : contract;
+  if (vectorId === "comms/auth-rejected-permanent") {
+    const terminalOnly = Object.freeze({
+      ...resolved,
+      terminal_vector_invariants: resolved.invariants,
+      invariants: NO_SEMANTIC_CLAIMS,
+      semantic_reason_codes: NO_SEMANTIC_CLAIMS,
     });
+    RESOLVED_CURRENT_CASE_CONTRACTS.set(vectorId, terminalOnly);
+    return terminalOnly;
   }
-  return contract;
+  const boundary = TASK_FIFTEEN_BOUNDARIES[vectorId];
+  const canonical = boundary === undefined
+    ? resolved
+    : Object.freeze({ ...resolved, boundary_id: boundary });
+  RESOLVED_CURRENT_CASE_CONTRACTS.set(vectorId, canonical);
+  return canonical;
+}
+
+export function assertCurrentCaseContractIdentity(
+  vectorId: string,
+  contract: CurrentCaseContract,
+): void {
+  if (currentCaseContract(vectorId) !== contract) {
+    throw new Error(
+      `semantic certificate allocation mismatch: exact current case contract required: ${vectorId}`,
+    );
+  }
 }
 
 export function currentCaseIds(): readonly string[] {

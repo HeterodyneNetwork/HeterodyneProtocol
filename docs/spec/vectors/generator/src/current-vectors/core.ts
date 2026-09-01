@@ -12,7 +12,19 @@ import { getPublicKey, signEvent, type NostrSignedEvent } from "../nostr.js";
 import { proofBytes } from "../proof-bytes.js";
 import { didKeyFromEd25519, ed25519PublicKey, ed25519Sign, fixtureRid, nodeAdvertPayload, validateNodeAdvertisement, } from "../radicle.js";
 import { createReplaceableSelectionAuthority, selectCurrentReplaceableEvent, } from "../replaceable-selection.js";
+import { createCoreOperationalAssuranceAuthority } from "../core-operational-assurance-authority.js";
+import { createCanonicalProfileSelectionAuthority } from "../canonical-profile-selection-authority.js";
 import { currentSpecRef, type CurrentCaseFixture } from "./types.js";
+import {
+    registerPrivateCurrentFixture,
+} from "./boundary-runners.js";
+import { definePrivateCurrentFixtureSpecification } from "./private-fixture-specification.js";
+const CORE_PRIVATE_FIXTURES = definePrivateCurrentFixtureSpecification([
+    "core/friend-cache-unsigned",
+    "core/relay-profile-mutated",
+    "core/strict-mode-without-tor",
+    "core/profile-repository-selection-required",
+]);
 const SECRET = "19".repeat(32);
 const AUX_RAND = "00".repeat(32);
 const NOW = 1800000000;
@@ -182,9 +194,9 @@ export async function buildCoreCases(): Promise<CurrentCaseFixture[]> {
         stamp_policy: "required" as const,
     };
     const onionInput = { operation: "resolve-host" as const, host: "catalogfixture.onion", resolver: "clearnet" as const };
-    const strictModeInput = { operation: "start-strict-mode" as const, tor_egress: false, explicit_user_choice: false };
-    const cacheInput = { operation: "read-friend-cache" as const, owner_signed: false, content_class: "nostr" as const };
-    const relayInput = { operation: "relay-profile" as const, vanilla_nip01_unchanged: false };
+    const strictModeInput = { captured_role: "authenticated-light", strict_profile: true, captured_route: "clearnet" };
+    const cacheInput = { candidate_event_id: unstampedEvent.id, expected_persona: "ff".repeat(32) };
+    const relayInput = { evidence: "retained raw profile bytes differ from the exact signed event" };
     const configRidInput = { operation: "publish-surface" as const, config_rid: RID, values: [RID] };
     const writerBody = {
         profile: "heterodyne.core.repository-writer-binding.v1" as const,
@@ -237,6 +249,49 @@ export async function buildCoreCases(): Promise<CurrentCaseFixture[]> {
         ...writerBinding,
         owner_signature: "00".repeat(64),
     };
+    const operationalAuthority = createCoreOperationalAssuranceAuthority({
+        authority_id: "synthetic-local-current-core-operational",
+        trusted_now: () => NOW,
+        capture_transport: () => ({
+            role: "authenticated-light",
+            strict_profile: true,
+            route: "tor",
+        }),
+    });
+    const strictOperationalAuthority = createCoreOperationalAssuranceAuthority({
+        authority_id: "synthetic-local-current-core-strict",
+        trusted_now: () => NOW,
+        capture_transport: () => ({
+            role: "authenticated-light",
+            strict_profile: true,
+            route: "clearnet",
+        }),
+    });
+    const profileEvent = await signEvent({
+        secretKey: SECRET,
+        created_at: NOW,
+        kind: 0,
+        tags: [],
+        content: JSON.stringify({ name: "synthetic local profile", heterodyne: { profile: WRITER_RID } }),
+        auxRand: AUX_RAND,
+    });
+    const mutatedRetainedProfile = new TextEncoder().encode(JSON.stringify({
+        ...profileEvent,
+        content: JSON.stringify({ name: "mutated synthetic profile" }),
+    }));
+    const canonicalProfileAuthority = createCanonicalProfileSelectionAuthority({
+        authority_id: "synthetic-local-current-canonical-profile",
+        trusted_now: () => NOW,
+        replaceable_selection: authority,
+        repository_writer_authority: writerAuthority,
+        authenticate_repository_candidate: async () => null,
+    });
+    const privateBoundaryArgs = new Map<string, readonly unknown[]>([
+        ["core/friend-cache-unsigned", [operationalAuthority, { event: unstampedEvent, expected_persona: "ff".repeat(32) }]],
+        ["core/relay-profile-mutated", [operationalAuthority, { event: profileEvent, retained_bytes: mutatedRetainedProfile }]],
+        ["core/strict-mode-without-tor", [strictOperationalAuthority]],
+        ["core/profile-repository-selection-required", [canonicalProfileAuthority, { relay_candidates: [profileEvent], repository_candidates: [] }]],
+    ]);
     const corePolicyCases: CurrentCaseFixture[] = [
         {
             vector_id: "core/nip01-raw-mismatch",
@@ -269,7 +324,7 @@ export async function buildCoreCases(): Promise<CurrentCaseFixture[]> {
             input: input as Record<string, unknown>
         })),
     ];
-    return [
+    const cases: CurrentCaseFixture[] = [
         ...corePolicyCases,
         {
             vector_id: "core/repository-writer-dual-proof-valid",
@@ -337,7 +392,7 @@ export async function buildCoreCases(): Promise<CurrentCaseFixture[]> {
             vector_id: "core/profile-repository-selection-required",
             description: "Relay profile state cannot become canonical without selecting the verified profile repository.",
             direction: "consume",
-            input: profileRepositoryInput
+            input: { relay_candidate: profileEvent, authenticated_repository_candidates: [] }
         },
         {
             vector_id: "core/profile-publisher-delegation-invalid",
@@ -351,12 +406,6 @@ export async function buildCoreCases(): Promise<CurrentCaseFixture[]> {
             direction: "consume",
             input: profileNip05Input
         },
-        {
-            vector_id: "core/retired-key-authority-window-invalid",
-            description: "Retired-key content outside the exact accepted authority window is rejected.",
-            direction: "consume",
-            input: retiredWindowInput
-        },
         ...nodeTimeCases.map(({ suffix, input }) => ({
             vector_id: `core/node-advert-${suffix}`,
             description: `The node-advertisement time boundary rejects the ${suffix.replaceAll("-", " ")} condition.`,
@@ -364,4 +413,11 @@ export async function buildCoreCases(): Promise<CurrentCaseFixture[]> {
             input
         })),
     ];
+    return cases.map((fixture) => {
+        const args = privateBoundaryArgs.get(fixture.vector_id);
+        if (args !== undefined) {
+            registerPrivateCurrentFixture(CORE_PRIVATE_FIXTURES, fixture, args);
+        }
+        return fixture;
+    });
 }

@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, createPrivateKey, sign, type JsonWebKey } from "node:crypto";
 import { schnorr } from "@noble/curves/secp256k1";
 import { buildAuthorizationFreshnessTestSupport } from "../authorization-freshness-test-support.js";
 import { evaluateAuthorizationFreshness, revalidateAuthorizationViewAtEffect, type AuthorizationFreshnessAuthority, } from "../authorization-freshness.js";
@@ -10,10 +10,180 @@ import { bytesToHex, hexToBytes } from "../hex.js";
 import { jcsCanonicalize } from "../jcs.js";
 import { getPublicKey } from "../nostr.js";
 import { currentSpecRef, type CurrentCaseFixture } from "./types.js";
+import {
+    registerPrivateCurrentFixture,
+} from "./boundary-runners.js";
+import { definePrivateCurrentFixtureSpecification } from "./private-fixture-specification.js";
+import { controlFrameContext, controlResetEvidenceFixtures, controlSignerEvidenceFixture, reconstructControlSignerEvidenceFixture, controlSignerInvocationCount, signedControlFrameBytes } from "../control-security-evidence.js";
+import { createControlDeviceAuthorizationAuthority, type ControlDeviceTransactionRequest } from "../control-device-authorization.js";
+import { createControlEnrollmentAdmissionAuthority, type ControlEnrollmentAdmissionRequest, type ControlEnrollmentReservationStore } from "../control-enrollment-admission.js";
+import { createControlInvitePreauthorizationAuthority, type ControlInviteTemplate, type ControlInviteRequest } from "../control-invite-preauthorization.js";
+import { descriptorDigest, responseProof, secretCommitment, type InviteDescriptor, type InviteEnvelope, type InviteResponseInput } from "../one-time-invite.js";
+import type { DurableAuthorityRecord, DurableAuthorityStore } from "../security-authority-support.js";
+import { buildFixtures } from "../fixtures.js";
+import { buildLiveOidcScenario } from "../oidc-test-support.js";
+import { CHECKPOINT_CLAIM, createValidatedProjectedJwtContext, projectAccessToken } from "../oidc.js";
+import { OIDC_RSA_ONE } from "../oidc-rsa-fixtures.js";
+import { continuityManifestDigest, createContinuityAuthorityProof, createCurrentControlGrantResolver, createCurrentControlGrantView, generateStatusListToken, resolveCurrentControlGrant, validateIssuerContinuityChain, type ContinuityManifestBody } from "../token-status.js";
+import { createAuthorizationFreshnessAuthority } from "../authorization-freshness.js";
+import { proofBytes } from "../proof-bytes.js";
+import type { ControlAuthorizationObject, ControlAuthorizationRecord } from "../control-profile.js";
+import { currentControlFrameRequestDigest } from "../profile-negotiation.js";
+import { createControlTokenVerifier, type ControlTokenOperation, type ControlTokenUse } from "../control-token-verifier.js";
+import { utf8Bytes } from "../hex.js";
+const CONTROL_PRIVATE_FIXTURES = definePrivateCurrentFixtureSpecification([
+    ...controlResetEvidenceFixtures().map(({ expected_reason }) =>
+        expected_reason.replace(/^control-/u, "control/")
+    ),
+    "control/signer-effect-indeterminate",
+    "control/frame-invalid",
+    "control/device-code-invalid",
+    "control/device-code-rate-limited",
+    "control/device-code-display-mismatch",
+    "control/keypackage-invalid",
+    "control/enrollment-unavailable",
+    "control/keypackage-replenishment-paused",
+    "control/invite-preauthorization-invalid",
+    "control/token-invalid",
+]);
 const normalizeReason = <T extends Record<string, unknown>>(value: T): Record<string, unknown> => "reason" in value ? (() => {
     const { reason, ...decision } = value;
     return { ...decision, reason_code: reason };
 })() : value;
+
+type DevicePublicState = Readonly<{ transaction_id: string; state: "pending" | "approved" | "denied" | "expired" }>;
+class CurrentDeviceStore implements DurableAuthorityStore<DevicePublicState> {
+    readonly records = new Map<string, DurableAuthorityRecord<DevicePublicState>>();
+    async load(key: string) { return this.records.get(key) ?? null; }
+    async compareAndSwap(input: { key: string; expected_revision: number | null; next: DurableAuthorityRecord<DevicePublicState> }) {
+        if ((this.records.get(input.key)?.revision ?? null) !== input.expected_revision) return "conflict" as const;
+        this.records.set(input.key, input.next); return "committed" as const;
+    }
+    async acquire(input: { key: string; expected_revision: number | null; binding_digest: string; execution_token: string }) {
+        const current = this.records.get(input.key);
+        if (current?.state !== "available" || current.revision !== input.expected_revision || current.binding_digest !== input.binding_digest) return "conflict" as const;
+        this.records.set(input.key, Object.freeze({ state: "executing" as const, revision: current.revision + 1, binding_digest: input.binding_digest, execution_token: input.execution_token }));
+        return "acquired" as const;
+    }
+    async commit(input: { key: string; binding_digest: string; execution_token: string; output_digest: string; output: DevicePublicState }) {
+        const current = this.records.get(input.key);
+        if (current?.state !== "executing" || current.binding_digest !== input.binding_digest || current.execution_token !== input.execution_token) return "conflict" as const;
+        this.records.set(input.key, Object.freeze({ state: "committed" as const, revision: current.revision + 1, binding_digest: input.binding_digest, execution_token: input.execution_token, output_digest: input.output_digest, output: input.output })); return "committed" as const;
+    }
+    async markIndeterminate(input: { key: string; binding_digest: string; execution_token: string; reconciliation_digest: string }) {
+        const current = this.records.get(input.key);
+        if (current?.state !== "executing") return "conflict" as const;
+        this.records.set(input.key, Object.freeze({ state: "indeterminate" as const, revision: current.revision + 1, binding_digest: input.binding_digest, execution_token: input.execution_token, reconciliation_digest: input.reconciliation_digest }));
+        return "indeterminate" as const;
+    }
+}
+
+function buildCurrentDeviceFixture() {
+    const clock = { now: 1_900_000_000 };
+    let seed = 1;
+    const store = new CurrentDeviceStore();
+    const authority = createControlDeviceAuthorizationAuthority({
+        authority_id: "synthetic-local-current-device-authority",
+        trusted_now: () => clock.now,
+        random_bytes: (length) => Uint8Array.from({ length }, (_, index) => (seed + index) & 0xff, seed++),
+        store,
+    });
+    const request: ControlDeviceTransactionRequest = Object.freeze({
+        client_id: "synthetic-local-current-client", persona: "synthetic-local-current-persona",
+        verification_uri: "https://device.invalid/activate", display_fingerprint: "SYNTHETIC-CURRENT-FINGERPRINT",
+        polling_interval_seconds: 5, expires_in_seconds: 600, failure_budget: 5,
+    });
+    return Object.freeze({ authority, request, clock, store });
+}
+
+type CurrentInventory = Awaited<ReturnType<Parameters<typeof createControlEnrollmentAdmissionAuthority>[0]["load_inventory"]>>;
+type CurrentInvite = Awaited<ReturnType<Parameters<typeof createControlEnrollmentAdmissionAuthority>[0]["load_invite_state"]>>;
+class CurrentEnrollmentStore implements ControlEnrollmentReservationStore {
+    reserveCalls = 0;
+    async load() { return null; }
+    async reserve() { this.reserveCalls += 1; return "unavailable" as const; }
+    async commit() { return "conflict" as const; }
+    async markIndeterminate() { return "conflict" as const; }
+}
+function buildCurrentEnrollmentFixture(kind: "invalid" | "unavailable" | "paused") {
+    const inventory: CurrentInventory = Object.freeze({
+        revision: 7, pending_for_account: kind === "unavailable" ? 1 : 0,
+        global_pending: kind === "unavailable" ? 2 : 0, global_pending_cap: 2,
+        reserved_slots: Object.freeze(["synthetic-local-slot-A"]), replenishment_state: kind === "paused" ? "paused" : "ready",
+        current_clients: Object.freeze([]), enrolled_accounts: Object.freeze([]), enrolled_devices: Object.freeze([]),
+        rate_window_started_at: 900, attempts_in_window: 0, attempt_budget: 5,
+    });
+    const invite: CurrentInvite = Object.freeze({ revision: 3, purpose: "control-enrollment", state: "active", account: "synthetic-local-account-A", client_key: "synthetic-local-client-key-A", expires_at: 1_100 });
+    const store = new CurrentEnrollmentStore();
+    const authority = createControlEnrollmentAdmissionAuthority({
+        authority_id: `synthetic-local-current-enrollment-${kind}`, trusted_now: () => 1_000,
+        store, load_inventory: async () => inventory,
+        load_invite_state: async () => invite,
+        verify_key_package: (bytes) => kind === "invalid" || Buffer.from(bytes).toString("hex") !== "01020304" ? null : Object.freeze({ account: invite.account, reference: "synthetic-local-keypackage-ref-A", expires_at: 1_100 }),
+    });
+    const request: ControlEnrollmentAdmissionRequest = Object.freeze({
+        persona: "synthetic-local-persona-A", account: invite.account, device_id: "synthetic-local-device-A",
+        client_key: invite.client_key, group_id: "synthetic-local-group-A", invite_id: "synthetic-local-invite-A",
+        invite_purpose: "control-enrollment", key_package_bytes: Uint8Array.from([1, 2, 3, 4]),
+        expected_key_package_ref: "synthetic-local-keypackage-ref-A", reserved_slot: "synthetic-local-slot-A",
+    });
+    return Object.freeze({ authority, request, store, evidence: Object.freeze({ inventory, invite }) });
+}
+
+function buildCurrentInvalidInviteFixture() {
+    const inviterSecret = "01".padStart(64, "0");
+    const inviter = bytesToHex(schnorr.getPublicKey(inviterSecret));
+    const template: ControlInviteTemplate = Object.freeze({ persona: "persona:alice", audience: "nip46://signer.invalid", client_key: "22".repeat(32), client_class: "human-light", methods: Object.freeze(["sign_event"]), event_kinds: Object.freeze([1]), limits: Object.freeze({ requests_per_hour: 10, max_content_bytes: 4096 }), signer: inviter, expires_at: 1_600 });
+    const descriptor: InviteDescriptor = Object.freeze({ version: 1, purpose: "control-enrollment", inviter_account: inviter, invite_id: "11".repeat(32), rendezvous_pubkey: "44".repeat(32), relay_hints: ["wss://relay.invalid"], issued_at: 1_000, expires_at: template.expires_at, secret_sha256: secretCommitment("33".repeat(32)), approval_mode: "preauthorized", preauthorization: template as unknown as Record<string, unknown>, expected_client_pubkey: template.client_key });
+    const envelope: InviteEnvelope = Object.freeze({ descriptor, signature: bytesToHex(schnorr.sign(descriptorDigest(descriptor), inviterSecret, new Uint8Array(32))), secret: "33".repeat(32) });
+    const response: InviteResponseInput = Object.freeze({ now: 0, expires_at: 1_600, expected_purpose: "control-enrollment", response_purpose: "control-enrollment", descriptor_valid: false, secret_commitment_valid: false, seal_valid: false, seal_pubkey: template.client_key, rumor_pubkey: template.client_key, proof_valid: false, keypackage_valid: false, capabilities_compatible: false, response_digest: "55".repeat(32), group_established: false });
+    const requestWithoutProof = { purpose: "control-enrollment" as const, persona: template.persona, audience: "nip46://different.invalid", client_key: template.client_key, client_class: template.client_class, response };
+    const secretProof = responseProof(envelope.secret, { invite_id: descriptor.invite_id, descriptor_digest: bytesToHex(descriptorDigest(descriptor)), template_digest: createHash("sha256").update(jcsCanonicalize(template)).digest("hex"), purpose: requestWithoutProof.purpose, persona: requestWithoutProof.persona, audience: requestWithoutProof.audience, client_key: requestWithoutProof.client_key, client_class: requestWithoutProof.client_class, response_now: response.now, response_expires_at: response.expires_at, response_expected_purpose: response.expected_purpose, response_purpose: response.response_purpose, response_seal_pubkey: response.seal_pubkey, response_rumor_pubkey: response.rumor_pubkey, response_digest: response.response_digest });
+    const request: ControlInviteRequest = Object.freeze({ ...requestWithoutProof, secret_proof: secretProof });
+    const authority = createControlInvitePreauthorizationAuthority({ authority_id: "synthetic-local-current-control-invite", trusted_now: () => 1_200, load_revocation: async () => Object.freeze({ revision: 7, state: "active" as const }) });
+    return Object.freeze({ authority, envelope, template, request });
+}
+
+async function buildCurrentControlTokenEvidence() {
+    const fixtures = buildFixtures();
+    const sender = "2JF8vg9etJzjFwZwmkvhBLLZ0bfMVVOPivYR5lFtcec";
+    const group = "33".repeat(32), authorizationId = "44".repeat(32), grantSecret = "17".repeat(32);
+    const grantSigner = bytesToHex(schnorr.getPublicKey(hexToBytes(grantSecret)));
+    const object = Object.freeze({ class: "config_namespace", id: "ui" }) as ControlAuthorizationObject;
+    const live = await buildLiveOidcScenario(fixtures, { sender_constraint: "dpop", cnf: { jkt: sender } });
+    const state = live.issuedState, now = state.checkpoint.observed_at;
+    const statusUri = `${live.metadata.issuer}/${live.issuance.reservation.uri}`;
+    const statusList = generateStatusListToken({ state, uri: statusUri, private_jwk: OIDC_RSA_ONE.private_jwk, iat: now, exp: now + 600, ttl: 300 });
+    const jwksBytes = utf8Bytes(jcsCanonicalize({ keys: [OIDC_RSA_ONE.public_jwk] }));
+    const digest = (value: Uint8Array | string) => createHash("sha256").update(value).digest("hex");
+    const body: ContinuityManifestBody = { profile: "heterodyne-oidc-continuity-v1", repository_rid: live.s.rid, branch: "main", persona_npub: live.personaNpub, persona_key: live.personaKey, issuer: live.metadata.issuer, sequence: 0, predecessor_digest: null, max_checkpoint_age_seconds: 300, authorization_view_max_age: 300, current_jwks_sha256: digest(jwksBytes), current_signing_key_id: OIDC_RSA_ONE.key_id, current_signing_jwk_sha256: digest(utf8Bytes(jcsCanonicalize(OIDC_RSA_ONE.public_jwk))), retiring_signing_key_ids: [], retiring_jwks_sha256: [], status_lists: [{ path: live.projectionContext.status_mirror.path, sha256: digest(statusList.compact), issuer: live.metadata.issuer, uri: statusUri }], successor: null, authority: { writer_nid: live.s.writerOne.did_key, issued_at: now, checkpoint: state.checkpoint } };
+    const manifest = { ...body, authority_proof: createContinuityAuthorityProof(body, live.s.writerOne.private_key) };
+    const projected = projectAccessToken(await live.authorizeProjection("access_token", { ...live.projectionContext, status_mirror: { ...live.projectionContext.status_mirror, sha256: continuityManifestDigest(manifest) } }));
+    const [encodedHeader, encodedClaims] = projected.compact.split(".");
+    const claims = JSON.parse(Buffer.from(encodedClaims!, "base64url").toString("utf8")) as Record<string, unknown>;
+    Object.assign(claims, { scope: "control", group_id: group, authorization_id: authorizationId, grant_generation: state.credential_ledger.credential_ledger_generation, client_class: "automated", methods: ["config.get"], objects: [object], registry_checkpoint: state.checkpoint.commit_oid, [CHECKPOINT_CLAIM]: state.checkpoint });
+    const nextClaims = Buffer.from(JSON.stringify(claims)).toString("base64url"), signingInput = `${encodedHeader}.${nextClaims}`;
+    const compact = `${signingInput}.${sign("RSA-SHA256", Buffer.from(signingInput), createPrivateKey({ key: OIDC_RSA_ONE.private_jwk as JsonWebKey, format: "jwk" })).toString("base64url")}`;
+    const validatedJwt = createValidatedProjectedJwtContext(compact, live.metadata.issuer, "https://api.example", { keys: [OIDC_RSA_ONE.public_jwk] }, { now, token_use: "access_token", client_id: "registered-client", cnf: { jkt: sender }, sender_constraint: "dpop", permitted_audiences: ["https://api.example"], credential_ledger: state.credential_ledger });
+    const continuity = validateIssuerContinuityChain([{ manifest, context: { identity: live.identity, repository_rid: live.s.rid, canonical_branch: "main", writer_nid: live.s.writerOne.did_key, now, ledger_state: state, succession_authority: null, active_persona_authority: null } }]);
+    const freshnessAuthority = createAuthorizationFreshnessAuthority({ repository_rid: live.s.rid, persona_key: live.personaKey, manifest_digest: continuityManifestDigest(manifest) }, { trusted_now: () => now, load_current_view: () => ({ manifest, ledger_state: state }) });
+    const prepared = evaluateAuthorizationFreshness(freshnessAuthority, manifest);
+    if (prepared.verdict !== "accept") throw new Error(`current token freshness rejected: ${prepared.reason}`);
+    const unsignedGrant = { record_id: authorizationId, persona: state.credential_ledger.credential_ledger_persona, client_key: sender, client_class: "automated" as const, approving_node: grantSigner, approving_authority: "interactive-oidc", methods: ["config.get"], objects: [object], limits: { calls: 5 }, capabilities: [] as ControlAuthorizationRecord["capabilities"], token_lifetime_default_seconds: 300 as const, token_lifetime_max_seconds: 3600, inbound_execution: false, predecessor: null, state: "active" as const, created_at: Number(validatedJwt.claims.iat), expires_at: Number(validatedJwt.claims.exp), signer: grantSigner };
+    const grant: ControlAuthorizationRecord = { ...unsignedGrant, signature: bytesToHex(schnorr.sign(proofBytes("heterodyne-control-authorization-record-v1", unsignedGrant), hexToBytes(grantSecret), "00".repeat(32))) };
+    const resolver = createCurrentControlGrantResolver({ authority_id: "synthetic-local-current-control-token", trusted_now: () => now, expected_signer: grantSigner, load_current_grant: async (id) => id === authorizationId ? grant : null });
+    const resolved = await resolveCurrentControlGrant(resolver, authorizationId);
+    if (resolved.verdict !== "accept") throw new Error("current token grant rejected");
+    const view = createCurrentControlGrantView({ authorization_view: prepared.view, grant: resolved.output, validated_jwt: validatedJwt, status_list: statusList, status_jwks_bytes: jwksBytes, status_resolved_at: now, continuity });
+    const store = new CurrentDeviceStore() as unknown as DurableAuthorityStore<Readonly<{ operation_id: string }>>;
+    let effectCalls = 0;
+    const verifier = createControlTokenVerifier({ authority_id: "synthetic-local-current-control-token", trusted_now: () => now, expected_issuer: live.metadata.issuer, expected_audience: "https://api.example", jwks: { keys: [OIDC_RSA_ONE.public_jwk] }, load_grant_view: async () => view, consume_proof: async () => null, store, execute_operation: async (_token, operation) => { effectCalls += 1; return Object.freeze({ operation_id: operation.operation_id }); } });
+    const use: ControlTokenUse = Object.freeze({ sender_key: sender, marmot_group_id: group, authorization_id: authorizationId, grant_generation: 0, required_scope: "control", method: "config.get", object, compact_proof: "synthetic-local-current-invalid-proof" });
+    const operationId = "synthetic-local-current-operation";
+    const payload = { id: operationId, method: "config.get", params: { object, namespace: "ui", value: "dark" }, expires_at: now + 60 };
+    const operation: ControlTokenOperation = Object.freeze({ operation_id: operationId, request_digest: currentControlFrameRequestDigest({ profile: "human-jsonrpc", version: QUALIFIED_VERSION, group_id: group, sender, request_id: operationId, expires_at: payload.expires_at, body: payload }), payload });
+    return Object.freeze({ verifier, compact, use, operation, store, effectCalls: () => effectCalls });
+}
 export async function buildControlCases(): Promise<CurrentCaseFixture[]> {
     const support = await buildAuthorizationFreshnessTestSupport();
     const state = support.scenario.issuerKeyEpochOneState;
@@ -576,7 +746,6 @@ export async function buildControlCases(): Promise<CurrentCaseFixture[]> {
         pending_at_cap: false,
         method: "control.enrollment.start",
     };
-    const deviceBase = { entropy_valid: true, failed_guesses: 0, rate_allowed: true, display_binding_matches: true };
     const automatedBase = {
         method_allowed: true,
         private_key_requested: false,
@@ -587,12 +756,22 @@ export async function buildControlCases(): Promise<CurrentCaseFixture[]> {
         max_event_bytes: 200,
         rate_remaining: 1,
     };
-    const resetBase = {
-        authority_signature_valid: true,
-        inventory_digest_matches: true,
-        transition_evidence_valid: true,
-        subordinate_reauthorized: true,
-    };
+    const resetEvidenceByReason = new Map(controlResetEvidenceFixtures().map((fixture) => [
+        fixture.expected_reason.replace(/^control-/u, "control/"),
+        fixture.input,
+    ]));
+    const signerEvidence = controlSignerEvidenceFixture();
+    const signerRetryEvidence = reconstructControlSignerEvidenceFixture(signerEvidence);
+    const invalidFrameBytes = signedControlFrameBytes({ request_digest: "00".repeat(32) });
+    const invalidFrameContext = controlFrameContext();
+    const deviceInvalidEvidence = buildCurrentDeviceFixture();
+    const deviceRateLimitedEvidence = buildCurrentDeviceFixture();
+    const deviceDisplayMismatchEvidence = buildCurrentDeviceFixture();
+    const enrollmentInvalidEvidence = buildCurrentEnrollmentFixture("invalid");
+    const enrollmentUnavailableEvidence = buildCurrentEnrollmentFixture("unavailable");
+    const enrollmentPausedEvidence = buildCurrentEnrollmentFixture("paused");
+    const inviteEvidence = buildCurrentInvalidInviteFixture();
+    const tokenEvidence = await buildCurrentControlTokenEvidence();
     const reasonCases: CurrentCaseFixture[] = [
         ...[
             ["signing-grant-invalid", { grant_candidates: [] }],
@@ -624,34 +803,27 @@ export async function buildControlCases(): Promise<CurrentCaseFixture[]> {
             input: input as Record<string, unknown>
         })),
         ...[
-            ["keypackage-invalid", { ...enrollmentBase, keypackage_valid: false }],
+            ["keypackage-invalid", { evidence: "authenticated KeyPackage verification rejects" }],
             ["entitlement-conflict", { ...enrollmentBase, entitlement_state: "revoked" as const }],
-            ["enrollment-unavailable", { ...enrollmentBase, resource_available: false }],
-            ["keypackage-replenishment-paused", { ...enrollmentBase, replenishment_requested: true, pending_at_cap: true }],
+            ["enrollment-unavailable", { evidence: "authenticated current capacity forbids reservation" }],
+            ["keypackage-replenishment-paused", { evidence: "authoritative inventory has paused replenishment" }],
             ["enrollment-rate-limited", { ...enrollmentBase, welcome_rate_remaining: 0 }],
             ["enrollment-required", { ...enrollmentBase, method: "sign_event" }],
-            ["device-code-invalid", { ...deviceBase, entropy_valid: false }],
-            ["device-code-rate-limited", { ...deviceBase, rate_allowed: false }],
-            ["device-code-display-mismatch", { ...deviceBase, display_binding_matches: false }],
-            ["invite-preauthorization-invalid", { purpose_bound: false, finite_template: true, client_bound: true }],
-            ["frame-invalid", { closed_schema_valid: false, token_valid: true, refresh_requested: false }],
+            ["device-code-invalid", { evidence: "genuine private transaction receives invalid normalized user code" }],
+            ["device-code-rate-limited", { evidence: "genuine private transaction is polled before its authoritative interval" }],
+            ["device-code-display-mismatch", { evidence: "genuine private transaction receives mismatched authenticated display fingerprint" }],
+            ["invite-preauthorization-invalid", { evidence: "signed invite template does not bind the current request audience" }],
+            ["frame-invalid", { evidence: "captured signed Control frame fails current profile validation" }],
             ["refresh-prohibited", { closed_schema_valid: true, token_valid: true, refresh_requested: true }],
-            ["token-invalid", { closed_schema_valid: true, token_valid: false, refresh_requested: false }],
+            ["token-invalid", { evidence: "verified current JWT and grant reject the exact per-use proof before operation" }],
             ["request-expired", { now: 100, expires_at: 100, request_id_reused: false, request_digest_matches: true }],
-            ["request-id-conflict", { now: 100, expires_at: 101, request_id_reused: true, request_digest_matches: false }],
-            ["agent-method-prohibited", { ...automatedBase, method_allowed: false }],
-            ["agent-key-access-prohibited", { ...automatedBase, private_key_requested: true }],
-            ["agent-human-profile-prohibited", { ...automatedBase, human_key_profile_selected: true }],
-            ["agent-attribution-bypass-prohibited", { ...automatedBase, attribution_canonical: false }],
-            ["agent-resource-denied", { ...automatedBase, resource_allowed: false }],
             ["agent-size-exceeded", { ...automatedBase, event_bytes: 201 }],
             ["agent-rate-limited", { ...automatedBase, rate_remaining: 0 }],
-            ["signed-event-invalid", { canonical_event_valid: false, fields_exact: true, effect_certain: true }],
-            ["signer-effect-indeterminate", { canonical_event_valid: true, fields_exact: true, effect_certain: false }],
-            ["compromise-reset-unauthenticated", { ...resetBase, authority_signature_valid: false }],
-            ["compromise-reset-inventory-mismatch", { ...resetBase, inventory_digest_matches: false }],
-            ["compromise-reset-evidence-invalid", { ...resetBase, transition_evidence_valid: false }],
-            ["subordinate-reauthorization-required", { ...resetBase, subordinate_reauthorized: false }]
+            ["signer-effect-indeterminate", { evidence: "persisted signer execution has an absorbing indeterminate completion fence" }],
+            ["compromise-reset-unauthenticated", { evidence: "signed reset grant or completion fails current Assurance binding" }],
+            ["compromise-reset-inventory-mismatch", { evidence: "authenticated required-reset inventory differs from signed completion" }],
+            ["compromise-reset-evidence-invalid", { evidence: "signed grant and completion carry invalid consecutive transition evidence" }],
+            ["subordinate-reauthorization-required", { evidence: "required subordinate fresh authorization is absent" }]
         ].map(([id, input]) => ({
             vector_id: "control/" + String(String(id)),
             description: `The current Control policy boundary rejects ${String(id).replaceAll("-", " ")}.`,
@@ -659,6 +831,26 @@ export async function buildControlCases(): Promise<CurrentCaseFixture[]> {
             input: input as Record<string, unknown>
         })),
     ];
+    const privateBoundaryArgs = new Map<string, readonly unknown[]>([
+        ...[...resetEvidenceByReason].map(([vectorId, input]) => [
+            vectorId,
+            [input],
+        ] as const),
+        ["control/signer-effect-indeterminate", [
+            signerEvidence.input,
+            signerRetryEvidence.input,
+            () => controlSignerInvocationCount(signerRetryEvidence),
+        ]],
+        ["control/frame-invalid", [invalidFrameBytes, invalidFrameContext]],
+        ["control/device-code-invalid", [deviceInvalidEvidence.authority, deviceInvalidEvidence.request, deviceInvalidEvidence.clock, "control/device-code-invalid", deviceInvalidEvidence.store]],
+        ["control/device-code-rate-limited", [deviceRateLimitedEvidence.authority, deviceRateLimitedEvidence.request, deviceRateLimitedEvidence.clock, "control/device-code-rate-limited", deviceRateLimitedEvidence.store]],
+        ["control/device-code-display-mismatch", [deviceDisplayMismatchEvidence.authority, deviceDisplayMismatchEvidence.request, deviceDisplayMismatchEvidence.clock, "control/device-code-display-mismatch", deviceDisplayMismatchEvidence.store]],
+        ["control/keypackage-invalid", [enrollmentInvalidEvidence.authority, enrollmentInvalidEvidence.request, enrollmentInvalidEvidence.store, enrollmentInvalidEvidence.evidence]],
+        ["control/enrollment-unavailable", [enrollmentUnavailableEvidence.authority, enrollmentUnavailableEvidence.request, enrollmentUnavailableEvidence.store, enrollmentUnavailableEvidence.evidence]],
+        ["control/keypackage-replenishment-paused", [enrollmentPausedEvidence.authority, enrollmentPausedEvidence.request, enrollmentPausedEvidence.store, enrollmentPausedEvidence.evidence]],
+        ["control/invite-preauthorization-invalid", [inviteEvidence.authority, inviteEvidence.envelope, inviteEvidence.template, inviteEvidence.request]],
+        ["control/token-invalid", [tokenEvidence.verifier, tokenEvidence.compact, tokenEvidence.use, tokenEvidence.operation, tokenEvidence.store, tokenEvidence.effectCalls]],
+    ]);
     const boundaryArgs = new Map<string, readonly unknown[]>([
         ["control/signing-grant-invalid", [authorizationInput({ grant_candidates: [] })]],
         ["control/signing-grant-unauthenticated", [authorizationInput({
@@ -778,10 +970,13 @@ export async function buildControlCases(): Promise<CurrentCaseFixture[]> {
             input: incompleteResetInput
         },
     ];
-    return cases.map((fixture) => ({
-        ...fixture,
-        ...(boundaryArgs.has(fixture.vector_id)
-            ? { boundary_args: boundaryArgs.get(fixture.vector_id) }
-            : {}),
-    }));
+    return cases.map((fixture) => {
+        const privateArgs = privateBoundaryArgs.get(fixture.vector_id);
+        if (privateArgs !== undefined) {
+            registerPrivateCurrentFixture(CONTROL_PRIVATE_FIXTURES, fixture, privateArgs);
+            return fixture;
+        }
+        const args = boundaryArgs.get(fixture.vector_id);
+        return args === undefined ? fixture : { ...fixture, boundary_args: args };
+    });
 }

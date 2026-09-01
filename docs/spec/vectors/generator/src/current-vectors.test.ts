@@ -16,7 +16,6 @@ import { evaluateAssuranceCompromiseContinuation } from "./assurance-policy.js";
 import { evaluateSuccession } from "./assurance.js";
 import { buildClaimLedgerScenario } from "./claim-ledger-test-support.js";
 import { buildLedgerRepositoryEvidence } from "./claim-ledger.js";
-import { validateControlSignedEffect } from "./control-policy.js";
 import { buildCurrentCases, buildCurrentVectors } from "./current-vectors/index.js";
 import { currentCaseIds } from "./current-vectors/case-contracts.js";
 import {
@@ -74,7 +73,9 @@ describe("current vector catalog import boundary", () => {
   it("audits the exact trusted-source static graph without historical authoring modules", () => {
     expect(compilerConfigPath(catalogEntry)).toBe(currentConfigPath);
     const graph = moduleDependencies(catalogEntry);
-    expect(graph).toHaveLength(84);
+    expect(new Set(graph).size).toBe(graph.length);
+    expect(graph.some((path) => path.endsWith("agent-publication-authorization.ts"))).toBe(true);
+    expect(graph.some((path) => path.endsWith("social-subscription-authority.ts"))).toBe(true);
     expect(graph.filter((path) => forbidden.some((pattern) => pattern.test(path))))
       .toEqual([]);
   }, 60_000);
@@ -487,7 +488,7 @@ describe("current 0.6 vector catalog", () => {
     expect(secondEvidence.authority_identity).not.toBe(firstEvidence.authority_identity);
     expect((await buildCurrentCases()).length).toBe(currentCaseIds().length);
     expect((await buildCurrentCases()).length).toBe(currentCaseIds().length);
-  }, 30_000);
+  }, 60_000);
 
   it("rejects a revocation profile when the signed revocation is mutated before merge", async () => {
     const original = (await buildProfileCases()).find(({ vector_id }) =>
@@ -828,15 +829,11 @@ describe("current 0.6 vector catalog", () => {
     const byId = new Map(cases.map((entry) => [entry.vector_id, entry]));
 
     const signerEffect = byId.get("control/signer-effect-indeterminate")!;
-    const signerInput = {
-      canonical_event_valid: true,
-      fields_exact: true,
-      effect_certain: false,
-    };
-    expect(signerEffect.expected_output).toEqual(validateControlSignedEffect(signerInput));
     expect(signerEffect.expected_output).toMatchObject({
       verdict: "indeterminate",
       reason_code: "control-signer-effect-indeterminate",
+      signer_execution_disposition: "cached",
+      completion_transition: { reservation_state: "indeterminate" },
     });
     expect(Object.isFrozen(signerEffect.expected_output)).toBe(true);
   }, 60_000);

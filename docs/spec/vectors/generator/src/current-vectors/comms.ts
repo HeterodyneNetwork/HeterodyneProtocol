@@ -1,4 +1,6 @@
 import { nip44 } from "nostr-tools";
+import { createHash, createPrivateKey, createPublicKey, sign, verify, type JsonWebKey } from "node:crypto";
+import { nip19 } from "nostr-tools";
 import { schnorr } from "@noble/curves/secp256k1";
 import { injectAgentAttribution, validateAgentAccessToken, validateWorkloadRegistration, type AgentTokenValidationInput, } from "../agent-authorship.js";
 import { buildAuthorizationFreshnessTestSupport } from "../authorization-freshness-test-support.js";
@@ -7,24 +9,52 @@ import { createClaimAuthorizationAuthority, type ClaimAuthorizationEffectInput, 
 import { canMint, ledgerErrorReason, mergeClaimLedger, validateLedgerRecordOrThrow, } from "../claim-ledger.js";
 import { buildClaimLedgerScenario } from "../claim-ledger-test-support.js";
 import { inspectVerifiedClaim, inspectVerifiedClaimRevocation, validateClaimId, validateKeyRef, verifyClaimEnvelope, verifyClaimRevocationEnvelope, type ClaimVerificationContext, type VerifiedClaimArtifact, } from "../claims.js";
-import { classifyRelayWriteFailure, evaluateMarmotInboxBootstrap, evaluateOneTimeInvite, validateDmInviteDevice, validatePrivateBroadcast, validatePublicReaderRendering, } from "../comms-policy.js";
+import { classifyRelayWriteFailure, validatePrivateBroadcast, validatePublicReaderRendering, } from "../comms-policy.js";
 import { QUALIFIED_VERSION } from "../family.js";
 import { buildFixtures } from "../fixtures.js";
 import { resolveTier3Recipients } from "../follow-up-hardening.js";
 import { bytesToHex, hexToBytes } from "../hex.js";
-import { ordinaryConversationAdmission } from "../marmot-admission.js";
-import { evaluateMarmotDurability, evaluateMarmotRetention, evaluateMarmotRoutingBinding, } from "../marmot-routing-policy.js";
-import { signEvent } from "../nostr.js";
+import { evaluateMarmotRoutingBinding, } from "../marmot-routing-policy.js";
+import { getPublicKey, signEvent } from "../nostr.js";
 import { buildLiveOidcScenario } from "../oidc-test-support.js";
 import { projectAccessToken, validateAuthorizationRequest, validateIssuerMetadata, validateProjectedJwt, } from "../oidc.js";
-import { OIDC_RSA_ONE } from "../oidc-rsa-fixtures.js";
+import { OIDC_RSA_ONE, OIDC_RSA_TWO } from "../oidc-rsa-fixtures.js";
 import { deriveConfigPostKey, deriveTier3IndexKey } from "../privacy-crypto.js";
 import { parseLauncherFragment, resolvePublicAsset, validateBootstrapRelay, } from "../public-reader.js";
 import { validateOidcContinuityManifestSchemaOrThrow } from "../schema.js";
 import { createTrustedSeedAdmissionAuthority, evaluateTrustedSeedAdmission, trustedSeedAclProofBytes, } from "../trusted-seed.js";
 import { encodeStatusList } from "../token-status.js";
 import { currentSpecRef, type CurrentCaseFixture } from "./types.js";
-import { registerPrivateCurrentBoundaryArgs } from "./boundary-runners.js";
+import {
+    registerPrivateCurrentFixture,
+} from "./boundary-runners.js";
+import { definePrivateCurrentFixtureSpecification } from "./private-fixture-specification.js";
+const COMMS_PRIVATE_FIXTURES = definePrivateCurrentFixtureSpecification([
+    "comms/agent-sender-proof-invalid",
+    "comms/agent-workload-token-accepted",
+    "comms/invite-authentication-invalid",
+    "comms/marmot-private-inbox-nid-required",
+    "comms/marmot-keypackage-replayed",
+    "comms/marmot-agent-scope-denied",
+    "comms/marmot-ordinary-welcome-held",
+    "comms/conversation-rejected",
+    "comms/marmot-exact-bytes-durable",
+    "comms/marmot-expiration-not-erasure",
+    "comms/marmot-premature-ack",
+    "comms/claim-ledger-rollback",
+    "comms/claim-ledger-writer-unauthorized",
+    "comms/ledger-reader-authorized",
+]);
+import { createMarmotAdmissionAuthority, type AuthenticatedMarmotWelcome, type MarmotPrivateKeyPackageHandle, type VerifiedMarmotAdmission } from "../marmot-admission-authority.js";
+import { createPersonaInboxAdmissionAuthority, type PersonaInboxAdmission, type PersonaInboxBundle } from "../persona-inbox-admission-authority.js";
+import { createMarmotArchiveRetentionAuthority, type MarmotArchiveReceiptData, type MarmotArchiveInput } from "../marmot-archive-retention-authority.js";
+import { createOneTimeInviteAuthority, type OneTimeInviteRedemption } from "../one-time-invite-authority.js";
+import { descriptorDigest, responseProof, secretCommitment, type InviteDescriptor, type InviteEnvelope } from "../one-time-invite.js";
+import { jcsCanonicalize } from "../jcs.js";
+import type { DurableAuthorityRecord, DurableAuthorityStore } from "../security-authority-support.js";
+import type { CurrentRepositoryWriterBinding } from "../core-writer-binding.js";
+import { AUX_RAND } from "../vector-helpers.js";
+import { createAgentPublicationAuthorizationAuthority, type AgentPublicationRequest } from "../agent-publication-authorization.js";
 const decisionOutput = (decision: ReturnType<typeof evaluateAuthorizationFreshness>): Record<string, unknown> => decision.verdict === "accept"
     ? { verdict: "accept", current_authorization_view: "opaque" }
     : { verdict: "reject", reason_code: decision.reason };
@@ -41,6 +71,104 @@ const thrownDecision = (evaluate: () => unknown): Record<string, unknown> => {
         return { verdict: "reject", reason_code: reason };
     }
 };
+class CurrentDurableStore<O> implements DurableAuthorityStore<O> {
+    readonly records = new Map<string, DurableAuthorityRecord<O>>();
+    loadCalls = 0;
+    async load(key: string) { this.loadCalls += 1; return this.records.get(key) ?? null; }
+    async acquire(input: { key: string; expected_revision: number | null; binding_digest: string; execution_token: string }) {
+        const current = this.records.get(input.key);
+        if (current !== undefined) return current.binding_digest === input.binding_digest ? "replay" as const : "conflict" as const;
+        if (input.expected_revision !== null) return "conflict" as const;
+        this.records.set(input.key, Object.freeze({ state: "executing" as const, revision: 0, binding_digest: input.binding_digest, execution_token: input.execution_token })); return "acquired" as const;
+    }
+    async compareAndSwap(input: { key: string; expected_revision: number | null; next: DurableAuthorityRecord<O> }) {
+        if ((this.records.get(input.key)?.revision ?? null) !== input.expected_revision) return "conflict" as const;
+        this.records.set(input.key, input.next); return "committed" as const;
+    }
+    async commit(input: { key: string; binding_digest: string; execution_token: string; output_digest: string; output: O }) {
+        const current = this.records.get(input.key);
+        if (current?.state !== "executing" || current.binding_digest !== input.binding_digest || current.execution_token !== input.execution_token) return "conflict" as const;
+        this.records.set(input.key, Object.freeze({ state: "committed" as const, revision: current.revision + 1, binding_digest: input.binding_digest, execution_token: input.execution_token, output_digest: input.output_digest, output: input.output })); return "committed" as const;
+    }
+    async markIndeterminate(input: { key: string; binding_digest: string; execution_token: string; reconciliation_digest: string }) {
+        const current = this.records.get(input.key);
+        if (current?.state === "committed") return "conflict" as const;
+        this.records.set(input.key, Object.freeze({ state: "indeterminate" as const, revision: (current?.revision ?? 0) + 1, binding_digest: input.binding_digest, execution_token: input.execution_token, reconciliation_digest: input.reconciliation_digest })); return "indeterminate" as const;
+    }
+}
+
+function currentInboxFixture(kind: "nid" | "replay" | "scope") {
+    const keyPackage = Uint8Array.from([1, 2, 3, 4]);
+    const keyPackageRef = createHash("sha256").update(keyPackage).digest("hex");
+    const bundle: PersonaInboxBundle = Object.freeze({
+        recipient: "11".repeat(32), sender: "22".repeat(32), sender_kind: kind === "scope" ? "agent" : "persona",
+        sender_ref: "refs/xyz.heterodyne.marmot/writers/synthetic-current", purpose: "marmot-first-contact",
+        required_agent_scope: kind === "scope" ? "marmot:admin" : null,
+        key_package_bytes: keyPackage, key_package_ref: keyPackageRef, group_transition: Uint8Array.from([5, 6, 7, 8]),
+    });
+    const store = new CurrentDurableStore<PersonaInboxAdmission>();
+    const inbox = Object.freeze({ checkpoint: "synthetic-current-inbox-1", recipient_nid: kind === "nid" ? null : "did:key:z6MkrSyntheticCurrent", consumed_key_packages: Object.freeze(kind === "replay" ? [keyPackageRef] : []), allowed_agent_scopes: Object.freeze(["marmot:first-contact"]) });
+    let loadCalls = 0;
+    const authority = createPersonaInboxAdmissionAuthority({
+        authority_id: `synthetic-local-current-inbox-${kind}`, trusted_now: () => 1_000, store,
+        load_inbox: async () => { loadCalls += 1; return inbox; },
+    });
+    return Object.freeze({ authority, bundle, store, evidence: Object.freeze({ inbox, loadCalls: () => loadCalls }) });
+}
+
+function currentAdmissionFixture() {
+    const inviter = "11".repeat(32), recipient = "22".repeat(32), group = "55".repeat(32), checkpoint = "conversation:7";
+    const welcomeBytes = Uint8Array.from([0, 3, 0, 1, 0xa5, 0x5a]);
+    const keyPackageBytes = Uint8Array.from([0, 1, 0, 2, 0xc3, 0x3c]);
+    const privateKeyPackage = Object.freeze({}) as MarmotPrivateKeyPackageHandle;
+    const authenticated: AuthenticatedMarmotWelcome = Object.freeze({ wire_format: "mls_welcome", inviter_account: inviter, recipient_account: recipient, inviter_leaf_key: "33".repeat(32), recipient_leaf_key: "44".repeat(32), group_id: group, member_accounts: Object.freeze([inviter, recipient] as const), required_capabilities: Object.freeze(["marmot.member.account-identity-proof.v2", "marmot.admin-policy.v1"]), checkpoint });
+    const conversation = { checkpoint, state: "unseen" as const };
+    const store = new CurrentDurableStore<VerifiedMarmotAdmission>();
+    let conversationLoads = 0, keyPackageLoads = 0, processCalls = 0;
+    let transitionCommits = 0, transitionRollbacks = 0;
+    const authority = createMarmotAdmissionAuthority({
+        authority_id: "synthetic-local-current-marmot-admission", trusted_now: () => 1_800_000_000, store,
+        load_conversation: async () => { conversationLoads += 1; return conversation; },
+        load_private_key_package: (_recipient, bytes) => { keyPackageLoads += 1; return Buffer.from(bytes).equals(Buffer.from(keyPackageBytes)) ? privateKeyPackage : null; },
+        process_mls_welcome: (input) => {
+            processCalls += 1;
+            return input.private_key_package === privateKeyPackage ? Object.freeze({ authenticated, transition: Object.freeze({ async commit() { transitionCommits += 1; }, rollback() { transitionRollbacks += 1; } }) }) : null;
+        },
+    });
+    const evidence = Object.freeze({
+        authenticated,
+        private_key_package: privateKeyPackage,
+        counts: () => Object.freeze({ conversationLoads, keyPackageLoads, processCalls, transitionCommits, transitionRollbacks }),
+    });
+    return Object.freeze({ authority, input: Object.freeze({ welcome_bytes: welcomeBytes, key_package_bytes: keyPackageBytes, inviter_account: inviter, recipient_account: recipient, group_id: group, member_accounts: [inviter, recipient], required_capabilities: [...authenticated.required_capabilities] }), checkpoint, store, evidence });
+}
+
+async function currentArchiveFixture() {
+    const store = new CurrentDurableStore<MarmotArchiveReceiptData>();
+    const appended: Uint8Array[] = [];
+    const commit = "ab".repeat(20);
+    const authority = createMarmotArchiveRetentionAuthority({
+        authority_id: "synthetic-local-current-marmot-archive", store,
+        resolve_writer: async () => Object.freeze({}) as CurrentRepositoryWriterBinding,
+        append_and_resolve: async ({ bytes }) => { const exact = new Uint8Array(bytes); appended.push(exact); return Object.freeze({ object_digest: createHash("sha256").update(exact).digest("hex"), commit, reachable: true }); },
+    });
+    const event = await signEvent({ secretKey: "31".repeat(32), auxRand: AUX_RAND, created_at: 1_800_000_000, kind: 445, tags: [["h", "44".repeat(32)]], content: Buffer.from(Uint8Array.from({ length: 28 }, (_, index) => index)).toString("base64") });
+    const input: MarmotArchiveInput = Object.freeze({ repository_rid: "rad:z3gqcJUoA1n9HaHKufZs5FCSGazv5", ref: "refs/xyz.heterodyne.marmot/writers/synthetic-current", source: Object.freeze({ kind: "signed-event", event, event_bytes: new TextEncoder().encode(JSON.stringify(event)) }) });
+    return Object.freeze({ authority, input, store, appended, commit });
+}
+
+function currentInvalidInviteFixture() {
+    const inviterSecret = "01".padStart(64, "0"), inviter = getPublicKey(inviterSecret), recipient = "33".repeat(32), secret = "ab".repeat(32);
+    const descriptor: InviteDescriptor = { version: 1, purpose: "dm", inviter_account: inviter, invite_id: "11".repeat(32), rendezvous_pubkey: "22".repeat(32), relay_hints: ["wss://relay.invalid"], issued_at: 1_000, expires_at: 2_000, secret_sha256: secretCommitment(secret), approval_mode: "interactive", expected_client_pubkey: recipient };
+    const envelope: InviteEnvelope = { descriptor, signature: bytesToHex(schnorr.sign(descriptorDigest(descriptor), inviterSecret, new Uint8Array(32))), secret };
+    const responseWithoutProof = { spec_version: QUALIFIED_VERSION, purpose: descriptor.purpose, descriptor_digest: bytesToHex(descriptorDigest(descriptor)), responder_account: recipient, mls_key_package: Buffer.from([1, 2, 3]).toString("base64url"), requested_class: "conversation-peer", capabilities: ["chat"] };
+    const response = { ...responseWithoutProof, proof: responseProof(secret, responseWithoutProof) };
+    response.proof = "00".repeat(32);
+    const redemption: OneTimeInviteRedemption = Object.freeze({ envelope, response_bytes: new TextEncoder().encode(jcsCanonicalize(response)), response_purpose: "dm", recipient, key_package_bytes: Uint8Array.from([1, 2, 3]), group_transition: Uint8Array.from([4, 5, 6]) });
+    const store = new CurrentDurableStore<Readonly<{ group_id: string; response_digest: string }>>();
+    const authority = createOneTimeInviteAuthority({ authority_id: "synthetic-local-current-one-time-invite", trusted_now: () => 1_001, store, load_invite_state: async () => ({ state: "active", revision: 7 }), establish_group: async () => ({ group_id: "44".repeat(32), response_digest: "00".repeat(32) }) });
+    return Object.freeze({ authority, redemption, store });
+}
 const currentClaimStore = (): ClaimEffectStore => {
     const records = new Map<string, ClaimEffectRecord>();
     return {
@@ -161,6 +289,59 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
     const tier3Decision = resolveTier3Recipients(tier3Input);
     const fixtures = buildFixtures();
     const ledger = await buildClaimLedgerScenario(fixtures);
+    const publicationPersona = fixtures.personas.alice.epoch_keys.epoch_1.pubkey;
+    const publicationSignerSecret = "03".repeat(32);
+    const publicationSigner = getPublicKey(publicationSignerSecret);
+    const publicationNow = ledger.now + 100;
+    const publicationIssuer = `https://node.invalid/oidc/${nip19.npubEncode(publicationPersona)}`;
+    const publicationAudience = "https://control.invalid/agent-publication";
+    const publicationTarget = "https://control.invalid/agent/publish";
+    const publicationSender = OIDC_RSA_TWO.public_jwk.kid as string;
+    const publicationAgent = "synthetic-local-current-agent";
+    const publicationScope = "heterodyne:agent:publish";
+    const publicationCheckpoint = "c6".repeat(32);
+    const workloadClaim = await ledger.makeClaim(ledger.writerOne, {
+        subject: { type: "jwk-thumbprint", value: publicationSender }, namespace: "heterodyne.agent", name: "workload-registration",
+        value: { persona_key: publicationPersona, client_id: publicationAgent, subject_jkt: publicationSender, subject_proof: { method: "dpop", jkt: publicationSender }, agent_class: "ai", selected_signer: publicationSigner, signer_key_class: "agent", agent_association: { kind: "key", value: publicationSigner }, audience: publicationAudience, scopes: [publicationScope], allowed_kinds: [1], allowed_feeds: ["timeline"], allowed_resources: [publicationTarget], max_content_bytes: 4096, rate_limit: { window_seconds: 60, count: 10, burst: 2 }, not_before: publicationNow - 60, expires_at: publicationNow + 600 },
+        audience: [publicationAudience], resources: [publicationTarget], not_before: publicationNow - 60, expires_at: publicationNow + 600,
+    });
+    const publicationView: CurrentClaimAuthorizationView = { credential_ledger: { credential_ledger_persona: publicationPersona, credential_ledger_generation: 0 }, checkpoint_digest: publicationCheckpoint, repository_revision: 7, claims: [workloadClaim.verified_artifact], revocations: [], conflicted_claim_ids: [], ledger_state: ledger.issuerKeyEpochOneState };
+    const publicationB64 = (value: unknown) => Buffer.from(JSON.stringify(value)).toString("base64url");
+    const publicationJwt = (() => {
+        const root = nip19.npubEncode(publicationPersona);
+        const header = { alg: "RS256", kid: OIDC_RSA_ONE.public_jwk.kid, typ: "at+jwt" };
+        const claims = { iss: publicationIssuer, sub: createHash("sha256").update("synthetic-local-current-agent-subject").digest("base64url"), aud: [publicationAudience], exp: publicationNow + 240, iat: publicationNow - 10, jti: "synthetic-local-current-jti", client_id: publicationAgent, scope: publicationScope, credential_ledger_persona: publicationPersona, credential_ledger_generation: 0, cnf: { jkt: publicationSender }, "https://heterodyne.network/jwt/agent-selected-signer": publicationSigner, "https://heterodyne.network/jwt/agent-signer-key-class": "agent", "https://heterodyne.network/jwt/agent-association": { kind: "key", value: publicationSigner }, "https://heterodyne.network/jwt/ledger-checkpoint": { repository_rid: ledger.rid, branch: "main", commit_oid: "ac".repeat(20), observed_at: publicationNow - 20 }, status: { status_list: { uri: `${publicationIssuer}/status-lists/1/${"ab".repeat(16)}/0.jwt`, idx: 0 } }, "https://heterodyne.network/jwt/status-mirror": { repository_rid: ledger.rid, branch: "main", path: `.well-known/${root}/status-lists/1/${"ab".repeat(16)}/0.jwt`, sha256: "ad".repeat(32) } };
+        const input = `${publicationB64(header)}.${publicationB64(claims)}`;
+        return `${input}.${sign("RSA-SHA256", Buffer.from(input), createPrivateKey({ key: OIDC_RSA_ONE.private_jwk as JsonWebKey, format: "jwk" })).toString("base64url")}`;
+    })();
+    const publicationDpop = (() => {
+        const header = { alg: "RS256", typ: "dpop+jwt", jwk: OIDC_RSA_TWO.public_jwk };
+        const claims = { htm: "POST", htu: publicationTarget, nonce: "synthetic-local-current-nonce", jti: "synthetic-local-current-dpop-jti", iat: publicationNow };
+        const input = `${publicationB64(header)}.${publicationB64(claims)}`;
+        return `${input}.${sign("RSA-SHA256", Buffer.from(input), createPrivateKey({ key: OIDC_RSA_TWO.private_jwk as JsonWebKey, format: "jwk" })).toString("base64url")}`;
+    })();
+    const buildPublicationEvidence = (invalidProof: boolean) => {
+        const store = new CurrentDurableStore<Awaited<ReturnType<typeof signEvent>>>();
+        let signerCalls = 0;
+        const authority = createAgentPublicationAuthorizationAuthority({
+            authority_id: `synthetic-local-current-agent-publication-${invalidProof ? "invalid" : "accepted"}`, trusted_now: () => publicationNow,
+            expected_issuer: publicationIssuer, expected_audience: publicationAudience, jwks: { keys: [OIDC_RSA_ONE.public_jwk] },
+            load_claim_view: async () => publicationView, load_status: async () => ({ generation: 0, state: "active", checkpoint: publicationCheckpoint }),
+            consume_dpop: async (proof) => {
+                if (invalidProof || proof.method !== "POST" || proof.target !== publicationTarget || proof.nonce !== "synthetic-local-current-nonce") return null;
+                const segments = proof.compact.split("."); if (segments.length !== 3) return null;
+                const key = createPublicKey({ key: OIDC_RSA_TWO.public_jwk as JsonWebKey, format: "jwk" });
+                if (!verify("RSA-SHA256", Buffer.from(`${segments[0]}.${segments[1]}`), key, Buffer.from(segments[2]!, "base64url"))) return null;
+                return { proof_digest: createHash("sha256").update(proof.compact).digest("hex"), sender_key: publicationSender };
+            },
+            read_mtls_peer_identity: () => null, store,
+            sign_once: async (_token, event) => { signerCalls += 1; return signEvent({ secretKey: publicationSignerSecret, auxRand: "04".repeat(32), created_at: event.created_at, kind: event.kind, tags: event.tags, content: event.content }); },
+        });
+        const request: AgentPublicationRequest = Object.freeze({ compact_jwt: publicationJwt, represented_persona: publicationPersona, agent_id: publicationAgent, signer: publicationSigner, scope: publicationScope, ledger_generation: 0, publication: Object.freeze({ pubkey: publicationSigner, created_at: publicationNow, kind: 1, tags: [["t", "synthetic-local"]], content: "synthetic local current agent publication" }), attribution_profile: "heterodyne-agent-v1", sender_proof: Object.freeze({ kind: "dpop", compact: publicationDpop, method: "POST", target: publicationTarget, nonce: "synthetic-local-current-nonce" }) });
+        return Object.freeze({ authority, request, store, signerCalls: () => signerCalls });
+    };
+    const publicationAccepted = buildPublicationEvidence(false);
+    const publicationInvalid = buildPublicationEvidence(true);
     const claimArtifact = ledger.claimOne.verified_artifact;
     const claim = inspectVerifiedClaim(claimArtifact);
     const claimContext = ledger.makeVerification(ledger.claimOne);
@@ -413,7 +594,6 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
         not_before: 1000,
         expires_at: 1300,
     };
-    const validatedRegistration = validateWorkloadRegistration(registration);
     const tokenInput: AgentTokenValidationInput = {
         typ: "at+jwt",
         credential_ledger_persona: agentPersona,
@@ -453,7 +633,6 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
         consent_expires_at: 1300,
         source_authorization_expires_at: 1300,
     };
-    const tokenDecision = validateAgentAccessToken(tokenInput);
     const invalidRegistrationInput = { ...registration, max_content_bytes: 0 };
     const invalidRegistrationDecision = thrownDecision(() => validateWorkloadRegistration(invalidRegistrationInput));
     const invalidAgentTokenInput = { ...tokenInput, typ: "JWT" };
@@ -490,28 +669,8 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
     const invalidAttributionDecision = injectAgentAttribution(invalidAttributionInput);
     const unavailableAttributionInput = { ...attributionInput, kind: 2 };
     const unavailableAttributionDecision = injectAgentAttribution(unavailableAttributionInput);
-    const ordinaryMarmotInput = {
-        cryptographic_valid: true,
-        inviter_account: persona,
-        recipient_account: "22".repeat(32),
-        group_id: "44".repeat(32),
-        key_package_ref: "55".repeat(32),
-        member_count: 2,
-        supported_capabilities: true,
-        prior_local_acceptance: false,
-        one_time_dm_invite_valid: false,
-        explicit_local_decision: "none" as const,
-    };
-    const ordinaryMarmotDecision = ordinaryConversationAdmission(ordinaryMarmotInput);
-    const rejectedConversationInput = {
-        ...ordinaryMarmotInput,
-        explicit_local_decision: "reject" as const,
-    };
-    const rejectedConversationDecision = ordinaryConversationAdmission(rejectedConversationInput);
     const privateBroadcastInput = { transport: "nip59" as const, wrap_profile: "room_key.v1" as const };
     const relayAuthInput = { authenticated: true, response_prefix: "auth-required:" };
-    const unboundDmInput = { delegation_present: false, delegation_revoked: false };
-    const revokedDmInput = { delegation_present: true, delegation_revoked: true };
     const inviteBase = {
         now: 100,
         expires_at: 200,
@@ -528,7 +687,6 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
     };
     const inviteExpiredInput = { ...inviteBase, now: 200 };
     const invitePurposeInput = { ...inviteBase, requested_purpose: "control-enrollment" as const };
-    const inviteAuthInput = { ...inviteBase, secret_proof_valid: false };
     const inviteReservedInput = { ...inviteBase, reserved_account: "33".repeat(32) };
     const privateReaderInput = { tier: 2 as const, render_as_public: true };
     const privateRouteInput = {
@@ -536,9 +694,6 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
         requested_interface_id: "radicle-native-private",
         requested_route: "rad:zAbsent",
     };
-    const inboxNidInput = { sender_nid_authorized: false, keypackage_already_consumed: false, automated_scope_valid: true };
-    const inboxReplayInput = { sender_nid_authorized: true, keypackage_already_consumed: true, automated_scope_valid: true };
-    const marmotScopeInput = { sender_nid_authorized: true, keypackage_already_consumed: false, automated_scope_valid: false };
     const routingBindingInput = {
         active_administrator: agentPersona,
         commit_author: agentPersona,
@@ -568,25 +723,6 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
         requested_writer_ref: "refs/xyz.heterodyne.marmot/writers/other",
     };
     const unauthorizedRefDecision = evaluateMarmotRoutingBinding(unauthorizedRefInput);
-    const durabilityInput = {
-        signed_event_bytes_preserved: true,
-        encrypted_media_bytes_preserved: true,
-        durable_local: true,
-        configured_host_acceptances: 1,
-        acknowledgement_requested: true,
-    };
-    const durabilityDecision = evaluateMarmotDurability(durabilityInput);
-    const prematureAckInput = {
-        ...durabilityInput,
-        durable_local: false,
-        configured_host_acceptances: 0,
-    };
-    const prematureAckDecision = evaluateMarmotDurability(prematureAckInput);
-    const retentionInput = {
-        retention_expired: true,
-        independent_git_objects_possible: true,
-    };
-    const retentionDecision = evaluateMarmotRetention(retentionInput);
     const seedAdminSecret = "12".repeat(32);
     const seedAdministrator = bytesToHex(schnorr.getPublicKey(seedAdminSecret));
     const seedNid = "did:key:z6MkwQp8f8Y11L3WJYJ4hXa1";
@@ -763,6 +899,15 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
         request: { ...seedRequest, nip01_raw: "{}" },
     });
     const seedRequestInvalidDecision = evaluateTrustedSeedAdmission(seedAuthority.authority, {});
+    const currentInboxNid = currentInboxFixture("nid");
+    const currentInboxReplay = currentInboxFixture("replay");
+    const currentInboxScope = currentInboxFixture("scope");
+    const currentAdmissionHeld = currentAdmissionFixture();
+    const currentAdmissionRejected = currentAdmissionFixture();
+    const currentArchiveExact = await currentArchiveFixture();
+    const currentArchiveExpiration = await currentArchiveFixture();
+    const currentArchivePremature = await currentArchiveFixture();
+    const currentInvalidInvite = currentInvalidInviteFixture();
     const reasonCases: CurrentCaseFixture[] = [
         {
             vector_id: "comms/" + String("claim-id-mismatch"),
@@ -886,7 +1031,7 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
         ...[
             ["agent-workload-registration-invalid", invalidRegistrationInput],
             ["agent-token-invalid", invalidAgentTokenInput],
-            ["agent-sender-proof-invalid", invalidSenderProofInput],
+            ["agent-sender-proof-invalid", { evidence: "real JWT accepted and exact DPoP proof rejected before signer effect" }],
             ["agent-signer-mismatch", signerMismatchInput],
             ["agent-persona-scope-required", personaScopeInput],
             ["agent-attribution-invalid", invalidAttributionInput],
@@ -900,18 +1045,16 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
         ...[
             ["nip59-broadcast-rejected", privateBroadcastInput],
             ["auth-rejected-permanent", relayAuthInput],
-            ["dm-invite-unbound-device", unboundDmInput],
-            ["dm-invite-revoked-device", revokedDmInput],
             ["invite-expired", inviteExpiredInput],
             ["invite-purpose-mismatch", invitePurposeInput],
-            ["invite-authentication-invalid", inviteAuthInput],
+            ["invite-authentication-invalid", { evidence: "exact signed invite response proof rejects before reservation" }],
             ["invite-already-reserved", inviteReservedInput],
             ["public-reader-private-content", privateReaderInput],
             ["marmot-private-route-required", privateRouteInput],
-            ["marmot-private-inbox-nid-required", inboxNidInput],
-            ["marmot-keypackage-replayed", inboxReplayInput],
-            ["marmot-agent-scope-denied", marmotScopeInput],
-            ["conversation-rejected", rejectedConversationInput],
+            ["marmot-private-inbox-nid-required", { evidence: "authenticated current inbox lacks its recipient NID" }],
+            ["marmot-keypackage-replayed", { evidence: "authenticated current inbox records the exact KeyPackage consumed" }],
+            ["marmot-agent-scope-denied", { evidence: "authenticated current inbox excludes the requested agent scope" }],
+            ["conversation-rejected", { evidence: "verified Welcome is rejected by current local conversation admission" }],
             ["marmot-routing-equivocation", routingEquivocationInput],
             ["marmot-unauthorized-ref", unauthorizedRefInput]
         ].map(([id, input]) => ({
@@ -941,6 +1084,40 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
             input: input as Record<string, unknown>
         })),
     ];
+    const privateBoundaryArgs = new Map<string, readonly unknown[]>([
+        ["comms/agent-sender-proof-invalid", [publicationInvalid.authority, publicationInvalid.request, publicationInvalid.store, publicationInvalid.signerCalls]],
+        ["comms/agent-workload-token-accepted", [publicationAccepted.authority, publicationAccepted.request, publicationAccepted.store, publicationAccepted.signerCalls]],
+        ["comms/invite-authentication-invalid", [currentInvalidInvite.authority, currentInvalidInvite.redemption, currentInvalidInvite.store]],
+        ["comms/marmot-private-inbox-nid-required", [currentInboxNid.authority, currentInboxNid.bundle, currentInboxNid.store, currentInboxNid.evidence]],
+        ["comms/marmot-keypackage-replayed", [currentInboxReplay.authority, currentInboxReplay.bundle, currentInboxReplay.store, currentInboxReplay.evidence]],
+        ["comms/marmot-agent-scope-denied", [currentInboxScope.authority, currentInboxScope.bundle, currentInboxScope.store, currentInboxScope.evidence]],
+        ["comms/marmot-ordinary-welcome-held", [currentAdmissionHeld.authority, currentAdmissionHeld.input, currentAdmissionHeld.checkpoint, "comms/marmot-ordinary-welcome-held", currentAdmissionHeld.store, currentAdmissionHeld.evidence]],
+        ["comms/conversation-rejected", [currentAdmissionRejected.authority, currentAdmissionRejected.input, currentAdmissionRejected.checkpoint, "comms/conversation-rejected", currentAdmissionRejected.store, currentAdmissionRejected.evidence]],
+        ["comms/marmot-exact-bytes-durable", [currentArchiveExact.authority, currentArchiveExact.input, currentArchiveExact.store, currentArchiveExact.appended]],
+        ["comms/marmot-expiration-not-erasure", [currentArchiveExpiration.authority, currentArchiveExpiration.input, currentArchiveExpiration.store, currentArchiveExpiration.appended]],
+        ["comms/marmot-premature-ack", [currentArchivePremature.authority, Object.freeze({}), currentArchivePremature.store]],
+        ["comms/claim-ledger-rollback", [
+            [ledger.claimRecordOne],
+            [],
+            rollbackCheckpoint,
+            ledger.makeContext(ledger.baseRepository.repository),
+        ]],
+        ["comms/claim-ledger-writer-unauthorized", [
+            [ledger.claimRecordOne, ledger.claimRecordTwo],
+            [],
+            ledger.baseRepository.checkpoint,
+            unauthorizedWriterContext,
+        ]],
+        ["comms/ledger-reader-authorized", [
+            [ledger.claimRecordOne, ledger.claimRecordTwo],
+            [],
+            ledger.baseRepository.checkpoint,
+            ledger.makeContext(ledger.baseRepository.repository),
+            ledger.writerOne.did_key,
+            authorizedReaderRequest,
+            readerEffectHarness.authority,
+        ]],
+    ]);
     const boundaryArgs = new Map<string, readonly unknown[]>([
         ["comms/claim-event-signature-invalid", [invalidClaimEvent, claimEnvelopeContext]],
         ["comms/claim-issuer-authority-invalid", [missingAuthorityBoundary.authority, missingAuthorityBoundary.input]],
@@ -954,24 +1131,6 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
         ["comms/claim-chain-cycle", [chainCycleBoundary.authority, chainCycleBoundary.input]],
         ["comms/claim-chain-depth-exceeded", [chainDepthBoundary.authority, chainDepthBoundary.input]],
         ["comms/claim-delegation-not-authorized", [delegationBoundary.authority, delegationBoundary.input]],
-        ["comms/claim-ledger-rollback", registerPrivateCurrentBoundaryArgs(
-            "comms/claim-ledger-rollback",
-            [
-                [ledger.claimRecordOne],
-                [],
-                rollbackCheckpoint,
-                ledger.makeContext(ledger.baseRepository.repository),
-            ],
-        )],
-        ["comms/claim-ledger-writer-unauthorized", registerPrivateCurrentBoundaryArgs(
-            "comms/claim-ledger-writer-unauthorized",
-            [
-                [ledger.claimRecordOne, ledger.claimRecordTwo],
-                [],
-                ledger.baseRepository.checkpoint,
-                unauthorizedWriterContext,
-            ],
-        )],
         ["comms/claim-revoker-unauthorized", [
                 ledger.removalRecord,
                 new Map([
@@ -995,18 +1154,6 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
                 replayedSecondClaimInput,
             ]],
         ["comms/claim-repository-unconfirmed", [unconfirmedClaimBoundary.authority, unconfirmedClaimBoundary.input]],
-        ["comms/ledger-reader-authorized", registerPrivateCurrentBoundaryArgs(
-            "comms/ledger-reader-authorized",
-            [
-                [ledger.claimRecordOne, ledger.claimRecordTwo],
-                [],
-                ledger.baseRepository.checkpoint,
-                ledger.makeContext(ledger.baseRepository.repository),
-                ledger.writerOne.did_key,
-                authorizedReaderRequest,
-                readerEffectHarness.authority,
-            ],
-        )],
         ["comms/ledger-reader-unauthorized", [
                 ledger.writerTwo.did_key,
                 baseLedgerState,
@@ -1187,7 +1334,6 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
                 }]],
         ["comms/public-reader-route-invalid", ["#/v1/unknown"]],
         ["comms/public-reader-relay-hint-invalid", ["ws://127.0.0.1/private"]],
-        ["comms/agent-workload-token-accepted", [registration, tokenInput]],
         ...(() => {
             const exact = createSeedScenario({ state: seedState([seedAcl]) });
             return [["comms/trusted-seed-exact-write", [
@@ -1360,8 +1506,10 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
             description: "A closed finite workload registration and exact sender-constrained token resolve one registered automated signer without exposing private claims.",
             direction: "consume",
             input: {
-                registration: validatedRegistration,
-                token: tokenInput,
+                represented_persona: publicationPersona,
+                signer: publicationSigner,
+                sender_proof_kind: "dpop",
+                publication_kind: 1,
             }
         },
         {
@@ -1374,7 +1522,7 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
             vector_id: "comms/marmot-ordinary-welcome-held",
             description: "A cryptographically valid upstream Marmot Welcome from an unrecognized account is held for local policy without any sender-observable signal or secret disclosure.",
             direction: "consume",
-            input: ordinaryMarmotInput
+            input: { welcome_format: "mls_welcome", admission_decision: "hold", checkpoint: currentAdmissionHeld.checkpoint }
         },
         {
             vector_id: "comms/marmot-routing-binding-valid",
@@ -1392,19 +1540,19 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
             vector_id: "comms/marmot-exact-bytes-durable",
             description: "A publisher acknowledges only after exact signed-event and encrypted-media bytes are durable locally and on a configured host.",
             direction: "round-trip",
-            input: durabilityInput
+            input: { repository_rid: currentArchiveExact.input.repository_rid, ref: currentArchiveExact.input.ref, source_kind: currentArchiveExact.input.source.kind }
         },
         {
             vector_id: "comms/marmot-premature-ack",
             description: "A requested publisher acknowledgement is rejected until its exact bytes cross the configured durability boundary.",
             direction: "produce",
-            input: prematureAckInput
+            input: { receipt_state: "fresh-unregistered-sentinel", append_attempted: false }
         },
         {
             vector_id: "comms/marmot-expiration-not-erasure",
             description: "Retention expiry stops conforming advertisement and replication without claiming deletion of independently retained Git objects.",
             direction: "consume",
-            input: retentionInput
+            input: { repository_rid: currentArchiveExpiration.input.repository_rid, ref: currentArchiveExpiration.input.ref, presentation_transition: "expire", durable_readback: "acknowledge" }
         },
         {
             vector_id: "comms/trusted-seed-exact-write",
@@ -1417,10 +1565,13 @@ export async function buildCommsCases(): Promise<CurrentCaseFixture[]> {
             },
         },
     ];
-    return cases.map((fixture) => ({
-        ...fixture,
-        ...(boundaryArgs.has(fixture.vector_id)
-            ? { boundary_args: boundaryArgs.get(fixture.vector_id) }
-            : {}),
-    }));
+    return cases.map((fixture) => {
+        const privateArgs = privateBoundaryArgs.get(fixture.vector_id);
+        if (privateArgs !== undefined) {
+            registerPrivateCurrentFixture(COMMS_PRIVATE_FIXTURES, fixture, privateArgs);
+            return fixture;
+        }
+        const args = boundaryArgs.get(fixture.vector_id);
+        return args === undefined ? fixture : { ...fixture, boundary_args: args };
+    });
 }

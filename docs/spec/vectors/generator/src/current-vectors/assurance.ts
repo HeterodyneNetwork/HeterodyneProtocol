@@ -629,12 +629,6 @@ export async function buildAssuranceCases(): Promise<CurrentCaseFixture[]> {
             input: cutoffInput
         },
         {
-            vector_id: "assurance/retired-key-post-compromise",
-            description: "Retired-key material at the inclusive accepted compromise cutoff is non-authoritative.",
-            direction: "consume",
-            input: postCompromiseInput
-        },
-        {
             vector_id: "assurance/reciprocal-proof-invalid",
             description: "A malformed active-key acceptance cannot attach Assurance to an otherwise valid Core persona.",
             direction: "consume",

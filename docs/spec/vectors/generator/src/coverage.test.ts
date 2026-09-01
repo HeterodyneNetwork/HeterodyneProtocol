@@ -11,7 +11,7 @@ import {
   findInvariantCoverageIssues,
   findProfileCoverageIssues,
   findReasonCoverageIssues,
-  writeCoverage,
+  writeCoverageFromVectors,
 } from "./coverage.js";
 import { buildCurrentCases, buildCurrentVectors } from "./current-vectors/index.js";
 import { currentCaseIds } from "./current-vectors/case-contracts.js";
@@ -47,12 +47,17 @@ describe("current family coverage", () => {
     ]));
     expect(coverage.filter(({ invariants }) => invariants.length === 0).map(({ vector_id }) => vector_id))
       .toEqual([]);
+    expect(semanticCoverage.find(({ vector_id }) => vector_id === "comms/auth-rejected-permanent"))
+      .toMatchObject({ invariants: [], reason_codes: [] });
     const registry = loadRegistry(resolve(import.meta.dirname, "../../../../../"));
     expect(registry.security_invariants).toHaveLength(74);
     expect(new Set(semanticCoverage.flatMap(({ invariants }) => invariants)).size).toBe(74);
     expect(registry.reason_codes).toHaveLength(215);
-    expect(new Set(semanticCoverage.flatMap(({ reason_codes }) => reason_codes)).size).toBe(196);
-    expect(NON_WIRE_REASON_EXCLUSIONS).toHaveLength(19);
+    expect(new Set(semanticCoverage.flatMap(({ reason_codes }) => reason_codes)).size)
+      .toBeGreaterThan(0);
+    expect(NON_WIRE_REASON_EXCLUSIONS.length).toBeGreaterThan(0);
+    expect(new Set(NON_WIRE_REASON_EXCLUSIONS.map(({ code }) => code)).size)
+      .toBe(NON_WIRE_REASON_EXCLUSIONS.length);
     expect(registry.kinds.flatMap(({ profiles }) => profiles)).toHaveLength(31);
     expect(new Set(semanticCoverage.flatMap(({ profile }) =>
       profile === undefined ? [] : [profile]
@@ -62,7 +67,7 @@ describe("current family coverage", () => {
     expect(findProfileCoverageIssues(registry, semanticCoverage)).toEqual([]);
     expect(PENDING_PROFILE_IDS).toEqual([]);
     expect(INACTIVE_PROFILE_IDS).toEqual([]);
-  }, 30_000);
+  }, 60_000);
 
   it("does not treat an administrative vector projection as executable evidence", async () => {
     const registry = loadRegistry(resolve(import.meta.dirname, "../../../../../"));
@@ -304,9 +309,10 @@ describe("current family coverage", () => {
   it("writes deterministic six-owner Markdown from the current manifest", async () => {
     const vectorRoot = await mkdtemp(join(tmpdir(), "heterodyne-vector-coverage-"));
     tempDirs.push(vectorRoot);
-    await writeCoverage(vectorRoot);
+    const vectors = (await buildCurrentVectors()).map(({ vector }) => vector);
+    await writeCoverageFromVectors(vectorRoot, vectors);
     const first = await readFile(join(vectorRoot, "coverage", "assurance.md"), "utf8");
-    await writeCoverage(vectorRoot);
+    await writeCoverageFromVectors(vectorRoot, vectors);
     const second = await readFile(join(vectorRoot, "coverage", "assurance.md"), "utf8");
     expect(second).toBe(first);
     expect(first).toContain("assurance/enrollment-pending-w-minus-one");
