@@ -1209,6 +1209,26 @@ account-to-leaf proof, group state, membership, or application event. A valid
 Marmot object never grants Control, claim-ledger, repository, or persona
 authority.
 
+An ordinary-conversation admission boundary MUST capture the exact Welcome
+and referenced KeyPackage bytes before inspecting their contents. It MUST
+validate their cryptographic and closed-schema bindings to the authenticated
+inviter and recipient accounts, distinct MLS leaf keys, exact group and
+two-member set, and every required capability. Successful validation yields
+only an implementation-local, frozen opaque capability bound to the current
+conversation checkpoint. Caller-created objects, copies, capabilities minted
+by another authority instance, accessor-bearing inputs, and inputs changed
+after capture grant no admission authority.
+
+Before applying a local acceptance or hold decision, the same boundary MUST
+reload authenticated current conversation state and require the checkpoint to
+remain exact. It MUST durably reserve the full Welcome, KeyPackage, account,
+leaf, group, member, capability, checkpoint, and decision binding before it
+commits admission. Acceptance is returned only after a binding-equal committed
+record is readable. Exact committed retries MAY return the cached result;
+mismatched or stale retries reject. An executing or indeterminate retry, an
+unknown post-commit outcome, or a terminal record that cannot be read and
+verified MUST NOT repeat admission or expose acceptance.
+
 <a id="comms-ordinary-conversation-admission"></a>
 ### 8.1 Ordinary-conversation hook
 

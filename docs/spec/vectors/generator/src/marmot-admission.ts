@@ -1,6 +1,11 @@
 export type OrdinaryOutcome = "accept" | "hold-as-message-request" | "reject";
 export type ControlOutcome = "accept-enrollment-only" | "accept-authorized" | "reject";
 
+/**
+ * Legacy pure-policy projection used by authored vector topics. It cannot
+ * establish cryptographic validity or consume a Welcome. Runtime admission
+ * uses the opaque boundary in marmot-admission-authority.ts.
+ */
 export type OrdinaryAdmissionInput = {
   cryptographic_valid: boolean;
   inviter_account: string;
