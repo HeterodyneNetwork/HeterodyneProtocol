@@ -450,8 +450,11 @@ the cached terminal without invoking the key operation again. The evidence
 adapter descriptor-captures and privately deep-freezes the exact security
 input and returned result, and binds their canonical digests, object
 identities, signer-capability identity, and real boundary identity to a fresh
-opaque terminal. Mutation, cloning, or substitution across inputs or
-boundaries invalidates that terminal. The registered
+opaque terminal. Before any semantic read, it also descriptor-captures the
+closed outer evidence fixture exactly once; accessors, proxies, extra or
+symbol members, and substituted signer capabilities are rejected without
+invocation. Mutation, cloning, or substitution across inputs or boundaries
+invalidates that terminal. The registered
 `control-signer-effect-indeterminate` result cannot be supplied by a
 caller-selected effect-state or validity flag.
 
@@ -743,10 +746,13 @@ with the actual signed grant and successor-signed completion plus the complete
 authoritative inventory, transition evidence, and optional pinned Assurance
 authority. Evidence adapters descriptor-capture and privately deep-freeze
 those exact inputs and the validator result, then bind their canonical
-digests and object and boundary identities to an opaque terminal. Post-mint
-mutation, cloning, or cross-input or cross-boundary substitution invalidates
-the terminal; adapters cannot replace signature, inventory, evidence, or
-subordinate-reauthorization checks with caller-supplied booleans.
+digests and object and boundary identities to an opaque terminal. The closed
+outer fixture is descriptor-captured exactly once before any semantic read,
+so accessors, proxies, extra members, and symbol members reject without
+invocation. Post-mint mutation, cloning, or cross-input or cross-boundary
+substitution invalidates the terminal; adapters cannot replace signature,
+inventory, evidence, or subordinate-reauthorization checks with
+caller-supplied booleans.
 
 The baseline authorization class is `active-account`. Optional Assurance may
 authorize or reinforce succession and reset, including when the old key is

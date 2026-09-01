@@ -235,9 +235,19 @@ export function verifyCurrentClaimProofProfile(value: unknown):
     : { verdict: "reject", reason_code: "claim-subject-proof-invalid" };
 }
 
-type AuthorityDecision<R extends string, O> = Readonly<
+// Composition dependency: after the Task 2 fix lands, delete these private
+// aliases and add:
+// import type { AuthorityDecision } from "./security-authority-support.js";
+type IndeterminateDecision<I extends string = never> = Readonly<
+  [I] extends [never]
+    ? { verdict: "indeterminate"; reconciliation_digest: string }
+    : { verdict: "indeterminate"; reason_code: I; reconciliation_digest: string }
+>;
+
+type AuthorityDecision<R extends string, O, I extends string = never> = Readonly<
   | { verdict: "accept"; output: O }
   | { verdict: "reject"; reason_code: R }
+  | IndeterminateDecision<I>
 >;
 
 export type CurrentControlFrameVerificationContext = Readonly<{

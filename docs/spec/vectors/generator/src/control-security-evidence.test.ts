@@ -10,6 +10,8 @@ import {
   isControlSecurityEvidenceTerminal,
   reconstructControlSignerEvidenceFixture,
   signedControlFrameBytes,
+  type ControlResetEvidenceFixture,
+  type ControlSignerEvidenceFixture,
 } from "./control-security-evidence.js";
 import {
   compromiseResetCompletionProofBytes,
@@ -202,5 +204,151 @@ describe("real Control security evidence", () => {
       execution.input,
       execution.result,
     )).toBe(false);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects a reset fixture accessor before reading its alternating input", () => {
+    const [fixtureA, fixtureB] = controlResetEvidenceFixtures();
+    let trapCount = 0;
+    const inputSequence = [
+      fixtureA.input,
+      fixtureB.input,
+      fixtureA.input,
+      fixtureA.input,
+    ];
+    const accessorFixture = Object.defineProperties({}, {
+      input: {
+        enumerable: true,
+        get: () => inputSequence[Math.min(trapCount++, inputSequence.length - 1)],
+      },
+      expected_reason: {
+        enumerable: true,
+        value: fixtureA.expected_reason,
+      },
+    }) as ControlResetEvidenceFixture;
+    let rejected = false;
+
+    try {
+      executeControlResetEvidenceFixture(accessorFixture);
+    } catch {
+      rejected = true;
+    }
+
+    expect(trapCount).toBe(0);
+    expect(rejected).toBe(true);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local closes every signer fixture adapter without invoking accessors", () => {
+    for (const operation of [
+      executeControlSignerEvidenceFixture,
+      reconstructControlSignerEvidenceFixture,
+      controlSignerInvocationCount,
+    ]) {
+      const fixtureA = controlSignerEvidenceFixture();
+      const fixtureB = controlSignerEvidenceFixture();
+      let trapCount = 0;
+      const inputSequence = [
+        fixtureA.input,
+        fixtureB.input,
+        fixtureA.input,
+        fixtureA.input,
+      ];
+      const accessorFixture = Object.defineProperties({}, {
+        input: {
+          enumerable: true,
+          get: () => inputSequence[Math.min(trapCount++, inputSequence.length - 1)],
+        },
+        expected_reason: {
+          enumerable: true,
+          value: fixtureA.expected_reason,
+        },
+      }) as ControlSignerEvidenceFixture;
+      let rejected = false;
+
+      try {
+        operation(accessorFixture);
+      } catch {
+        rejected = true;
+      }
+
+      expect(trapCount).toBe(0);
+      expect(rejected).toBe(true);
+    }
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects proxy, extra, and symbol fixture members", () => {
+    const fixture = controlResetEvidenceFixtures()[0];
+    const candidates = [
+      new Proxy(fixture, {}),
+      { ...fixture, extra: true },
+      { ...fixture, [Symbol("synthetic-local")]: true },
+    ];
+
+    for (const candidate of candidates) {
+      expect(() => executeControlResetEvidenceFixture(
+        candidate as ControlResetEvidenceFixture,
+      )).toThrow(/exact ordinary data object/u);
+    }
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local closes signer input descriptors in non-executing fixture adapters", () => {
+    for (const operation of [
+      reconstructControlSignerEvidenceFixture,
+      controlSignerInvocationCount,
+    ]) {
+      const fixture = controlSignerEvidenceFixture();
+      const authorization = fixture.input.authorization;
+      let trapCount = 0;
+      Object.defineProperty(fixture.input, "authorization", {
+        enumerable: true,
+        configurable: true,
+        get: () => {
+          trapCount += 1;
+          return authorization;
+        },
+      });
+      let rejected = false;
+
+      try {
+        operation(fixture);
+      } catch {
+        rejected = true;
+      }
+
+      expect(trapCount).toBe(0);
+      expect(rejected).toBe(true);
+    }
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects substituted signer capabilities without invoking proxy traps", () => {
+    for (const operation of [
+      executeControlSignerEvidenceFixture,
+      reconstructControlSignerEvidenceFixture,
+      controlSignerInvocationCount,
+    ]) {
+      const fixture = controlSignerEvidenceFixture();
+      let trapCount = 0;
+      const signerProxy = new Proxy(fixture.input.signer_execution, {
+        get: (target, property, receiver) => {
+          trapCount += 1;
+          return Reflect.get(target, property, receiver);
+        },
+      });
+      Object.defineProperty(fixture.input, "signer_execution", {
+        enumerable: true,
+        configurable: true,
+        writable: true,
+        value: signerProxy,
+      });
+      let rejected = false;
+
+      try {
+        operation(fixture);
+      } catch {
+        rejected = true;
+      }
+
+      expect(trapCount).toBe(0);
+      expect(rejected).toBe(true);
+    }
   });
 });

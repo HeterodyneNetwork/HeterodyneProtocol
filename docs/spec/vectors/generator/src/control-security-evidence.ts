@@ -44,6 +44,13 @@ type ResetReason =
   | "control-compromise-reset-unauthenticated"
   | "control-subordinate-reauthorization-required";
 
+const RESET_REASONS: readonly ResetReason[] = [
+  "control-compromise-reset-evidence-invalid",
+  "control-compromise-reset-inventory-mismatch",
+  "control-compromise-reset-unauthenticated",
+  "control-subordinate-reauthorization-required",
+];
+
 export type ControlResetEvidenceFixture = Readonly<{
   input: Parameters<typeof validateCompromiseReset>[0];
   expected_reason: ResetReason;
@@ -71,12 +78,44 @@ export type ControlSignerEvidenceExecution = Readonly<{
   terminal: ControlSecurityEvidenceTerminal;
 }>;
 
+function captureResetEvidenceFixture(
+  fixture: ControlResetEvidenceFixture,
+): ControlResetEvidenceFixture {
+  const captured = captureExactDataObject(fixture, [["expected_reason", "input"]],
+    "Control reset evidence fixture");
+  if (
+    captured.input === null
+    || typeof captured.input !== "object"
+    || typeof captured.expected_reason !== "string"
+    || !RESET_REASONS.includes(captured.expected_reason as ResetReason)
+  ) throw new Error("Control reset evidence fixture is invalid");
+  return captured as ControlResetEvidenceFixture;
+}
+
+function captureSignerEvidenceFixture(
+  fixture: ControlSignerEvidenceFixture,
+): ControlSignerEvidenceFixture {
+  const captured = captureExactDataObject(fixture, [["expected_reason", "input"]],
+    "Control signer evidence fixture");
+  if (
+    captured.input === null
+    || typeof captured.input !== "object"
+    || captured.expected_reason !== "control-signer-effect-indeterminate"
+  ) throw new Error("Control signer evidence fixture is invalid");
+  return captured as ControlSignerEvidenceFixture;
+}
+
 type EvidenceBoundary = typeof validateCompromiseReset
   | typeof executePersistedAutomatedSigning;
 
 type BoundaryInputCapture = Readonly<{
   snapshot: unknown;
   signer_execution: object | null;
+}>;
+
+type SignerSecurityInputSnapshot = Readonly<{
+  authorization: Parameters<typeof executePersistedAutomatedSigning>[0]["authorization"];
+  publication: Parameters<typeof executePersistedAutomatedSigning>[0]["publication"];
 }>;
 
 type EvidenceRecord = Readonly<{
@@ -536,14 +575,16 @@ export function controlResetEvidenceFixtures(): readonly ControlResetEvidenceFix
 export function executeControlResetEvidenceFixture(
   fixture: ControlResetEvidenceFixture,
 ): ControlResetEvidenceExecution {
-  const inputCapture = captureBoundaryInput(validateCompromiseReset, fixture.input);
-  const result = validateCompromiseReset(fixture.input);
+  const capturedFixture = captureResetEvidenceFixture(fixture);
+  const input = capturedFixture.input;
+  const inputCapture = captureBoundaryInput(validateCompromiseReset, input);
+  const result = validateCompromiseReset(input);
   return Object.freeze({
-    input: fixture.input,
+    input,
     result,
     terminal: mintTerminal(
       validateCompromiseReset,
-      fixture.input,
+      input,
       inputCapture,
       result,
     ),
@@ -559,9 +600,22 @@ type SignerFixtureState = Readonly<{
   store: ReferenceSignerExecutionStore<NostrSignedEvent>;
   key_operation: (event: NostrUnsignedEvent) => NostrSignedEvent;
   invocation_count: () => number;
+  signer_execution: object;
 }>;
 
 const SIGNER_FIXTURE_STATES = new WeakMap<object, SignerFixtureState>();
+
+function requireSignerFixtureState(
+  input: object,
+  inputCapture: BoundaryInputCapture,
+): SignerFixtureState {
+  const state = SIGNER_FIXTURE_STATES.get(input);
+  if (
+    state === undefined
+    || state.signer_execution !== inputCapture.signer_execution
+  ) throw new Error("unknown Control signer evidence fixture");
+  return state;
+}
 
 function buildSignerInput(): Parameters<typeof executePersistedAutomatedSigning>[0] {
   const automationPolicy = {
@@ -733,6 +787,7 @@ function buildSignerInput(): Parameters<typeof executePersistedAutomatedSigning>
     store,
     key_operation: keyOperation,
     invocation_count: () => invocationCount,
+    signer_execution: signerExecution,
   }));
   return input;
 }
@@ -747,41 +802,56 @@ export function controlSignerEvidenceFixture(): ControlSignerEvidenceFixture {
 export function reconstructControlSignerEvidenceFixture(
   fixture: ControlSignerEvidenceFixture,
 ): ControlSignerEvidenceFixture {
-  const state = SIGNER_FIXTURE_STATES.get(fixture.input);
-  if (state === undefined) throw new Error("unknown Control signer evidence fixture");
-  const input = {
-    authorization: fixture.input.authorization,
-    publication: fixture.input.publication,
-    signer_execution: new ReferenceSignerExecutionFence<NostrSignedEvent>(
-      state.store,
-      state.key_operation,
-    ),
+  const capturedFixture = captureSignerEvidenceFixture(fixture);
+  const input = capturedFixture.input;
+  const inputCapture = captureBoundaryInput(executePersistedAutomatedSigning, input);
+  const securityInput = inputCapture.snapshot as SignerSecurityInputSnapshot;
+  const state = requireSignerFixtureState(input, inputCapture);
+  const signerExecution = new ReferenceSignerExecutionFence<NostrSignedEvent>(
+    state.store,
+    state.key_operation,
+  );
+  const reconstructedInput = {
+    authorization: securityInput.authorization,
+    publication: securityInput.publication,
+    signer_execution: signerExecution,
   };
-  SIGNER_FIXTURE_STATES.set(input, state);
-  return Object.freeze({ input, expected_reason: fixture.expected_reason });
+  SIGNER_FIXTURE_STATES.set(reconstructedInput, Object.freeze({
+    ...state,
+    signer_execution: signerExecution,
+  }));
+  return Object.freeze({
+    input: reconstructedInput,
+    expected_reason: capturedFixture.expected_reason,
+  });
 }
 
 export function controlSignerInvocationCount(
   fixture: ControlSignerEvidenceFixture,
 ): number {
-  const state = SIGNER_FIXTURE_STATES.get(fixture.input);
-  if (state === undefined) throw new Error("unknown Control signer evidence fixture");
+  const capturedFixture = captureSignerEvidenceFixture(fixture);
+  const input = capturedFixture.input;
+  const inputCapture = captureBoundaryInput(executePersistedAutomatedSigning, input);
+  const state = requireSignerFixtureState(input, inputCapture);
   return state.invocation_count();
 }
 
 export function executeControlSignerEvidenceFixture(
   fixture: ControlSignerEvidenceFixture,
 ): ControlSignerEvidenceExecution {
+  const capturedFixture = captureSignerEvidenceFixture(fixture);
+  const input = capturedFixture.input;
   const inputCapture = captureBoundaryInput(
     executePersistedAutomatedSigning,
-    fixture.input,
+    input,
   );
-  const result = executePersistedAutomatedSigning(fixture.input);
+  requireSignerFixtureState(input, inputCapture);
+  const result = executePersistedAutomatedSigning(input);
   const terminal = mintTerminal(
     executePersistedAutomatedSigning,
-    fixture.input,
+    input,
     inputCapture,
     result,
   );
-  return Object.freeze({ input: fixture.input, result, terminal });
+  return Object.freeze({ input, result, terminal });
 }
