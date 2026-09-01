@@ -2303,6 +2303,75 @@ export function findObsoletePrivacyTierGuidanceIssues(
   });
 }
 
+const VECTOR_GUIDE_PATH = "docs/spec/vectors/README.md";
+const RETIRED_VECTOR_TOPIC_PATH =
+  /\b((?:interop|org|core-redundancy|marmot-radicle|claims|claim-ledger|oidc|token-status)\/)/giu;
+
+function findObsoleteVectorGuideIssues(text: string, path: string): FamilyDocIssue[] {
+  if (path !== VECTOR_GUIDE_PATH) return [];
+  const issues: FamilyDocIssue[] = [];
+  const addIssue = (offset: number, message: string): void => {
+    issues.push({
+      path,
+      line: text.slice(0, offset).split(/\r?\n/u).length,
+      code: "retired-authoring-model",
+      message,
+    });
+  };
+  for (const match of text.matchAll(RETIRED_VECTOR_TOPIC_PATH)) {
+    addIssue(match.index, `retired vector topic path guidance: ${match[1]}`);
+  }
+
+  const familyStart = text.indexOf("Family layering follows this DAG:");
+  const coverageStart = text.indexOf("## Coverage authority");
+  if (familyStart >= 0 && coverageStart > familyStart) {
+    const familySection = text.slice(familyStart, coverageStart);
+    const familyProse = familySection.replace(/```[\s\S]*?```/gu, "");
+    const missingOwners = DOCUMENTS.filter((document) =>
+      !new RegExp(`\\b${document}\\b`, "iu").test(familyProse)
+    );
+    if (!/^Core\s*<-\s*Assurance\s*$/mu.test(familySection)
+      || missingOwners.length > 0
+      || !/\boptional\b[^.\n]{0,100}\bAssurance\b|\bAssurance\b[^.\n]{0,100}\boptional\b/iu
+        .test(familyProse)) {
+      addIssue(
+        familyStart,
+        "vector guide must include optional Assurance in the six-owner family DAG and prose",
+      );
+    }
+  }
+
+  if (coverageStart >= 0) {
+    const coverageEnd = text.indexOf("\n## ", coverageStart + 1);
+    const coverageSection = text.slice(
+      coverageStart,
+      coverageEnd < 0 ? text.length : coverageEnd,
+    );
+    const missingCoverage = DOCUMENTS.filter((document) =>
+      !new RegExp(`(?:coverage/)?${document}\\.md`, "iu").test(coverageSection)
+    );
+    if (missingCoverage.length > 0) {
+      addIssue(
+        coverageStart,
+        `vector coverage inventory must include ${missingCoverage.join(", ")} (including Assurance)`,
+      );
+    }
+  }
+
+  const fiveOwnerClaim = /\bfive[-\s]+(?:document|family|owner)s?\b/iu.exec(text);
+  if (fiveOwnerClaim !== null) {
+    addIssue(fiveOwnerClaim.index, `five-owner vector guidance omits Assurance: ${fiveOwnerClaim[0]}`);
+  }
+  const commsAnchor = /\b(?:every|each)\s+vector\b[^.\n]{0,100}\bComms anchor\b/iu.exec(text);
+  if (commsAnchor !== null) {
+    addIssue(
+      commsAnchor.index,
+      "vector anchors resolve in each owning family document, not universally through Comms",
+    );
+  }
+  return issues;
+}
+
 /** Lint the maintained authoring guides against the single-family model. */
 export function lintMaintainedGuides(
   repoRoot: string,
@@ -2332,6 +2401,7 @@ export function lintMaintainedGuides(
   );
   for (const [path, text] of contents) {
     issues.push(...findObsoletePrivacyTierGuidanceIssues(text, path));
+    issues.push(...findObsoleteVectorGuideIssues(text, path));
   }
   issues.push(...lintDefensiveValidationReviews(repoRoot, contentOverrides));
   const corpusBytes = [...contents.values()].reduce(

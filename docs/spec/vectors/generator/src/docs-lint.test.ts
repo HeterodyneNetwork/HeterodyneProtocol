@@ -911,6 +911,78 @@ it("checks the second declaration", () => {
     expect(lintMaintainedGuides(repositoryRoot)).toEqual([]);
   });
 
+  it("rejects a vector guide that omits Assurance from the family and coverage inventories", () => {
+    const path = "docs/spec/vectors/README.md";
+    const staleGuide = `Family layering follows this DAG:
+
+\`\`\`text
+Core <- Comms <- Control
+Core <- Comms <- Social
+Core <- Comms <- Workspace
+Control <- Workspace
+Social <- Workspace
+\`\`\`
+
+Core vectors stand alone; Comms, Control, Social, and Workspace behaviors obey
+the corresponding five-document family-layering constraints.
+
+## Coverage authority
+
+Coverage projections are [core.md](coverage/core.md),
+[comms.md](coverage/comms.md), [control.md](coverage/control.md),
+[social.md](coverage/social.md), and [workspace.md](coverage/workspace.md).
+`;
+    expect(lintMaintainedGuides(repositoryRoot, { [path]: staleGuide }))
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          path,
+          code: "retired-authoring-model",
+          message: expect.stringContaining("Assurance"),
+        }),
+        expect.objectContaining({
+          path,
+          code: "retired-authoring-model",
+          message: expect.stringContaining("coverage inventory"),
+        }),
+        expect.objectContaining({
+          path,
+          code: "retired-authoring-model",
+          message: expect.stringContaining("five-owner"),
+        }),
+      ]));
+  });
+
+  it.each([
+    "interop/",
+    "org/",
+    "core-redundancy/",
+    "marmot-radicle/",
+    "claims/",
+    "claim-ledger/",
+    "oidc/",
+    "token-status/",
+  ])("rejects retired vector topic path guidance for %s", (retiredPath) => {
+    const path = "docs/spec/vectors/README.md";
+    expect(lintMaintainedGuides(repositoryRoot, {
+      [path]: `Current vector payloads are under \`${retiredPath}\`.`,
+    })).toContainEqual(expect.objectContaining({
+      path,
+      code: "retired-authoring-model",
+      message: expect.stringContaining(retiredPath),
+    }));
+  });
+
+  it("rejects guidance that resolves every vector anchor through Comms", () => {
+    const path = "docs/spec/vectors/README.md";
+    expect(lintMaintainedGuides(repositoryRoot, {
+      [path]: "The coverage manifest maps every vector to one permanent Comms anchor.",
+    })).toContainEqual(expect.objectContaining({
+      path,
+      code: "retired-authoring-model",
+      message: expect.stringContaining("Comms"),
+    }));
+  });
+
   it("keeps accepted ADR-047 archived after the final closure review", () => {
     const archivedPath = resolve(
       repositoryRoot,

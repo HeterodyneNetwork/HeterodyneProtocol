@@ -118,6 +118,7 @@ therefore collapse to one locator.
 Family layering follows this DAG:
 
 ```text
+Core <- Assurance
 Core <- Comms <- Control
 Core <- Comms <- Social
 Core <- Comms <- Workspace
@@ -125,52 +126,34 @@ Control <- Workspace
 Social <- Workspace
 ```
 
-Core vectors stand alone; Comms, Control, Social, and Workspace behaviors obey
-the corresponding family-layering constraints. Optional Control and Social
-composition claims add those documents separately.
-Control vectors cover Marmot group
-admission, enrollment, entitlements, node-scoped tokens, RPC, operation
-reservation, failover, retention, and separately advertised recovery profiles.
+Core vectors stand alone. Assurance vectors exercise the optional Core
+extension for cold-root/KERI continuity, succession, associated keys, and
+downgrade resistance. Comms, Control, Social, and Workspace behaviors obey the
+corresponding family-layering constraints. Optional Assurance, Control, and
+Social composition claims add those documents separately. Control vectors
+cover Marmot group admission, enrollment, entitlements, node-scoped tokens,
+RPC, operation reservation, failover, retention, and separately advertised
+recovery profiles.
 
 ## Coverage authority
 
 [`coverage/manifest.json`](coverage/manifest.json) is the sole coverage source.
-The Core, Comms, Control, Social, Workspace, and family Markdown files in `coverage/` are
-deterministic generated projections. Do not maintain parallel maps by hand.
+The generated projections are [Core](coverage/core.md),
+[Assurance](coverage/assurance.md), [Comms](coverage/comms.md),
+[Control](coverage/control.md), [Social](coverage/social.md),
+[Workspace](coverage/workspace.md), and [family](coverage/family.md). Do not
+maintain parallel maps by hand.
 
 Ownership is declared per vector, never inferred from its directory. In
-particular:
+particular, current vector payloads exist only under `assurance/`, `comms/`,
+`control/`, `core/`, `social/`, and `workspace/`. Supporting snapshot material
+is confined to `coverage/`, `schema/`, `generator/`, `fixtures.json`, and the
+closed snapshot manifest and its schemas. These locations organize the corpus;
+they do not assign protocol ownership.
 
-- new Nostr-native envelope vectors are Comms;
-- `interop/001-003` are Social while `interop/004` is Core;
-- `org/001-003` are Core while `org/004` is Comms;
-- recovery and config-backup vectors split by the behavior each exercises;
-- Core Radicle multi-host redundancy uses new `core-redundancy/` IDs; and
-- acceptance gating is split between Comms hook behavior and Social
-  tighten-only policy behavior; and
-- `marmot-radicle/` covers pinned Marmot interoperability, exact-byte
-  carriage, routing generations, group repositories, persona inboxes,
-  retention, and node-mediated agent operations.
-
-Four Comms-owned claims/OIDC groups retain their profile-specific allocation
-semantics within the pinned source interpretation:
-
-- `claims/` covers canonical IDs and typed keys, issuer/trust decisions,
-  attenuation, proof of possession, visibility, and revocation;
-- `claim-ledger/` covers repository confirmation, rollback, confinement,
-  reader removal, monotonic multi-writer replay, issuer authority, and mint
-  freshness;
-- `oidc/` covers exact discovery, required and prohibited grants, consent,
-  pairwise subjects, ID/access/assertion token separation, and sender
-  constraints; and
-- `token-status/` covers the exact draft-21 profile, writer allocation,
-  freshness, byte-identical HTTPS/Radicle mirrors, key compromise, and issuer
-  succession.
-
-The coverage manifest maps every vector to one permanent Comms anchor. OIDC
-vectors test an interoperable projection; they do not make JWTs or HTTPS the
-canonical authorization source. Private claims, consent records, issuance
-mappings, and audience keys are never public-discovery fixtures.
+For every vector, the coverage manifest records qualified references whose
+anchors resolve in that vector's owning family document. No one family
+document supplies a universal anchor for the corpus.
 
 ## Reason codes
 
