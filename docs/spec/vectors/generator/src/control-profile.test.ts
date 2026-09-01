@@ -74,7 +74,7 @@ function issuanceInput(view: CurrentAuthorizationView) {
 }
 
 describe("Control opaque authorization view integration", () => {
-  it("derives token time and checkpoint from effect-time revalidation", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local — derives token time and checkpoint from effect-time revalidation", () => {
     const clock = { now: scenario.issuerKeyEpochOneState.checkpoint.observed_at + 10 };
     const view = currentView(clock);
     const issued = issueControlToken(issuanceInput(view));

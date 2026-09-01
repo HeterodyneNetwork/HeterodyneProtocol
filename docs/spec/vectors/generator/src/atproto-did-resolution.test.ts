@@ -113,7 +113,7 @@ const envelope: Envelope = {
 };
 
 describe("authenticated ATProto DID resolution", () => {
-  it("authenticates a closed durable binding observation inside the resolution interval", async () => {
+  it("BLUE TEAM VALIDATION: synthetic/local — authenticates a closed durable binding observation inside the resolution interval", async () => {
     const api = await loadResolution();
     const authority = configuredAuthority(api, {
       suite: "ed25519",
@@ -257,7 +257,7 @@ describe("authenticated ATProto DID resolution", () => {
     }
   });
 
-  it("mints only from a fresh exact resolver attestation and rejects a fake victim document", async () => {
+  it("BLUE TEAM VALIDATION: synthetic/local — mints only from a fresh exact resolver attestation and rejects a fake victim document", async () => {
     const api = await loadResolution();
     const authority = configuredAuthority(api, {
       suite: "ed25519",
@@ -371,7 +371,7 @@ describe("authenticated ATProto DID resolution", () => {
     })).toBe(false);
   });
 
-  it("binds capabilities to deep-frozen configured policy authority", async () => {
+  it("BLUE TEAM VALIDATION: synthetic/local — binds capabilities to deep-frozen configured policy authority", async () => {
     const api = await loadResolution();
     const authority = configuredAuthority(api, {
       suite: "ed25519",

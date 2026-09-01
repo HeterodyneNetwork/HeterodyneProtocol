@@ -16,11 +16,13 @@ import {
   findRetiredNormativeClaimIssues,
   findStrictProfileClosureIssues,
   lintDefensiveValidationTestDeclarations,
+  lintDefensiveValidationRepositoryTests,
   lintDefensiveValidationText,
   lintFamilyDocs,
   lintMaintainedGuides,
   lintMaintainedSnapshotGuidance,
 } from "./docs-lint.js";
+import { currentModuleDependencies } from "./current-import-graph.js";
 import { loadRegistry } from "./registry.js";
 
 const repositoryRoot = resolve(import.meta.dirname, "../../../../../");
@@ -182,7 +184,7 @@ describe("canonical family documentation", () => {
       .toMatch(/\*\*Status:\*\* Proposed/);
   });
 
-  it("requires hostile-boundary fixtures to declare BLUE TEAM VALIDATION", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local — requires hostile-boundary fixtures to declare BLUE TEAM VALIDATION", () => {
     const issues = lintDefensiveValidationText(
       "hostile accessor mutation reaches the authority boundary",
       "synthetic-boundary.test.ts",
@@ -208,7 +210,7 @@ describe("canonical family documentation", () => {
     ).map(({ code }) => code)).toContain("defensive-validation-scope");
   });
 
-  it("rejects hostile validation directed at live targets or reusable payloads", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local — rejects hostile validation directed at live targets or reusable payloads", () => {
     const issues = lintDefensiveValidationText(
       "BLUE TEAM VALIDATION: synthetic/local hostile accessor mutation uses a live relay and real credentials to deliver reusable exploit directions",
       "synthetic-boundary.test.ts",
@@ -216,7 +218,7 @@ describe("canonical family documentation", () => {
     expect(issues.map(({ code }) => code)).toContain("defensive-validation-target");
   });
 
-  it("requires each hostile or adversarial test declaration to carry the exact prefix", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local — requires each hostile or adversarial test declaration to carry the exact prefix", () => {
     const issues = lintDefensiveValidationTestDeclarations(
       `
         it("rejects a dangerous fixture", () => {
@@ -258,7 +260,56 @@ describe("canonical family documentation", () => {
     ]);
   });
 
-  it("lints each hostile declaration in an arbitrary test-file override", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local — requires attacker and attack fixture declarations to carry the exact prefix", () => {
+    const issues = lintDefensiveValidationTestDeclarations(
+      `it("rejects a dangerous fixture", () => {
+  const attackerMutation = { actor: "attacker" };
+  expect(attackerMutation).toBeDefined();
+});
+test("rejects a second dangerous fixture", () => {
+  const attackRecord = true;
+  expect(attackRecord).toBe(true);
+});
+it("reports an ordinary diagnostic", () => {
+  const message = "attack";
+  expect(message).toBe("attack");
+});\n`,
+      "synthetic-boundary.test.ts",
+    );
+    expect(issues).toEqual([
+      expect.objectContaining({ line: 1, code: "defensive-validation-scope" }),
+      expect.objectContaining({ line: 5, code: "defensive-validation-scope" }),
+    ]);
+  });
+
+  it("discovers every generator test declaration without scanning excluded trees", () => {
+    const root = mkdtempSync(resolve(tmpdir(), "heterodyne-defensive-review-"));
+    temps.push(root);
+    const sourceRoot = resolve(root, "docs/spec/vectors/generator/src");
+    mkdirSync(resolve(sourceRoot, "nested"), { recursive: true });
+    mkdirSync(resolve(root, "docs/spec/vectors/generator/node_modules/pkg"), { recursive: true });
+    writeFileSync(
+      resolve(sourceRoot, "nested/unlisted.test.ts"),
+      `it("rejects an unmarked fixture", () => {
+  const attackerFixture = true;
+  expect(attackerFixture).toBe(true);
+});\n`,
+    );
+    writeFileSync(
+      resolve(root, "docs/spec/vectors/generator/node_modules/pkg/excluded.test.ts"),
+      `it("excluded", () => { const hostileFixture = true; });\n`,
+    );
+
+    expect(lintDefensiveValidationRepositoryTests(root)).toEqual([
+      expect.objectContaining({
+        path: "docs/spec/vectors/generator/src/nested/unlisted.test.ts",
+        line: 1,
+        code: "defensive-validation-scope",
+      }),
+    ]);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local — lints each hostile declaration in an arbitrary test-file override", () => {
     const path = "docs/spec/vectors/generator/src/arbitrary-review.test.ts";
     const issues = lintMaintainedGuides(repositoryRoot, {
       [path]: `it("BLUE TEAM VALIDATION: synthetic/local — checks marked input", () => {
@@ -294,7 +345,7 @@ it("checks the second declaration", () => {
     ]);
   });
 
-  it("ignores hostile words in ordinary comments and body strings", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local — ignores hostile words in ordinary comments and body strings", () => {
     expect(lintDefensiveValidationTestDeclarations(
       `it("reports a diagnostic", () => {
   // The literal below documents the word hostile; it is not a hostile fixture.
@@ -320,7 +371,7 @@ it("checks the second declaration", () => {
     )).toEqual([]);
   });
 
-  it("enforces defensive validation through the maintained-guide review path", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local — enforces defensive validation through the maintained-guide review path", () => {
     const issues = lintMaintainedGuides(repositoryRoot, {
       "synthetic-boundary.test.ts":
         "BLUE TEAM VALIDATION: synthetic/local hostile accessor mutation reaches a live relay",
@@ -978,7 +1029,7 @@ BLUE TEAM VALIDATION: synthetic/local hostile case uses a live relay
       }));
   });
 
-  it("rejects adversarial Markdown depth within a bounded wall time", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local — rejects adversarial Markdown depth within a bounded wall time", () => {
     const path = "README.md";
     const text = `${"> ".repeat(100_000)}text`;
     const startedAt = performance.now();
@@ -1135,6 +1186,29 @@ BLUE TEAM VALIDATION: synthetic/local hostile case uses a live relay
 
   it("accepts manifest-derived snapshot guidance without copied mutable facts", () => {
     expect(lintMaintainedSnapshotGuidance(snapshotGuidanceRoot())).toEqual([]);
+  });
+
+  it("keeps snapshot guidance on the current-safe compiler graph", () => {
+    const dependencies = currentModuleDependencies(
+      resolve(repositoryRoot, "docs/spec/vectors/generator/src/docs-lint.ts"),
+    );
+    expect(dependencies.filter((path) =>
+      /\/src\/(?:snapshot[^/]*|topics[^/]*|author|verify|cli)\.ts$/u.test(path)
+    )).toEqual([]);
+  });
+
+  it("derives the documented owner set from the packaged vector schema", () => {
+    const root = snapshotGuidanceRoot();
+    writeFileSync(
+      resolve(root, "docs/spec/vectors/README.md"),
+      `${manifestGuidance}\n\`\`\`json\n{\n  "owner_document": "core | comms | control | social | workspace"\n}\n\`\`\`\n`,
+    );
+    expect(lintMaintainedSnapshotGuidance(root)).toContainEqual(
+      expect.objectContaining({
+        path: "docs/spec/vectors/README.md",
+        code: "snapshot-guidance-stale",
+      }),
+    );
   });
 
   it("marks an intentionally retained source statement stale when the manifest changes", () => {

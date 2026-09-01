@@ -630,7 +630,7 @@ describe("claim revocation envelopes", () => {
     expect(() => validateClaimRevocationEnvelope(wrongNidEvent)).toThrow(/NID/);
   });
 
-  it("verifies a detached JWS proof and RFC 7638 thumbprint", async () => {
+  it("BLUE TEAM VALIDATION: synthetic/local — verifies a detached JWS proof and RFC 7638 thumbprint", async () => {
     const jwk = {
       kty: "OKP",
       crv: "Ed25519",

@@ -684,7 +684,7 @@ describe("reader lifecycle and metadata privacy", () => {
     }
   });
 
-  it("rejects an accessor-backed stored claim event without invoking it", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local — rejects an accessor-backed stored claim event without invoking it", () => {
     const records = [s.claimRecordOne, s.claimRecordTwo, s.epochOneRecord];
     const state = mergeClaimLedger(
       records,
@@ -721,7 +721,7 @@ describe("reader lifecycle and metadata privacy", () => {
     expect(getterCalls).toBe(0);
   });
 
-  it("rejects accessor-driven compact state before later source mutation", async () => {
+  it("BLUE TEAM VALIDATION: synthetic/local — rejects accessor-driven compact state before later source mutation", async () => {
     const records = [s.claimRecordOne, s.claimRecordTwo, s.epochOneRecord];
     const state = mergeClaimLedger(
       records,

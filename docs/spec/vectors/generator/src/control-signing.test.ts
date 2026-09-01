@@ -634,7 +634,7 @@ describe("Control NIP-46 signer grant authorization", () => {
     });
   });
 
-  it("rejects a self-signed attacker head grafted onto another persona grant", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local — rejects a self-signed attacker head grafted onto another persona grant", () => {
     const { signature: _signature, ...unsigned } = grant;
     const attackerHead = signGrant({
       ...unsigned,

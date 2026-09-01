@@ -51,7 +51,7 @@ envelope version named by the manifest:
 {
   "vector_id": "<topic>/<stable-id>",
   "vector_schema_version": "<snapshot manifest value>",
-  "owner_document": "core | comms | control | social | workspace",
+  "owner_document": "core | assurance | comms | control | social | workspace",
   "profile": "<optional immutable profile id>",
   "spec_refs": ["heterodyne:<document>#<permanent-anchor>"],
   "description": "<behavior>",

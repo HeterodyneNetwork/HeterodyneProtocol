@@ -2002,7 +2002,7 @@ describe("Workspace optional Assurance composition", () => {
 });
 
 describe("Workspace evaluator input boundary", () => {
-  it("rejects null and throwing accessors without any public evaluator throwing", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local — rejects null and throwing accessors without any public evaluator throwing", () => {
     const evaluators = [
       authenticateWorkspaceRepositoryView,
       authenticateWorkspaceSuccessorReauthorization,
@@ -2111,7 +2111,7 @@ describe("Workspace signed objects", () => {
     })).toEqual({ verdict: "reject", reason_code: "workspace_signature_invalid" });
   });
 
-  it("fails closed without throwing when hostile object access cannot be snapshotted", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local — fails closed without throwing when hostile object access cannot be snapshotted", () => {
     const hostile = new Proxy({}, {
       ownKeys: () => ["object_type"],
       getOwnPropertyDescriptor: () => ({ enumerable: true, configurable: true }),
@@ -2158,7 +2158,7 @@ describe("Workspace signed objects", () => {
 });
 
 describe("Workspace role authorization", () => {
-  it("derives effective authorization only from its configured current repository state", async () => {
+  it("BLUE TEAM VALIDATION: synthetic/local — derives effective authorization only from its configured current repository state", async () => {
     const api = await import("./workspace.js") as typeof import("./workspace.js") & {
       createWorkspaceRepositoryResolverAuthority: (input: unknown) => object;
       authenticateWorkspaceRepositoryView: (input: unknown) => {
@@ -3267,7 +3267,7 @@ describe("Workspace relationships and privacy", () => {
       .toEqual({ verdict: "reject", reason_code: "private_topology_disclosed" });
   });
 
-  it("fails closed on hostile bilateral input instead of trusting mutable proof data", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local — fails closed on hostile bilateral input instead of trusting mutable proof data", () => {
     const hostileRelationship = new Proxy({}, {
       ownKeys: () => ["object_type"],
       getOwnPropertyDescriptor: () => ({ enumerable: true, configurable: true }),
@@ -4147,7 +4147,7 @@ describe("Workspace hosts, keys, repositories, and freshness", () => {
       .toEqual({ verdict: "reject", reason_code: "workspace_schema_invalid" });
   });
 
-  it("composes the signed Task-5 trusted-seed ACL without granting governance", async () => {
+  it("BLUE TEAM VALIDATION: synthetic/local — composes the signed Task-5 trusted-seed ACL without granting governance", async () => {
     const workspace = await import("./workspace.js") as typeof import("./workspace.js") & {
       createWorkspacePrivateRelayEvaluator?: (
         authority: unknown,

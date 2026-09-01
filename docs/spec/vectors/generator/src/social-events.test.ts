@@ -261,7 +261,7 @@ beforeAll(async () => {
 });
 
 describe("ordinary Social authorship", () => {
-  it("rejects an automated proof minted by a different backdated authority", async () => {
+  it("BLUE TEAM VALIDATION: synthetic/local — rejects an automated proof minted by a different backdated authority", async () => {
     const social = await loadSocialEvents();
     const expectedAuthority = createCommsSocialPublicationAuthority({
       trusted_now: () => attributedAgentPost.created_at + 1,

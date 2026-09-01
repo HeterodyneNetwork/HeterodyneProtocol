@@ -1,11 +1,14 @@
+import { createHash } from "node:crypto";
 import {
   existsSync,
+  lstatSync,
   mkdirSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   writeFileSync,
 } from "node:fs";
-import { relative, resolve, sep } from "node:path";
+import { join, relative, resolve, sep } from "node:path";
 import { Parser } from "commonmark";
 import type { Node as CommonmarkNode } from "commonmark";
 import ts from "typescript";
@@ -18,10 +21,6 @@ import {
 import type { DocumentId } from "./types.js";
 import { computeRegistryDigest, loadRegistry } from "./registry.js";
 import { verifyMarmotArchive } from "./marmot-archive.js";
-import {
-  loadSnapshotManifest,
-  SNAPSHOT_MANIFEST_PATH,
-} from "./snapshot-manifest.js";
 
 /** The complete claims/OIDC invariant set required in the family threat model. */
 export const CLAIMS_OIDC_INVARIANT_IDS = [
@@ -155,15 +154,6 @@ const DEFENSIVE_VALIDATION_DIRECT_PROHIBITION_AFTER =
 
 const APPROVED_CLOSURE_PLAN_PATH =
   "docs/superpowers/plans/2026-08-29-heterodyne-0.6-final-security-closure.md";
-const CREATED_CLOSURE_TEST_PATHS = [
-  "docs/spec/vectors/generator/src/assurance-observation.test.ts",
-  "docs/spec/vectors/generator/src/assurance-downgrade.test.ts",
-  "docs/spec/vectors/generator/src/authorization-freshness-boundary.test.ts",
-  "docs/spec/vectors/generator/src/core-writer-binding.test.ts",
-  "docs/spec/vectors/generator/src/claim-authorization.test.ts",
-  "docs/spec/vectors/generator/src/current-vectors/semantic-certificates.test.ts",
-  "docs/spec/vectors/generator/src/workspace-assurance.test.ts",
-] as const;
 const DEFENSIVE_REVIEW_PATH = /(?:\.test\.ts|(?:brief|review)\.(?:md|txt))$/iu;
 
 /** Check new hostile-boundary test or brief prose for defensive framing. */
@@ -242,14 +232,24 @@ function identifierTokens(identifier: string): string[] {
 
 function declarationNamesHostileFixture(node: ts.CallExpression): boolean {
   const title = literalTestTitle(node);
-  if (title !== undefined && /\b(?:hostile|adversarial)\b/iu.test(title)) return true;
+  if (title !== undefined && /\b(?:hostile|adversarial|attacker|attack)\b/iu.test(title)) return true;
   let hostile = false;
   const visit = (child: ts.Node): void => {
     if (hostile) return;
     if (ts.isIdentifier(child)
       && identifierTokens(child.text).some((token) =>
         token === "hostile" || token === "adversarial"
+        || token === "attacker" || token === "attack"
       )) {
+      hostile = true;
+      return;
+    }
+    if (
+      ts.isStringLiteralLike(child)
+      && /\b(?:hostile|adversarial|attacker|attack)\b/iu.test(child.text)
+      && ts.isPropertyAssignment(child.parent)
+      && child.parent.initializer === child
+    ) {
       hostile = true;
       return;
     }
@@ -298,13 +298,62 @@ export function lintDefensiveValidationTestDeclarations(
   return issues;
 }
 
+function generatorTestPaths(repoRoot: string): string[] {
+  const sourcePath = "docs/spec/vectors/generator/src";
+  const sourceRoot = resolve(repoRoot, sourcePath);
+  if (!existsSync(sourceRoot)) return [];
+  const visit = (absolute: string): string[] => readdirSync(
+    absolute,
+    { withFileTypes: true },
+  ).flatMap((entry) => {
+    if (entry.isSymbolicLink()) return [];
+    const path = join(absolute, entry.name);
+    if (entry.isDirectory()) return visit(path);
+    if (!entry.isFile() || !entry.name.endsWith(".test.ts")) return [];
+    return [relative(repoRoot, path).split(sep).join("/")];
+  });
+  return visit(sourceRoot).sort();
+}
+
+/** Review every generator test declaration, excluding non-source dependency/build trees. */
+export function lintDefensiveValidationRepositoryTests(
+  repoRoot: string,
+): DocsLintIssue[] {
+  return generatorTestPaths(repoRoot).flatMap((path) => {
+    const text = readFileSync(resolve(repoRoot, path), "utf8");
+    const source = ts.createSourceFile(
+      path,
+      text,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS,
+    );
+    let hasDeclaration = false;
+    const visit = (node: ts.Node): void => {
+      if (hasDeclaration) return;
+      if (ts.isCallExpression(node) && isTestDeclarationCall(node)) {
+        hasDeclaration = true;
+        return;
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(source);
+    return hasDeclaration
+      ? lintDefensiveValidationTestDeclarations(text, path)
+      : lintDefensiveValidationText(text, path);
+  });
+}
+
 function lintDefensiveValidationReviews(
   repoRoot: string,
   contentOverrides: Readonly<Record<string, string>> = {},
 ): DocsLintIssue[] {
-  const paths = [APPROVED_CLOSURE_PLAN_PATH, ...CREATED_CLOSURE_TEST_PATHS];
+  const paths = [APPROVED_CLOSURE_PLAN_PATH];
   const issues: DocsLintIssue[] = [];
   const auditRepositoryReviews = Object.keys(contentOverrides).length === 0;
+  if (auditRepositoryReviews) {
+    issues.push(...lintDefensiveValidationRepositoryTests(repoRoot));
+  }
   for (const path of paths) {
     if (!auditRepositoryReviews && !Object.hasOwn(contentOverrides, path)) continue;
     const text = contentOverrides[path]
@@ -1295,6 +1344,264 @@ export function findStrictProfileClosureIssues(
   return issues.sort();
 }
 
+type SnapshotGuidanceArtifact = {
+  path: string;
+  sha256: string;
+};
+
+type SnapshotGuidanceManifest = {
+  snapshot_schema: "1";
+  source_commit: string;
+  vector_schema_version: string;
+  vector_count: number;
+  artifacts: SnapshotGuidanceArtifact[];
+  owner_documents: string[];
+};
+
+const SNAPSHOT_MANIFEST_PATH = "docs/spec/vectors/snapshot.json";
+const SNAPSHOT_VECTOR_ROOT = "docs/spec/vectors";
+const SNAPSHOT_FULL_COMMIT = /^[0-9a-f]{40}$/u;
+const SNAPSHOT_SHA256 = /^[0-9a-f]{64}$/u;
+const SNAPSHOT_SEMVER = /^\d+\.\d+\.\d+$/u;
+const SNAPSHOT_SAFE_PATH = /^[A-Za-z0-9._/-]+$/u;
+const SNAPSHOT_SUPPORT_PATHS = [
+  "fixtures.json",
+  "schema/vector.schema.json",
+  "schema/reason-codes.json",
+  "schema/reason-codes.md",
+  "coverage/manifest.json",
+  "coverage/core.md",
+  "coverage/comms.md",
+  "coverage/control.md",
+  "coverage/social.md",
+  "coverage/workspace.md",
+  "coverage/family.md",
+] as const;
+const SNAPSHOT_OPTIONAL_ASSURANCE_COVERAGE = "coverage/assurance.md";
+const SNAPSHOT_EXCLUDED_DIRECTORIES = new Set(["coverage", "generator", "schema"]);
+const SNAPSHOT_EXCLUDED_FILES = new Set([
+  "fixtures.json",
+  "snapshot.json",
+  "snapshot.meta.schema.json",
+  "snapshot.schema.json",
+  "snapshot-unique-by-path.meta.schema.json",
+]);
+
+function snapshotGuidanceRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function snapshotGuidanceExactKeys(
+  value: Record<string, unknown>,
+  keys: readonly string[],
+  label: string,
+): void {
+  for (const key of keys) {
+    if (!Object.hasOwn(value, key)) throw new Error(`${label} missing property: ${key}`);
+  }
+  for (const key of Object.keys(value)) {
+    if (!keys.includes(key)) throw new Error(`${label} has unexpected property: ${key}`);
+  }
+}
+
+function snapshotGuidanceSafePath(path: string): boolean {
+  return SNAPSHOT_SAFE_PATH.test(path)
+    && path.startsWith(`${SNAPSHOT_VECTOR_ROOT}/`)
+    && !path.includes("//")
+    && path.split("/").every((segment) =>
+      segment !== "" && segment !== "." && segment !== ".."
+    );
+}
+
+function parseSnapshotGuidanceManifest(value: unknown): Omit<SnapshotGuidanceManifest, "owner_documents"> {
+  if (!snapshotGuidanceRecord(value)) throw new Error("snapshot manifest must be an object");
+  snapshotGuidanceExactKeys(
+    value,
+    ["snapshot_schema", "source_commit", "vector_schema_version", "vector_count", "artifacts"],
+    "snapshot manifest",
+  );
+  if (value.snapshot_schema !== "1") throw new Error("snapshot schema must be 1");
+  if (typeof value.source_commit !== "string" || !SNAPSHOT_FULL_COMMIT.test(value.source_commit)) {
+    throw new Error("snapshot source commit must be 40-lowercase-hex");
+  }
+  if (typeof value.vector_schema_version !== "string"
+    || !SNAPSHOT_SEMVER.test(value.vector_schema_version)) {
+    throw new Error("snapshot vector schema version must be semantic version syntax");
+  }
+  if (!Number.isSafeInteger(value.vector_count) || (value.vector_count as number) < 0) {
+    throw new Error("snapshot vector count must be a non-negative safe integer");
+  }
+  if (!Array.isArray(value.artifacts)) throw new Error("snapshot artifacts must be an array");
+  const seen = new Set<string>();
+  const artifacts = value.artifacts.map((entry, index): SnapshotGuidanceArtifact => {
+    if (!snapshotGuidanceRecord(entry)) {
+      throw new Error(`snapshot artifact ${index} must be an object`);
+    }
+    snapshotGuidanceExactKeys(entry, ["path", "sha256"], `snapshot artifact ${index}`);
+    if (typeof entry.path !== "string" || !snapshotGuidanceSafePath(entry.path)) {
+      throw new Error(`unsafe artifact path: ${String(entry.path)}`);
+    }
+    if (seen.has(entry.path)) throw new Error(`duplicate artifact path: ${entry.path}`);
+    seen.add(entry.path);
+    if (typeof entry.sha256 !== "string" || !SNAPSHOT_SHA256.test(entry.sha256)) {
+      throw new Error(`invalid artifact digest: ${entry.path}`);
+    }
+    return { path: entry.path, sha256: entry.sha256 };
+  });
+  if (artifacts.some((entry, index) => index > 0 && artifacts[index - 1]!.path >= entry.path)) {
+    throw new Error("snapshot artifact paths must be unique and strictly sorted");
+  }
+  return {
+    snapshot_schema: "1",
+    source_commit: value.source_commit,
+    vector_schema_version: value.vector_schema_version,
+    vector_count: value.vector_count as number,
+    artifacts,
+  };
+}
+
+function snapshotGuidanceBytes(repoRoot: string, path: string): Buffer {
+  const repositoryRoot = resolve(repoRoot);
+  const rootStatus = lstatSync(repositoryRoot);
+  if (rootStatus.isSymbolicLink() || !rootStatus.isDirectory()) {
+    throw new Error("snapshot repository root must be a non-symbolic-link directory");
+  }
+  const rootRealPath = realpathSync(repositoryRoot);
+  let current = repositoryRoot;
+  for (const [index, segment] of path.split("/").entries()) {
+    current = join(current, segment);
+    const status = lstatSync(current);
+    if (status.isSymbolicLink()) throw new Error(`snapshot path must not be a symbolic link: ${path}`);
+    const final = index === path.split("/").length - 1;
+    if (final ? !status.isFile() : !status.isDirectory()) {
+      throw new Error(
+        final
+          ? `snapshot artifact must be a regular file: ${path}`
+          : `snapshot artifact parent must be a directory: ${path}`,
+      );
+    }
+  }
+  const realPath = realpathSync(current);
+  const relativePath = relative(rootRealPath, realPath);
+  if (relativePath === ".." || relativePath.startsWith(`..${sep}`) || realPath === rootRealPath) {
+    throw new Error(`snapshot artifact escapes repository root: ${path}`);
+  }
+  return readFileSync(realPath);
+}
+
+function snapshotGuidanceJson(bytes: Buffer, label: string): unknown {
+  try {
+    return JSON.parse(bytes.toString("utf8")) as unknown;
+  } catch (error) {
+    throw new Error(`${label} is not valid JSON: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+function snapshotGuidanceVectorPaths(vectorRoot: string): string[] {
+  const nestedJsonPaths = (root: string, current: string): string[] =>
+    readdirSync(current, { withFileTypes: true }).flatMap((entry) => {
+      const absolute = join(current, entry.name);
+      if (entry.isSymbolicLink()) {
+        throw new Error(`snapshot path must not be a symbolic link: ${entry.name}`);
+      }
+      if (entry.isDirectory()) return nestedJsonPaths(root, absolute);
+      if (!entry.isFile() || !entry.name.endsWith(".json")) return [];
+      return [`${SNAPSHOT_VECTOR_ROOT}/${relative(root, absolute).split(sep).join("/")}`];
+    });
+  return readdirSync(vectorRoot, { withFileTypes: true }).flatMap((entry) => {
+    if (entry.isSymbolicLink()) {
+      throw new Error(`snapshot path must not be a symbolic link: ${entry.name}`);
+    }
+    if (entry.isDirectory()) {
+      return SNAPSHOT_EXCLUDED_DIRECTORIES.has(entry.name)
+        ? []
+        : nestedJsonPaths(vectorRoot, join(vectorRoot, entry.name));
+    }
+    if (!entry.isFile() || !entry.name.endsWith(".json")
+      || SNAPSHOT_EXCLUDED_FILES.has(entry.name)) return [];
+    return [`${SNAPSHOT_VECTOR_ROOT}/${entry.name}`];
+  }).sort();
+}
+
+function loadSnapshotGuidanceManifest(repoRoot: string): SnapshotGuidanceManifest {
+  const bytes = snapshotGuidanceBytes(repoRoot, SNAPSHOT_MANIFEST_PATH).toString("utf8");
+  const manifest = parseSnapshotGuidanceManifest(snapshotGuidanceJson(
+    Buffer.from(bytes, "utf8"),
+    "snapshot manifest",
+  ));
+  const canonical = `${JSON.stringify({
+    snapshot_schema: manifest.snapshot_schema,
+    source_commit: manifest.source_commit,
+    vector_schema_version: manifest.vector_schema_version,
+    vector_count: manifest.vector_count,
+    artifacts: manifest.artifacts,
+  }, null, 2)}\n`;
+  if (bytes !== canonical) {
+    throw new Error("snapshot manifest is not canonical two-space JSON with one trailing LF");
+  }
+
+  const schemaPath = `${SNAPSHOT_VECTOR_ROOT}/schema/vector.schema.json`;
+  const schema = snapshotGuidanceJson(
+    snapshotGuidanceBytes(repoRoot, schemaPath),
+    "packaged vector schema",
+  );
+  if (!snapshotGuidanceRecord(schema) || !snapshotGuidanceRecord(schema.properties)) {
+    throw new Error("packaged vector schema has no properties object");
+  }
+  const versionRule = schema.properties.vector_schema_version;
+  const ownerRule = schema.properties.owner_document;
+  if (!snapshotGuidanceRecord(versionRule)
+    || typeof versionRule.const !== "string"
+    || !SNAPSHOT_SEMVER.test(versionRule.const)) {
+    throw new Error("packaged vector schema has no exact vector_schema_version const");
+  }
+  if (!snapshotGuidanceRecord(ownerRule)
+    || !Array.isArray(ownerRule.enum)
+    || ownerRule.enum.length === 0
+    || ownerRule.enum.some((owner) => typeof owner !== "string")
+    || new Set(ownerRule.enum).size !== ownerRule.enum.length) {
+    throw new Error("packaged vector schema has no closed unique owner_document enum");
+  }
+  const ownerDocuments = ownerRule.enum as string[];
+  if (manifest.vector_schema_version !== versionRule.const) {
+    throw new Error(
+      `snapshot schema version disagreement: manifest ${manifest.vector_schema_version}, packaged schema ${versionRule.const}`,
+    );
+  }
+
+  const vectorRoot = resolve(repoRoot, SNAPSHOT_VECTOR_ROOT);
+  const vectorPaths = snapshotGuidanceVectorPaths(vectorRoot);
+  for (const path of vectorPaths) {
+    const vector = snapshotGuidanceJson(snapshotGuidanceBytes(repoRoot, path), `snapshot vector ${path}`);
+    if (!snapshotGuidanceRecord(vector) || vector.vector_schema_version !== versionRule.const) {
+      throw new Error(`snapshot schema version disagreement: ${path} does not use ${versionRule.const}`);
+    }
+  }
+  if (manifest.vector_count !== vectorPaths.length) {
+    throw new Error(
+      `snapshot vector count mismatch: expected ${vectorPaths.length}, found ${manifest.vector_count}`,
+    );
+  }
+  const supportPaths: string[] = [...SNAPSHOT_SUPPORT_PATHS];
+  if (existsSync(resolve(repoRoot, SNAPSHOT_VECTOR_ROOT, SNAPSHOT_OPTIONAL_ASSURANCE_COVERAGE))) {
+    supportPaths.push(SNAPSHOT_OPTIONAL_ASSURANCE_COVERAGE);
+  }
+  const expectedPaths = [
+    ...vectorPaths,
+    ...supportPaths.map((path) => `${SNAPSHOT_VECTOR_ROOT}/${path}`),
+  ].sort();
+  if (manifest.artifacts.length !== expectedPaths.length) {
+    throw new Error("snapshot artifact inventory length mismatch");
+  }
+  for (const [index, path] of expectedPaths.entries()) {
+    const artifact = manifest.artifacts[index];
+    if (artifact?.path !== path) throw new Error(`snapshot artifact inventory mismatch: ${path}`);
+    const digest = createHash("sha256").update(snapshotGuidanceBytes(repoRoot, path)).digest("hex");
+    if (artifact.sha256 !== digest) throw new Error(`artifact digest mismatch: ${path}`);
+  }
+  return { ...manifest, owner_documents: ownerDocuments };
+}
+
 const MAINTAINED_SNAPSHOT_GUIDANCE_PATHS = [
   "docs/spec/heterodyne-core.md",
   "docs/spec/heterodyne.md",
@@ -1331,7 +1638,7 @@ export function lintMaintainedSnapshotGuidance(
 ): DocsLintIssue[] {
   let manifest;
   try {
-    manifest = loadSnapshotManifest(repoRoot);
+    manifest = loadSnapshotGuidanceManifest(repoRoot);
   } catch (error) {
     return [{
       path: SNAPSHOT_MANIFEST_PATH,
@@ -1450,6 +1757,22 @@ export function lintMaintainedSnapshotGuidance(
         "snapshot-guidance-stale",
         `retired current snapshot guidance: ${match[0]}`,
       );
+    }
+    if (path === "docs/spec/vectors/README.md") {
+      const ownerExample = /"owner_document"\s*:\s*"([^"]+)"/u.exec(text);
+      if (ownerExample !== null) {
+        const documentedOwners = ownerExample[1]!.split("|").map((owner) => owner.trim());
+        if (documentedOwners.length !== manifest.owner_documents.length
+          || documentedOwners.some((owner, index) => owner !== manifest.owner_documents[index])) {
+          addIssue(
+            path,
+            text,
+            ownerExample.index,
+            "snapshot-guidance-stale",
+            "owner_document example must match the packaged vector schema enum",
+          );
+        }
+      }
     }
   }
   return issues;
