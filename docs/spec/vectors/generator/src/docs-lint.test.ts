@@ -24,6 +24,7 @@ import {
   lintMaintainedSnapshotGuidance,
 } from "./docs-lint.js";
 import { currentModuleDependencies } from "./current-import-graph.js";
+import { DOCUMENTS } from "./family.js";
 import { loadRegistry } from "./registry.js";
 
 const repositoryRoot = resolve(import.meta.dirname, "../../../../../");
@@ -310,6 +311,80 @@ describe.each([{ attackFixture: true }])("an unmarked matrix suite", () => {});\
       expect.objectContaining({ line: 2, code: "defensive-validation-scope" }),
       expect.objectContaining({ line: 4, code: "defensive-validation-scope" }),
     ]);
+  });
+
+  it.each([
+    `test.concurrent("hostile concurrent test", () => {});`,
+    `it.fails("adversarial expected failure", () => {});`,
+    `describe.concurrent("attacker concurrent suite", () => {});`,
+    `test.concurrent.each([{ attackFixture: true }])("hostile concurrent matrix", () => {});`,
+    `it.sequential.for([{ adversarialInput: true }])("hostile sequential matrix", () => {});`,
+    `test.skipIf(false)("hostile conditional test", () => {});`,
+    `it.runIf(true).concurrent("adversarial conditional test", () => {});`,
+    `describe.skipIf(false).concurrent.each([{ attackerInput: true }])("hostile conditional suite", () => {});`,
+    `describe.shuffle("attack-order suite", () => {});`,
+  ])("BLUE TEAM VALIDATION: synthetic/local — recognizes supported Vitest modifier declarations: %s", (declaration) => {
+    expect(lintDefensiveValidationTestDeclarations(
+      declaration,
+      "synthetic-boundary.test.ts",
+    )).toEqual([
+      expect.objectContaining({ line: 1, code: "defensive-validation-scope" }),
+    ]);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local — fails closed on an unknown Vitest modifier chain", () => {
+    expect(lintDefensiveValidationTestDeclarations(
+      `test.unknownModifier("hostile unknown declaration", () => {});`,
+      "synthetic-boundary.test.ts",
+    )).toEqual([
+      expect.objectContaining({ line: 1, code: "defensive-validation-scope" }),
+    ]);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local — accepts exact framing through supported Vitest modifiers", () => {
+    expect(lintDefensiveValidationTestDeclarations(
+      `test.concurrent.each([{ hostileFixture: true }])(
+  "BLUE TEAM VALIDATION: synthetic/local — hostile concurrent matrix",
+  () => {},
+);`,
+      "synthetic-boundary.test.ts",
+    )).toEqual([]);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local — recognizes imported Vitest declaration aliases", () => {
+    const issues = lintDefensiveValidationTestDeclarations(
+      `import { it as caseIt, test as caseTest, describe as suite } from "vitest";
+caseIt("hostile aliased test", () => {});
+caseTest.concurrent.each([{ attackFixture: true }])("adversarial aliased matrix", () => {});
+suite.concurrent("attacker aliased suite", () => {});`,
+      "synthetic-boundary.test.ts",
+    );
+    expect(issues).toEqual([
+      expect.objectContaining({ line: 2, code: "defensive-validation-scope" }),
+      expect.objectContaining({ line: 3, code: "defensive-validation-scope" }),
+      expect.objectContaining({ line: 4, code: "defensive-validation-scope" }),
+    ]);
+  });
+
+  it.each([
+    `import { it as caseIt } from "vitest";
+{
+  const caseIt = fakeIt;
+  caseIt("hostile shadowed helper", () => {});
+}`,
+    `import { it as caseIt } from "vitest";
+caseIt = fakeIt;
+caseIt("hostile reassigned helper", () => {});`,
+  ])("BLUE TEAM VALIDATION: synthetic/local — keeps shadowed or reassigned Vitest aliases untrusted", (source) => {
+    expect(lintDefensiveValidationTestDeclarations(
+      source,
+      "synthetic-boundary.test.ts",
+    )).toEqual([]);
+    expect(lintDefensiveValidationRepositoryTests(defensiveReviewRoot(source)))
+      .toContainEqual(expect.objectContaining({
+        code: "defensive-validation-scope",
+        line: 1,
+      }));
   });
 
   it("BLUE TEAM VALIDATION: synthetic/local — requires attacker and attack fixture declarations to carry the exact prefix", () => {
@@ -1125,6 +1200,26 @@ Coverage projections are [core.md](coverage/core.md),
     expect(lintMaintainedGuides(repositoryRoot, { [vectorGuidePath]: guide }))
       .not.toContainEqual(expect.objectContaining({
         path: vectorGuidePath,
+        message: expect.stringContaining("owner-document anchor rule"),
+      }));
+  });
+
+  it.each([
+    "However, anchors do not resolve in their owning family document.",
+    "Some anchors resolve outside their owning family document.",
+    "Other anchors resolve in a non-owning family document.",
+  ])("rejects a later owner-anchor contradiction: %s", (contradiction) => {
+    const canonical =
+      "For every vector, the coverage manifest records qualified references whose "
+      + "anchors resolve in that vector's owning family document.";
+    const guide = replaceVectorGuideAnchorRule(
+      read(vectorGuidePath),
+      `${canonical} ${contradiction}`,
+    );
+    expect(lintMaintainedGuides(repositoryRoot, { [vectorGuidePath]: guide }))
+      .toContainEqual(expect.objectContaining({
+        path: vectorGuidePath,
+        code: "retired-authoring-model",
         message: expect.stringContaining("owner-document anchor rule"),
       }));
   });
@@ -2426,10 +2521,13 @@ describe("registry-bound artifacts", () => {
   it("pins one registry revision and digest in exactly one place", () => {
     const registry = loadRegistry(repositoryRoot);
     expect(registry.manifest.entry_set_sha256).toMatch(/^[0-9a-f]{64}$/);
-    for (const document of ["core", "comms", "control", "social", "workspace"]) {
+    const checkedDocuments = new Set<string>();
+    for (const document of DOCUMENTS) {
+      checkedDocuments.add(document);
       expect(read(`docs/spec/heterodyne-${document}.md`))
         .not.toMatch(/^Registry revision:/m);
     }
+    expect(checkedDocuments).toContain("assurance");
   });
 
   it("retains historical registry introductions alongside the current family version", () => {

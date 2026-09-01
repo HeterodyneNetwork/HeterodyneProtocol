@@ -258,37 +258,87 @@ export function lintDefensiveValidationText(
 
 const BLUE_TEAM_TEST_PREFIX = "BLUE TEAM VALIDATION: synthetic/local";
 
-function isTestApi(expression: ts.Expression): boolean {
-  return ts.isIdentifier(expression)
-    && (expression.text === "it"
-      || expression.text === "test"
-      || expression.text === "describe");
+type DefensiveValidationTestApi = "describe" | "it" | "test";
+type DefensiveValidationTestApiStep = { name: string; invoked: boolean };
+type DefensiveValidationTestDeclaration = {
+  api: DefensiveValidationTestApi;
+  trusted: boolean;
+};
+
+const DEFENSIVE_VALIDATION_TEST_MODIFIERS = new Set([
+  "concurrent", "fails", "only", "sequential", "skip", "todo",
+]);
+const DEFENSIVE_VALIDATION_SUITE_MODIFIERS = new Set([
+  "concurrent", "only", "sequential", "shuffle", "skip", "todo",
+]);
+const DEFENSIVE_VALIDATION_CONDITIONAL_MODIFIERS = new Set(["runIf", "skipIf"]);
+const DEFENSIVE_VALIDATION_TABLE_MODIFIERS = new Set(["each", "for"]);
+
+function defensiveValidationTestApiChain(expression: ts.Expression): {
+  root: ts.Identifier;
+  steps: DefensiveValidationTestApiStep[];
+} | undefined {
+  if (ts.isIdentifier(expression)) return { root: expression, steps: [] };
+  if (ts.isPropertyAccessExpression(expression)) {
+    const chain = defensiveValidationTestApiChain(expression.expression);
+    return chain === undefined
+      ? undefined
+      : { ...chain, steps: [...chain.steps, { name: expression.name.text, invoked: false }] };
+  }
+  if (ts.isCallExpression(expression)) {
+    const chain = defensiveValidationTestApiChain(expression.expression);
+    const last = chain?.steps.at(-1);
+    if (chain === undefined || last === undefined || last.invoked) return undefined;
+    return {
+      ...chain,
+      steps: [
+        ...chain.steps.slice(0, -1),
+        { ...last, invoked: true },
+      ],
+    };
+  }
+  return undefined;
 }
 
-function isTestDeclarationCall(node: ts.CallExpression): boolean {
-  const expression = node.expression;
-  if (isTestApi(expression)) return true;
-  if (ts.isPropertyAccessExpression(expression)) {
-    return isTestApi(expression.expression)
-      && ["only", "skip", "todo"].includes(expression.name.text);
+function defensiveValidationTestChainStatus(
+  api: DefensiveValidationTestApi,
+  steps: readonly DefensiveValidationTestApiStep[],
+): "builder" | "supported" | "unknown" {
+  if (steps.length === 0) return "supported";
+  const modifiers = api === "describe"
+    ? DEFENSIVE_VALIDATION_SUITE_MODIFIERS
+    : DEFENSIVE_VALIDATION_TEST_MODIFIERS;
+  const seen = new Set<string>();
+  for (const [index, step] of steps.entries()) {
+    const last = index === steps.length - 1;
+    if (DEFENSIVE_VALIDATION_CONDITIONAL_MODIFIERS.has(step.name)) {
+      if (index !== 0 || seen.has(step.name)) return "unknown";
+      if (!step.invoked) return last ? "builder" : "unknown";
+    } else if (DEFENSIVE_VALIDATION_TABLE_MODIFIERS.has(step.name)) {
+      if (!last || seen.has(step.name)) return "unknown";
+      return step.invoked ? "supported" : "builder";
+    } else if (!modifiers.has(step.name) || step.invoked || seen.has(step.name)) {
+      return "unknown";
+    }
+    seen.add(step.name);
   }
-  if (!ts.isCallExpression(expression)
-    || !ts.isPropertyAccessExpression(expression.expression)) return false;
-  return isTestApi(expression.expression.expression)
-    && ["each", "for"].includes(expression.expression.name.text);
+  return "supported";
 }
 
-function isSuiteDeclarationCall(node: ts.CallExpression): boolean {
-  const expression = node.expression;
-  if (ts.isIdentifier(expression)) return expression.text === "describe";
-  if (ts.isPropertyAccessExpression(expression)) {
-    return ts.isIdentifier(expression.expression)
-      && expression.expression.text === "describe";
-  }
-  return ts.isCallExpression(expression)
-    && ts.isPropertyAccessExpression(expression.expression)
-    && ts.isIdentifier(expression.expression.expression)
-    && expression.expression.expression.text === "describe";
+function defensiveValidationTestDeclaration(
+  node: ts.CallExpression,
+  context: DefensiveValidationAstContext,
+): DefensiveValidationTestDeclaration | undefined {
+  const chain = defensiveValidationTestApiChain(node.expression);
+  if (chain === undefined) return undefined;
+  const syntacticApi = defensiveValidationSyntacticVitestTestApi(chain.root, context);
+  if (syntacticApi === undefined) return undefined;
+  const status = defensiveValidationTestChainStatus(syntacticApi, chain.steps);
+  if (status === "builder") return undefined;
+  return {
+    api: syntacticApi,
+    trusted: defensiveValidationTrustedVitestName(chain.root, context) === syntacticApi,
+  };
 }
 
 function literalTestTitle(node: ts.CallExpression): string | undefined {
@@ -306,7 +356,10 @@ function identifierTokens(identifier: string): string[] {
     .map((token) => token.toLowerCase());
 }
 
-function declarationNamesHostileFixture(node: ts.CallExpression): boolean {
+function declarationNamesHostileFixture(
+  node: ts.CallExpression,
+  declaration: DefensiveValidationTestDeclaration,
+): boolean {
   const title = literalTestTitle(node);
   if (title !== undefined && /\b(?:hostile|adversarial|attacker|attack)\b/iu.test(title)) return true;
   let hostile = false;
@@ -331,7 +384,7 @@ function declarationNamesHostileFixture(node: ts.CallExpression): boolean {
     }
     ts.forEachChild(child, visit);
   };
-  visit(isSuiteDeclarationCall(node) ? node.expression : node);
+  visit(declaration.api === "describe" ? node.expression : node);
   return hostile;
 }
 
@@ -353,11 +406,17 @@ export function lintDefensiveValidationTestDeclarations(
     true,
     ts.ScriptKind.TS,
   );
+  const context = defensiveValidationAstContext(source);
   const issues: DocsLintIssue[] = [];
   const visit = (node: ts.Node): void => {
-    if (ts.isCallExpression(node) && isTestDeclarationCall(node)) {
+    if (ts.isCallExpression(node)) {
+      const declaration = defensiveValidationTestDeclaration(node, context);
+      if (declaration === undefined || !declaration.trusted) {
+        ts.forEachChild(node, visit);
+        return;
+      }
       const title = literalTestTitle(node);
-      if (declarationNamesHostileFixture(node)
+      if (declarationNamesHostileFixture(node, declaration)
         && (title === undefined || !hasExactBlueTeamTestPrefix(title))) {
         issues.push({
           path,
@@ -399,6 +458,7 @@ function defensiveValidationFileText(text: string, path: string): string {
     true,
     ts.ScriptKind.TS,
   );
+  const context = defensiveValidationAstContext(source);
   const excluded: Array<readonly [number, number]> = [];
   const visit = (node: ts.Node): void => {
     if (ts.isTemplateExpression(node)) {
@@ -408,7 +468,7 @@ function defensiveValidationFileText(text: string, path: string): string {
     if (ts.isStringLiteralLike(node)) {
       const parent = node.parent;
       const isTitle = ts.isCallExpression(parent)
-        && isTestDeclarationCall(parent)
+        && defensiveValidationTestDeclaration(parent, context) !== undefined
         && parent.arguments[0] === node;
       if (!isTitle) excluded.push([node.getStart(source), node.end]);
     }
@@ -490,11 +550,16 @@ type DefensiveValidationAssignment = {
   binding: DefensiveValidationBinding | undefined;
 };
 
-type DefensiveValidationExpectContext = {
+type DefensiveValidationVitestOrigin = {
+  declaration: ts.ImportSpecifier;
+  importedName: string;
+};
+
+type DefensiveValidationAstContext = {
   bindings: readonly DefensiveValidationBinding[];
   reassignments: readonly DefensiveValidationAssignment[];
   source: ts.SourceFile;
-  vitestOrigins: ReadonlyMap<string, ts.ImportSpecifier>;
+  vitestOrigins: ReadonlyMap<string, DefensiveValidationVitestOrigin>;
   ambiguousVitestOrigins: ReadonlySet<string>;
 };
 
@@ -588,16 +653,16 @@ function defensiveValidationResolvedBinding(
   return visible.length === 1 ? visible[0] : null;
 }
 
-function defensiveValidationExpectContext(
+function defensiveValidationAstContext(
   source: ts.SourceFile,
-): DefensiveValidationExpectContext {
+): DefensiveValidationAstContext {
   const bindings: DefensiveValidationBinding[] = [];
   const pendingReassignments: Array<{
     name: string;
     node: ts.Identifier;
     scope: ts.Node;
   }> = [];
-  const vitestOrigins = new Map<string, ts.ImportSpecifier>();
+  const vitestOrigins = new Map<string, DefensiveValidationVitestOrigin>();
   const ambiguousVitestOrigins = new Set<string>();
   const addBinding = (name: string, declaration: ts.Node, scope: ts.Node): void => {
     bindings.push({ name, declaration, scope });
@@ -616,12 +681,14 @@ function defensiveValidationExpectContext(
           for (const element of clause.namedBindings.elements) {
             addBinding(element.name.text, element, source);
             const importedName = element.propertyName?.text ?? element.name.text;
-            if (!clause.isTypeOnly && !element.isTypeOnly
-              && moduleName === "vitest" && importedName === "expect") {
+            if (!clause.isTypeOnly && !element.isTypeOnly && moduleName === "vitest") {
               if (vitestOrigins.has(element.name.text)) {
                 ambiguousVitestOrigins.add(element.name.text);
               } else {
-                vitestOrigins.set(element.name.text, element);
+                vitestOrigins.set(element.name.text, {
+                  declaration: element,
+                  importedName,
+                });
               }
             }
           }
@@ -697,30 +764,48 @@ function defensiveValidationNodeContains(scope: ts.Node, node: ts.Node): boolean
 
 function defensiveValidationRootIsVitestExpect(
   root: ts.Identifier,
-  context: DefensiveValidationExpectContext,
+  context: DefensiveValidationAstContext,
 ): boolean {
+  return defensiveValidationTrustedVitestName(root, context) === "expect";
+}
+
+function defensiveValidationSyntacticVitestTestApi(
+  root: ts.Identifier,
+  context: DefensiveValidationAstContext,
+): DefensiveValidationTestApi | undefined {
+  const importedName = context.vitestOrigins.get(root.text)?.importedName;
+  const name = importedName ?? root.text;
+  return name === "describe" || name === "it" || name === "test" ? name : undefined;
+}
+
+function defensiveValidationTrustedVitestName(
+  root: ts.Identifier,
+  context: DefensiveValidationAstContext,
+): string | undefined {
   const origin = context.vitestOrigins.get(root.text);
-  if (root.text !== "expect" && origin === undefined) return false;
-  if (context.ambiguousVitestOrigins.has(root.text)) return false;
+  const name = origin?.importedName ?? root.text;
+  if (context.ambiguousVitestOrigins.has(root.text)) return undefined;
   const binding = defensiveValidationResolvedBinding(
     root.text,
     root,
     context.bindings,
   );
-  if (binding === null || (binding !== undefined && binding.declaration !== origin)) {
-    return false;
+  if (binding === null
+    || (binding !== undefined && binding.declaration !== origin?.declaration)) {
+    return undefined;
   }
-  return !context.reassignments.some((reassignment) =>
+  if (context.reassignments.some((reassignment) =>
     reassignment.name === root.text
     && reassignment.binding === binding
     && reassignment.node.getStart(context.source) < root.getStart(context.source)
     && defensiveValidationNodeContains(reassignment.scope, root)
-  );
+  )) return undefined;
+  return name;
 }
 
 function defensiveValidationCallIsExpectRooted(
   call: ts.CallExpression,
-  context: DefensiveValidationExpectContext,
+  context: DefensiveValidationAstContext,
 ): boolean {
   let expression = call.expression;
   while (ts.isPropertyAccessExpression(expression)) expression = expression.expression;
@@ -730,7 +815,7 @@ function defensiveValidationCallIsExpectRooted(
 
 function defensiveValidationExpressionIsAssertionChain(
   expression: ts.Expression,
-  context: DefensiveValidationExpectContext,
+  context: DefensiveValidationAstContext,
 ): boolean {
   while (ts.isPropertyAccessExpression(expression)) expression = expression.expression;
   return ts.isCallExpression(expression)
@@ -739,7 +824,7 @@ function defensiveValidationExpressionIsAssertionChain(
 
 function defensiveValidationIsAssertionMatcher(
   call: ts.CallExpression,
-  context: DefensiveValidationExpectContext,
+  context: DefensiveValidationAstContext,
 ): boolean {
   return ts.isPropertyAccessExpression(call.expression)
     && defensiveValidationExpressionIsAssertionChain(
@@ -760,7 +845,7 @@ function defensiveValidationCallFeedsAssertionChain(call: ts.CallExpression): bo
 
 function defensiveValidationLiteralIsExempt(
   node: ts.Node,
-  context: DefensiveValidationExpectContext,
+  context: DefensiveValidationAstContext,
 ): boolean {
   let child = node;
   for (let parent = node.parent; parent !== undefined; parent = parent.parent) {
@@ -798,7 +883,7 @@ function lintDefensiveValidationLiteralTargets(
     true,
     ts.ScriptKind.TS,
   );
-  const expectContext = defensiveValidationExpectContext(source);
+  const expectContext = defensiveValidationAstContext(source);
   const issues: DocsLintIssue[] = [];
   const visit = (node: ts.Node): void => {
     const literalText = ts.isTemplateExpression(node)
@@ -2361,12 +2446,17 @@ function vectorGuideHasAffirmativeAnchorRule(section: string): boolean {
       .replace(/\s+/gu, " ")
       .trim()
       .toLowerCase());
-  return sentences.some((sentence) =>
+  const affirmative = (sentence: string): boolean =>
     sentence === VECTOR_GUIDE_CURRENT_ANCHOR_SENTENCE
     || VECTOR_GUIDE_AFFIRMATIVE_ANCHOR_CLAUSES.some((clause) =>
       sentence === `${clause}.`
-    )
-  );
+    );
+  const contradiction = (sentence: string): boolean =>
+    /\banchors?\b/u.test(sentence)
+    && /\bresolve(?:s|d)?\b/u.test(sentence)
+    && /\b(?:non-owning|owning) family document\b/u.test(sentence)
+    && !affirmative(sentence);
+  return sentences.some(affirmative) && !sentences.some(contradiction);
 }
 
 function findObsoleteVectorGuideIssues(text: string, path: string): FamilyDocIssue[] {
