@@ -691,6 +691,127 @@ describe("reader lifecycle and metadata privacy", () => {
     }
   });
 
+  it("BLUE TEAM VALIDATION: synthetic/local revalidates an in-place writer-signed claim record replacement", () => {
+    // BLUE TEAM VALIDATION: synthetic/local replaces one process-local record with a deterministic invalid-event record signed by the fixture writer.
+    const state = mergeClaimLedger(
+      [s.claimRecordOne, s.claimRecordTwo],
+      [],
+      s.baseRepository.checkpoint,
+      contextFor(s.baseRepository.repository),
+    );
+    const record = state.records.find(({ record_id }) =>
+      record_id === s.claimRecordOne.record_id)!;
+    const original = structuredClone(record);
+    const evidence = s.evidence.get(original.record_id)!;
+    const payload = structuredClone(record.payload) as Record<string, unknown>;
+    const artifact = payload.claim_artifact as Record<string, unknown>;
+    (artifact.event as Record<string, unknown>).id = "00".repeat(32);
+    const replacement = resign(
+      record,
+      payload as LedgerRecord["payload"],
+      s.writerOne,
+    );
+    try {
+      Object.assign(record, replacement);
+      expect(() => validateLedgerRecordOrThrow(
+        record,
+        new Map([[record.record_id, record]]),
+        boundEvidence(record, evidence),
+        bindingFor(record),
+      )).toThrow(/signature|event/);
+    } finally {
+      Object.assign(record, original);
+    }
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local revalidates an in-place writer-signed revocation record replacement", () => {
+    // BLUE TEAM VALIDATION: synthetic/local replaces one process-local revocation record with a deterministic invalid-event record signed by the fixture writer.
+    const state = mergeClaimLedger(
+      [s.claimRecordOne, s.claimRecordTwo],
+      [s.revocationRecord],
+      s.baseRepository.checkpoint,
+      contextFor(s.baseRepository.repository),
+    );
+    const record = state.records.find(({ record_id }) =>
+      record_id === s.revocationRecord.record_id)!;
+    const original = structuredClone(record);
+    const evidence = s.evidence.get(original.record_id)!;
+    const payload = structuredClone(record.payload) as Record<string, unknown>;
+    const artifact = payload.revocation_artifact as Record<string, unknown>;
+    (artifact.event as Record<string, unknown>).id = "00".repeat(32);
+    const replacement = resign(
+      record,
+      payload as LedgerRecord["payload"],
+      s.writerTwo,
+    );
+    try {
+      Object.assign(record, replacement);
+      expect(() => validateLedgerRecordOrThrow(
+        record,
+        new Map([
+          [s.claimRecordOne.record_id, s.claimRecordOne],
+          [record.record_id, record],
+        ]),
+        boundEvidence(record, evidence),
+        bindingFor(record),
+      )).toThrow(/signature|event/);
+    } finally {
+      Object.assign(record, original);
+    }
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local retains claim state after artifact removal or replacement", () => {
+    // BLUE TEAM VALIDATION: synthetic/local changes only one process-local duplicate artifact reference after validation.
+    const state = mergeClaimLedger(
+      [s.claimRecordOne, s.claimRecordTwo],
+      [],
+      s.baseRepository.checkpoint,
+      contextFor(s.baseRepository.repository),
+    );
+    const record = state.records.find(({ record_id }) =>
+      record_id === s.claimRecordOne.record_id)!;
+    const payload = record.payload as Record<string, unknown>;
+    const artifact = payload.claim_artifact;
+    const claimId = s.claimOne.artifact.semantic.claim_id;
+    let afterRemoval: ReturnType<typeof resolveAuthoritativeClaimState>;
+    let afterReplacement: ReturnType<typeof resolveAuthoritativeClaimState>;
+    try {
+      delete payload.claim_artifact;
+      afterRemoval = resolveAuthoritativeClaimState(claimId, state);
+      payload.claim_artifact = { event: {}, semantic: {} };
+      afterReplacement = resolveAuthoritativeClaimState(claimId, state);
+    } finally {
+      payload.claim_artifact = artifact;
+    }
+    expect([afterRemoval!, afterReplacement!]).toEqual(["active", "active"]);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local retains revocation state after artifact removal or replacement", () => {
+    // BLUE TEAM VALIDATION: synthetic/local changes only one process-local duplicate revocation artifact reference after validation.
+    const state = mergeClaimLedger(
+      [s.claimRecordOne, s.claimRecordTwo],
+      [s.revocationRecord],
+      s.baseRepository.checkpoint,
+      contextFor(s.baseRepository.repository),
+    );
+    const record = state.records.find(({ record_id }) =>
+      record_id === s.revocationRecord.record_id)!;
+    const payload = record.payload as Record<string, unknown>;
+    const artifact = payload.revocation_artifact;
+    const claimId = s.claimOne.artifact.semantic.claim_id;
+    let afterRemoval: ReturnType<typeof resolveAuthoritativeClaimState>;
+    let afterReplacement: ReturnType<typeof resolveAuthoritativeClaimState>;
+    try {
+      delete payload.revocation_artifact;
+      afterRemoval = resolveAuthoritativeClaimState(claimId, state);
+      payload.revocation_artifact = { event: {}, semantic: {} };
+      afterReplacement = resolveAuthoritativeClaimState(claimId, state);
+    } finally {
+      payload.revocation_artifact = artifact;
+    }
+    expect([afterRemoval!, afterReplacement!]).toEqual(["revoked", "revoked"]);
+  });
+
   it("materializes all fixed-size opaque buckets and changes every bucket per commit", () => {
     const one = materializeLedgerLayout(s.audienceKeyOne, 1, s.baseRepository.checkpoint.commit_oid, "11".repeat(32), [s.claimRecordOne]);
     const many = materializeLedgerLayout(s.audienceKeyOne, 1, s.baseRepository.checkpoint.commit_oid, "12".repeat(32), [s.claimRecordOne, s.claimRecordTwo, s.epochOneRecord]);

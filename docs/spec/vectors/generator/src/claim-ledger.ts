@@ -305,17 +305,17 @@ const VALIDATED_LEDGER_STATES = new WeakSet<object>();
 const VALIDATED_LEDGER_REPOSITORIES = new WeakMap<object, LedgerRepositoryEvidence>();
 const VALIDATED_LEDGER_CONTEXTS = new WeakMap<object, LedgerValidationContext>();
 const VALIDATED_LEDGER_SNAPSHOTS = new WeakMap<object, LedgerMergeResult>();
-const VERIFIED_LEDGER_NOSTR_EVENTS = new WeakMap<
+type VerifiedLedgerArtifactSnapshot = Readonly<{
+  record_id: string;
+  payload_digest: string;
+  signature: string;
+  event: VerifiedNostrEvent;
+  claim_semantic?: ClaimSemanticBody;
+  revocation_semantic?: JsonValue;
+}>;
+const VERIFIED_LEDGER_ARTIFACTS = new WeakMap<
   LedgerRecord,
-  VerifiedNostrEvent
->();
-const VERIFIED_LEDGER_CLAIM_SEMANTICS = new WeakMap<
-  LedgerRecord,
-  ClaimSemanticBody
->();
-const VERIFIED_LEDGER_REVOCATION_SEMANTICS = new WeakMap<
-  LedgerRecord,
-  JsonValue
+  VerifiedLedgerArtifactSnapshot
 >();
 type LedgerWriterAuthorityRecord = Readonly<{
   authority: CoreRepositoryWriterAuthority;
@@ -2754,7 +2754,7 @@ function validateAuthenticatedArtifact(
     }
     const verifiedClaim = verifyLedgerClaimArtifact(claimArtifact, evidence.claim_envelope_context);
     const parsed = inspectVerifiedClaim(verifiedClaim);
-    VERIFIED_LEDGER_CLAIM_SEMANTICS.set(record, parsed);
+    retainVerifiedLedgerClaimSemantic(record, parsed);
     if (parsed.claim_class === "authorization" &&
         (parsed.credential_ledger_persona !== record.persona ||
          parsed.credential_ledger_generation !== record.credential_ledger_generation)) {
@@ -2788,7 +2788,7 @@ function validateAuthenticatedArtifact(
     event_created_at: _eventCreatedAt,
     ...verifiedRevocationSemantic
   } = verified;
-  VERIFIED_LEDGER_REVOCATION_SEMANTICS.set(
+  retainVerifiedLedgerRevocationSemantic(
     record,
     snapshotClosedDataTree(
       verifiedRevocationSemantic,
@@ -2842,16 +2842,22 @@ function validateAuthenticatedArtifact(
 }
 
 function claimArtifactFromRecord(record: LedgerRecord): ClaimArtifact | null {
+  const retained = retainedVerifiedLedgerArtifact(record);
+  if (retained?.claim_semantic !== undefined) {
+    return {
+      event: retained.event,
+      semantic: retained.claim_semantic,
+    };
+  }
   const value = claimArtifactValueFromRecord(record);
   if (value === undefined) return null;
   const artifact = payloadObject(value);
   const event = snapshotAndVerifyLedgerNostrEvent(record, artifact.event);
-  const retainedSemantic = VERIFIED_LEDGER_CLAIM_SEMANTICS.get(record);
   return event === null
     ? null
     : {
       event,
-      semantic: retainedSemantic ?? artifact.semantic as unknown as ClaimSemanticBody,
+      semantic: artifact.semantic as unknown as ClaimSemanticBody,
     };
 }
 
@@ -2863,14 +2869,20 @@ function claimArtifactValueFromRecord(record: LedgerRecord): JsonValue | undefin
 }
 
 function revocationArtifactFromRecord(record: LedgerRecord): RevocationArtifact | null {
+  const retained = retainedVerifiedLedgerArtifact(record);
+  if (retained?.revocation_semantic !== undefined) {
+    return {
+      event: retained.event,
+      semantic: retained.revocation_semantic,
+    };
+  }
   const value = revocationArtifactValueFromRecord(record);
   if (value === undefined) return null;
   const artifact = payloadObject(value);
   const event = snapshotAndVerifyLedgerNostrEvent(record, artifact.event);
-  const retainedSemantic = VERIFIED_LEDGER_REVOCATION_SEMANTICS.get(record);
   return event === null ? null : {
     event,
-    semantic: retainedSemantic ?? artifact.semantic as JsonValue,
+    semantic: artifact.semantic as JsonValue,
   };
 }
 
@@ -2878,13 +2890,72 @@ function snapshotAndVerifyLedgerNostrEvent(
   record: LedgerRecord,
   value: unknown,
 ): VerifiedNostrEvent | null {
-  const retained = VERIFIED_LEDGER_NOSTR_EVENTS.get(record);
-  if (retained !== undefined) return retained;
+  const retained = retainedVerifiedLedgerArtifact(record);
+  if (retained !== undefined) return retained.event;
   const event = snapshotAndVerifyNostrEvent(value);
   if (event !== null) {
-    VERIFIED_LEDGER_NOSTR_EVENTS.set(record, event);
+    VERIFIED_LEDGER_ARTIFACTS.set(record, Object.freeze({
+      record_id: record.record_id,
+      payload_digest: record.payload_digest,
+      signature: record.signature,
+      event,
+    }));
   }
   return event;
+}
+
+function retainedVerifiedLedgerArtifact(
+  record: LedgerRecord,
+): VerifiedLedgerArtifactSnapshot | undefined {
+  const retained = VERIFIED_LEDGER_ARTIFACTS.get(record);
+  if (retained === undefined) return undefined;
+  const descriptors = Object.getOwnPropertyDescriptors(record);
+  const dataValue = (member: "record_id" | "payload_digest" | "signature"): unknown => {
+    const descriptor = descriptors[member];
+    return descriptor !== undefined && "value" in descriptor
+      ? descriptor.value
+      : undefined;
+  };
+  if (
+    dataValue("record_id") === retained.record_id &&
+    dataValue("payload_digest") === retained.payload_digest &&
+    dataValue("signature") === retained.signature
+  ) return retained;
+  try {
+    validateRecordIdentityBeforeWriterResolution(record);
+    VERIFIED_LEDGER_ARTIFACTS.delete(record);
+    return undefined;
+  } catch {
+    return retained;
+  }
+}
+
+function retainVerifiedLedgerClaimSemantic(
+  record: LedgerRecord,
+  semantic: ClaimSemanticBody,
+): void {
+  const retained = VERIFIED_LEDGER_ARTIFACTS.get(record);
+  if (retained === undefined) {
+    throw new Error("claim-event-signature-invalid: verified claim event snapshot is absent");
+  }
+  VERIFIED_LEDGER_ARTIFACTS.set(record, Object.freeze({
+    ...retained,
+    claim_semantic: semantic,
+  }));
+}
+
+function retainVerifiedLedgerRevocationSemantic(
+  record: LedgerRecord,
+  semantic: JsonValue,
+): void {
+  const retained = VERIFIED_LEDGER_ARTIFACTS.get(record);
+  if (retained === undefined) {
+    throw new Error("claim-event-signature-invalid: verified revocation event snapshot is absent");
+  }
+  VERIFIED_LEDGER_ARTIFACTS.set(record, Object.freeze({
+    ...retained,
+    revocation_semantic: semantic,
+  }));
 }
 
 function revocationArtifactValueFromRecord(record: LedgerRecord): JsonValue | undefined {
