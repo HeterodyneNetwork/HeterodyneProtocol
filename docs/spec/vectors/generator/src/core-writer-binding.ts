@@ -63,6 +63,27 @@ export type CurrentRepositoryWriterBinding = Readonly<{
   readonly [CURRENT_REPOSITORY_WRITER_BINDING]: true;
 }>;
 
+export type InspectedRepositoryWriterBinding = Readonly<{
+  profile: "heterodyne.core.repository-writer-binding.v1";
+  spec_version: "heterodyne/0.6.0";
+  owner_active_key: string;
+  repository_rid: string;
+  writer_nid: string;
+  ref_namespace: string;
+  operations: readonly string[];
+  issued_at: number;
+  expires_at: number;
+  owner_signature: string;
+  nid_signature: string;
+  writer_ref: string;
+  operation: "claim-ledger-write";
+  source_identity: string;
+  proof_identity: string;
+  policy_revision: number;
+  policy_checkpoint: string;
+  policy_predecessor: string | null;
+}>;
+
 type CapturedAuthority = Readonly<{
   authority_id: string;
   trusted_now: () => number;
@@ -206,6 +227,44 @@ export function revalidateCurrentRepositoryWriterBinding(
       record.operation !== record.request.operation
     ) throw invalid("current policy changed");
     return binding;
+  } catch (error) {
+    throw normalizeInvalid(error);
+  }
+}
+
+/**
+ * Inspect only a genuine binding owned by the supplied authority. The tuple is
+ * derived from Task 4's private binding record and freshly revalidated source;
+ * callers cannot project or relabel its members.
+ */
+export function inspectRepositoryWriterBinding(
+  authority: CoreRepositoryWriterAuthority,
+  binding: CurrentRepositoryWriterBinding,
+): InspectedRepositoryWriterBinding {
+  try {
+    revalidateCurrentRepositoryWriterBinding(authority, binding);
+    const record = opaqueBindingState(binding);
+    const wire = captureWireBinding(record.source);
+    return Object.freeze({
+      profile: wire.profile,
+      spec_version: wire.spec_version,
+      owner_active_key: wire.owner_active_key,
+      repository_rid: wire.repository_rid,
+      writer_nid: wire.writer_nid,
+      ref_namespace: wire.ref_namespace,
+      operations: Object.freeze([...wire.operations]),
+      issued_at: wire.issued_at,
+      expires_at: wire.expires_at,
+      owner_signature: wire.owner_signature,
+      nid_signature: wire.nid_signature,
+      writer_ref: record.writer_ref,
+      operation: record.operation,
+      source_identity: digest(wire),
+      proof_identity: bytesToHex(sha256(proofBytesFor(wire))),
+      policy_revision: record.policy_revision,
+      policy_checkpoint: record.policy_checkpoint,
+      policy_predecessor: record.policy_predecessor,
+    });
   } catch (error) {
     throw normalizeInvalid(error);
   }

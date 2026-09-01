@@ -5,6 +5,7 @@ import { base58 } from "@scure/base";
 import { describe, expect, it } from "vitest";
 import {
   createCoreRepositoryWriterAuthority,
+  inspectRepositoryWriterBinding,
   repositoryWriterBindingProofBytes,
   resolveCurrentRepositoryWriterBinding,
   revalidateCurrentRepositoryWriterBinding,
@@ -145,6 +146,19 @@ describe("current Core repository-writer binding", () => {
     expect(Object.isFrozen(binding)).toBe(true);
     expect(revalidateCurrentRepositoryWriterBinding(authority, binding))
       .toBe(binding);
+    expect(inspectRepositoryWriterBinding(authority, binding)).toMatchObject({
+      profile: "heterodyne.core.repository-writer-binding.v1",
+      owner_active_key: OWNER_KEY,
+      repository_rid: RID,
+      writer_nid: WRITER_NID,
+      ref_namespace: REF_NAMESPACE,
+      operations: ["claim-ledger-write"],
+      writer_ref: WRITER_REF,
+      operation: "claim-ledger-write",
+      policy_revision: 7,
+      policy_checkpoint: "aa".repeat(20),
+      policy_predecessor: "99".repeat(20),
+    });
   });
 
   it("accepts exact 20-byte canonical RIDs and vanilla Git-compatible ref descendants", () => {
