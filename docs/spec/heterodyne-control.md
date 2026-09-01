@@ -818,3 +818,15 @@ persona has no lower baseline status.
   ]
 }
 ```
+
+<a id="control-retired-semantics"></a>
+## 11. Retired diagnostic semantics
+
+`agent-attribution-bypass-prohibited`, `agent-human-profile-prohibited`,
+`agent-key-access-prohibited`, `agent-method-prohibited`,
+`agent-resource-denied`, `control-request-id-conflict`, and
+`control-signed-event-invalid` are retained as non-wire history, not current
+executable authority. They MUST NOT provide normative executable evidence or
+current protocol refusals. Their retirement does not relax attribution before
+signing, exact grants, or at-most-once execution: those live invariants remain
+covered by the existing publication, grant, and signer-fence boundaries.

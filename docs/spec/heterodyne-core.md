@@ -1077,3 +1077,12 @@ Core no longer defines KERI attribution of Marmot account roles. The active
 persona key is the baseline Marmot account identity. Agent keys are separate
 accounts, device leaves remain independent, and higher documents define their
 own explicit grants without changing Marmot account or MLS semantics.
+
+<a id="core-retired-semantics"></a>
+### 13.4 Retired diagnostic semantics
+
+`retired-key-authority-window-invalid` is retained as non-wire history, not
+current executable authority. It MUST NOT provide normative executable
+evidence or a current protocol refusal. This retirement does not relax the
+live Core NIP-01 verification, active-key persona, or source-neutral
+selection boundaries specified in this document.

@@ -2502,3 +2502,17 @@ Byte-exact wire conformance and unknown-version handling are family-wide
 rules stated once by [`heterodyne:0.6.0#core-conformance`](heterodyne-core.md#core-conformance) and
 [`heterodyne:0.6.0#core-versioning`](heterodyne-core.md#core-versioning); an unknown registry profile is an unknown
 stamped version for that purpose.
+
+<a id="comms-retired-semantics"></a>
+## 18. Retired and diagnostic-only semantics
+
+`dm_invite_revoked_device` and `dm_invite_unbound_device` are retained as
+non-wire history, not current executable authority. They MUST NOT provide
+normative executable evidence or current protocol refusals. Their retirement
+does not relax the live Marmot account, device-leaf, invitation authentication,
+or current revocation boundaries specified in this document.
+
+`auth_rejected_permanent` is a local relay-write diagnostic and proves no cryptographic or upstream authority. It is diagnostic-only and non-wire for
+semantic-coverage purposes: an implementation MAY retain it as a terminal
+output classification, but it MUST NOT mint a semantic certificate or satisfy
+a security invariant.

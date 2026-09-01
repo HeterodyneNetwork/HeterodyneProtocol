@@ -713,3 +713,13 @@ compromise succession; cutoff enforcement; empty compromise
 continuations; explicit routine reauthorization; public-agent subject proof;
 associated-key expiry and revocation; active-key-only downgrade rejection;
 dual-consent downgrade acceptance; and lossless and failed KERI export.
+
+<a id="assurance-retired-semantics"></a>
+## 16. Retired diagnostic semantics
+
+`revoked_key_post_compromise` is retained as non-wire history, not current
+executable authority. It MUST NOT provide normative executable evidence or a
+current protocol refusal. This retirement does not relax
+**ASSURANCE-I-COMPROMISE-CUTOFF**: live evidence remains
+`assurance/authority-at-compromise-cutoff` through the real
+`evaluateAssuranceAuthorityAt` boundary.

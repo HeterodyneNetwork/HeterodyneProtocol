@@ -83,6 +83,39 @@ afterEach(() => {
 });
 
 describe("canonical family documentation", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local — retired diagnostics cannot claim live semantic authority", () => {
+    const assurance = read("docs/spec/heterodyne-assurance.md");
+    const core = read("docs/spec/heterodyne-core.md");
+    const comms = read("docs/spec/heterodyne-comms.md");
+    const control = read("docs/spec/heterodyne-control.md");
+
+    expect(assurance).toContain('<a id="assurance-retired-semantics"></a>');
+    expect(assurance).toContain("`revoked_key_post_compromise`");
+    expect(assurance).toMatch(/not\s+current\s+executable authority/);
+    expect(assurance).toContain("evaluateAssuranceAuthorityAt");
+
+    expect(core).toContain('<a id="core-retired-semantics"></a>');
+    expect(core).toContain("`retired-key-authority-window-invalid`");
+    expect(core).toMatch(/not\s+current\s+executable authority/);
+
+    expect(comms).toContain('<a id="comms-retired-semantics"></a>');
+    expect(comms).toContain("`dm_invite_revoked_device`");
+    expect(comms).toContain("`dm_invite_unbound_device`");
+    expect(comms).toContain("`auth_rejected_permanent` is a local relay-write diagnostic");
+    expect(comms).toContain("proves no cryptographic or upstream authority");
+
+    expect(control).toContain('<a id="control-retired-semantics"></a>');
+    expect(control).toContain("`agent-attribution-bypass-prohibited`");
+    expect(control).toContain("`agent-human-profile-prohibited`");
+    expect(control).toContain("`agent-key-access-prohibited`");
+    expect(control).toContain("`agent-method-prohibited`");
+    expect(control).toContain("`agent-resource-denied`");
+    expect(control).toContain("`control-request-id-conflict`");
+    expect(control).toContain("`control-signed-event-invalid`");
+    expect(control).toMatch(/not\s+current\s+executable authority/);
+    expect(control).toContain("publication, grant, and signer-fence boundaries");
+  });
+
   it("keeps ADR-048 Proposed until exact repaired-candidate reviews pass", () => {
     expect(existsSync(resolve(repositoryRoot, "docs/adr/2026-08-26-048-security-review-remediation.md"))).toBe(true);
     expect(existsSync(resolve(repositoryRoot, "docs/adr/archive/2026-08-26-048-security-review-remediation.md"))).toBe(false);
