@@ -1021,6 +1021,44 @@ host. For an integrated relay, NIP-01 `OK` MUST NOT be returned until event
 ID, signature, tag cardinality, `h`, and local limits validate and the exact
 bytes are durably committed to the relay ref.
 
+An archival acknowledgement boundary MUST capture its authority identity,
+durable store, current Core writer resolver, and append-and-reachability
+operation once at construction. Each append request is a closed exact input
+containing only the target private RID and writer ref plus either one signed
+Marmot event with its original serialized bytes, or encrypted-media v2
+ciphertext with its signed Marmot media event. The boundary captures that
+complete input before any asynchronous operation. For an event it parses the
+captured bytes as the same closed signed event, recomputes its NIP-01 ID, and
+verifies the BIP-340 signature. For ciphertext it verifies the signed regular
+Marmot kind-9 media event and requires exactly one encrypted-media v2 `imeta`
+attachment that binds the exact lowercase `ciphertext_sha256`. A caller
+assertion that bytes, authorization, reachability, or durability is valid has
+no effect.
+
+Before append, the boundary MUST resolve authenticated current Core writer
+authority for the exact captured RID and ref. It then acquires a durable
+single-effect binding over its stable authority identity, RID, ref, exact
+repository-object digest, source-event ID or ciphertext digest, and, for
+media, the exact authorization-event ID. Only the captured bytes may be sent
+to the append operation. Its returned object digest MUST equal the SHA-256 of
+those bytes, its commit identity MUST be closed and well formed, and the object
+MUST be reachable from the authorized ref. The boundary commits those values
+and reloads an exact binding-, execution-token-, output-digest-, object-, and
+commit-equal terminal before minting an acknowledgement capability.
+
+That capability is frozen, opaque, implementation-local, and bound to the
+minting authority instance. A lookalike, clone, capability from another
+authority, changed RID, ref, bytes, event, media authorization, object digest,
+or commit grants no acknowledgement authority. Acknowledgement reloads the
+same durable object and commit and succeeds only for a genuine capability and
+an exact committed or expired-but-retained terminal. An exact committed retry,
+including after reconstruction under the same stable authority and store, MAY
+return the cached result without appending again. An executing or indeterminate
+record, unavailable persistence, malformed or unequal terminal, thrown append,
+unreachable object, or unknown or conflicting post-effect write is
+indeterminate with a deterministic reconciliation digest and MUST NOT repeat
+the repository effect.
+
 Only after durable acknowledgement may the sender apply the new Marmot epoch
 and `h` and publish the encrypted directory entry. A standard-compatible
 group MAY try another authorized host, a direct Radicle peer, or an ordinary
@@ -1034,11 +1072,22 @@ Clients and hosts MUST retain the current generation and the prior routing IDs
 required by Marmot's retained-history and rollback horizon. Additional
 archives remain advertised for the signed group retention period.
 
-When an archive expires, conforming hosts remove it from the encrypted active
-directory, stop advertising and seeding its refs, and remove local refs.
-Conforming clients stop requesting or serving it and garbage-collect local
-objects where supported. NIP-40 expiration inside an exact Marmot event
-remains unchanged; repository retention complements it.
+When an archive presentation expires, conforming hosts remove it from the
+encrypted active directory, stop advertising and seeding its active refs, and
+revoke current presentation or fetch authorization. The archival boundary
+MUST record that state transition by compare-and-swap and then reload the same
+retained object digest, source digest, and commit before reporting success. It
+MUST NOT delete or rewrite the retained ciphertext, event bytes, repository
+object, or commit history and MUST expose no deletion operation through an
+append receipt. The same genuine receipt continues to prove only historical
+durability; it does not restore current presentation or authorization.
+
+Conforming clients stop requesting or serving an expired presentation. After
+all independent Marmot retained-history, rollback-horizon, signed-retention,
+and implementation policy obligations end, an implementation MAY remove local
+refs and garbage-collect unreachable objects where supported; neither that
+cleanup nor presentation expiry proves erasure. NIP-40 expiration inside an
+exact Marmot event remains unchanged; repository retention complements it.
 
 Expiration is not erasure, under [`heterodyne:0.6.0#core-non-erasure`](heterodyne-core.md#core-non-erasure).
 

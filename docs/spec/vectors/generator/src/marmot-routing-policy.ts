@@ -1,3 +1,9 @@
+/**
+ * Legacy pure-policy projections used by authored vector topics. These
+ * functions do not verify exact Marmot bytes, authenticate a current Core
+ * writer binding, perform a repository append, or establish durable readback.
+ * Runtime archival evidence uses marmot-archive-retention-authority.ts.
+ */
 export type MarmotRoutingBindingInput = Readonly<{
   active_administrator: string;
   commit_author: string;
@@ -78,7 +84,7 @@ export type MarmotDurabilityInput = Readonly<{
   acknowledgement_requested: boolean;
 }>;
 
-/** Enforces exact-byte persistence before a successful publisher acknowledgement. */
+/** Projects claimed durability; it cannot mint an archival acknowledgement. */
 export function evaluateMarmotDurability(input: MarmotDurabilityInput):
   | { verdict: "accept"; durable_ack: boolean; exact_bytes: true }
   | { verdict: "reject"; reason_code: "marmot-premature-ack" } {
@@ -100,8 +106,8 @@ export type MarmotRetentionInput = Readonly<{
 }>;
 
 /**
- * Projects retention policy without claiming deletion of independently held
- * Git objects, clones, exports, or backups.
+ * Projects retention policy without mutating presentation state or claiming
+ * deletion of independently held Git objects, clones, exports, or backups.
  */
 export function evaluateMarmotRetention(input: MarmotRetentionInput): Readonly<{
   verdict: "accept";
