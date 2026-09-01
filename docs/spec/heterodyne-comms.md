@@ -1137,6 +1137,29 @@ A private persona inbox accepts only NIDs already authorized to replicate the
 repository. Unknown first contact uses a public inbox or another authorized
 bootstrap path.
 
+Before admitting a private-inbox contact bundle, the recipient implementation
+MUST capture the complete operation as closed data before any asynchronous
+lookup. It MUST reload the authenticated current inbox checkpoint and its
+NID-bearing repository authorization, require a sender-specific Marmot writer
+or relay ref, bind the exact sender account and persona-or-agent class, and, for
+an agent sender, require the exact current first-contact scope named by the
+request. A missing current recipient NID fails with
+`marmot-private-inbox-nid-required`; a missing agent scope fails with
+`marmot-agent-scope-denied`.
+
+The selected public KeyPackage bytes, their lowercase-hex SHA-256 reference,
+the exact group-transition bytes, sender ref, purpose, recipient, current inbox
+checkpoint, and recipient NID MUST enter one domain-separated durable
+reservation. A KeyPackage already present in current authenticated inbox state
+or any existing durable reservation is consumed and fails with
+`marmot-keypackage-replayed`. Concurrent attempts have one winner. Success is
+exposed only after exact binding-, execution-token-, output-digest-, and
+output-equal committed readback. An executing, malformed, unavailable, or
+unknown terminal is indeterminate and MUST NOT repeat consumption. The
+authority constructor captures its trusted-time, current-state, and durable-
+store callbacks once; caller validity or consumption booleans are not
+authority inputs.
+
 For a public inbox, an unknown ref enters pull-based quarantine. The client
 MUST fetch and validate a bounded manifest conforming to
 `docs/spec/schemas/comms/marmot-persona-inbox-manifest-v1.schema.json` before
@@ -1258,6 +1281,30 @@ fails with `invite-already-reserved`. Successful standard Marmot group
 establishment spends it. Malformed, expired, revoked, purpose-mismatched,
 capability-incompatible, or unauthenticated traffic MUST NOT reserve or spend
 it.
+
+An issuer-side consuming authority MUST descriptor-capture the closed envelope,
+exact JCS response bytes, expected recipient, exact public KeyPackage bytes,
+purpose, and exact group-transition bytes before any asynchronous lookup. It
+MUST independently verify the descriptor's BIP-340 signature, secret
+commitment, canonical response schema, response HMAC, descriptor digest,
+responder/recipient equality, non-convertible purpose, KeyPackage byte
+equality, signed expiry, and current authenticated revocation revision before
+durable acquire. All such failures use `invite-authentication-invalid` at this
+authority boundary and perform no reservation or group effect.
+
+The reservation key is issuer-local and invite-specific. Its binding MUST
+commit the authority identity, current invite revision, signed descriptor and
+signature, secret commitment, exact response digest, recipient, purpose,
+KeyPackage digest, and group-transition digest. Group establishment receives
+only a copy of the captured transition plus the authority-derived execution
+token. Its returned response digest MUST equal the captured response digest.
+Success is exposed only after exact committed readback. A binding-equal
+committed retry returns the cached output without repeating establishment; a
+different transcript, recipient, purpose, KeyPackage, transition, or secret
+fails authentication. Executing, unavailable, malformed, or unknown post-
+effect state is indeterminate and MUST NOT repeat the effect. Constructor
+callbacks and durable-store methods are captured once. Neither caller validity
+booleans nor the retired device-state DM reasons participate in this boundary.
 
 A valid `dm` redemption creates an ordinary two-member Marmot group and makes
 the Comms-native admission result `accept` for its issuer, subject to an

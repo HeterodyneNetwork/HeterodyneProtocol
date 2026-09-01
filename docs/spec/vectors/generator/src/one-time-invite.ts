@@ -3,6 +3,7 @@ import { schnorr } from "@noble/curves/secp256k1";
 import { hexToBytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
 import { proofBytes } from "./proof-bytes.js";
+import { captureAuthorityInput } from "./security-authority-support.js";
 
 const DESCRIPTOR_DOMAIN = "heterodyne-one-time-invite-v1";
 const RESPONSE_DOMAIN = "heterodyne-one-time-invite-response-v1";
@@ -45,11 +46,12 @@ export function verifyInviteSignature(
   signatureHex: string,
 ): boolean {
   try {
-    if (!hasClosedDescriptorMembers(descriptor)) return false;
+    const captured = captureAuthorityInput(descriptor) as Readonly<InviteDescriptor>;
+    if (!hasClosedDescriptorMembers(captured)) return false;
     return schnorr.verify(
       hexToBytes(signatureHex),
-      descriptorDigest(descriptor),
-      hexToBytes(descriptor.inviter_account),
+      descriptorDigest(captured),
+      hexToBytes(captured.inviter_account),
     );
   } catch {
     return false;
