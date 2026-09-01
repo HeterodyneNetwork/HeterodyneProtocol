@@ -158,6 +158,48 @@ manifest or checkpoint, conflict, stale transition, or forged capability
 commits nothing. An accepted commit still creates only `enrollment-only` state
 with no signer authority.
 
+<a id="control-enrollment-admission-authority"></a>
+The local Control enrollment-admission authority fixes its authority
+identifier, trusted clock, exact KeyPackage verifier, authenticated inventory
+and invite loaders, and every durable reservation-store method when it is
+constructed. The public authority is an opaque, frozen capability. Admission
+accepts only the closed persona, account, device, client key, group, active
+invite identifier and `control-enrollment` purpose, exact KeyPackage bytes and
+expected KeyPackageRef, and an optional reserved-slot identifier. It accepts
+no caller-selected clock, capacity, validity, availability, replenishment,
+rate, enrollment, replay, callback, or persistence result. Accessor-backed,
+proxied, extended, malformed, or post-capture-mutated inputs grant no
+authority.
+
+The authority verifies the captured KeyPackage bytes through its fixed
+standards adapter before consulting admission policy. The verified account
+and KeyPackageRef MUST equal the captured request, its exclusive expiry MUST
+be later than trusted time, and the client key MUST be absent from the
+authenticated current-client inventory. A malformed, unbound, expired, or
+already-current KeyPackage is `control-keypackage-invalid`. The authority
+loads the purpose-bound invite and inventory, validates the invite's active
+state, account, client key, and exclusive expiry, and derives account and
+global pending capacity, reserved-slot availability, replenishment state,
+current account/device enrollment, and the current attempt budget only from
+those authenticated results. A paused replenishment state is
+`control-keypackage-replenishment-paused`; every other failed invite,
+capacity, slot, rate, or current-enrollment condition is
+`control-enrollment-unavailable`.
+
+Before any admission effect, the authority creates or recognizes an exact
+durable available reservation by compare-and-swap, then reloads authenticated
+invite and inventory state immediately before atomic acquire. The reservation
+key is authority- and invite-bound; its binding covers the complete captured
+request and exact verified KeyPackage result. The constructor-captured store,
+not the caller, arbitrates concurrent global and reserved-slot capacity. An
+acquired record enters `executing` before the store commits the exact derived
+enrollment identifier and group. A binding-equal committed retry returns that
+cached result without another effect. A conflicting reservation cannot grant
+admission. An uncertain effect is reconciled only from an exact committed
+readback or becomes an absorbing `indeterminate` record with an
+authority-derived reconciliation digest; `executing`, malformed, conflicting,
+or uncertain state MUST NOT reopen or repeat the effect.
+
 <a id="control-one-time-invites"></a>
 Purpose-bound invites use the provider-independent Comms one-time-invite
 format. An invite can authenticate rendezvous with a full node but cannot
