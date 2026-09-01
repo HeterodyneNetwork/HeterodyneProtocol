@@ -39,10 +39,15 @@ Task 2 creates the only shared authority support surface. Use these exact types;
 all later authority modules import them from `./security-authority-support.js`:
 
 ```ts
-export type AuthorityDecision<R extends string, O> = Readonly<
+export type IndeterminateDecision<I extends string = never> = Readonly<
+  [I] extends [never]
+    ? { verdict: "indeterminate"; reconciliation_digest: string }
+    : { verdict: "indeterminate"; reason_code: I; reconciliation_digest: string }
+>;
+export type AuthorityDecision<R extends string, O, I extends string = never> = Readonly<
   | { verdict: "accept"; output: O }
   | { verdict: "reject"; reason_code: R }
-  | { verdict: "indeterminate"; reason_code: R; reconciliation_digest: string }
+  | IndeterminateDecision<I>
 >;
 
 export type DurableAuthorityRecord<O> = Readonly<
@@ -172,11 +177,12 @@ export type MarmotArchiveRetentionAuthorityConfig = Readonly<{
   resolve_writer: (rid: string, ref: string) => Promise<CurrentRepositoryWriterBinding>;
   append_and_resolve: (input: Readonly<{
     repository_rid: string; ref: string; bytes: Uint8Array;
-  }>) => Promise<Readonly<{ object_digest: string; commit: string; reachable: true }>>;
+  }>) => Promise<Readonly<{ object_digest: string; commit: string; reachable: boolean }>>;
 }>;
 export type MarmotArchiveInput = Readonly<{
   repository_rid: string; ref: string;
-  source: Readonly<{ kind: "signed-event"; event: NostrSignedEvent } |
+  source: Readonly<{ kind: "signed-event"; event: NostrSignedEvent;
+      event_bytes: Uint8Array } |
     { kind: "encrypted-media"; ciphertext: Uint8Array;
       authorization_event: NostrSignedEvent }>;
 }>;
@@ -314,6 +320,7 @@ export type AgentPublicationAuthorizationAuthorityConfig = Readonly<{
   }> | null>;
   read_mtls_peer_identity: () => string | null;
   store: DurableAuthorityStore<NostrSignedEvent>;
+  sign_once: (execution_token: string, event: NostrUnsignedEvent) => Promise<NostrSignedEvent>;
 }>;
 export type AgentPublicationRequest = Readonly<{
   compact_jwt: string; represented_persona: string; agent_id: string;
@@ -321,9 +328,6 @@ export type AgentPublicationRequest = Readonly<{
   publication: NostrUnsignedEvent; attribution_profile: "heterodyne-agent-v1";
   sender_proof: Readonly<{ kind: "dpop"; compact: string; method: string;
     target: string; nonce: string }> | Readonly<{ kind: "mtls" }>;
-}>;
-export type AgentPublicationSigner = Readonly<{
-  signOnce(execution_token: string, event: NostrUnsignedEvent): Promise<NostrSignedEvent>;
 }>;
 export type AgentPublicationDecision = AuthorityDecision<
   "agent-sender-proof-invalid" | "agent-signer-mismatch", NostrSignedEvent
@@ -334,7 +338,6 @@ export function createAgentPublicationAuthorizationAuthority(
 export function authorizeAndSignAgentPublication(
   authority: AgentPublicationAuthorizationAuthority,
   request: AgentPublicationRequest,
-  signer: AgentPublicationSigner,
 ): Promise<AgentPublicationDecision>;
 ```
 
@@ -344,10 +347,10 @@ it("BLUE TEAM VALIDATION: synthetic/local never exposes authorize-then-sign", as
     .not.toContain("VerifiedAgentPublicationAuthorization");
   const result = await authorizeAndSignAgentPublication(
     createAgentPublicationAuthorizationAuthority(agentConfig()),
-    agentRequest({ sender_proof: replayedDpop() }), signer,
+    agentRequest({ sender_proof: replayedDpop() }),
   );
   expect(result).toEqual({ verdict: "reject", reason_code: "agent-sender-proof-invalid" });
-  expect(signer.calls).toBe(0);
+  expect(agentFixture.signerCalls).toBe(0);
 });
 ```
 
@@ -468,15 +471,22 @@ export type ControlEnrollmentAdmissionAuthorityConfig = Readonly<{
     revision: number; pending_for_account: number; global_pending: number;
     global_pending_cap: number; reserved_slots: readonly string[];
     replenishment_state: "ready" | "paused"; current_clients: readonly string[];
+    enrolled_accounts: readonly string[]; enrolled_devices: readonly string[];
+    rate_window_started_at: number; attempts_in_window: number; attempt_budget: number;
+  }>>;
+  load_invite_state: (invite_id: string) => Promise<Readonly<{
+    revision: number; purpose: "control-enrollment"; state: "active" | "revoked" | "consumed";
+    account: string; client_key: string; expires_at: number;
   }>>;
   verify_key_package: (bytes: Uint8Array) => Readonly<{
     account: string; reference: string; expires_at: number;
   }> | null;
 }>;
 export type ControlEnrollmentAdmissionRequest = Readonly<{
-  persona: string; client_key: string; group_id: string; invite_purpose: "control-enrollment";
+  persona: string; account: string; device_id: string; client_key: string; group_id: string;
+  invite_id: string; invite_purpose: "control-enrollment";
   key_package_bytes: Uint8Array; expected_key_package_ref: string;
-  reserved_slot: string | null; rate_bucket: string;
+  reserved_slot: string | null;
 }>;
 export type ControlEnrollmentAdmissionDecision = AuthorityDecision<
   "control-enrollment-unavailable" | "control-keypackage-invalid" |
@@ -525,6 +535,7 @@ export type ControlInviteTemplate = Readonly<{
 export type ControlInviteRequest = Readonly<{
   purpose: "control-enrollment"; persona: string; audience: string;
   client_key: string; client_class: "human-light" | "automated";
+  response: InviteResponseInput; secret_proof: string;
 }>;
 export type VerifiedControlInvitePreauthorization = Readonly<Record<never, never>>;
 export function createControlInvitePreauthorizationAuthority(
@@ -532,7 +543,7 @@ export function createControlInvitePreauthorizationAuthority(
 ): ControlInvitePreauthorizationAuthority;
 export function verifyControlInvitePreauthorization(
   authority: ControlInvitePreauthorizationAuthority,
-  descriptor: InviteDescriptor,
+  envelope: InviteEnvelope,
   template: ControlInviteTemplate,
   request: ControlInviteRequest,
 ): Promise<AuthorityDecision<
@@ -544,7 +555,7 @@ export function verifyControlInvitePreauthorization(
 it("BLUE TEAM VALIDATION: synthetic/local forbids prompt-free KERI device conversion", async () => {
   const result = await verifyControlInvitePreauthorization(
     createControlInvitePreauthorizationAuthority(inviteConfig()),
-    signedInviteDescriptor({ purpose: "device-enrollment" }),
+    signedInviteEnvelope({ purpose: "device-enrollment" }),
     inviteTemplate(), inviteRequest(),
   );
   expect(result).toEqual({ verdict: "reject", reason_code: "invite-preauthorization-invalid" });
@@ -993,7 +1004,7 @@ git commit -m "fix: authorize and sign agent publications atomically"
 - Modify: `docs/spec/heterodyne-control.md`
 
 **Interfaces:**
-- Produces deterministic fixture constructors and result adapters that invoke `validateCompromiseReset`, `executePersistedAutomatedSigning`, and a hardened `validateCurrentControlFrameProfile(frameBytes, requestBinding, verificationContext)` without boolean summaries. The frame function descriptor-captures the exact frame, verifies its signing event, binds request/profile/version/transport, and never supplies hard-coded validity booleans to `validateControlFrameBoundary`.
+- Produces deterministic fixture constructors and result adapters that invoke `validateCompromiseReset`, `executePersistedAutomatedSigning`, and the exact hardened `validateCurrentControlFrameProfile(frame_bytes, context)` signature from the Task 6 contract block without boolean summaries. The frame function descriptor-captures the exact frame, verifies its signing event, binds request/profile/version/transport, and never supplies hard-coded validity booleans to `validateControlFrameBoundary`.
 - Later Task 15 consumes these exact functions and fixtures through its dispatcher.
 
 - [ ] **Step 1: Write RED over exact real paths**
@@ -1287,6 +1298,7 @@ git commit -m "fix: verify Core operational authority"
 - Modify only if concrete allocations require it: `docs/spec/registry/objects.json`
 - Modify only if concrete allocations require it: `docs/spec/registry/proof-domains.json`
 - Modify: `docs/spec/vectors/generator/src/registry.test.ts`
+- Create: `docs/spec/vectors/generator/src/registry-revision17-preflight.test.ts`
 - Modify: `docs/spec/vectors/generator/src/coverage.ts`
 - Modify: `docs/spec/vectors/generator/src/coverage.test.ts`
 
@@ -1308,7 +1320,13 @@ Expected: FAIL on revision 16 and missing revised entries. Record author-call co
 
 - [ ] **Step 3: Edit entry JSON and validate a synthetic no-write manifest**
 
-Retarget the 11 retained reasons, classify `auth_rejected_permanent`, refine live descriptions/anchors only where required, and add only concrete object/proof allocations backed by completed Tasks 2–13. Preserve every prior identity and `first_version`. In `registry.test.ts`, load the edited entry set, compute `const digest = computeRegistryDigest(entrySet)`, construct a synthetic manifest `{ ...revision16Manifest, revision: 17, entry_set_sha256: digest }`, and call `validateRegistry({ manifest: syntheticManifest, ...entrySet })`. Assert the revision-16 baseline digest and every prior identity/`first_version` before permitting the author step. After this preflight passes, entry JSON is frozen for the task; any further entry edit aborts the task before authoring.
+Retarget the 11 retained reasons, classify `auth_rejected_permanent`, refine live descriptions/anchors only where required, and add only concrete object/proof allocations backed by completed Tasks 2–13. Preserve every prior identity and `first_version`. In the standalone `registry-revision17-preflight.test.ts`, read `manifest.json` and every entry JSON with `readFileSync`/`JSON.parse` rather than `loadRegistry`; assert that the raw manifest is still revision 16 with digest `5ff98ff2af3bcbb413918dc207dcfc5da7035e9751e9836680df9b56a2b2230f`, compute `const digest = computeRegistryDigest(entrySet)`, construct `{ ...revision16Manifest, revision: 17, entry_set_sha256: digest }`, and call `validateRegistry({ manifest: syntheticManifest, ...entrySet })`. Assert every prior identity/`first_version` before permitting the author step. After this preflight passes, entry JSON is frozen for the task; any further entry edit aborts the task before authoring.
+
+Run the no-write preflight alone; it must pass while the checked-in manifest is still revision 16:
+
+```bash
+npm --prefix docs/spec/vectors/generator test -- src/registry-revision17-preflight.test.ts
+```
 
 - [ ] **Step 4: Invoke the registry author exactly once**
 
@@ -1325,7 +1343,7 @@ npm --prefix docs/spec/vectors/generator test -- src/registry.test.ts src/covera
 npm --prefix docs/spec/vectors/generator run family:check
 npm --prefix docs/spec/vectors/generator run build:current
 git diff --check
-git add docs/spec/registry/manifest.json docs/spec/registry/reason-codes.json docs/spec/registry/objects.json docs/spec/registry/proof-domains.json docs/spec/vectors/generator/src/registry.test.ts docs/spec/vectors/generator/src/coverage.ts docs/spec/vectors/generator/src/coverage.test.ts
+git add docs/spec/registry/manifest.json docs/spec/registry/reason-codes.json docs/spec/registry/objects.json docs/spec/registry/proof-domains.json docs/spec/vectors/generator/src/registry.test.ts docs/spec/vectors/generator/src/registry-revision17-preflight.test.ts docs/spec/vectors/generator/src/coverage.ts docs/spec/vectors/generator/src/coverage.test.ts
 git commit -m "spec: author security authority registry revision 17"
 ```
 
