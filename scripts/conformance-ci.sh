@@ -9,6 +9,7 @@ npm --prefix docs/spec/vectors/generator ci
 npm --prefix docs/spec/conformance ci
 npm --prefix docs/spec/vectors/generator run draft:check -- "$repository_root"
 npm --prefix docs/spec/vectors/generator run snapshot-check -- "$repository_root"
+npm --prefix docs/spec/vectors/generator run test:snapshot-manifest
 npm --prefix docs/spec/conformance run build
 npm --prefix docs/spec/conformance test
 tracked_status_after="$(git status --porcelain=v1 --untracked-files=no)"

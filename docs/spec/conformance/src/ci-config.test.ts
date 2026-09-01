@@ -265,7 +265,7 @@ describe("shared conformance CI configuration", () => {
     )).toBe(true);
   });
 
-  it("runs locked installs, draft validation, snapshot validation, build, and tests in order", () => {
+  it("runs locked installs, draft validation, snapshot validation, manifest provenance, build, and tests in order", () => {
     const root = initializeTemporaryRepository();
     const fake = installFakeNpm(root);
     const result = spawnSync(join(root, "scripts/conformance-ci.sh"), [], {
@@ -285,6 +285,7 @@ describe("shared conformance CI configuration", () => {
       `${root}\t--prefix docs/spec/conformance ci`,
       `${root}\t--prefix docs/spec/vectors/generator run draft:check -- ${root}`,
       `${root}\t--prefix docs/spec/vectors/generator run snapshot-check -- ${root}`,
+      `${root}\t--prefix docs/spec/vectors/generator run test:snapshot-manifest`,
       `${root}\t--prefix docs/spec/conformance run build`,
       `${root}\t--prefix docs/spec/conformance test`,
     ]);
