@@ -265,9 +265,9 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Relay rejected the write after NIP-42 AUTH, so the failure is permanent.",
+      "description": "Local relay-write diagnostic for a repeated post-NIP-42 AUTH rejection; it is diagnostic-only and non-wire for semantic coverage and proves no cryptographic or upstream authority.",
       "spec_refs": [
-        "heterodyne:0.6.0#comms-conformance"
+        "heterodyne:0.6.0#comms-retired-semantics"
       ]
     },
     {
@@ -285,9 +285,9 @@
       "owner": "core",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Strict mode started with egress-over-Tor disabled without explicit user choice.",
+      "description": "The captured client role claims the strict profile while the current transport route is not Tor.",
       "spec_refs": [
-        "heterodyne:0.6.0#core-conformance"
+        "heterodyne:0.6.0#core-operational-authority-views"
       ]
     },
     {
@@ -295,9 +295,9 @@
       "owner": "core",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Friend-cache content was not owner-signed non-KERI content.",
+      "description": "A friend-cache candidate lacks an exact valid NIP-01 signature by the expected persona author.",
       "spec_refs": [
-        "heterodyne:0.6.0#core-conformance"
+        "heterodyne:0.6.0#core-operational-authority-views"
       ]
     },
     {
@@ -305,9 +305,9 @@
       "owner": "core",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "A Heterodyne-aware relay profile changed vanilla NIP-01 read/write behavior.",
+      "description": "The retained raw profile-event bytes do not exactly match a valid NIP-01 event identifier, signature, or exposed event fields.",
       "spec_refs": [
-        "heterodyne:0.6.0#core-conformance"
+        "heterodyne:0.6.0#core-operational-authority-views"
       ]
     },
     {
@@ -426,9 +426,9 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "A kind:30078 DM invite was signed by a publishing key with no valid kind:31001 delegation to the persona.",
+      "description": "Retained non-wire history for the retired kind:30078 device-delegation diagnostic; current invitation authentication and account-binding boundaries do not emit this code.",
       "spec_refs": [
-        "heterodyne:0.6.0#comms-conformance"
+        "heterodyne:0.6.0#comms-retired-semantics"
       ]
     },
     {
@@ -436,9 +436,9 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "A kind:30078 DM invite was signed by a device whose kind:31001 delegation is revoked.",
+      "description": "Retained non-wire history for the retired kind:30078 device-revocation diagnostic; current invitation authentication and revocation boundaries do not emit this code.",
       "spec_refs": [
-        "heterodyne:0.6.0#comms-conformance"
+        "heterodyne:0.6.0#comms-retired-semantics"
       ]
     },
     {
@@ -998,9 +998,9 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "The per-use workload JWK proof is missing, replayed, malformed, or mismatched with cnf.jkt.",
+      "description": "The required per-use DPoP/JWK proof is missing, replayed, malformed, or mismatched with the verified token, registered sender key, method, target, or nonce.",
       "spec_refs": [
-        "heterodyne:0.6.0#comms-jwt-projection"
+        "heterodyne:0.6.0#comms-agent-token"
       ]
     },
     {
@@ -1098,7 +1098,7 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "A preauthorized Control invite exceeds its exact bound signer-grant template, persona, client, signer, method, kind, limit, or prompt-free policy.",
+      "description": "The signed Control invite, exact preauthorization template, client binding, purpose, expiry, or current revocation state does not authorize the captured request.",
       "spec_refs": [
         "heterodyne:0.6.0#control-one-time-invites"
       ]
@@ -1129,7 +1129,7 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "The node cannot replenish the public Control KeyPackage pool while its global pending-enrollment cap is full.",
+      "description": "Authenticated current enrollment state marks public Control KeyPackage replenishment as paused.",
       "spec_refs": [
         "heterodyne:0.6.0#control-invitation-policy"
       ]
@@ -1269,9 +1269,9 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "A request identifier was reused with different canonical bound bytes in the same persona vault.",
+      "description": "Retained non-wire history for the retired diagnostic that classified request-identifier reuse with different canonical bound bytes; current at-most-once execution is governed by the durable signer fence.",
       "spec_refs": [
-        "heterodyne:0.6.0#control-request-processing"
+        "heterodyne:0.6.0#control-retired-semantics"
       ]
     },
     {
@@ -1279,9 +1279,9 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "An automated principal requested a method outside its closed agentic Control surface.",
+      "description": "Retained non-wire history for the retired diagnostic that classified methods outside the closed agentic Control surface; current method authorization is governed by exact grants.",
       "spec_refs": [
-        "heterodyne:0.6.0#control-agent-requirements"
+        "heterodyne:0.6.0#control-retired-semantics"
       ]
     },
     {
@@ -1289,9 +1289,9 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "An automated principal requested private key material or raw signing authority.",
+      "description": "Retained non-wire history for the retired diagnostic that classified requests for private key material or raw signing authority; current key confinement is governed by live signer boundaries.",
       "spec_refs": [
-        "heterodyne:0.6.0#control-agent-requirements"
+        "heterodyne:0.6.0#control-retired-semantics"
       ]
     },
     {
@@ -1299,9 +1299,9 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "An automated principal attempted to bypass its selected persona vault, signing key, or key class.",
+      "description": "Retained non-wire history for the retired diagnostic that classified bypass of the selected persona vault, signer, or key class; current signer selection is governed by live publication authority.",
       "spec_refs": [
-        "heterodyne:0.6.0#control-agent-requirements"
+        "heterodyne:0.6.0#control-retired-semantics"
       ]
     },
     {
@@ -1309,9 +1309,9 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "An automated principal attempted to omit, alter, or falsify canonical agent attribution.",
+      "description": "Retained non-wire history for the retired diagnostic that classified omitted, altered, or falsified canonical agent attribution; current attribution-before-signing is governed by live publication authority.",
       "spec_refs": [
-        "heterodyne:0.6.0#control-agent-requirements"
+        "heterodyne:0.6.0#control-retired-semantics"
       ]
     },
     {
@@ -1319,9 +1319,9 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "The requested method, event kind, value, destination, or object is outside the exact active signer grant.",
+      "description": "Retained non-wire history for the retired diagnostic that classified operations outside an exact active signer grant; current resource authorization is governed by exact grants.",
       "spec_refs": [
-        "heterodyne:0.6.0#control-agent-requirements"
+        "heterodyne:0.6.0#control-retired-semantics"
       ]
     },
     {
@@ -1553,7 +1553,7 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "A sender NID is not authorized to contribute a contact bundle to the private persona repository.",
+      "description": "The authenticated current recipient repository authorization lacks the NID binding required for private persona-inbox admission.",
       "spec_refs": [
         "heterodyne:0.6.0#comms-marmot-persona-inbox"
       ]
@@ -1563,7 +1563,7 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "A persona-inbox bootstrap attempts to consume a Marmot KeyPackage already consumed by another accepted or quarantined bundle.",
+      "description": "The selected Marmot KeyPackage is already durably consumed by authenticated inbox state or a closed available or committed reservation.",
       "spec_refs": [
         "heterodyne:0.6.0#comms-marmot-persona-inbox"
       ]
@@ -1573,9 +1573,9 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "An automated Marmot operation requests a group, application kind, media type, size, rate, or burst outside its workload token.",
+      "description": "The authenticated current persona-inbox authorization does not permit the captured agent sender, request, or required first-contact scope.",
       "spec_refs": [
-        "heterodyne:0.6.0#comms-agent-authorship"
+        "heterodyne:0.6.0#comms-marmot-persona-inbox"
       ]
     },
     {
@@ -1593,7 +1593,7 @@
       "owner": "core",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Relay state was presented as canonical profile state without repository selection.",
+      "description": "The selected canonical profile requires authenticated repository state, but no current writer-authenticated repository candidate supplies it.",
       "spec_refs": [
         "heterodyne:0.6.0#core-persona-profile"
       ]
@@ -1623,9 +1623,9 @@
       "owner": "core",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Retired-key content claims a created_at outside that key's authority window.",
+      "description": "Retained non-wire history for retired-key content outside a former key-authority window; current Core verification and source-neutral selection do not emit this code.",
       "spec_refs": [
-        "heterodyne:0.6.0#core-retired-key-observation"
+        "heterodyne:0.6.0#core-retired-semantics"
       ]
     },
     {
@@ -1633,9 +1633,9 @@
       "owner": "assurance",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Retired-key content falls at or after the accepted compromise_since cutoff.",
+      "description": "Retained non-wire history for the retired duplicate classification at or after an accepted compromise_since cutoff; current Assurance uses evaluateAssuranceAuthorityAt.",
       "spec_refs": [
-        "heterodyne:0.6.0#assurance-retired-wire-profiles"
+        "heterodyne:0.6.0#assurance-retired-semantics"
       ]
     },
     {
@@ -1813,7 +1813,7 @@
       "owner": "workspace",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "A Workspace nonce, approval, relationship, grant, or key envelope was replayed.",
+      "description": "A Workspace invitation or other consuming authority input was reused with mismatched bindings or before its exact committed terminal was established.",
       "spec_refs": [
         "heterodyne:0.6.0#workspace-errors"
       ]
@@ -1981,8 +1981,8 @@
     {
       "code": "control-signed-event-invalid",
       "owner": "control", "status": "draft", "first_version": "heterodyne/0.5.0",
-      "description": "The signer returned altered event fields or an invalid canonical NIP-01 event ID or BIP-340 signature.",
-      "spec_refs": ["heterodyne:0.6.0#control-agent-requirements"]
+      "description": "Retained non-wire history for the retired diagnostic that classified altered or invalid signer output; current signer-output verification is governed by publication and signer-fence boundaries.",
+      "spec_refs": ["heterodyne:0.6.0#control-retired-semantics"]
     },
     {
       "code": "control-compromise-reset-unauthenticated",

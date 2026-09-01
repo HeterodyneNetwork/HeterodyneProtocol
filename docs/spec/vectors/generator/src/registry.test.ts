@@ -23,6 +23,38 @@ const repositoryRoot = resolve(here, "../../../../../");
 const REVISION_15_IDENTITY_FIRST_VERSION_SHA256 =
   "679e0bfd5b7f020f0c53153e6f8c2dadfe425fcf83b165c22aa5a7068ba8edef";
 
+const REVISION_16_ENTRY_SET_SHA256 =
+  "5ff98ff2af3bcbb413918dc207dcfc5da7035e9751e9836680df9b56a2b2230f";
+
+const REVISION_16_IDENTITY_TUPLES_SHA256 =
+  "852355247956e80edfc1e987d5e46c6f1c15b47c635d2f176d69450967806a26";
+
+const REVISION_17_REASON_REFINEMENTS = [
+  ["agent-attribution-bypass-prohibited", "Retained non-wire history for the retired diagnostic that classified omitted, altered, or falsified canonical agent attribution; current attribution-before-signing is governed by live publication authority.", "heterodyne:0.6.0#control-retired-semantics"],
+  ["agent-human-profile-prohibited", "Retained non-wire history for the retired diagnostic that classified bypass of the selected persona vault, signer, or key class; current signer selection is governed by live publication authority.", "heterodyne:0.6.0#control-retired-semantics"],
+  ["agent-key-access-prohibited", "Retained non-wire history for the retired diagnostic that classified requests for private key material or raw signing authority; current key confinement is governed by live signer boundaries.", "heterodyne:0.6.0#control-retired-semantics"],
+  ["agent-method-prohibited", "Retained non-wire history for the retired diagnostic that classified methods outside the closed agentic Control surface; current method authorization is governed by exact grants.", "heterodyne:0.6.0#control-retired-semantics"],
+  ["agent-resource-denied", "Retained non-wire history for the retired diagnostic that classified operations outside an exact active signer grant; current resource authorization is governed by exact grants.", "heterodyne:0.6.0#control-retired-semantics"],
+  ["agent-sender-proof-invalid", "The required per-use DPoP/JWK proof is missing, replayed, malformed, or mismatched with the verified token, registered sender key, method, target, or nonce.", "heterodyne:0.6.0#comms-agent-token"],
+  ["auth_rejected_permanent", "Local relay-write diagnostic for a repeated post-NIP-42 AUTH rejection; it is diagnostic-only and non-wire for semantic coverage and proves no cryptographic or upstream authority.", "heterodyne:0.6.0#comms-retired-semantics"],
+  ["control-keypackage-replenishment-paused", "Authenticated current enrollment state marks public Control KeyPackage replenishment as paused.", "heterodyne:0.6.0#control-invitation-policy"],
+  ["control-request-id-conflict", "Retained non-wire history for the retired diagnostic that classified request-identifier reuse with different canonical bound bytes; current at-most-once execution is governed by the durable signer fence.", "heterodyne:0.6.0#control-retired-semantics"],
+  ["control-signed-event-invalid", "Retained non-wire history for the retired diagnostic that classified altered or invalid signer output; current signer-output verification is governed by publication and signer-fence boundaries.", "heterodyne:0.6.0#control-retired-semantics"],
+  ["dm_invite_revoked_device", "Retained non-wire history for the retired kind:30078 device-revocation diagnostic; current invitation authentication and revocation boundaries do not emit this code.", "heterodyne:0.6.0#comms-retired-semantics"],
+  ["dm_invite_unbound_device", "Retained non-wire history for the retired kind:30078 device-delegation diagnostic; current invitation authentication and account-binding boundaries do not emit this code.", "heterodyne:0.6.0#comms-retired-semantics"],
+  ["invite-preauthorization-invalid", "The signed Control invite, exact preauthorization template, client binding, purpose, expiry, or current revocation state does not authorize the captured request.", "heterodyne:0.6.0#control-one-time-invites"],
+  ["marmot-agent-scope-denied", "The authenticated current persona-inbox authorization does not permit the captured agent sender, request, or required first-contact scope.", "heterodyne:0.6.0#comms-marmot-persona-inbox"],
+  ["marmot-keypackage-replayed", "The selected Marmot KeyPackage is already durably consumed by authenticated inbox state or a closed available or committed reservation.", "heterodyne:0.6.0#comms-marmot-persona-inbox"],
+  ["marmot-private-inbox-nid-required", "The authenticated current recipient repository authorization lacks the NID binding required for private persona-inbox admission.", "heterodyne:0.6.0#comms-marmot-persona-inbox"],
+  ["profile-repository-selection-required", "The selected canonical profile requires authenticated repository state, but no current writer-authenticated repository candidate supplies it.", "heterodyne:0.6.0#core-persona-profile"],
+  ["relay_profile_mutation", "The retained raw profile-event bytes do not exactly match a valid NIP-01 event identifier, signature, or exposed event fields.", "heterodyne:0.6.0#core-operational-authority-views"],
+  ["retired-key-authority-window-invalid", "Retained non-wire history for retired-key content outside a former key-authority window; current Core verification and source-neutral selection do not emit this code.", "heterodyne:0.6.0#core-retired-semantics"],
+  ["revoked_key_post_compromise", "Retained non-wire history for the retired duplicate classification at or after an accepted compromise_since cutoff; current Assurance uses evaluateAssuranceAuthorityAt.", "heterodyne:0.6.0#assurance-retired-semantics"],
+  ["strict_mode_tor_disabled", "The captured client role claims the strict profile while the current transport route is not Tor.", "heterodyne:0.6.0#core-operational-authority-views"],
+  ["unauthorized_cache_content", "A friend-cache candidate lacks an exact valid NIP-01 signature by the expected persona author.", "heterodyne:0.6.0#core-operational-authority-views"],
+  ["workspace_replay", "A Workspace invitation or other consuming authority input was reused with mismatched bindings or before its exact committed terminal was established.", "heterodyne:0.6.0#workspace-errors"],
+] as const;
+
 const TASK_9_NEW_FIRST_VERSION_ROWS = new Set([
   "object:repository-writer-binding-v1:heterodyne/0.6.0",
   "proof-domain:heterodyne-core-repository-writer-binding-v1:heterodyne/0.6.0",
@@ -67,6 +99,27 @@ function firstVersionRows(registry: Registry): string[] {
   ].sort();
 }
 
+function identityTuples(registry: Registry): Array<[string, string, string, string, string]> {
+  return [
+    ...registry.features.map(({ id, owner, status, first_version }) =>
+      ["feature", id, owner, status, first_version] as [string, string, string, string, string]),
+    ...registry.kinds.map(({ kind, allocation_authority, status, first_version }) =>
+      ["kind", String(kind), allocation_authority, status, first_version] as [string, string, string, string, string]),
+    ...registry.kinds.flatMap(({ kind, profiles }) => profiles.map(
+      ({ profile_id, owner, status, first_version }) =>
+        ["kind-profile", `${kind}:${profile_id}`, owner, status, first_version] as [string, string, string, string, string],
+    )),
+    ...registry.objects.map(({ id, owner, status, first_version }) =>
+      ["object", id, owner, status, first_version] as [string, string, string, string, string]),
+    ...registry.proof_domains.map(({ id, owner, status, first_version }) =>
+      ["proof-domain", id, owner, status, first_version] as [string, string, string, string, string]),
+    ...registry.reason_codes.map(({ code, owner, status, first_version }) =>
+      ["reason-code", code, owner, status, first_version] as [string, string, string, string, string]),
+    ...registry.security_invariants.map(({ id, owner, status, first_version }) =>
+      ["security-invariant", id, owner, status, first_version] as [string, string, string, string, string]),
+  ].sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
+}
+
 const NEW_0_6_REGISTRY_IDS = {
   features: [],
   kinds: [1040, 31006],
@@ -100,8 +153,29 @@ const NEW_0_6_REGISTRY_IDS = {
 describe("revisioned protocol registry", () => {
   const registry = loadRegistry(repositoryRoot);
 
-  it("allocates the complete Task 2-8 authority set in immutable revision 16", () => {
-    expect(registry.manifest.revision).toBe(16);
+  it("BLUE TEAM VALIDATION: synthetic/local preserves revision 16 identities in immutable revision 17", () => {
+    expect(registry.manifest.revision).toBe(17);
+    expect(REVISION_16_ENTRY_SET_SHA256).toBe(
+      "5ff98ff2af3bcbb413918dc207dcfc5da7035e9751e9836680df9b56a2b2230f",
+    );
+    const rows = identityTuples(registry);
+    expect(rows).toHaveLength(458);
+    expect(createHash("sha256").update(JSON.stringify(rows)).digest("hex"))
+      .toBe(REVISION_16_IDENTITY_TUPLES_SHA256);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local revision 17 retargets retired security diagnostics and live authority reasons", () => {
+    const reasonByCode = new Map(registry.reason_codes.map((entry) => [entry.code, entry]));
+    for (const [code, description, specRef] of REVISION_17_REASON_REFINEMENTS) {
+      expect(reasonByCode.get(code)).toMatchObject({
+        description,
+        spec_refs: [specRef],
+      });
+    }
+  });
+
+  it("preserves the complete Task 2-8 authority set through immutable revision 17", () => {
+    expect(registry.manifest.revision).toBe(17);
 
     expect(registry.objects.find(
       ({ id }) => id === "repository-writer-binding-v1",
@@ -1235,8 +1309,8 @@ describe("revisioned protocol registry", () => {
     ]));
   });
 
-  it("keeps baseline and historical reason ownership at revision 16", () => {
-    expect(registry.manifest.revision).toBe(16);
+  it("keeps baseline and historical reason ownership through revision 17", () => {
+    expect(registry.manifest.revision).toBe(17);
     const reasons = new Map(
       registry.reason_codes.map((entry) => [entry.code, entry]),
     );

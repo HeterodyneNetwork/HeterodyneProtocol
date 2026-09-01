@@ -155,10 +155,20 @@ describe("current family coverage", () => {
     ))).toContain(`profile owner mismatch: ${profiled.vector_id} -> ${profile.profile_id}`);
   }, 30_000);
 
-  it("keeps the non-wire reason exclusion audit closed and specific", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local revision 17 retains only exact retired security diagnostics", () => {
     const codes = NON_WIRE_REASON_EXCLUSIONS.map(({ code }) => code);
     expect(codes).toEqual([
+      "agent-attribution-bypass-prohibited",
+      "agent-human-profile-prohibited",
+      "agent-key-access-prohibited",
+      "agent-method-prohibited",
+      "agent-resource-denied",
+      "auth_rejected_permanent",
       "compromise_rotation_breadcrumb_forbidden",
+      "control-request-id-conflict",
+      "control-signed-event-invalid",
+      "dm_invite_revoked_device",
+      "dm_invite_unbound_device",
       "equivocation_flagged",
       "expired_delegation",
       "informal_vouch_not_counted",
@@ -170,7 +180,9 @@ describe("current family coverage", () => {
       "org_member_add_unauthorized",
       "provisional_not_final",
       "repo_head_regression",
+      "retired-key-authority-window-invalid",
       "retiring_key_nip05_invalid",
+      "revoked_key_post_compromise",
       "revoked_key_post_revoked_at",
       "role-delegation-address-invalid",
       "role-delegation-key-proof-invalid",
@@ -178,11 +190,57 @@ describe("current family coverage", () => {
       "successor_persona_mismatch",
       "withdrawn_on_reconcile",
     ]);
+    expect(NON_WIRE_REASON_EXCLUSIONS.filter(({ code }) => [
+      "agent-attribution-bypass-prohibited",
+      "agent-human-profile-prohibited",
+      "agent-key-access-prohibited",
+      "agent-method-prohibited",
+      "agent-resource-denied",
+      "auth_rejected_permanent",
+      "control-request-id-conflict",
+      "control-signed-event-invalid",
+      "dm_invite_revoked_device",
+      "dm_invite_unbound_device",
+      "retired-key-authority-window-invalid",
+      "revoked_key_post_compromise",
+    ].includes(code))).toEqual([
+      { code: "agent-attribution-bypass-prohibited", justification: "Retained only as non-wire history for the retired attribution-bypass diagnostic; live attribution-before-signing is enforced by publication authority." },
+      { code: "agent-human-profile-prohibited", justification: "Retained only as non-wire history for the retired persona-vault and signer-selection diagnostic; live signer selection is enforced by publication authority." },
+      { code: "agent-key-access-prohibited", justification: "Retained only as non-wire history for the retired private-key-access diagnostic; live key confinement is enforced by signer boundaries." },
+      { code: "agent-method-prohibited", justification: "Retained only as non-wire history for the retired closed-method diagnostic; live method authorization is enforced by exact grants." },
+      { code: "agent-resource-denied", justification: "Retained only as non-wire history for the retired signer-resource diagnostic; live resource authorization is enforced by exact grants." },
+      { code: "auth_rejected_permanent", justification: "Current local relay-write diagnostic only; a post-AUTH rejection proves no cryptographic or upstream authority and cannot satisfy semantic coverage." },
+      { code: "control-request-id-conflict", justification: "Retained only as non-wire history for the retired request-ID diagnostic; live at-most-once execution is enforced by the durable signer fence." },
+      { code: "control-signed-event-invalid", justification: "Retained only as non-wire history for the retired signer-output diagnostic; live output verification is enforced by publication and signer-fence boundaries." },
+      { code: "dm_invite_revoked_device", justification: "Retained only as non-wire history for the retired device-revocation DM-invite diagnostic; current invite authority does not emit it." },
+      { code: "dm_invite_unbound_device", justification: "Retained only as non-wire history for the retired device-delegation DM-invite diagnostic; current invite authority does not emit it." },
+      { code: "retired-key-authority-window-invalid", justification: "Retained only as non-wire history for the retired Core key-window diagnostic; current verification and selection do not emit it." },
+      { code: "revoked_key_post_compromise", justification: "Retained only as non-wire history for the duplicate post-compromise diagnostic; live cutoff evidence comes from evaluateAssuranceAuthorityAt." },
+    ]);
     expect(new Set(codes).size)
       .toBe(NON_WIRE_REASON_EXCLUSIONS.length);
     expect(NON_WIRE_REASON_EXCLUSIONS.every(({ justification }) =>
       justification.trim().length >= 24
     )).toBe(true);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local revision 17 live authority reasons are never excluded", () => {
+    const liveReasons = [
+      "agent-sender-proof-invalid", "conversation-rejected", "invite-authentication-invalid",
+      "marmot-agent-scope-denied", "marmot-keypackage-replayed", "marmot-premature-ack",
+      "marmot-private-inbox-nid-required", "control-compromise-reset-evidence-invalid",
+      "control-compromise-reset-inventory-mismatch", "control-compromise-reset-unauthenticated",
+      "control-subordinate-reauthorization-required", "control-device-code-display-mismatch",
+      "control-device-code-invalid", "control-device-code-rate-limited", "control-enrollment-unavailable",
+      "control-frame-invalid", "invite-preauthorization-invalid", "control-keypackage-invalid",
+      "control-keypackage-replenishment-paused", "control-signer-effect-indeterminate",
+      "control-token-invalid", "capability_escalation", "policy_denied", "workspace_replay",
+      "profile-repository-selection-required", "relay_profile_mutation", "strict_mode_tor_disabled",
+      "unauthorized_cache_content",
+    ];
+    expect(liveReasons).toHaveLength(28);
+    const exclusions = new Set(NON_WIRE_REASON_EXCLUSIONS.map(({ code }) => code));
+    expect(liveReasons.filter((code) => exclusions.has(code))).toEqual([]);
   });
 
   it("BLUE TEAM VALIDATION: synthetic/local semantic coverage omits retired Core authority", async () => {

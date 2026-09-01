@@ -24,8 +24,48 @@ export const NON_WIRE_REASON_EXCLUSIONS: readonly Readonly<{
   justification: string;
 }>[] = [
   {
+    code: "agent-attribution-bypass-prohibited",
+    justification: "Retained only as non-wire history for the retired attribution-bypass diagnostic; live attribution-before-signing is enforced by publication authority.",
+  },
+  {
+    code: "agent-human-profile-prohibited",
+    justification: "Retained only as non-wire history for the retired persona-vault and signer-selection diagnostic; live signer selection is enforced by publication authority.",
+  },
+  {
+    code: "agent-key-access-prohibited",
+    justification: "Retained only as non-wire history for the retired private-key-access diagnostic; live key confinement is enforced by signer boundaries.",
+  },
+  {
+    code: "agent-method-prohibited",
+    justification: "Retained only as non-wire history for the retired closed-method diagnostic; live method authorization is enforced by exact grants.",
+  },
+  {
+    code: "agent-resource-denied",
+    justification: "Retained only as non-wire history for the retired signer-resource diagnostic; live resource authorization is enforced by exact grants.",
+  },
+  {
+    code: "auth_rejected_permanent",
+    justification: "Current local relay-write diagnostic only; a post-AUTH rejection proves no cryptographic or upstream authority and cannot satisfy semantic coverage.",
+  },
+  {
     code: "compromise_rotation_breadcrumb_forbidden",
     justification: "Retained only to classify pre-redesign rotation breadcrumbs; current Assurance succession never authors that retired wire profile.",
+  },
+  {
+    code: "control-request-id-conflict",
+    justification: "Retained only as non-wire history for the retired request-ID diagnostic; live at-most-once execution is enforced by the durable signer fence.",
+  },
+  {
+    code: "control-signed-event-invalid",
+    justification: "Retained only as non-wire history for the retired signer-output diagnostic; live output verification is enforced by publication and signer-fence boundaries.",
+  },
+  {
+    code: "dm_invite_revoked_device",
+    justification: "Retained only as non-wire history for the retired device-revocation DM-invite diagnostic; current invite authority does not emit it.",
+  },
+  {
+    code: "dm_invite_unbound_device",
+    justification: "Retained only as non-wire history for the retired device-delegation DM-invite diagnostic; current invite authority does not emit it.",
   },
   {
     code: "equivocation_flagged",
@@ -72,8 +112,16 @@ export const NON_WIRE_REASON_EXCLUSIONS: readonly Readonly<{
     justification: "Retained for historical KEL repository reconciliation; current Assurance records do not materialize or select a legacy repository head graph.",
   },
   {
+    code: "retired-key-authority-window-invalid",
+    justification: "Retained only as non-wire history for the retired Core key-window diagnostic; current verification and selection do not emit it.",
+  },
+  {
     code: "retiring_key_nip05_invalid",
     justification: "Retained only to classify pre-redesign retiring-profile breadcrumbs; current profile publication uses the Core delegated publisher validator.",
+  },
+  {
+    code: "revoked_key_post_compromise",
+    justification: "Retained only as non-wire history for the duplicate post-compromise diagnostic; live cutoff evidence comes from evaluateAssuranceAuthorityAt.",
   },
   {
     code: "revoked_key_post_revoked_at",
