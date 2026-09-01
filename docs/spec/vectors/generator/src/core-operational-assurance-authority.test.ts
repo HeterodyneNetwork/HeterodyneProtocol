@@ -263,6 +263,90 @@ describe("Core operational assurance authority", () => {
     });
   });
 
+  it("BLUE TEAM VALIDATION: synthetic/local captures the complete cache input before trusted-time mutation", async () => {
+    const operational = await loadOperational();
+    const event = await signedProfileEvent();
+    const input = {
+      event,
+      expected_persona: event.pubkey,
+    };
+    const authority = operational.createCoreOperationalAssuranceAuthority?.({
+      ...operationalConfig(),
+      trusted_now: () => {
+        event.content = "mutated by synthetic local trusted clock";
+        input.expected_persona = getPublicKey(OTHER_SECRET);
+        return NOW;
+      },
+    }) ?? MISSING_AUTHORITY;
+
+    expect(operational.verifyCacheCandidate?.(authority, input)?.verdict)
+      .toBe("accept");
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local captures the complete carrier input before trusted-time mutation", async () => {
+    const operational = await loadOperational();
+    const event = await signedProfileEvent();
+    const retained = new TextEncoder().encode(JSON.stringify(event));
+    const input = { event, retained_bytes: retained };
+    const authority = operational.createCoreOperationalAssuranceAuthority?.({
+      ...operationalConfig(),
+      trusted_now: () => {
+        event.content = "mutated by synthetic local trusted clock";
+        retained.fill(0);
+        return NOW;
+      },
+    }) ?? MISSING_AUTHORITY;
+
+    expect(operational.verifyRelayProfileCarrier?.(authority, input)?.verdict)
+      .toBe("accept");
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects cache and carrier accessors before reading trusted time", async () => {
+    const operational = await loadOperational();
+    let clockReads = 0;
+    let accessorReads = 0;
+    const authority = operational.createCoreOperationalAssuranceAuthority?.({
+      ...operationalConfig(),
+      trusted_now: () => {
+        clockReads += 1;
+        return NOW;
+      },
+    }) ?? MISSING_AUTHORITY;
+    const cacheInput = { expected_persona: getPublicKey(SECRET) } as Readonly<{
+      event: NostrSignedEvent;
+      expected_persona: string;
+    }>;
+    Object.defineProperty(cacheInput, "event", {
+      enumerable: true,
+      get: () => {
+        accessorReads += 1;
+        return undefined;
+      },
+    });
+    const carrierInput = { retained_bytes: new Uint8Array([0]) } as Readonly<{
+      event: NostrSignedEvent;
+      retained_bytes: Uint8Array;
+    }>;
+    Object.defineProperty(carrierInput, "event", {
+      enumerable: true,
+      get: () => {
+        accessorReads += 1;
+        return undefined;
+      },
+    });
+
+    expect(operational.verifyCacheCandidate?.(authority, cacheInput)).toEqual({
+      verdict: "reject",
+      reason_code: "unauthorized_cache_content",
+    });
+    expect(operational.verifyRelayProfileCarrier?.(authority, carrierInput)).toEqual({
+      verdict: "reject",
+      reason_code: "relay_profile_mutation",
+    });
+    expect(accessorReads).toBe(0);
+    expect(clockReads).toBe(0);
+  });
+
   it("BLUE TEAM VALIDATION: synthetic/local rejects cloned and cross-authority handles", async () => {
     const operational = await loadOperational();
     const authority = operational.createCoreOperationalAssuranceAuthority?.(

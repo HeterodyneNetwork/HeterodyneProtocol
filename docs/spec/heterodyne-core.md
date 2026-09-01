@@ -382,14 +382,18 @@ structural boundary.
 A canonical-profile selection authority MUST capture bounded, closed
 candidate descriptors; verify every candidate's exact NIP-01 ID and signature;
 authenticate every repository candidate against its exact event author, RID,
-ref, and a current Core repository-writer binding; revalidate the complete
-bounded batch of those opaque bindings against current writer policy
-immediately before selection; union relay and authenticated-repository
+ref, and a current Core repository-writer binding. Its current-location
+inspection MUST match the candidate event ID and author and the binding's
+writer NID, RID, ref namespace and exact ref, profile, operations,
+issuance/expiry, dual signatures and proof identity, and current policy
+revision, checkpoint, and predecessor. The authority revalidates the complete
+bounded batch of those inspected opaque bindings against current writer policy
+immediately before selection; then it unions relay and authenticated-repository
 candidates without carrier priority; and apply the NIP-01 replacement rule to
 that union. Candidate descriptors are fully captured before repository
 authentication begins, and one constructor-captured trusted-time observation
-governs both the view and premature-candidate selection. It derives the repository
-requirement solely from the selected signed profile's valid extension. A
+governs both the view and premature-candidate selection. It derives the
+repository requirement solely from the selected signed profile's valid extension. A
 request boolean, repository label, cache entry, clone, or object mutation MUST
 NOT assert that requirement or satisfy it. If the selected profile advertises
 a repository but its exact event lacks current authenticated repository
@@ -1002,8 +1006,11 @@ Core's current invariant meanings are:
 ### 12.1 Local operational authority views
 
 Security-sensitive operational checks consume verifier-minted local views,
-not caller-supplied booleans. A friend-cache candidate is usable only after
-its captured NIP-01 event verifies and its author equals the expected persona;
+not caller-supplied booleans. Every public cache/carrier boundary first
+descriptor-captures its complete bounded input, including nested event fields
+and retained bytes, before reading trusted time or interpreting event
+semantics. A friend-cache candidate is usable only after its captured NIP-01
+event verifies and its author equals the expected persona;
 otherwise the boundary returns `unauthorized_cache_content`. A relay profile
 carrier is conforming only when bounded retained UTF-8 event bytes pass a
 duplicate-aware JSON decode before event semantics and parse to the exact same

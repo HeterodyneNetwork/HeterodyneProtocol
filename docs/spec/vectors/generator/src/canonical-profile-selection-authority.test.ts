@@ -11,7 +11,8 @@ import {
   type RepositoryWriterBindingV1,
 } from "./core-writer-binding.js";
 import type { CurrentRepositoryPolicy } from "./core-policy.js";
-import { bytesToHex, hexToBytes } from "./hex.js";
+import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
+import { jcsCanonicalize } from "./jcs.js";
 import { getPublicKey, signEvent, type NostrSignedEvent } from "./nostr.js";
 import { proofBytes } from "./proof-bytes.js";
 import {
@@ -40,6 +41,37 @@ type CanonicalProfileSelectionAuthorityConfig = Readonly<{
     rid: string,
     ref: string,
   ) => Promise<CurrentRepositoryWriterBinding | null>;
+  inspect_repository_candidate: (
+    binding: CurrentRepositoryWriterBinding,
+    event: NostrSignedEvent,
+    rid: string,
+    ref: string,
+  ) => RepositoryCandidateBindingInspection | null;
+}>;
+type RepositoryBindingTuple = Readonly<{
+  profile: "heterodyne.core.repository-writer-binding.v1";
+  spec_version: "heterodyne/0.6.0";
+  owner_active_key: string;
+  repository_rid: string;
+  writer_nid: string;
+  ref_namespace: string;
+  operations: readonly string[];
+  issued_at: number;
+  expires_at: number;
+  owner_signature: string;
+  nid_signature: string;
+  writer_ref: string;
+  operation: "claim-ledger-write";
+  source_identity: string;
+  proof_identity: string;
+  policy_revision: number;
+  policy_checkpoint: string;
+  policy_predecessor: string | null;
+}>;
+type RepositoryCandidateBindingInspection = Readonly<{
+  candidate_event_id: string;
+  expected: RepositoryBindingTuple;
+  binding: RepositoryBindingTuple;
 }>;
 type CanonicalProfileSelectionInput = Readonly<{
   relay_candidates: readonly NostrSignedEvent[];
@@ -101,8 +133,20 @@ async function profileEvent(input: Readonly<{
 type WriterEvidence = Readonly<{
   authority: CoreRepositoryWriterAuthority;
   binding: CurrentRepositoryWriterBinding;
+  source: RepositoryWriterBindingV1;
+  request: Readonly<{
+    owner_active_key: string;
+    repository_rid: string;
+    writer_nid: string;
+    writer_ref: string;
+    operation: "claim-ledger-write";
+  }>;
+  tuple: RepositoryBindingTuple;
   authenticate: CanonicalProfileSelectionAuthorityConfig[
     "authenticate_repository_candidate"
+  ];
+  inspect: CanonicalProfileSelectionAuthorityConfig[
+    "inspect_repository_candidate"
   ];
   replace_policy: (policy: CurrentRepositoryPolicy) => void;
   active_policy: () => CurrentRepositoryPolicy;
@@ -174,12 +218,36 @@ function writerEvidence(input: Readonly<{
     source,
     request,
   );
+  const tuple = Object.freeze({
+    ...source,
+    writer_ref: request.writer_ref,
+    operation: request.operation,
+    source_identity: bytesToHex(sha256(utf8Bytes(jcsCanonicalize(source)))),
+    proof_identity: bytesToHex(sha256(payload)),
+    policy_revision: policy.revision,
+    policy_checkpoint: policy.checkpoint,
+    policy_predecessor: policy.predecessor,
+  });
   return Object.freeze({
     authority: writerAuthority,
     binding,
+    source,
+    request: Object.freeze(request),
+    tuple,
     authenticate: async (event, rid, ref) =>
       event.pubkey === ownerKey && rid === repositoryRid && ref === REF
         ? binding
+        : null,
+    inspect: (candidateBinding, event, rid, ref) =>
+      candidateBinding === binding
+        && event.id.length === 64
+        && rid === repositoryRid
+        && ref === REF
+        ? Object.freeze({
+            candidate_event_id: event.id,
+            expected: tuple,
+            binding: tuple,
+          })
         : null,
     replace_policy: (replacement) => {
       policy = replacement;
@@ -196,6 +264,9 @@ function config(input: Readonly<{
   authenticate_repository_candidate?: CanonicalProfileSelectionAuthorityConfig[
     "authenticate_repository_candidate"
   ];
+  inspect_repository_candidate?: CanonicalProfileSelectionAuthorityConfig[
+    "inspect_repository_candidate"
+  ];
 }> = {}): CanonicalProfileSelectionAuthorityConfig {
   const writer = input.writer ?? writerEvidence();
   return {
@@ -207,6 +278,8 @@ function config(input: Readonly<{
       input.repository_writer_authority ?? writer.authority,
     authenticate_repository_candidate:
       input.authenticate_repository_candidate ?? writer.authenticate,
+    inspect_repository_candidate:
+      input.inspect_repository_candidate ?? writer.inspect,
   };
 }
 
@@ -344,6 +417,102 @@ describe("canonical Core profile selection authority", () => {
       reason_code: "profile-repository-selection-required",
     });
   });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects a genuine current binding for a different repository ref", async () => {
+    const canonical = await loadCanonical();
+    const selected = await profileEvent();
+    const writer = writerEvidence();
+    const wrongRef = "refs/heads/different-profile-location";
+    const wrongBinding = resolveCurrentRepositoryWriterBinding(
+      writer.authority,
+      writer.source,
+      { ...writer.request, writer_ref: wrongRef },
+    );
+    const wrongTuple = Object.freeze({ ...writer.tuple, writer_ref: wrongRef });
+    const authority = canonical.createCanonicalProfileSelectionAuthority?.(config({
+      writer,
+      authenticate_repository_candidate: async () => wrongBinding,
+      inspect_repository_candidate: (binding, event) => binding === wrongBinding
+        ? Object.freeze({
+            candidate_event_id: event.id,
+            expected: writer.tuple,
+            binding: wrongTuple,
+          })
+        : null,
+    })) ?? MISSING_AUTHORITY;
+
+    expect(await canonical.selectCanonicalProfile?.(authority, {
+      relay_candidates: [selected],
+      repository_candidates: [{ event: selected, repository_rid: PROFILE_RID, ref: REF }],
+    })).toEqual({
+      verdict: "reject",
+      reason_code: "profile-repository-selection-required",
+    });
+  });
+
+  it.each([
+    ["owner", (tuple: RepositoryBindingTuple) => ({
+      ...tuple,
+      owner_active_key: getPublicKey(OTHER_SECRET),
+    })],
+    ["RID", (tuple: RepositoryBindingTuple) => ({
+      ...tuple,
+      repository_rid: OTHER_RID,
+    })],
+    ["ref namespace", (tuple: RepositoryBindingTuple) => ({
+      ...tuple,
+      ref_namespace: "refs/tags/",
+    })],
+    ["writer", (tuple: RepositoryBindingTuple) => ({
+      ...tuple,
+      writer_nid: didKeyFromEd25519(ed25519PublicKey("44".repeat(32))),
+    })],
+    ["profile", (tuple: RepositoryBindingTuple) => ({
+      ...tuple,
+      profile: "heterodyne.core.repository-writer-binding.v2",
+    })],
+    ["operations", (tuple: RepositoryBindingTuple) => ({
+      ...tuple,
+      operations: ["profile-write"],
+    })],
+    ["source identity", (tuple: RepositoryBindingTuple) => ({
+      ...tuple,
+      source_identity: "77".repeat(32),
+    })],
+    ["proof identity", (tuple: RepositoryBindingTuple) => ({
+      ...tuple,
+      proof_identity: "77".repeat(32),
+    })],
+    ["current checkpoint", (tuple: RepositoryBindingTuple) => ({
+      ...tuple,
+      policy_checkpoint: "77".repeat(20),
+    })],
+  ] as const)(
+    "BLUE TEAM VALIDATION: synthetic/local rejects inspected binding with cross-%s tuple",
+    async (_name, mutate) => {
+      const canonical = await loadCanonical();
+      const selected = await profileEvent();
+      const writer = writerEvidence();
+      const authority = canonical.createCanonicalProfileSelectionAuthority?.(config({
+        writer,
+        inspect_repository_candidate: (binding, event) => binding === writer.binding
+          ? Object.freeze({
+              candidate_event_id: event.id,
+              expected: writer.tuple,
+              binding: mutate(writer.tuple) as RepositoryBindingTuple,
+            })
+          : null,
+      })) ?? MISSING_AUTHORITY;
+
+      expect(await canonical.selectCanonicalProfile?.(authority, {
+        relay_candidates: [selected],
+        repository_candidates: [{ event: selected, repository_rid: PROFILE_RID, ref: REF }],
+      })).toEqual({
+        verdict: "reject",
+        reason_code: "profile-repository-selection-required",
+      });
+    },
+  );
 
   it("BLUE TEAM VALIDATION: synthetic/local revalidates repository-writer evidence against current policy", async () => {
     const canonical = await loadCanonical();
@@ -533,11 +702,14 @@ describe("canonical Core profile selection authority", () => {
       repository_writer_authority: CoreRepositoryWriterAuthority;
       authenticate_repository_candidate:
         CanonicalProfileSelectionAuthorityConfig["authenticate_repository_candidate"];
+      inspect_repository_candidate:
+        CanonicalProfileSelectionAuthorityConfig["inspect_repository_candidate"];
     };
     const authority = canonical.createCanonicalProfileSelectionAuthority?.(mutableConfig)
       ?? MISSING_AUTHORITY;
     mutableConfig.authenticate_repository_candidate = async () => null;
     mutableConfig.repository_writer_authority = foreignWriter.authority;
+    mutableConfig.inspect_repository_candidate = () => null;
 
     expect((await canonical.selectCanonicalProfile?.(authority, {
       relay_candidates: [selected],

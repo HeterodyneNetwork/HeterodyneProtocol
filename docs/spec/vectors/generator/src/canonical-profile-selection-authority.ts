@@ -4,6 +4,7 @@ import * as nip19 from "nostr-tools/nip19";
 import { captureExactDataObject } from "./closed-data.js";
 import {
   isCanonicalCoreGitRef,
+  isCanonicalCoreGitRefNamespace,
   isCanonicalCoreRepositoryRid,
 } from "./core-policy.js";
 import {
@@ -40,6 +41,41 @@ export type CanonicalProfileSelectionAuthorityConfig = Readonly<{
     rid: string,
     ref: string,
   ) => Promise<CurrentRepositoryWriterBinding | null>;
+  inspect_repository_candidate: (
+    binding: CurrentRepositoryWriterBinding,
+    event: NostrSignedEvent,
+    rid: string,
+    ref: string,
+  ) => RepositoryCandidateBindingInspection | null;
+}>;
+
+export type RepositoryWriterBindingTuple = Readonly<{
+  profile: "heterodyne.core.repository-writer-binding.v1";
+  spec_version: "heterodyne/0.6.0";
+  owner_active_key: string;
+  repository_rid: string;
+  writer_nid: string;
+  ref_namespace: string;
+  operations: readonly string[];
+  issued_at: number;
+  expires_at: number;
+  owner_signature: string;
+  nid_signature: string;
+  writer_ref: string;
+  operation: "claim-ledger-write";
+  source_identity: string;
+  proof_identity: string;
+  policy_revision: number;
+  policy_checkpoint: string;
+  policy_predecessor: string | null;
+}>;
+
+export type RepositoryCandidateBindingInspection = Readonly<{
+  candidate_event_id: string;
+  /** Tuple resolved independently from the candidate's current repository location. */
+  expected: RepositoryWriterBindingTuple;
+  /** Tuple inspected from the returned opaque Task 4 binding and its source. */
+  binding: RepositoryWriterBindingTuple;
 }>;
 
 export type CanonicalProfileSelectionInput = Readonly<{
@@ -64,6 +100,8 @@ type CapturedAuthority = Readonly<{
   repository_writer_authority: CoreRepositoryWriterAuthority;
   authenticate_repository_candidate:
     CanonicalProfileSelectionAuthorityConfig["authenticate_repository_candidate"];
+  inspect_repository_candidate:
+    CanonicalProfileSelectionAuthorityConfig["inspect_repository_candidate"];
 }>;
 
 type RepositoryCandidate = Readonly<{
@@ -79,6 +117,7 @@ type ViewRecord = Readonly<{
   selected: VerifiedNostrEvent;
   repository_rid: string | null;
   repository_binding: CurrentRepositoryWriterBinding | null;
+  repository_inspection: RepositoryCandidateBindingInspection | null;
   binding_digest: string;
 }>;
 
@@ -86,6 +125,10 @@ const AUTHORITIES = new WeakMap<object, CapturedAuthority>();
 const VIEWS = new WeakMap<object, ViewRecord>();
 const UTF8_ENCODER = new TextEncoder();
 const HEX_32 = /^[0-9a-f]{64}$/u;
+const HEX_64 = /^[0-9a-f]{128}$/u;
+const CHECKPOINT = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/u;
+const WRITER_NID = /^did:key:z[1-9A-HJ-NP-Za-km-z]{1,256}$/u;
+const OPERATION = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/u;
 const MAX_CANDIDATES_PER_CARRIER = 64;
 const MAX_TOTAL_CANDIDATES = 128;
 const MAX_EVENT_CONTENT_BYTES = 65_536;
@@ -118,6 +161,7 @@ export function createCanonicalProfileSelectionAuthority(
       "replaceable_selection",
       "repository_writer_authority",
       "authenticate_repository_candidate",
+      "inspect_repository_candidate",
     ]], "Canonical profile selection authority config");
     if (
       typeof captured.authority_id !== "string"
@@ -133,6 +177,8 @@ export function createCanonicalProfileSelectionAuthority(
       || utilTypes.isProxy(captured.repository_writer_authority)
       || typeof captured.authenticate_repository_candidate !== "function"
       || utilTypes.isProxy(captured.authenticate_repository_candidate)
+      || typeof captured.inspect_repository_candidate !== "function"
+      || utilTypes.isProxy(captured.inspect_repository_candidate)
     ) throw invalid();
     const observedAt = (captured.trusted_now as () => number)();
     if (!Number.isSafeInteger(observedAt) || observedAt < 0) throw invalid();
@@ -150,6 +196,10 @@ export function createCanonicalProfileSelectionAuthority(
       authenticate_repository_candidate:
         captured.authenticate_repository_candidate as CapturedAuthority[
           "authenticate_repository_candidate"
+        ],
+      inspect_repository_candidate:
+        captured.inspect_repository_candidate as CapturedAuthority[
+          "inspect_repository_candidate"
         ],
     }));
     return authority;
@@ -196,11 +246,28 @@ export async function selectCanonicalProfile(
       }));
     }
 
-    const authenticated = new Map<string, Readonly<{
+    const inspected: Array<Readonly<{
       candidate: RepositoryCandidate;
       binding: CurrentRepositoryWriterBinding;
-    }>>();
+      inspection: RepositoryCandidateBindingInspection;
+    }>> = [];
     for (const result of pending) {
+      const inspection = captureRepositoryInspection(
+        authority.inspect_repository_candidate(
+          result.binding,
+          result.candidate.event,
+          result.candidate.repository_rid,
+          result.candidate.ref,
+        ),
+        result.candidate,
+        authority.observed_at,
+      );
+      if (inspection === null) return REJECTED;
+      inspected.push(Object.freeze({ ...result, inspection }));
+    }
+
+    const authenticated = new Map<string, typeof inspected[number]>();
+    for (const result of inspected) {
       const revalidated = revalidateCurrentRepositoryWriterBinding(
         authority.repository_writer_authority,
         result.binding,
@@ -241,6 +308,10 @@ export async function selectCanonicalProfile(
       event_id: selected.id,
       repository_rid: requiredRepositoryRid,
       repository_ref: authenticatedSelection?.candidate.ref ?? null,
+      repository_source_identity:
+        authenticatedSelection?.inspection.binding.source_identity ?? null,
+      repository_checkpoint:
+        authenticatedSelection?.inspection.binding.policy_checkpoint ?? null,
     }))));
     VIEWS.set(view, Object.freeze({
       authority: authorityValue,
@@ -249,6 +320,7 @@ export async function selectCanonicalProfile(
       selected,
       repository_rid: requiredRepositoryRid,
       repository_binding: authenticatedSelection?.binding ?? null,
+      repository_inspection: authenticatedSelection?.inspection ?? null,
       binding_digest: bindingDigest,
     }));
     return Object.freeze({ verdict: "accept", view });
@@ -327,6 +399,138 @@ function captureInput(value: unknown): Readonly<{
   } catch {
     return null;
   }
+}
+
+function captureRepositoryInspection(
+  value: unknown,
+  candidate: RepositoryCandidate,
+  observedAt: number,
+): RepositoryCandidateBindingInspection | null {
+  try {
+    const captured = captureExactDataObject(value, [[
+      "candidate_event_id",
+      "expected",
+      "binding",
+    ]], "Canonical repository candidate inspection");
+    const expected = captureRepositoryTuple(captured.expected);
+    const binding = captureRepositoryTuple(captured.binding);
+    if (
+      captured.candidate_event_id !== candidate.event.id
+      || expected === null
+      || binding === null
+      || expected.owner_active_key !== candidate.event.pubkey
+      || expected.repository_rid !== candidate.repository_rid
+      || expected.writer_ref !== candidate.ref
+      || observedAt < expected.issued_at
+      || observedAt >= expected.expires_at
+      || JSON.stringify(expected) !== JSON.stringify(binding)
+    ) return null;
+    return Object.freeze({
+      candidate_event_id: captured.candidate_event_id,
+      expected,
+      binding,
+    });
+  } catch {
+    return null;
+  }
+}
+
+function captureRepositoryTuple(value: unknown): RepositoryWriterBindingTuple | null {
+  try {
+    const captured = captureExactDataObject(value, [[
+      "profile",
+      "spec_version",
+      "owner_active_key",
+      "repository_rid",
+      "writer_nid",
+      "ref_namespace",
+      "operations",
+      "issued_at",
+      "expires_at",
+      "owner_signature",
+      "nid_signature",
+      "writer_ref",
+      "operation",
+      "source_identity",
+      "proof_identity",
+      "policy_revision",
+      "policy_checkpoint",
+      "policy_predecessor",
+    ]], "Canonical repository writer tuple");
+    const operations = captureDenseArray(captured.operations, 32);
+    if (
+      captured.profile !== "heterodyne.core.repository-writer-binding.v1"
+      || captured.spec_version !== "heterodyne/0.6.0"
+      || typeof captured.owner_active_key !== "string"
+      || !HEX_32.test(captured.owner_active_key)
+      || !isCanonicalCoreRepositoryRid(captured.repository_rid)
+      || typeof captured.writer_nid !== "string"
+      || !WRITER_NID.test(captured.writer_nid)
+      || !isCanonicalCoreGitRefNamespace(captured.ref_namespace)
+      || operations === null
+      || operations.length === 0
+      || operations.some((operation) =>
+        typeof operation !== "string"
+        || operation.length > 64
+        || !OPERATION.test(operation)
+      )
+      || !strictlySorted(operations as string[])
+      || !Number.isSafeInteger(captured.issued_at)
+      || (captured.issued_at as number) < 0
+      || !Number.isSafeInteger(captured.expires_at)
+      || (captured.expires_at as number) <= (captured.issued_at as number)
+      || typeof captured.owner_signature !== "string"
+      || !HEX_64.test(captured.owner_signature)
+      || typeof captured.nid_signature !== "string"
+      || !HEX_64.test(captured.nid_signature)
+      || !isCanonicalCoreGitRef(captured.writer_ref)
+      || typeof captured.ref_namespace !== "string"
+      || typeof captured.writer_ref !== "string"
+      || !captured.writer_ref.startsWith(captured.ref_namespace)
+      || captured.writer_ref.length <= captured.ref_namespace.length
+      || captured.operation !== "claim-ledger-write"
+      || !(operations as string[]).includes(captured.operation)
+      || typeof captured.source_identity !== "string"
+      || !HEX_32.test(captured.source_identity)
+      || typeof captured.proof_identity !== "string"
+      || !HEX_32.test(captured.proof_identity)
+      || !Number.isSafeInteger(captured.policy_revision)
+      || (captured.policy_revision as number) < 0
+      || typeof captured.policy_checkpoint !== "string"
+      || !CHECKPOINT.test(captured.policy_checkpoint)
+      || !(captured.policy_predecessor === null
+        || typeof captured.policy_predecessor === "string"
+          && CHECKPOINT.test(captured.policy_predecessor))
+    ) return null;
+    return Object.freeze({
+      profile: captured.profile,
+      spec_version: captured.spec_version,
+      owner_active_key: captured.owner_active_key,
+      repository_rid: captured.repository_rid,
+      writer_nid: captured.writer_nid,
+      ref_namespace: captured.ref_namespace,
+      operations: Object.freeze(operations as string[]),
+      issued_at: captured.issued_at as number,
+      expires_at: captured.expires_at as number,
+      owner_signature: captured.owner_signature,
+      nid_signature: captured.nid_signature,
+      writer_ref: captured.writer_ref,
+      operation: captured.operation,
+      source_identity: captured.source_identity,
+      proof_identity: captured.proof_identity,
+      policy_revision: captured.policy_revision as number,
+      policy_checkpoint: captured.policy_checkpoint,
+      policy_predecessor: captured.policy_predecessor,
+    });
+  } catch {
+    return null;
+  }
+}
+
+function strictlySorted(values: readonly string[]): boolean {
+  return values.every((value, index) =>
+    index === 0 || values[index - 1]! < value
+  );
 }
 
 function snapshotBoundedEvent(value: unknown): VerifiedNostrEvent | null {

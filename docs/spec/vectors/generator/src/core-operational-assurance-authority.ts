@@ -115,8 +115,6 @@ export function verifyCacheCandidate(
   const authority = opaqueAuthority(authorityValue);
   if (authority === null) return rejected;
   try {
-    const observedAt = trustedNow(authority);
-    if (observedAt === null) return rejected;
     const input = captureExactDataObject(inputValue, [[
       "event",
       "expected_persona",
@@ -125,7 +123,11 @@ export function verifyCacheCandidate(
       typeof input.expected_persona !== "string"
       || !HEX_32.test(input.expected_persona)
     ) return rejected;
-    const event = snapshotBoundedEvent(input.event);
+    const capturedEvent = captureBoundedEvent(input.event);
+    if (capturedEvent === null) return rejected;
+    const observedAt = trustedNow(authority);
+    if (observedAt === null) return rejected;
+    const event = snapshotAndVerifyNostrEvent(capturedEvent);
     if (event === null || event.pubkey !== input.expected_persona) return rejected;
     return accept(authorityValue, authority, observedAt, {
       purpose: "cache-candidate",
@@ -146,15 +148,17 @@ export function verifyRelayProfileCarrier(
   const authority = opaqueAuthority(authorityValue);
   if (authority === null) return rejected;
   try {
-    const observedAt = trustedNow(authority);
-    if (observedAt === null) return rejected;
     const input = captureExactDataObject(inputValue, [[
       "event",
       "retained_bytes",
     ]], "Core relay profile carrier input");
-    const exposed = snapshotBoundedEvent(input.event);
+    const capturedEvent = captureBoundedEvent(input.event);
     const retainedBytes = captureRetainedBytes(input.retained_bytes);
-    if (exposed === null || exposed.kind !== 0 || retainedBytes === null) return rejected;
+    if (capturedEvent === null || retainedBytes === null) return rejected;
+    const observedAt = trustedNow(authority);
+    if (observedAt === null) return rejected;
+    const exposed = snapshotAndVerifyNostrEvent(capturedEvent);
+    if (exposed === null || exposed.kind !== 0) return rejected;
     const retainedValue = decodeRetainedJson(retainedBytes);
     if (retainedValue === undefined) return rejected;
     const retained = snapshotBoundedEvent(retainedValue);
@@ -401,6 +405,32 @@ class UniqueJsonMemberScanner {
 function snapshotBoundedEvent(value: unknown): VerifiedNostrEvent | null {
   if (!eventShapeWithinBounds(value)) return null;
   return snapshotAndVerifyNostrEvent(value);
+}
+
+function captureBoundedEvent(value: unknown): NostrSignedEvent | null {
+  if (!eventShapeWithinBounds(value)) return null;
+  try {
+    const descriptors = Object.getOwnPropertyDescriptors(value as object);
+    const tags = captureDenseArray(dataMember(descriptors, "tags"), MAX_EVENT_TAGS);
+    if (tags === null) return null;
+    const capturedTags: string[][] = [];
+    for (const tag of tags) {
+      const members = captureDenseArray(tag, MAX_TAG_WIDTH);
+      if (members === null) return null;
+      capturedTags.push(Object.freeze([...(members as string[])]) as string[]);
+    }
+    return Object.freeze({
+      content: dataMember(descriptors, "content") as string,
+      created_at: dataMember(descriptors, "created_at") as number,
+      id: dataMember(descriptors, "id") as string,
+      kind: dataMember(descriptors, "kind") as number,
+      pubkey: dataMember(descriptors, "pubkey") as string,
+      sig: dataMember(descriptors, "sig") as string,
+      tags: Object.freeze(capturedTags) as string[][],
+    });
+  } catch {
+    return null;
+  }
 }
 
 function eventShapeWithinBounds(value: unknown): boolean {
