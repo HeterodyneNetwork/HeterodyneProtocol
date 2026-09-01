@@ -4,6 +4,7 @@ import {
   sign,
   type JsonWebKey,
 } from "node:crypto";
+import { schnorr } from "@noble/curves/secp256k1";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   createAuthorizationFreshnessAuthority,
@@ -11,7 +12,10 @@ import {
   type CurrentAuthorizationView,
 } from "./authorization-freshness.js";
 import type { JsonValue } from "./claims.js";
-import type { ControlAuthorizationObject } from "./control-profile.js";
+import type {
+  ControlAuthorizationObject,
+  ControlAuthorizationRecord,
+} from "./control-profile.js";
 import {
   consumeVerifiedControlToken,
   createControlTokenVerifier,
@@ -20,7 +24,7 @@ import {
   type ControlTokenUse,
 } from "./control-token-verifier.js";
 import { buildFixtures } from "./fixtures.js";
-import { utf8Bytes } from "./hex.js";
+import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
 import {
   CHECKPOINT_CLAIM,
@@ -33,11 +37,15 @@ import type {
   DurableAuthorityRecord,
   DurableAuthorityStore,
 } from "./security-authority-support.js";
+import { proofBytes } from "./proof-bytes.js";
+import { currentControlFrameRequestDigest } from "./profile-negotiation.js";
 import {
   continuityManifestDigest,
+  createCurrentControlGrantResolver,
   createContinuityAuthorityProof,
   createCurrentControlGrantView,
   generateStatusListToken,
+  resolveCurrentControlGrant,
   validateIssuerContinuityChain,
   type ContinuityManifest,
   type ContinuityManifestBody,
@@ -48,6 +56,8 @@ const SENDER_KEY = "2JF8vg9etJzjFwZwmkvhBLLZ0bfMVVOPivYR5lFtcec";
 const GROUP_ID = "33".repeat(32);
 const AUTHORIZATION_ID = "44".repeat(32);
 const AUTHORITY_ID = "synthetic-local-control-authority";
+const GRANT_SECRET = "17".repeat(32);
+const GRANT_SIGNER = bytesToHex(schnorr.getPublicKey(hexToBytes(GRANT_SECRET)));
 const OBJECT = Object.freeze({
   class: "config_namespace",
   id: "ui",
@@ -95,6 +105,41 @@ function signedManifest(body: ContinuityManifestBody): ContinuityManifest {
     ...body,
     authority_proof: createContinuityAuthorityProof(body, live.s.writerOne.private_key),
   };
+}
+
+function signedGrantRecord(
+  overrides: Partial<ControlAuthorizationRecord> = {},
+): ControlAuthorizationRecord {
+  const unsigned = {
+    record_id: AUTHORIZATION_ID,
+    persona: live.issuedState.credential_ledger.credential_ledger_persona,
+    client_key: SENDER_KEY,
+    client_class: "automated" as const,
+    approving_node: GRANT_SIGNER,
+    approving_authority: "interactive-oidc",
+    methods: ["config.get"],
+    objects: [OBJECT],
+    limits: { calls: 5 },
+    capabilities: [] as ControlAuthorizationRecord["capabilities"],
+    token_lifetime_default_seconds: 300 as const,
+    token_lifetime_max_seconds: 300,
+    inbound_execution: false,
+    predecessor: null,
+    state: "active" as const,
+    created_at: live.issuedState.checkpoint.observed_at,
+    expires_at: live.issuedState.checkpoint.observed_at + 300,
+    signer: GRANT_SIGNER,
+    ...overrides,
+  };
+  const { signature: _ignored, ...signable } = unsigned as typeof unsigned & { signature?: string };
+  return {
+    ...signable,
+    signature: bytesToHex(schnorr.sign(
+      proofBytes("heterodyne-control-authorization-record-v1", signable),
+      hexToBytes(GRANT_SECRET),
+      "00".repeat(32),
+    )),
+  } as ControlAuthorizationRecord;
 }
 
 type TokenFixture = Awaited<ReturnType<typeof tokenFixture>>;
@@ -189,13 +234,17 @@ async function tokenFixture() {
     },
   }]);
   const clock = { now };
+  const freshnessCalls = { loads: 0 };
   const authority = createAuthorizationFreshnessAuthority({
     repository_rid: live.s.rid,
     persona_key: live.personaKey,
     manifest_digest: continuityManifestDigest(manifest),
   }, {
     trusted_now: () => clock.now,
-    load_current_view: () => ({ manifest, ledger_state: state }),
+    load_current_view: () => {
+      freshnessCalls.loads += 1;
+      return { manifest, ledger_state: state };
+    },
   });
   const prepared = evaluateAuthorizationFreshness(authority, manifest);
   if (prepared.verdict !== "accept") throw new Error(`fixture freshness rejected: ${prepared.reason}`);
@@ -203,26 +252,25 @@ async function tokenFixture() {
   if (plainPrepared.verdict !== "accept") {
     throw new Error(`plain fixture freshness rejected: ${plainPrepared.reason}`);
   }
-  const grant = {
-    authority_id: AUTHORITY_ID,
-    authorization_id: AUTHORIZATION_ID,
-    credential_ledger_persona: state.credential_ledger.credential_ledger_persona,
-    grant_generation: state.credential_ledger.credential_ledger_generation,
-    subject: String(validatedJwt.claims.sub),
-    sender_key: SENDER_KEY,
-    client_id: "registered-client",
-    client_class: "automated" as const,
-    marmot_group_id: GROUP_ID,
-    registry_checkpoint: state.checkpoint.commit_oid,
-    scopes: ["control"],
-    methods: ["config.get"],
-    objects: [OBJECT],
-    expires_at: Number(validatedJwt.claims.exp),
-    status: "active" as const,
+  const grantState: { record: ControlAuthorizationRecord | null } = {
+    record: signedGrantRecord({
+      created_at: Number(validatedJwt.claims.iat),
+      expires_at: Number(validatedJwt.claims.exp),
+      token_lifetime_max_seconds: 3_600,
+    }),
   };
+  const grantResolver = createCurrentControlGrantResolver({
+    authority_id: AUTHORITY_ID,
+    trusted_now: () => clock.now,
+    expected_signer: GRANT_SIGNER,
+    load_current_grant: async (authorizationId: string) =>
+      authorizationId === AUTHORIZATION_ID ? grantState.record : null,
+  });
+  const resolvedGrant = await resolveCurrentControlGrant(grantResolver, AUTHORIZATION_ID);
+  if (resolvedGrant.verdict !== "accept") throw new Error("fixture grant rejected");
   const view = createCurrentControlGrantView({
     authorization_view: prepared.view,
-    grant,
+    grant: resolvedGrant.output,
     validated_jwt: validatedJwt,
     status_list: statusList,
     status_jwks_bytes: jwksBytes,
@@ -232,9 +280,11 @@ async function tokenFixture() {
   return {
     compact,
     clock,
+    freshnessCalls,
     view,
     plain_view: plainPrepared.view,
-    grant,
+    grantState,
+    grantResolver,
     validatedJwt,
     statusList,
     jwksBytes,
@@ -333,19 +383,55 @@ function use(overrides: Partial<ControlTokenUse> = {}): ControlTokenUse {
 }
 
 function operation(overrides: Partial<ControlTokenOperation> = {}): ControlTokenOperation {
+  const operationId = overrides.operation_id ?? "synthetic-local-operation-0001";
+  const payload = overrides.payload ?? {
+    id: operationId,
+    method: "config.get",
+    params: { object: OBJECT, namespace: "ui", value: "dark" },
+    expires_at: live.issuedState.checkpoint.observed_at + 60,
+  };
   return {
-    operation_id: "synthetic-local-operation-0001",
-    request_digest: "55".repeat(32),
-    payload: { namespace: "ui", value: "dark" },
-    ...overrides,
+    operation_id: operationId,
+    request_digest: overrides.request_digest ?? currentControlFrameRequestDigest({
+      profile: "human-jsonrpc",
+      version: "heterodyne/0.6.0",
+      group_id: GROUP_ID,
+      sender: SENDER_KEY,
+      request_id: operationId,
+      expires_at: Number((payload as Record<string, JsonValue>).expires_at),
+      body: payload as Readonly<Record<string, unknown>>,
+    }),
+    payload,
   };
 }
 
 function changedOperation(): ControlTokenOperation {
   return operation({
     operation_id: "synthetic-local-operation-0002",
-    request_digest: "66".repeat(32),
   });
+}
+
+function mcpOperation(fixture: TokenFixture): ControlTokenOperation {
+  const operationId = "synthetic-local-mcp-operation-0001";
+  const payload = {
+    jsonrpc: "2.0",
+    id: operationId,
+    method: "tools/call",
+    params: { name: "config.get", arguments: { object: OBJECT } },
+  };
+  return {
+    operation_id: operationId,
+    request_digest: currentControlFrameRequestDigest({
+      profile: "agent-mcp",
+      version: "heterodyne/0.6.0",
+      group_id: GROUP_ID,
+      sender: SENDER_KEY,
+      request_id: operationId,
+      expires_at: Number(fixture.validatedJwt.claims.exp),
+      body: payload,
+    }),
+    payload,
+  };
 }
 
 function harness(fixture: TokenFixture, options: {
@@ -433,20 +519,14 @@ describe("current Control token verifier", () => {
   it.each([
     ["issuer", (claims: Record<string, any>) => { claims.iss = `${live.metadata.issuer}/other`; }],
     ["audience", (claims: Record<string, any>) => { claims.aud = "https://other.example"; }],
-    ["subject", (claims: Record<string, any>) => { claims.sub = "A".repeat(43); }],
     ["sender", (claims: Record<string, any>) => { claims.cnf = { jkt: "A".repeat(43) }; }],
     ["expiry", (claims: Record<string, any>) => { claims.exp = claims.iat; }],
     ["group", (claims: Record<string, any>) => { claims.group_id = "99".repeat(32); }],
     ["grant", (claims: Record<string, any>) => { claims.authorization_id = "99".repeat(32); }],
-    ["checkpoint", (claims: Record<string, any>) => {
-      claims.registry_checkpoint = "99".repeat(32);
-      claims[CHECKPOINT_CLAIM].commit_oid = "99".repeat(32);
-    }],
     ["generation", (claims: Record<string, any>) => {
       claims.grant_generation += 1;
       claims.credential_ledger_generation += 1;
     }],
-    ["status", (claims: Record<string, any>) => { claims.status.status_list.idx = 8; }],
     ["scope", (claims: Record<string, any>) => { claims.scope = "control.admin"; }],
     ["method", (claims: Record<string, any>) => { claims.methods = ["config.set"]; }],
     ["object", (claims: Record<string, any>) => {
@@ -456,6 +536,26 @@ describe("current Control token verifier", () => {
     const fixture = await tokenFixture();
     const changed = resignJwt(fixture.compact, mutate);
     expect(await verifyControlToken(harness(fixture).verifier, changed, use())).toEqual(REJECT);
+  });
+
+  it.each([
+    ["subject", (claims: Record<string, any>) => { claims.sub = "A".repeat(43); }],
+    ["checkpoint", (claims: Record<string, any>) => {
+      claims.registry_checkpoint = "99".repeat(32);
+      claims[CHECKPOINT_CLAIM].commit_oid = "99".repeat(32);
+    }],
+    ["status", (claims: Record<string, any>) => { claims.status.status_list.idx = 8; }],
+  ])("BLUE TEAM VALIDATION: synthetic/local confines a non-current signed %s token to replay lookup", async (_label, mutate) => {
+    const fixture = await tokenFixture();
+    const changed = resignJwt(fixture.compact, mutate);
+    const testHarness = harness(fixture);
+    const decision = await verifyControlToken(testHarness.verifier, changed, use());
+    expect(decision.verdict).toBe("accept");
+    if (decision.verdict !== "accept") throw new Error("synthetic replay token rejected");
+    expect(await consumeVerifiedControlToken(testHarness.verifier, decision.output, operation()))
+      .toEqual(REJECT);
+    expect(testHarness.calls.proof).toBe(0);
+    expect(testHarness.calls.effect).toBe(0);
   });
 
   it("BLUE TEAM VALIDATION: synthetic/local rejects a bad signature and token type", async () => {
@@ -475,26 +575,78 @@ describe("current Control token verifier", () => {
 
   it("BLUE TEAM VALIDATION: synthetic/local rejects stale, plain, and cloned grant views", async () => {
     const fixture = await tokenFixture();
-    expect(await verifyControlToken(
-      harness(fixture, { view: fixture.plain_view }).verifier,
-      fixture.compact,
-      use(),
-    )).toEqual(REJECT);
-    expect(await verifyControlToken(
-      harness(fixture, { view: { ...fixture.view } as CurrentAuthorizationView }).verifier,
-      fixture.compact,
-      use(),
-    )).toEqual(REJECT);
+    for (const view of [fixture.plain_view, { ...fixture.view } as CurrentAuthorizationView]) {
+      const ready = await verified(fixture, harness(fixture, { view }));
+      expect(await consumeVerifiedControlToken(ready.verifier, ready.token, operation())).toEqual(REJECT);
+      expect(ready.calls.proof).toBe(0);
+      expect(ready.calls.effect).toBe(0);
+    }
     fixture.clock.now += 301;
-    expect(await verifyControlToken(harness(fixture).verifier, fixture.compact, use())).toEqual(REJECT);
+    const stale = await verified(fixture);
+    expect(await consumeVerifiedControlToken(stale.verifier, stale.token, operation())).toEqual(REJECT);
+    expect(stale.calls.proof).toBe(0);
+    expect(stale.calls.effect).toBe(0);
   });
 
   it("BLUE TEAM VALIDATION: synthetic/local rejects a current grant view across authorities", async () => {
     const fixture = await tokenFixture();
     const other = harness(fixture, { authority_id: "synthetic-local-other-authority" });
-    expect(await verifyControlToken(other.verifier, fixture.compact, use())).toEqual(REJECT);
+    const decision = await verifyControlToken(other.verifier, fixture.compact, use());
+    expect(decision.verdict).toBe("accept");
+    if (decision.verdict !== "accept") throw new Error("synthetic replay token rejected");
+    expect(await consumeVerifiedControlToken(other.verifier, decision.output, operation())).toEqual(REJECT);
     expect(other.calls.proof).toBe(0);
     expect(other.calls.effect).toBe(0);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects raw, forged, missing, and revoked current grants", async () => {
+    const fixture = await tokenFixture();
+    for (const grant of [fixture.grantState.record, Object.freeze({})]) {
+      expect(() => createCurrentControlGrantView({
+        authorization_view: fixture.plain_view,
+        grant: grant as never,
+        validated_jwt: fixture.validatedJwt,
+        status_list: fixture.statusList,
+        status_jwks_bytes: fixture.jwksBytes,
+        status_resolved_at: fixture.clock.now,
+        continuity: fixture.continuity,
+      })).toThrow();
+    }
+    const missing = createCurrentControlGrantResolver({
+      authority_id: AUTHORITY_ID,
+      trusted_now: () => fixture.clock.now,
+      expected_signer: GRANT_SIGNER,
+      load_current_grant: async () => null,
+    });
+    const revokedRecord = signedGrantRecord({ state: "revoked" });
+    const revoked = createCurrentControlGrantResolver({
+      authority_id: AUTHORITY_ID,
+      trusted_now: () => fixture.clock.now,
+      expected_signer: GRANT_SIGNER,
+      load_current_grant: async () => revokedRecord,
+    });
+    const forged = createCurrentControlGrantResolver({
+      authority_id: AUTHORITY_ID,
+      trusted_now: () => fixture.clock.now,
+      expected_signer: GRANT_SIGNER,
+      load_current_grant: async () => ({
+        ...signedGrantRecord(),
+        signature: "00".repeat(64),
+      }),
+    });
+    expect(await resolveCurrentControlGrant(missing, AUTHORIZATION_ID)).toEqual(REJECT);
+    expect(await resolveCurrentControlGrant(revoked, AUTHORIZATION_ID)).toEqual(REJECT);
+    expect(await resolveCurrentControlGrant(forged, AUTHORIZATION_ID)).toEqual(REJECT);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects a mutated authenticated current grant", async () => {
+    const fixture = await tokenFixture();
+    if (fixture.grantState.record === null) throw new Error("missing synthetic grant");
+    fixture.grantState.record.methods[0] = "config.set";
+    const ready = await verified(fixture);
+    expect(await consumeVerifiedControlToken(ready.verifier, ready.token, operation())).toEqual(REJECT);
+    expect(ready.calls.proof).toBe(0);
+    expect(ready.calls.effect).toBe(0);
   });
 
   it("BLUE TEAM VALIDATION: synthetic/local reloads current grant state before token use", async () => {
@@ -515,6 +667,118 @@ describe("current Control token verifier", () => {
     expect(ready.calls.proof).toBe(1);
     expect(ready.store.acquireCalls).toBe(0);
     expect(ready.calls.effect).toBe(0);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects a caller-selected operation digest", async () => {
+    const fixture = await tokenFixture();
+    const ready = await verified(fixture);
+    expect(await consumeVerifiedControlToken(ready.verifier, ready.token, operation({
+      request_digest: "55".repeat(32),
+    }))).toEqual(REJECT);
+    expect(ready.calls.proof).toBe(0);
+    expect(ready.store.acquireCalls).toBe(0);
+    expect(ready.calls.effect).toBe(0);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects an expired canonical operation", async () => {
+    const fixture = await tokenFixture();
+    const payload = {
+      ...operation().payload as object,
+      expires_at: fixture.clock.now,
+    };
+    const expired = operation({ payload });
+    const ready = await verified(fixture);
+    expect(await consumeVerifiedControlToken(ready.verifier, ready.token, expired)).toEqual(REJECT);
+    expect(ready.calls.proof).toBe(0);
+    expect(ready.calls.effect).toBe(0);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local binds the canonical request method, object, and ID", async () => {
+    const fixture = await tokenFixture();
+    for (const changed of [
+      operation({ payload: { ...operation().payload as object, id: "another-operation" } }),
+      operation({ payload: { ...operation().payload as object, method: "config.set" } }),
+      operation({ payload: {
+        ...operation().payload as object,
+        params: { object: { class: "config_namespace", id: "security" } },
+      } }),
+    ]) {
+      const ready = await verified(fixture);
+      expect(await consumeVerifiedControlToken(ready.verifier, ready.token, changed)).toEqual(REJECT);
+      expect(ready.calls.proof).toBe(0);
+      expect(ready.calls.effect).toBe(0);
+    }
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local consumes an exact canonical agent MCP request", async () => {
+    const fixture = await tokenFixture();
+    const ready = await verified(fixture);
+    expect(await consumeVerifiedControlToken(ready.verifier, ready.token, mcpOperation(fixture)))
+      .toEqual({
+        verdict: "accept",
+        output: { operation_id: mcpOperation(fixture).operation_id },
+      });
+    expect(ready.calls.proofInputs).toEqual([{
+      compact_proof: use().compact_proof,
+      sender_key: SENDER_KEY,
+      operation_digest: mcpOperation(fixture).request_digest,
+    }]);
+    expect(ready.calls.effect).toBe(1);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local preflights grant and token-status inputs before traps", async () => {
+    const fixture = await tokenFixture();
+    let traps = 0;
+    const accessorRecord = { ...fixture.grantState.record } as ControlAuthorizationRecord;
+    Object.defineProperty(accessorRecord, "methods", {
+      enumerable: true,
+      get: () => { traps += 1; return ["config.get"]; },
+    });
+    const proxyResolver = createCurrentControlGrantResolver({
+      authority_id: AUTHORITY_ID,
+      trusted_now: () => fixture.clock.now,
+      expected_signer: GRANT_SIGNER,
+      load_current_grant: async () => accessorRecord,
+    });
+    expect(await resolveCurrentControlGrant(proxyResolver, AUTHORIZATION_ID)).toEqual(REJECT);
+    expect(traps).toBe(0);
+    traps = 0;
+    const statusProxy = new Proxy(fixture.statusList, {
+      ownKeys: () => { traps += 1; return []; },
+      get: () => { traps += 1; return undefined; },
+    });
+    const resolved = await resolveCurrentControlGrant(fixture.grantResolver, AUTHORIZATION_ID);
+    if (resolved.verdict !== "accept") throw new Error("synthetic current grant rejected");
+    const unsafeInputs = [
+      { status_list: statusProxy },
+      { validated_jwt: new Proxy(fixture.validatedJwt, {
+        ownKeys: () => { traps += 1; return []; },
+        get: () => { traps += 1; return undefined; },
+      }) },
+      { continuity: new Proxy(fixture.continuity, {
+        ownKeys: () => { traps += 1; return []; },
+        get: () => { traps += 1; return undefined; },
+      }) },
+      { status_jwks_bytes: new Proxy(fixture.jwksBytes, {
+        ownKeys: () => { traps += 1; return []; },
+        get: () => { traps += 1; return undefined; },
+      }) },
+    ];
+    const freshnessLoadsBeforeUnsafeInputs = fixture.freshnessCalls.loads;
+    for (const unsafe of unsafeInputs) {
+      expect(() => createCurrentControlGrantView({
+        authorization_view: fixture.plain_view,
+        grant: resolved.output,
+        validated_jwt: fixture.validatedJwt,
+        status_list: fixture.statusList,
+        status_jwks_bytes: fixture.jwksBytes,
+        status_resolved_at: fixture.clock.now,
+        continuity: fixture.continuity,
+        ...unsafe,
+      })).toThrow();
+    }
+    expect(traps).toBe(0);
+    expect(fixture.freshnessCalls.loads).toBe(freshnessLoadsBeforeUnsafeInputs);
   });
 
   it("BLUE TEAM VALIDATION: synthetic/local rejects wrong use bindings and a consumed proof", async () => {
@@ -581,10 +845,8 @@ describe("current Control token verifier", () => {
     expect(ready.calls.effect).toBe(0);
   });
 
-  it("BLUE TEAM VALIDATION: synthetic/local captures grant, use, operation, and constructor callbacks", async () => {
+  it("BLUE TEAM VALIDATION: synthetic/local captures use, operation, and constructor callbacks", async () => {
     const fixture = await tokenFixture();
-    const sourceGrant = fixture.grant as { methods: string[] };
-    sourceGrant.methods[0] = "config.set";
     const inputUse = use();
     const inputOperation = operation();
     let releaseEffect!: () => void;
@@ -593,7 +855,8 @@ describe("current Control token verifier", () => {
     const testHarness = harness(fixture, {
       execute: async (_executionToken, input) => {
         await effectGate;
-        originalEffects.push(String((input.payload as Record<string, JsonValue>).value));
+        const params = (input.payload as Record<string, JsonValue>).params as Record<string, JsonValue>;
+        originalEffects.push(String(params.value));
         return { operation_id: input.operation_id };
       },
     });
@@ -604,7 +867,7 @@ describe("current Control token verifier", () => {
     if (decision.verdict !== "accept") throw new Error("synthetic token rejected");
     const pending = consumeVerifiedControlToken(testHarness.verifier, decision.output, inputOperation);
     (inputUse as { method: string }).method = "config.set";
-    (inputOperation.payload as { value: string }).value = "mutated";
+    ((inputOperation.payload as { params: { value: string } }).params).value = "mutated";
     releaseEffect();
     expect(await pending).toEqual({ verdict: "accept", output: { operation_id: operation().operation_id } });
     expect(originalEffects).toEqual(["dark"]);
@@ -620,6 +883,35 @@ describe("current Control token verifier", () => {
     expect(first.calls.effect).toBe(1);
     expect(restarted.calls.effect).toBe(0);
     expect(restarted.calls.proof).toBe(0);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local reconstructs an exact committed retry after expiry and revocation", async () => {
+    const fixture = await tokenFixture();
+    const first = await verified(fixture);
+    const accepted = await consumeVerifiedControlToken(first.verifier, first.token, operation());
+    const current = fixture.grantState.record;
+    if (current === null) throw new Error("missing synthetic grant");
+    fixture.clock.now = Number(fixture.validatedJwt.claims.exp) + 1;
+    fixture.grantState.record = signedGrantRecord({ ...current, state: "revoked" });
+    const restarted = harness(fixture, { store: first.store });
+    const replay = await verified(fixture, restarted);
+    expect(await consumeVerifiedControlToken(replay.verifier, replay.token, operation())).toEqual(accepted);
+    expect(restarted.calls.proof).toBe(0);
+    expect(restarted.store.acquireCalls).toBe(1);
+    expect(restarted.calls.effect).toBe(0);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local replay-only tokens reject without an exact committed record", async () => {
+    const fixture = await tokenFixture();
+    const current = fixture.grantState.record;
+    if (current === null) throw new Error("missing synthetic grant");
+    fixture.clock.now = Number(fixture.validatedJwt.claims.exp) + 1;
+    fixture.grantState.record = signedGrantRecord({ ...current, state: "revoked" });
+    const ready = await verified(fixture);
+    expect(await consumeVerifiedControlToken(ready.verifier, ready.token, operation())).toEqual(REJECT);
+    expect(ready.calls.proof).toBe(0);
+    expect(ready.store.acquireCalls).toBe(0);
+    expect(ready.calls.effect).toBe(0);
   });
 
   it("BLUE TEAM VALIDATION: synthetic/local requires exact executing and terminal readback", async () => {

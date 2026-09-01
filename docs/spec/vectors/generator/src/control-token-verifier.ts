@@ -5,6 +5,12 @@ import {
 } from "./authorization-freshness.js";
 import type { JsonValue } from "./claims.js";
 import type { ControlAuthorizationObject } from "./control-profile.js";
+import { jcsCanonicalize } from "./jcs.js";
+import { createValidatedProjectedJwtContext } from "./oidc.js";
+import {
+  currentControlFrameRequestDigest,
+  projectCurrentControlRequestBody,
+} from "./profile-negotiation.js";
 import {
   authorityBindingDigest,
   captureAuthorityInput,
@@ -84,6 +90,9 @@ type VerifiedRecord = {
   readonly compact_jwt: string;
   readonly use: ControlTokenUse;
   readonly token_binding_digest: string;
+  readonly issued_at: number;
+  readonly expires_at: number;
+  readonly mode: "effect-capable" | "replay-only";
   operation_binding_digest: string | null;
 };
 
@@ -158,6 +167,7 @@ const PROOF_MAX_BYTES = 65_536;
 const JSON_MAX_DEPTH = 16;
 const JSON_MAX_NODES = 8_192;
 const JSON_MAX_STRING_BYTES = 1_048_576;
+const CURRENT_CONTROL_VERSION = "heterodyne/0.6.0";
 
 const REJECT = Object.freeze({
   verdict: "reject" as const,
@@ -185,8 +195,21 @@ function exactDescriptorValues(
   return result;
 }
 
+function hasOnlyUnicodeScalars(value: string): boolean {
+  for (let index = 0; index < value.length; index += 1) {
+    const unit = value.charCodeAt(index);
+    if (unit >= 0xd800 && unit <= 0xdbff) {
+      const next = value.charCodeAt(index + 1);
+      if (next < 0xdc00 || next > 0xdfff) return false;
+      index += 1;
+    } else if (unit >= 0xdc00 && unit <= 0xdfff) return false;
+  }
+  return true;
+}
+
 function boundedString(value: unknown, maximum = IDENTIFIER_MAX_BYTES): value is string {
   return typeof value === "string" && value.length > 0
+    && hasOnlyUnicodeScalars(value)
     && Buffer.byteLength(value, "utf8") <= maximum;
 }
 
@@ -223,6 +246,7 @@ function boundedClosedJson(value: unknown): value is JsonValue {
     if (current === null || typeof current === "boolean") return true;
     if (typeof current === "number") return Number.isFinite(current);
     if (typeof current === "string") {
+      if (!hasOnlyUnicodeScalars(current)) return false;
       stringBytes += Buffer.byteLength(current, "utf8");
       return stringBytes <= JSON_MAX_STRING_BYTES;
     }
@@ -231,7 +255,7 @@ function boundedClosedJson(value: unknown): value is JsonValue {
     try {
       const descriptors = Object.getOwnPropertyDescriptors(current);
       const keys = Reflect.ownKeys(descriptors);
-      if (keys.some((key) => typeof key !== "string")) return false;
+      if (keys.some((key) => typeof key !== "string" || !hasOnlyUnicodeScalars(key))) return false;
       if (Array.isArray(current)) {
         if (Object.getPrototypeOf(current) !== Array.prototype) return false;
         const length = current.length;
@@ -284,6 +308,96 @@ function captureOperation(value: ControlTokenOperation): ControlTokenOperation |
     : null;
 }
 
+function replayValidatedToken(
+  authority: AuthorityRecord,
+  compactJwt: string,
+  use: ControlTokenUse,
+): Readonly<{ issued_at: number; expires_at: number }> | null {
+  try {
+    const segments = compactJwt.split(".");
+    if (segments.length !== 3 || !/^[A-Za-z0-9_-]+$/u.test(segments[1])) return null;
+    const decoded: unknown = JSON.parse(Buffer.from(segments[1], "base64url").toString("utf8"));
+    if (!boundedClosedJson(decoded) || decoded === null || typeof decoded !== "object"
+      || Array.isArray(decoded)) return null;
+    const claims = decoded as Readonly<Record<string, JsonValue>>;
+    if (!Number.isSafeInteger(claims.iat) || Number(claims.iat) < 0
+      || !Number.isSafeInteger(claims.exp) || Number(claims.exp) <= Number(claims.iat)
+      || !boundedString(claims.client_id) || !boundedString(claims.sub)
+      || (claims.client_class !== "human-light" && claims.client_class !== "automated")
+      || !/^[0-9a-f]{64}$/u.test(String(claims.credential_ledger_persona))
+      || !Number.isSafeInteger(claims.credential_ledger_generation)
+      || Number(claims.credential_ledger_generation) < 0) return null;
+    const validated = createValidatedProjectedJwtContext(
+      compactJwt,
+      authority.expected_issuer,
+      authority.expected_audience,
+      authority.jwks,
+      {
+        now: Number(claims.iat),
+        token_use: "access_token",
+        client_id: claims.client_id,
+        cnf: { jkt: use.sender_key },
+        sender_constraint: "dpop",
+        permitted_audiences: [authority.expected_audience],
+        credential_ledger: {
+          credential_ledger_persona: String(claims.credential_ledger_persona),
+          credential_ledger_generation: Number(claims.credential_ledger_generation),
+        },
+      },
+    );
+    const presented = validated.claims;
+    return presented.group_id === use.marmot_group_id
+      && presented.authorization_id === use.authorization_id
+      && presented.grant_generation === use.grant_generation
+      && presented.credential_ledger_generation === use.grant_generation
+      && typeof presented.scope === "string"
+      && presented.scope.split(" ").includes(use.required_scope)
+      && Array.isArray(presented.methods) && presented.methods.includes(use.method)
+      && Array.isArray(presented.objects) && presented.objects.some((object) =>
+        jcsCanonicalize(object) === jcsCanonicalize(use.object))
+      ? Object.freeze({ issued_at: Number(presented.iat), expires_at: Number(presented.exp) })
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function captureVerifiedOperation(
+  token: VerifiedRecord,
+  value: ControlTokenOperation,
+): Readonly<{ operation: ControlTokenOperation; expires_at: number }> | null {
+  const captured = captureOperation(value);
+  if (captured === null) return null;
+  const projections = (["human-jsonrpc", "agent-mcp"] as const)
+    .map((profile) => projectCurrentControlRequestBody(profile, captured.payload))
+    .filter((projection) => projection !== null);
+  if (projections.length !== 1) return null;
+  const projection = projections[0];
+  if (projection.request_id !== captured.operation_id
+    || projection.authorization_method !== token.use.method
+    || projection.authorization_object === null
+    || jcsCanonicalize(projection.authorization_object) !== jcsCanonicalize(token.use.object)) return null;
+  const expiresAt = projection.expires_at ?? token.expires_at;
+  if (!Number.isSafeInteger(expiresAt) || expiresAt <= token.issued_at
+    || expiresAt > token.expires_at) return null;
+  const derived = currentControlFrameRequestDigest({
+    profile: projection.profile,
+    version: CURRENT_CONTROL_VERSION,
+    group_id: token.use.marmot_group_id,
+    sender: token.use.sender_key,
+    request_id: projection.request_id,
+    expires_at: expiresAt,
+    body: projection.body,
+  });
+  return captured.request_digest === derived
+    ? Object.freeze({ operation: Object.freeze({
+        operation_id: captured.operation_id,
+        request_digest: derived,
+        payload: projection.body,
+      }), expires_at: expiresAt })
+    : null;
+}
+
 function captureOutput(value: unknown): ControlTokenOutput | null {
   const raw = exactDescriptorValues(value, OUTPUT_KEYS);
   if (raw === null || !boundedString(raw.operation_id)) return null;
@@ -318,7 +432,7 @@ async function assertCurrentGrant(
     if (current.verdict !== "accept" || current.evaluated_at !== now) {
       throw new Error("control-token-invalid");
     }
-    assertCurrentControlGrantUse(view, {
+    await assertCurrentControlGrantUse(view, {
       authority_id: authority.authority_id,
       compact_jwt: compactJwt,
       expected_issuer: authority.expected_issuer,
@@ -527,10 +641,13 @@ export async function verifyControlToken(
   if (authority === null || !boundedString(compact_jwt, JWT_MAX_BYTES) || capturedUse === null) {
     return REJECT;
   }
+  const replay = replayValidatedToken(authority, compact_jwt, capturedUse);
+  if (replay === null) return REJECT;
+  let mode: VerifiedRecord["mode"] = "effect-capable";
   try {
     await assertCurrentGrant(authority, compact_jwt, capturedUse);
   } catch {
-    return REJECT;
+    mode = "replay-only";
   }
   const tokenBindingDigest = authorityBindingDigest("control-verified-token-v1", {
     authority_id: authority.authority_id,
@@ -543,6 +660,9 @@ export async function verifyControlToken(
     compact_jwt,
     use: capturedUse,
     token_binding_digest: tokenBindingDigest,
+    issued_at: replay.issued_at,
+    expires_at: replay.expires_at,
+    mode,
     operation_binding_digest: null,
   });
   return Object.freeze({ verdict: "accept" as const, output: token });
@@ -557,7 +677,8 @@ export async function consumeVerifiedControlToken(
   const retained = token !== null && typeof token === "object"
     ? VERIFIED.get(token as object)
     : undefined;
-  const capturedOperation = captureOperation(operation);
+  const operationCapture = retained === undefined ? null : captureVerifiedOperation(retained, operation);
+  const capturedOperation = operationCapture?.operation ?? null;
   if (authority === null || retained === undefined || retained.authority !== authority
     || capturedOperation === null) return REJECT;
   const binding = bindingFor(authority, retained, capturedOperation);
@@ -569,18 +690,19 @@ export async function consumeVerifiedControlToken(
   if (initial === undefined) return REJECT;
   if (initial !== null) {
     if (exactCommitted(initial, binding)) {
-      try {
-        await assertCurrentGrant(authority, retained.compact_jwt, retained.use);
-      } catch {
-        return REJECT;
-      }
       return Object.freeze({ verdict: "accept" as const, output: binding.output });
     }
+    if (retained.mode === "replay-only") return REJECT;
     if (exactExecuting(initial, binding) || exactIndeterminate(initial, binding)) {
       return indeterminate(binding);
     }
     return REJECT;
   }
+
+  if (retained.mode === "replay-only") return REJECT;
+  const operationNow = trustedNow(authority);
+  if (operationNow === null || operationCapture === null
+    || operationCapture.expires_at <= operationNow) return REJECT;
 
   try {
     await assertCurrentGrant(authority, retained.compact_jwt, retained.use);

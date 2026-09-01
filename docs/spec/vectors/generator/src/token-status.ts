@@ -35,8 +35,12 @@ import {
   revalidateAuthorizationViewAtEffect,
   type CurrentAuthorizationView,
 } from "./authorization-freshness.js";
-import type { ControlAuthorizationObject } from "./control-profile.js";
+import type {
+  ControlAuthorizationObject,
+  ControlAuthorizationRecord,
+} from "./control-profile.js";
 import { captureAuthorityInput } from "./security-authority-support.js";
+import { proofBytes } from "./proof-bytes.js";
 import { didKeyFromEd25519 } from "./radicle.js";
 import { validateOidcContinuityManifestSchemaOrThrow } from "./schema.js";
 import {
@@ -144,9 +148,29 @@ export type CurrentControlGrantBinding = Readonly<{
   status: "active";
 }>;
 
+declare const CURRENT_CONTROL_GRANT_RESOLVER: unique symbol;
+declare const VERIFIED_CURRENT_CONTROL_GRANT: unique symbol;
+
+export type CurrentControlGrantResolver = Readonly<{
+  readonly [CURRENT_CONTROL_GRANT_RESOLVER]: true;
+}>;
+
+export type VerifiedCurrentControlGrant = Readonly<{
+  readonly [VERIFIED_CURRENT_CONTROL_GRANT]: true;
+}>;
+
+export type CurrentControlGrantResolverConfig = Readonly<{
+  authority_id: string;
+  trusted_now: () => number;
+  expected_signer: string;
+  load_current_grant: (
+    authorization_id: string,
+  ) => Promise<ControlAuthorizationRecord | null>;
+}>;
+
 export type CurrentControlGrantViewInput = Readonly<{
   authorization_view: CurrentAuthorizationView;
-  grant: CurrentControlGrantBinding;
+  grant: VerifiedCurrentControlGrant;
   validated_jwt: ValidatedProjectedJwtContext;
   status_list: StatusListToken;
   status_jwks_bytes: Uint8Array;
@@ -172,6 +196,7 @@ export type CurrentControlGrantUseExpectation = Readonly<{
 
 type CurrentControlGrantRecord = Readonly<{
   grant: CurrentControlGrantBinding;
+  grant_artifact: VerifiedCurrentControlGrant;
   validated_jwt: ValidatedProjectedJwtContext;
   status_list: StatusListToken;
   status_jwks_bytes: Uint8Array;
@@ -180,6 +205,22 @@ type CurrentControlGrantRecord = Readonly<{
 }>;
 
 const CURRENT_CONTROL_GRANTS = new WeakMap<object, CurrentControlGrantRecord>();
+
+type GrantResolverRecord = Readonly<{
+  authority_id: string;
+  trusted_now: () => number;
+  expected_signer: string;
+  load_current_grant: CurrentControlGrantResolverConfig["load_current_grant"];
+}>;
+
+type VerifiedGrantRecord = Readonly<{
+  authority: GrantResolverRecord;
+  authorization: ControlAuthorizationRecord;
+  fingerprint: string;
+}>;
+
+const CONTROL_GRANT_RESOLVERS = new WeakMap<object, GrantResolverRecord>();
+const VERIFIED_CONTROL_GRANTS = new WeakMap<object, VerifiedGrantRecord>();
 
 const SHA256_HEX = /^[0-9a-f]{64}$/;
 const BASE64URL = /^[A-Za-z0-9_-]+$/;
@@ -350,22 +391,18 @@ const CONTROL_GRANT_INPUT_KEYS = [
   "status_resolved_at",
   "validated_jwt",
 ] as const;
-const CONTROL_GRANT_KEYS = [
-  "authority_id",
-  "authorization_id",
-  "client_class",
-  "client_id",
-  "credential_ledger_persona",
-  "expires_at",
-  "grant_generation",
-  "marmot_group_id",
-  "methods",
-  "objects",
-  "registry_checkpoint",
-  "scopes",
-  "sender_key",
-  "status",
-  "subject",
+const CONTROL_GRANT_RESOLVER_KEYS = [
+  "authority_id", "expected_signer", "load_current_grant", "trusted_now",
+] as const;
+const CONTROL_AUTHORIZATION_RECORD_KEYS = [
+  "approving_authority", "approving_node", "capabilities", "client_class",
+  "client_key", "created_at", "expires_at", "inbound_execution", "limits",
+  "methods", "objects", "persona", "predecessor", "record_id", "signature",
+  "signer", "state", "token_lifetime_default_seconds", "token_lifetime_max_seconds",
+] as const;
+const CONTROL_AUTHORIZATION_RECORD_AGENT_KEYS = [
+  ...CONTROL_AUTHORIZATION_RECORD_KEYS,
+  "agent_role",
 ] as const;
 const CONTROL_EXPECTATION_KEYS = [
   "authority_id",
@@ -397,6 +434,9 @@ const CONTROL_IDENTIFIER_MAX_BYTES = 2_048;
 const CONTROL_LIST_MAX_ITEMS = 256;
 const CONTROL_JWT_MAX_BYTES = 131_072;
 const CONTROL_STATUS_JWKS_MAX_BYTES = 1_048_576;
+const CONTROL_DATA_MAX_DEPTH = 16;
+const CONTROL_DATA_MAX_NODES = 8_192;
+const CONTROL_DATA_MAX_STRING_BYTES = 1_048_576;
 
 function exactDescriptorValues(
   value: unknown,
@@ -419,14 +459,72 @@ function exactDescriptorValues(
   return result;
 }
 
+function hasOnlyUnicodeScalars(value: string): boolean {
+  for (let index = 0; index < value.length; index += 1) {
+    const unit = value.charCodeAt(index);
+    if (unit >= 0xd800 && unit <= 0xdbff) {
+      const next = value.charCodeAt(index + 1);
+      if (next < 0xdc00 || next > 0xdfff) return false;
+      index += 1;
+    } else if (unit >= 0xdc00 && unit <= 0xdfff) return false;
+  }
+  return true;
+}
+
 function boundedControlString(value: unknown): value is string {
   return typeof value === "string" && value.length > 0
+    && hasOnlyUnicodeScalars(value)
     && Buffer.byteLength(value, "utf8") <= CONTROL_IDENTIFIER_MAX_BYTES;
 }
 
 function boundedControlJwt(value: unknown): value is string {
   return typeof value === "string" && value.length > 0
+    && hasOnlyUnicodeScalars(value)
     && Buffer.byteLength(value, "utf8") <= CONTROL_JWT_MAX_BYTES;
+}
+
+function preflightControlData(value: unknown): boolean {
+  let nodes = 0;
+  let stringBytes = 0;
+  const active = new Set<object>();
+  const visit = (current: unknown, depth: number): boolean => {
+    nodes += 1;
+    if (nodes > CONTROL_DATA_MAX_NODES || depth > CONTROL_DATA_MAX_DEPTH) return false;
+    if (current === null || typeof current === "boolean") return true;
+    if (typeof current === "number") return Number.isFinite(current);
+    if (typeof current === "string") {
+      if (!hasOnlyUnicodeScalars(current)) return false;
+      stringBytes += Buffer.byteLength(current, "utf8");
+      return stringBytes <= CONTROL_DATA_MAX_STRING_BYTES;
+    }
+    if (typeof current !== "object" || utilTypes.isProxy(current) || active.has(current)) return false;
+    const prototype = Object.getPrototypeOf(current);
+    if (prototype !== Object.prototype && prototype !== Array.prototype) return false;
+    const descriptors = Object.getOwnPropertyDescriptors(current);
+    const keys = Reflect.ownKeys(descriptors);
+    if (keys.some((key) => typeof key !== "string" || !hasOnlyUnicodeScalars(key))) return false;
+    active.add(current);
+    try {
+      if (Array.isArray(current)) {
+        if (keys.length !== current.length + 1) return false;
+        for (let index = 0; index < current.length; index += 1) {
+          const descriptor = descriptors[String(index)];
+          if (descriptor === undefined || !("value" in descriptor)
+            || descriptor.enumerable !== true || !visit(descriptor.value, depth + 1)) return false;
+        }
+        return true;
+      }
+      for (const key of keys as string[]) {
+        const descriptor = descriptors[key];
+        if (descriptor === undefined || !("value" in descriptor) || descriptor.enumerable !== true
+          || !visit(key, depth + 1) || !visit(descriptor.value, depth + 1)) return false;
+      }
+      return true;
+    } finally {
+      active.delete(current);
+    }
+  };
+  return visit(value, 0);
 }
 
 function exactControlStringList(value: unknown): value is readonly string[] {
@@ -493,6 +591,177 @@ function validateControlGrantShape(grant: CurrentControlGrantBinding): void {
   }
 }
 
+function exactControlLimits(value: unknown): value is Readonly<Record<string, number>> {
+  if (value === null || typeof value !== "object" || Array.isArray(value)
+    || utilTypes.isProxy(value) || Object.getPrototypeOf(value) !== Object.prototype) return false;
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const keys = Reflect.ownKeys(descriptors);
+  return keys.length > 0 && keys.length <= CONTROL_LIST_MAX_ITEMS
+    && keys.every((key) => typeof key === "string" && boundedControlString(key)
+      && descriptors[key] !== undefined && "value" in descriptors[key]
+      && descriptors[key].enumerable === true
+      && Number.isSafeInteger(descriptors[key].value) && Number(descriptors[key].value) > 0)
+    && jcsCanonicalize(keys) === jcsCanonicalize([...keys].sort());
+}
+
+function exactControlCapabilities(value: unknown): value is ControlAuthorizationRecord["capabilities"] {
+  const allowed = new Set([
+    "control.token.extended", "control.inbound-execution", "control.approve",
+  ]);
+  return Array.isArray(value) && value.length <= CONTROL_LIST_MAX_ITEMS
+    && value.every((item) => typeof item === "string" && allowed.has(item))
+    && new Set(value).size === value.length
+    && jcsCanonicalize(value) === jcsCanonicalize([...value].sort());
+}
+
+function captureVerifiedAuthorizationRecord(
+  value: unknown,
+  authority: GrantResolverRecord,
+  expectedAuthorizationId: string,
+  now: number,
+): ControlAuthorizationRecord | null {
+  if (!preflightControlData(value)) return null;
+  const hasAgentRole = value !== null && typeof value === "object"
+    && Object.hasOwn(value, "agent_role");
+  const raw = exactDescriptorValues(
+    value,
+    hasAgentRole ? CONTROL_AUTHORIZATION_RECORD_AGENT_KEYS : CONTROL_AUTHORIZATION_RECORD_KEYS,
+  );
+  if (raw === null) return null;
+  let record: ControlAuthorizationRecord;
+  try {
+    record = captureAuthorityInput(raw) as unknown as ControlAuthorizationRecord;
+  } catch {
+    return null;
+  }
+  if (record.record_id !== expectedAuthorizationId
+    || !/^[0-9a-f]{64}$/u.test(record.record_id)
+    || !/^[0-9a-f]{64}$/u.test(record.persona)
+    || !boundedControlString(record.client_key)
+    || (record.client_class !== "human-light" && record.client_class !== "automated")
+    || !/^[0-9a-f]{64}$/u.test(record.approving_node)
+    || !boundedControlString(record.approving_authority)
+    || !exactControlStringList(record.methods)
+    || !validControlObjects(record.objects)
+    || !exactControlLimits(record.limits)
+    || !exactControlCapabilities(record.capabilities)
+    || record.token_lifetime_default_seconds !== 300
+    || !Number.isSafeInteger(record.token_lifetime_max_seconds)
+    || record.token_lifetime_max_seconds < 300 || record.token_lifetime_max_seconds > 3_600
+    || typeof record.inbound_execution !== "boolean"
+    || (record.predecessor !== null && !/^[0-9a-f]{64}$/u.test(record.predecessor))
+    || record.state !== "active"
+    || !Number.isSafeInteger(record.created_at) || record.created_at < 0 || record.created_at > now
+    || (record.expires_at !== null && (!Number.isSafeInteger(record.expires_at)
+      || record.expires_at <= record.created_at || record.expires_at <= now))
+    || record.signer !== authority.expected_signer
+    || !/^[0-9a-f]{64}$/u.test(record.signer)
+    || !/^[0-9a-f]{128}$/u.test(record.signature)
+    || (record.agent_role !== undefined && !boundedControlString(record.agent_role))) return null;
+  const { signature: _signature, ...unsigned } = record;
+  try {
+    if (!schnorr.verify(
+      hexToBytes(record.signature),
+      proofBytes("heterodyne-control-authorization-record-v1", unsigned),
+      hexToBytes(record.signer),
+    )) return null;
+  } catch {
+    return null;
+  }
+  return record;
+}
+
+async function loadVerifiedCurrentGrant(
+  authority: GrantResolverRecord,
+  authorizationId: string,
+  expectedFingerprint?: string,
+): Promise<ControlAuthorizationRecord | null> {
+  let now: number;
+  let loaded: ControlAuthorizationRecord | null;
+  try {
+    now = authority.trusted_now();
+    if (!Number.isSafeInteger(now) || now < 0) return null;
+    loaded = await authority.load_current_grant(authorizationId);
+  } catch {
+    return null;
+  }
+  const record = captureVerifiedAuthorizationRecord(loaded, authority, authorizationId, now);
+  if (record === null) return null;
+  const fingerprint = createHash("sha256").update(
+    proofBytes("heterodyne-control-current-authorization-v1", record),
+  ).digest("hex");
+  return expectedFingerprint === undefined || fingerprint === expectedFingerprint ? record : null;
+}
+
+export function createCurrentControlGrantResolver(
+  config: CurrentControlGrantResolverConfig,
+): CurrentControlGrantResolver {
+  const values = exactDescriptorValues(config, CONTROL_GRANT_RESOLVER_KEYS);
+  if (values === null || !boundedControlString(values.authority_id)
+    || typeof values.expected_signer !== "string"
+    || !/^[0-9a-f]{64}$/u.test(values.expected_signer)
+    || typeof values.trusted_now !== "function" || utilTypes.isProxy(values.trusted_now)
+    || typeof values.load_current_grant !== "function" || utilTypes.isProxy(values.load_current_grant)) {
+    throw new TypeError("closed current Control grant resolver configuration required");
+  }
+  const resolver = Object.freeze({}) as CurrentControlGrantResolver;
+  CONTROL_GRANT_RESOLVERS.set(resolver, Object.freeze({
+    authority_id: values.authority_id,
+    trusted_now: values.trusted_now as CurrentControlGrantResolverConfig["trusted_now"],
+    expected_signer: values.expected_signer,
+    load_current_grant: values.load_current_grant as CurrentControlGrantResolverConfig["load_current_grant"],
+  }));
+  return resolver;
+}
+
+export async function resolveCurrentControlGrant(
+  resolver: CurrentControlGrantResolver,
+  authorization_id: string,
+): Promise<Readonly<
+  | { verdict: "accept"; output: VerifiedCurrentControlGrant }
+  | { verdict: "reject"; reason_code: "control-token-invalid" }
+>> {
+  const authority = resolver !== null && typeof resolver === "object"
+    ? CONTROL_GRANT_RESOLVERS.get(resolver as object)
+    : undefined;
+  if (authority === undefined || !boundedControlString(authorization_id)) {
+    return Object.freeze({ verdict: "reject", reason_code: "control-token-invalid" });
+  }
+  const authorization = await loadVerifiedCurrentGrant(authority, authorization_id);
+  if (authorization === null) {
+    return Object.freeze({ verdict: "reject", reason_code: "control-token-invalid" });
+  }
+  const fingerprint = createHash("sha256").update(
+    proofBytes("heterodyne-control-current-authorization-v1", authorization),
+  ).digest("hex");
+  const grant = Object.freeze({}) as VerifiedCurrentControlGrant;
+  VERIFIED_CONTROL_GRANTS.set(grant, Object.freeze({ authority, authorization, fingerprint }));
+  return Object.freeze({ verdict: "accept", output: grant });
+}
+
+async function revalidateVerifiedCurrentControlGrant(
+  grant: VerifiedCurrentControlGrant,
+  now: number,
+): Promise<VerifiedGrantRecord | null> {
+  const retained = grant !== null && typeof grant === "object"
+    ? VERIFIED_CONTROL_GRANTS.get(grant as object)
+    : undefined;
+  if (retained === undefined) return null;
+  let trusted: number;
+  try {
+    trusted = retained.authority.trusted_now();
+  } catch {
+    return null;
+  }
+  if (trusted !== now) return null;
+  const current = await loadVerifiedCurrentGrant(
+    retained.authority,
+    retained.authorization.record_id,
+    retained.fingerprint,
+  );
+  return current === null ? null : retained;
+}
+
 /**
  * Elevates one genuine freshness view into a Control-grant-specific opaque view.
  * The returned object is still the original opaque freshness handle; all added
@@ -503,27 +772,64 @@ export function createCurrentControlGrantView(
 ): CurrentControlGrantView {
   const container = exactDescriptorValues(input, CONTROL_GRANT_INPUT_KEYS);
   if (container === null) throw new Error("control-token-invalid");
+  const grantArtifact = container.grant as VerifiedCurrentControlGrant;
+  const verifiedGrant = grantArtifact !== null && typeof grantArtifact === "object"
+    ? VERIFIED_CONTROL_GRANTS.get(grantArtifact as object)
+    : undefined;
+  if (verifiedGrant === undefined) throw new Error("control-token-invalid");
+  const validatedJwt = container.validated_jwt as ValidatedProjectedJwtContext;
+  const continuity = container.continuity as ValidatedContinuityChainContext;
+  if (!preflightControlData(validatedJwt) || !preflightControlData(container.status_list)
+    || !preflightControlData(continuity)) throw new Error("control-token-invalid");
+  const rawStatusJwks = container.status_jwks_bytes;
+  const statusResolvedAt = container.status_resolved_at;
+  if (utilTypes.isProxy(rawStatusJwks)
+    || !(rawStatusJwks instanceof Uint8Array)
+    || Object.getPrototypeOf(rawStatusJwks) !== Uint8Array.prototype
+    || rawStatusJwks.byteLength === 0
+    || rawStatusJwks.byteLength > CONTROL_STATUS_JWKS_MAX_BYTES
+    || typeof statusResolvedAt !== "number" || !Number.isFinite(statusResolvedAt)
+    || statusResolvedAt < 0) {
+    throw new Error("control-token-invalid");
+  }
+  assertValidatedProjectedJwtContext(validatedJwt);
+  const statusList = captureAuthorityInput(container.status_list) as unknown as StatusListToken;
+  const statusJwksBytes = Uint8Array.from(rawStatusJwks);
   const authorizationView = container.authorization_view as CurrentAuthorizationView;
   const freshness = revalidateAuthorizationViewAtEffect(authorizationView);
   if (freshness.verdict !== "accept") throw new Error("control-token-invalid");
-  const grantRecord = exactDescriptorValues(container.grant, CONTROL_GRANT_KEYS);
-  if (grantRecord === null) throw new Error("control-token-invalid");
-  const grant = captureAuthorityInput(grantRecord) as unknown as CurrentControlGrantBinding;
+  const authorization = verifiedGrant.authorization;
+  const claims = validatedJwt.claims;
+  const confirmation = objectValue(claims.cnf);
+  const checkpoint = objectValue(claims["https://heterodyne.network/jwt/ledger-checkpoint"]);
+  const scopes = ["control", ...authorization.capabilities].sort();
+  const grant: CurrentControlGrantBinding = Object.freeze({
+    authority_id: verifiedGrant.authority.authority_id,
+    authorization_id: authorization.record_id,
+    credential_ledger_persona: authorization.persona,
+    grant_generation: Number(claims.credential_ledger_generation),
+    subject: String(claims.sub),
+    sender_key: String(confirmation?.jkt),
+    client_id: String(claims.client_id),
+    client_class: authorization.client_class,
+    marmot_group_id: String(claims.group_id),
+    registry_checkpoint: String(claims.registry_checkpoint),
+    scopes,
+    methods: authorization.methods,
+    objects: authorization.objects,
+    expires_at: Number(claims.exp),
+    status: "active",
+  });
   validateControlGrantShape(grant);
-  const validatedJwt = container.validated_jwt as ValidatedProjectedJwtContext;
-  const continuity = container.continuity as ValidatedContinuityChainContext;
-  assertValidatedProjectedJwtContext(validatedJwt);
-  const statusList = captureAuthorityInput(container.status_list) as unknown as StatusListToken;
-  const statusJwksBytes = captureAuthorityInput(container.status_jwks_bytes) as unknown as Uint8Array;
-  const statusResolvedAt = container.status_resolved_at;
-  if (!(statusJwksBytes instanceof Uint8Array)
-    || statusJwksBytes.byteLength === 0
-    || statusJwksBytes.byteLength > CONTROL_STATUS_JWKS_MAX_BYTES
-    || typeof statusResolvedAt !== "number" || !Number.isFinite(statusResolvedAt)
-    || statusResolvedAt < 0
-    || freshness.evaluated_at !== validatedJwt.validated_at
+  if (freshness.evaluated_at !== validatedJwt.validated_at
+    || authorization.client_key !== grant.sender_key
+    || authorization.client_class !== claims.client_class
+    || authorization.created_at > Number(claims.iat)
+    || (authorization.expires_at !== null && grant.expires_at > authorization.expires_at)
+    || grant.expires_at - Number(claims.iat) > authorization.token_lifetime_max_seconds
     || freshness.persona_key !== grant.credential_ledger_persona
     || freshness.checkpoint.commit_oid !== grant.registry_checkpoint
+    || checkpoint?.commit_oid !== grant.registry_checkpoint
     || !controlGrantClaimsMatch(validatedJwt.claims, grant)
     || grant.expires_at <= freshness.evaluated_at
     || !validateTokenStatus(
@@ -540,6 +846,7 @@ export function createCurrentControlGrantView(
   if (existing !== undefined) throw new Error("control-token-invalid");
   CURRENT_CONTROL_GRANTS.set(authorizationView as object, Object.freeze({
     grant,
+    grant_artifact: grantArtifact,
     validated_jwt: validatedJwt,
     status_list: statusList,
     status_jwks_bytes: statusJwksBytes,
@@ -554,15 +861,17 @@ export function createCurrentControlGrantView(
  * Success returns no structural authority; callers must mint their own opaque
  * consuming capability only after this assertion and freshness revalidation.
  */
-export function assertCurrentControlGrantUse(
+export async function assertCurrentControlGrantUse(
   view: CurrentAuthorizationView,
   expectation: CurrentControlGrantUseExpectation,
-): asserts view is CurrentControlGrantView {
+): Promise<void> {
   const retained = view !== null && typeof view === "object"
     ? CURRENT_CONTROL_GRANTS.get(view as object)
     : undefined;
   const captured = exactDescriptorValues(expectation, CONTROL_EXPECTATION_KEYS);
-  if (retained === undefined || captured === null) throw new Error("control-token-invalid");
+  if (retained === undefined || captured === null || !preflightControlData(captured)) {
+    throw new Error("control-token-invalid");
+  }
   const expected = captureAuthorityInput(captured) as unknown as CurrentControlGrantUseExpectation;
   if (!boundedControlString(expected.authority_id)
     || !boundedControlJwt(expected.compact_jwt)
@@ -576,6 +885,9 @@ export function assertCurrentControlGrantUse(
     || !boundedControlString(expected.required_scope)
     || !boundedControlString(expected.method)
     || !validControlObject(expected.object)) throw new Error("control-token-invalid");
+  if (await revalidateVerifiedCurrentControlGrant(retained.grant_artifact, expected.now) === null) {
+    throw new Error("control-token-invalid");
+  }
   assertValidatedProjectedJwtContext(retained.validated_jwt);
   const options: JwtValidationOptions = {
     now: expected.now,
