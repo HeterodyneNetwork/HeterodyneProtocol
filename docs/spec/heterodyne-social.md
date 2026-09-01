@@ -495,6 +495,14 @@ author, and the Comms association evidence before showing it as verified. A
 moderator or associated persona MUST NOT be displayed as the event author
 unless that key actually produced the event signature.
 
+The receipt verifier MUST derive the offending author from the verified target
+event's `pubkey` and the agent association from that target's signed Comms
+attribution block. It MUST NOT accept a caller-supplied authorship, receipt
+validity, target-validity, or association result. The receipt issuer and the
+policy-list signer that adopts it MUST be the same policy persona. Verification
+MUST retain an immutable snapshot of the exact receipt and target; later
+mutation of a carrier object does not alter the verified result.
+
 A false-positive correction is a signed `kind:1985` receipt from the correcting
 policy authority with `L` namespace `network.heterodyne.agent-policy`,
 `l` value `correction`, one `e` tag naming the original receipt, and one `p`
@@ -577,6 +585,25 @@ source for each filtering decision and let the user inspect, disable, or
 replace it. No moderator, registry entry, default client, repository, or relay
 has global power.
 
+The subscriber-local evaluator MUST load the current local subscription from
+its configured local authority after it verifies the signed targets, receipts,
+corrections, and source-neutrally selected list. The loaded record MUST be a
+closed, revisioned value that states whether the subscription is enabled and
+visible. Revision rollback, an enabled but hidden default, an unreadable
+record, or a removed subscription invalidates every previously prepared local
+policy view. A caller-provided `subscribed`, selected/canonical-list,
+receipt-valid, or muted-author boolean or collection has no authority.
+
+The evaluator MUST expose only an opaque subscriber-local policy view. That
+view binds its creating local authority, current subscription revision,
+selected exact list event, verified receipts and targets, and the exact muted
+event-author keys. Clones, artifacts from another authority, accessor-bearing
+or proxy containers, post-verification mutation, and malformed signed events
+MUST fail closed without creating moderation authority. Applying a valid view
+MUST reverify the candidate event and mute only when its actual signing
+`pubkey` is one of those bound keys; it MUST identify the subscribed policy
+persona as the decision source.
+
 Enforcement mutes exactly the listed event author. It MUST NOT mute an
 associated persona, organization, moderator, hosting NID, or different agent
 key. A receipt MAY recommend correcting attribution or replacing that signing
@@ -585,7 +612,11 @@ rotation. A replacement author is evaluated independently.
 
 Correction requires both a valid signed correction receipt and a current
 source-neutrally selected list revision removing the original binding. Either
-one alone leaves the current subscribed mute unchanged.
+one alone leaves an already established current subscribed mute unchanged. A
+stale replaced list does not create a mute for a fresh evaluator. After a
+client has applied an adopted binding, a later removal is effective only when
+the exact correcting policy persona also signs a correction bound to the same
+receipt, event, event author, agent association, and policy id/version.
 
 <a id="social-sets"></a>
 ### 7.3 Sets and private configuration

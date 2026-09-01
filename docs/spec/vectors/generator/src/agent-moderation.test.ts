@@ -1,7 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import {
-  applyAgentPolicyCorrection,
-  applySubscribedAgentPolicy,
   validateAgentPolicyCorrection,
   validateAgentPolicyList,
   validateAgentPolicyReceipt,
@@ -180,32 +178,6 @@ describe("live moderation API quarantine", () => {
     )).toThrow(/agent-policy-binding-invalid/);
   });
 
-  it("does not dispatch legacy device-key policy input through live application APIs", () => {
-    const applyPolicy = applySubscribedAgentPolicy as unknown as (
-      input: Record<string, unknown>,
-    ) => unknown;
-    const applyCorrection = applyAgentPolicyCorrection as unknown as (
-      input: Record<string, unknown>,
-    ) => unknown;
-    expect(() => applyPolicy({
-      subscribed: true,
-      policy_persona: moderatorPublicKey,
-      policy_current_canonical: true,
-      repo_history_verified: true,
-      candidate_source: "canonical",
-      device_key: legacyDeviceKey,
-      muted_device_keys: [legacyDeviceKey],
-      default_subscription: true,
-      default_visible: true,
-      can_disable_default: true,
-    })).toThrow(/agent-policy-binding-invalid/);
-    expect(() => applyCorrection({
-      correction_valid: true,
-      canonical_list_binding_removed: true,
-      device_key: legacyDeviceKey,
-      muted_device_keys: [legacyDeviceKey],
-    })).toThrow(/agent-policy-binding-invalid/);
-  });
 });
 
 describe("agent-policy receipt", () => {
@@ -412,59 +384,44 @@ describe("agent policy list and subscriber-local enforcement", () => {
     )).toThrow(/agent-policy-binding-invalid/);
   });
 
-  it("mutes only for an explicitly subscribed verified canonical policy", () => {
-    const base = {
-      subscribed: true,
+  it("accepts a signed empty replacement as an exact removal list", async () => {
+    const removed = await signEvent({
+      secretKey: moderatorPrivateKey,
+      created_at: 1_009,
+      kind: 10000,
+      tags: [
+        ["heterodyne", "social-agent-policy-list-v1"],
+        ["spec_version", "heterodyne/0.6.0"],
+      ],
+      content: "",
+      auxRand: AUX_RAND,
+    });
+    expect(validateAgentPolicyList(removed, new Map())).toEqual({
       policy_persona: moderatorPublicKey,
-      policy_event_selected: true,
-      event_author: deviceKey,
-      muted_event_authors: [deviceKey],
-      default_subscription: true,
-      default_visible: true,
-      can_disable_default: true,
-    };
-    expect(applySubscribedAgentPolicy(base)).toEqual({
-      visible: false,
-      muted: true,
-      source: moderatorPublicKey,
-      reason: "subscribed-event-author-policy",
+      event_id: removed.id,
+      entries: [],
     });
-    expect(applySubscribedAgentPolicy({ ...base, subscribed: false })).toEqual({
-      visible: true,
-      muted: false,
-    });
-    expect(applySubscribedAgentPolicy({ ...base, policy_event_selected: false }))
-      .toEqual({ visible: true, muted: false });
   });
 
-  it("keeps the default subscription visible and removable", () => {
-    expect(() => applySubscribedAgentPolicy({
-      subscribed: true,
-      policy_persona: moderatorPublicKey,
-      policy_event_selected: true,
-      event_author: deviceKey,
-      muted_event_authors: [deviceKey],
-      default_subscription: true,
-      default_visible: false,
-      can_disable_default: true,
-    })).toThrow(/agent-policy-binding-invalid/);
-  });
-
-  it("keeps the old key muted while accepting a replacement at the same role", () => {
-    const base = {
-      subscribed: true,
-      policy_persona: moderatorPublicKey,
-      policy_event_selected: true,
-      muted_event_authors: [deviceKey],
-      default_subscription: false,
-      default_visible: true,
-      can_disable_default: true,
-    };
-    expect(applySubscribedAgentPolicy({ ...base, event_author: deviceKey }).muted).toBe(true);
-    expect(applySubscribedAgentPolicy({ ...base, event_author: replacementKey })).toEqual({
-      visible: true,
-      muted: false,
-    });
+  it("BLUE TEAM VALIDATION: synthetic/local rejects duplicate or unbound policy-list references", async () => {
+    for (const extraTag of [
+      ["p", deviceKey],
+      ["e", receiptEvent.id],
+      ["p", replacementKey],
+    ]) {
+      const malformed = await signEvent({
+        secretKey: moderatorPrivateKey,
+        created_at: 1_010,
+        kind: 10000,
+        tags: [...listEvent.tags, extraTag],
+        content: "",
+        auxRand: AUX_RAND,
+      });
+      expect(() => validateAgentPolicyList(
+        malformed,
+        new Map([[receiptEvent.id, receipt]]),
+      )).toThrow(/agent-policy-binding-invalid/);
+    }
   });
 });
 
@@ -586,18 +543,4 @@ describe("correction and current list removal", () => {
       .toThrow(/agent-policy-receipt-invalid/);
   });
 
-  it("requires both a signed correction and source-neutrally selected current list removal", () => {
-    expect(applyAgentPolicyCorrection({
-      correction_valid: true,
-      current_list_binding_removed: true,
-      event_author: deviceKey,
-      muted_event_authors: [deviceKey],
-    })).toEqual({ visible: true, muted: false });
-    expect(applyAgentPolicyCorrection({
-      correction_valid: true,
-      current_list_binding_removed: false,
-      event_author: deviceKey,
-      muted_event_authors: [deviceKey],
-    })).toEqual({ visible: false, muted: true });
-  });
 });
