@@ -577,6 +577,9 @@ export type ControlTokenVerifierConfig = Readonly<{
     compact_proof: string; sender_key: string; operation_digest: string;
   }>) => Promise<string | null>;
   store: DurableAuthorityStore<Readonly<{ operation_id: string }>>;
+  execute_operation: (execution_token: string, operation: Readonly<{
+    operation_id: string; request_digest: string; payload: JsonValue;
+  }>) => Promise<Readonly<{ operation_id: string }>>;
 }>;
 export type ControlTokenUse = Readonly<{
   sender_key: string; marmot_group_id: string; authorization_id: string;
@@ -584,8 +587,7 @@ export type ControlTokenUse = Readonly<{
   object: ControlAuthorizationObject; compact_proof: string;
 }>;
 export type ControlTokenOperation = Readonly<{
-  operation_id: string; request_digest: string;
-  execute: (execution_token: string) => Promise<Readonly<{ operation_id: string }>>;
+  operation_id: string; request_digest: string; payload: JsonValue;
 }>;
 export type VerifiedControlToken = Readonly<Record<never, never>>;
 export function createControlTokenVerifier(
@@ -712,7 +714,6 @@ export type CanonicalProfileSelectionInput = Readonly<{
   repository_candidates: readonly Readonly<{
     event: NostrSignedEvent; repository_rid: string; ref: string;
   }>[];
-  repository_state_required: boolean;
 }>;
 export type CoreOperationalAssuranceAuthorityConfig = Readonly<{
   authority_id: string; trusted_now: () => number;
@@ -757,7 +758,9 @@ it("BLUE TEAM VALIDATION: synthetic/local rejects mutated retained relay bytes",
 ```
 
 Canonical selection verifies every kind-0 event and repository writer, unions
-sources without carrier priority, then runs exact replaceable selection;
+sources without carrier priority, then runs exact replaceable selection. It
+derives the selected profile's repository-state requirement from the verified
+profile content and the fixed Core profile rules, never from request data;
 required missing repository authentication yields
 `profile-repository-selection-required`. Operational functions return opaque
 views only after verifying actual persona authorship/raw event bytes or the
