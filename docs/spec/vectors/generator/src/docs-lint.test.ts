@@ -101,8 +101,13 @@ describe("canonical family documentation", () => {
     expect(comms).toContain('<a id="comms-retired-semantics"></a>');
     expect(comms).toContain("`dm_invite_revoked_device`");
     expect(comms).toContain("`dm_invite_unbound_device`");
+    expect(comms).toMatch(/not\s+current\s+executable authority/);
+    expect(comms).toMatch(/MUST NOT provide\s+normative executable evidence/);
     expect(comms).toContain("`auth_rejected_permanent` is a local relay-write diagnostic");
     expect(comms).toContain("proves no cryptographic or upstream authority");
+    expect(comms).toMatch(
+      /MUST NOT mint a semantic certificate or satisfy\s+a security invariant/,
+    );
 
     expect(control).toContain('<a id="control-retired-semantics"></a>');
     expect(control).toContain("`agent-attribution-bypass-prohibited`");
