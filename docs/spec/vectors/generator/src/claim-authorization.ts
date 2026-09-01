@@ -452,6 +452,7 @@ export async function authorizeClaimEffect<T>(
 export function revalidateAcceptedClaimEffect(
   authority: ClaimAuthorizationAuthority,
   result: ClaimEffectAuthorizationResult<unknown>,
+  expectedEffectDigest?: string,
 ): Readonly<
   | { verdict: "accept"; trusted_now: number }
   | { verdict: "reject"; reason_code: string }
@@ -463,6 +464,11 @@ export function revalidateAcceptedClaimEffect(
     const accepted = ACCEPTED_EFFECT_AUTHORITIES.get(result);
     if (accepted === undefined || accepted.authority !== authority) {
       throw new Error("claim-issuer-authority-invalid: effect authority mismatch");
+    }
+    if (expectedEffectDigest !== undefined &&
+        (exactDigest(expectedEffectDigest, "expected effect_digest") !==
+          accepted.captured.effect_digest)) {
+      throw new Error("claim-issuer-authority-invalid: effect purpose mismatch");
     }
     const retained = requireAuthority(authority);
     const view = loadView(retained);

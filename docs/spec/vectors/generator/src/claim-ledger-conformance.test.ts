@@ -3,8 +3,8 @@ import { sha256 } from "@noble/hashes/sha2";
 import { ed25519 } from "@noble/curves/ed25519";
 import { createHmac } from "node:crypto";
 import {
+  authorizeReaderOnboardingBundle,
   buildLedgerRepositoryEvidence,
-  buildReaderOnboardingBundle,
   createAudienceKeyEpochPayload,
   createIssuerKeyEnvelope,
   createIssuerKeyEpochPayload,
@@ -14,7 +14,7 @@ import {
   mergeClaimLedger,
   prepareLedgerReplayValidationContext,
   resolveAuthoritativeClaimState,
-  validateReaderOnboardingBundle,
+  validateAuthorizedReaderOnboardingBundle,
   type LedgerRecordValidationEvidence,
   type LedgerLayout,
   type ReaderAccessRequest,
@@ -376,7 +376,7 @@ describe("exhaustive readers and canonical key epochs", () => {
 });
 
 describe("authenticated onboarding and snapshot-wide layout", () => {
-  it("selects the ordinary reader epoch when canonical issuer epochs coexist", () => {
+  it("selects the ordinary reader epoch when canonical issuer epochs coexist", async () => {
     const issuerRecords = [
       s.claimRecordOne, s.claimRecordTwo, s.issuerClaimRecordOne, s.issuerClaimRecordTwo,
       s.issuerAuthorityRecordOne, s.issuerAuthorityRecordTwo, s.issuerKeyEpochRecordOne,
@@ -415,40 +415,56 @@ describe("authenticated onboarding and snapshot-wide layout", () => {
     expect(evaluateReaderAccess(s.writerTwo.did_key, s.issuerKeyEpochTwoState, requestTwo))
       .toMatchObject({ allowed: false, state: "active" });
     const state = mergeClaimLedger(records, [], repository.checkpoint, context);
-    const bundle = buildReaderOnboardingBundle({
+    const harness = s.makeClaimAuthorizationHarness({ load_state: () => state });
+    const authorization = await authorizeReaderOnboardingBundle(harness.authority, {
       reader_nid: s.writerOne.did_key,
       request,
       audience_key: s.audienceKeyOne,
       compact_state: { mixed_epoch_scopes: true },
+      idempotency_key: "synthetic-local-mixed-epoch-onboarding-0001",
     }, state);
+    expect(authorization.verdict).toBe("accept");
+    if (authorization.verdict !== "accept") throw new Error("expected accepted onboarding");
+    const bundle = authorization.result;
     expect(bundle.key_epoch.epoch).toBe(1);
-    expect(() => validateReaderOnboardingBundle(bundle, state, request)).not.toThrow();
+    await expect(validateAuthorizedReaderOnboardingBundle(
+      harness.authority, authorization, state, request,
+    )).resolves.toBeUndefined();
   });
 
-  it("rejects forged signed-authorization identifiers even with a recomputed unkeyed digest", () => {
+  it("rejects forged signed-authorization identifiers even with a recomputed unkeyed digest", async () => {
     const records = [s.claimRecordOne, s.claimRecordTwo, s.epochOneRecord];
     const state = mergeClaimLedger(
       records, [], s.epochOneRepository.checkpoint, s.makeContext(s.epochOneRepository.repository),
     );
     const request = cloneRequest(s.requestFor(s.claimRecordOne, s.claimOne));
     request.verification_context.now = s.epochOneRepository.checkpoint.observed_at;
-    const bundle = buildReaderOnboardingBundle({
+    const harness = s.makeClaimAuthorizationHarness({ load_state: () => state });
+    const authorization = await authorizeReaderOnboardingBundle(harness.authority, {
       reader_nid: s.writerOne.did_key,
       request,
       audience_key: s.audienceKeyOne,
       compact_state: { confirmed_claim_ids: [s.claimOne.artifact.semantic.claim_id] },
+      idempotency_key: "synthetic-local-forged-onboarding-0001",
     }, state);
+    expect(authorization.verdict).toBe("accept");
+    if (authorization.verdict !== "accept") throw new Error("expected accepted onboarding");
+    const bundle = authorization.result;
     const forged = structuredClone(bundle);
     forged.authorization.event_id = "00".repeat(32);
     forged.authorization.claim_id = "11".repeat(32);
     const { bundle_digest: _old, ...withoutDigest } = forged;
     forged.bundle_digest = digestJson(withoutDigest);
-    expect(() => validateReaderOnboardingBundle(forged, state, request)).toThrow(/authorization|binding|MAC/i);
+    await expect(validateAuthorizedReaderOnboardingBundle(
+      harness.authority, { ...authorization, result: forged }, state, request,
+    )).rejects.toThrow(/authorization|binding|MAC/i);
     forged.bundle_digest = createHmac("sha256", s.audienceKeyOne)
       .update("heterodyne-claim-ledger-onboarding-mac-v1\0", "utf8")
       .update(utf8Bytes(jcsCanonicalize(withoutDigest)))
       .digest("hex");
-    expect(() => validateReaderOnboardingBundle(forged, state, request)).toThrow(/authorization|binding/i);
+    await expect(validateAuthorizedReaderOnboardingBundle(
+      harness.authority, { ...authorization, result: forged }, state, request,
+    )).rejects.toThrow(/authorization|binding/i);
   });
 
   it("changes all 256 fixed-size objects when the snapshot changes under the same nonce", () => {
