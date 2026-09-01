@@ -25,6 +25,12 @@ const REJECT = Object.freeze({
   reason_code: "invite-authentication-invalid" as const,
 });
 const PURPOSES = new Set<InvitePurpose>(["dm", "control-enrollment", "device-enrollment"]);
+const MAX_AUTHORITY_BYTES = 1_048_576;
+const MAX_AUTHORITY_TOTAL_BYTES = 2_097_152;
+const MAX_POLICY_STRING_BYTES = 256;
+const MAX_RELAY_HINTS = 16;
+const MAX_RESPONSE_CAPABILITIES = 64;
+const MAX_PREAUTHORIZATION_ENTRIES = 64;
 const RESPONSE_CLASSES: Readonly<Record<InvitePurpose, ReadonlySet<string>>> = Object.freeze({
   dm: new Set(["conversation-peer"]),
   "control-enrollment": new Set(["human-light", "automated"]),
@@ -120,6 +126,130 @@ type DurableRequest = Readonly<{
 }>;
 
 const AUTHORITIES = new WeakMap<object, AuthorityRecord>();
+
+type PreflightLimits = Readonly<{
+  max_depth: number;
+  max_nodes: number;
+  max_properties: number;
+  max_array_length: number;
+  max_string_bytes: number;
+  max_total_string_bytes: number;
+  max_byte_length: number;
+  max_total_bytes: number;
+}>;
+
+function boundedClosedPreflight(value: unknown, limits: PreflightLimits): boolean {
+  const active = new Set<object>();
+  let nodes = 0;
+  let totalStringBytes = 0;
+  let totalBytes = 0;
+  const addString = (text: string): boolean => {
+    if (text.length > limits.max_string_bytes) return false;
+    const bytes = Buffer.byteLength(text, "utf8");
+    if (bytes > limits.max_string_bytes) return false;
+    totalStringBytes += bytes;
+    return totalStringBytes <= limits.max_total_string_bytes;
+  };
+  const visit = (current: unknown, depth: number): boolean => {
+    nodes += 1;
+    if (nodes > limits.max_nodes || depth > limits.max_depth) return false;
+    if (current === null || typeof current === "boolean") return true;
+    if (typeof current === "string") return addString(current);
+    if (typeof current === "number") return Number.isFinite(current);
+    if (typeof current !== "object" || utilTypes.isProxy(current)) return false;
+    if (current instanceof Uint8Array) {
+      if (Object.getPrototypeOf(current) !== Uint8Array.prototype
+        || current.length > limits.max_byte_length) return false;
+      totalBytes += current.length;
+      return totalBytes <= limits.max_total_bytes;
+    }
+    if (active.has(current)) return false;
+    active.add(current);
+    try {
+      if (Array.isArray(current)) {
+        if (Object.getPrototypeOf(current) !== Array.prototype) return false;
+        const lengthDescriptor = Object.getOwnPropertyDescriptor(current, "length");
+        if (lengthDescriptor === undefined || !("value" in lengthDescriptor)
+          || !Number.isSafeInteger(lengthDescriptor.value)
+          || lengthDescriptor.value < 0
+          || lengthDescriptor.value > limits.max_array_length) return false;
+        const descriptors = Object.getOwnPropertyDescriptors(current);
+        const keys = Reflect.ownKeys(descriptors);
+        if (keys.length !== lengthDescriptor.value + 1) return false;
+        for (let index = 0; index < lengthDescriptor.value; index += 1) {
+          const descriptor = descriptors[String(index)];
+          if (descriptor === undefined || !("value" in descriptor) || descriptor.enumerable !== true
+            || !visit(descriptor.value, depth + 1)) return false;
+        }
+        return true;
+      }
+      if (Object.getPrototypeOf(current) !== Object.prototype) return false;
+      const descriptors = Object.getOwnPropertyDescriptors(current);
+      const keys = Reflect.ownKeys(descriptors);
+      if (keys.length > limits.max_properties || keys.some((key) => typeof key !== "string")) {
+        return false;
+      }
+      for (const key of keys as string[]) {
+        const descriptor = descriptors[key];
+        if (descriptor === undefined || !("value" in descriptor) || descriptor.enumerable !== true
+          || !addString(key) || !visit(descriptor.value, depth + 1)) return false;
+      }
+      return true;
+    } finally {
+      active.delete(current);
+    }
+  };
+  return visit(value, 0);
+}
+
+function ownBoundedDataValue(object: object, name: string): unknown {
+  const descriptor = Object.getOwnPropertyDescriptor(object, name);
+  return descriptor !== undefined && "value" in descriptor ? descriptor.value : undefined;
+}
+
+const REDEMPTION_LIMITS: PreflightLimits = Object.freeze({
+  max_depth: 8,
+  max_nodes: 1_024,
+  max_properties: 64,
+  max_array_length: MAX_PREAUTHORIZATION_ENTRIES,
+  max_string_bytes: MAX_POLICY_STRING_BYTES,
+  max_total_string_bytes: 65_536,
+  max_byte_length: MAX_AUTHORITY_BYTES,
+  max_total_bytes: MAX_AUTHORITY_TOTAL_BYTES,
+});
+
+const RESPONSE_LIMITS: PreflightLimits = Object.freeze({
+  max_depth: 4,
+  max_nodes: 256,
+  max_properties: 16,
+  max_array_length: MAX_RESPONSE_CAPABILITIES,
+  max_string_bytes: MAX_POLICY_STRING_BYTES,
+  max_total_string_bytes: 32_768,
+  max_byte_length: 0,
+  max_total_bytes: 0,
+});
+
+const TERMINAL_LIMITS: PreflightLimits = Object.freeze({
+  max_depth: 4,
+  max_nodes: 32,
+  max_properties: 8,
+  max_array_length: 0,
+  max_string_bytes: MAX_POLICY_STRING_BYTES,
+  max_total_string_bytes: 4_096,
+  max_byte_length: 0,
+  max_total_bytes: 0,
+});
+
+function boundedRedemptionShape(value: unknown): boolean {
+  if (!boundedClosedPreflight(value, REDEMPTION_LIMITS)
+    || value === null || typeof value !== "object" || Array.isArray(value)) return false;
+  const envelope = ownBoundedDataValue(value, "envelope");
+  if (envelope === null || typeof envelope !== "object" || Array.isArray(envelope)) return false;
+  const descriptor = ownBoundedDataValue(envelope, "descriptor");
+  if (descriptor === null || typeof descriptor !== "object" || Array.isArray(descriptor)) return false;
+  const relayHints = ownBoundedDataValue(descriptor, "relay_hints");
+  return Array.isArray(relayHints) && relayHints.length <= MAX_RELAY_HINTS;
+}
 
 function exactKeys(value: Readonly<Record<string, unknown>>, keys: readonly string[]): boolean {
   const actual = Object.keys(value).sort();
@@ -226,14 +356,17 @@ function validPreauthorization(value: unknown): boolean {
   if (
     template.client_class !== "human-light" && template.client_class !== "automated"
     || !Array.isArray(template.methods)
+    || template.methods.length > MAX_PREAUTHORIZATION_ENTRIES
     || !template.methods.every((item) => typeof item === "string" && item.length > 0)
     || new Set(template.methods).size !== template.methods.length
     || !Array.isArray(template.objects)
+    || template.objects.length > MAX_PREAUTHORIZATION_ENTRIES
     || !template.objects.every((item) => typeof item === "string" && item.length > 0)
     || new Set(template.objects).size !== template.objects.length
     || template.limits === null || typeof template.limits !== "object"
     || Array.isArray(template.limits)
     || Object.keys(template.limits).length === 0
+    || Object.keys(template.limits).length > MAX_PREAUTHORIZATION_ENTRIES
     || !Object.values(template.limits).every((limit) => Number.isSafeInteger(limit) && (limit as number) >= 1)
     || (template.agent_role !== null
       && (typeof template.agent_role !== "string" || template.agent_role.length === 0))
@@ -262,6 +395,7 @@ function validDescriptor(descriptor: Readonly<InviteDescriptor>): boolean {
     || typeof value.invite_id !== "string" || !HEX_32.test(value.invite_id)
     || typeof value.rendezvous_pubkey !== "string" || !HEX_32.test(value.rendezvous_pubkey)
     || !Array.isArray(value.relay_hints) || value.relay_hints.length === 0
+    || value.relay_hints.length > MAX_RELAY_HINTS
     || !value.relay_hints.every((hint) => typeof hint === "string" && validRelayHint(hint))
     || new Set(value.relay_hints).size !== value.relay_hints.length
     || !Number.isSafeInteger(value.issued_at) || (value.issued_at as number) < 0
@@ -312,6 +446,7 @@ function parseResponse(bytes: Uint8Array): InviteResponse | null {
   try {
     const source = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
     const parsed: unknown = JSON.parse(source);
+    if (!boundedClosedPreflight(parsed, RESPONSE_LIMITS)) return null;
     const captured = captureAuthorityInput(parsed);
     if (
       captured === null || typeof captured !== "object" || Array.isArray(captured)
@@ -332,6 +467,7 @@ function parseResponse(bytes: Uint8Array): InviteResponse | null {
       || typeof response.requested_class !== "string"
       || !RESPONSE_CLASSES[response.purpose as InvitePurpose].has(response.requested_class)
       || !Array.isArray(response.capabilities)
+      || response.capabilities.length > MAX_RESPONSE_CAPABILITIES
       || !response.capabilities.every((item) => typeof item === "string" && item.length > 0)
       || new Set(response.capabilities).size !== response.capabilities.length
       || typeof response.proof !== "string" || !HEX_32.test(response.proof)
@@ -344,6 +480,7 @@ function parseResponse(bytes: Uint8Array): InviteResponse | null {
 
 function captureRedemption(value: OneTimeInviteRedemption): CapturedRedemption | null {
   try {
+    if (!boundedRedemptionShape(value)) return null;
     const captured = captureAuthorityInput(value);
     if (captured === null || typeof captured !== "object" || Array.isArray(captured)) return null;
     const input = captured as unknown as Readonly<Record<string, unknown>>;
@@ -423,6 +560,7 @@ function captureRedemption(value: OneTimeInviteRedemption): CapturedRedemption |
 
 function captureInviteState(value: unknown): InviteState | null {
   try {
+    if (!boundedClosedPreflight(value, TERMINAL_LIMITS)) return null;
     const captured = captureAuthorityInput(value);
     if (captured === null || typeof captured !== "object" || Array.isArray(captured)) return null;
     const state = captured as unknown as Readonly<Record<string, unknown>>;
@@ -439,6 +577,7 @@ function captureInviteState(value: unknown): InviteState | null {
 
 function captureOutput(value: unknown): OneTimeInviteOutput | null {
   try {
+    if (!boundedClosedPreflight(value, TERMINAL_LIMITS)) return null;
     const captured = captureAuthorityInput(value);
     if (captured === null || typeof captured !== "object" || Array.isArray(captured)) return null;
     const output = captured as unknown as Readonly<Record<string, unknown>>;
@@ -458,6 +597,7 @@ function captureDurableRecord(
 ): DurableAuthorityRecord<OneTimeInviteOutput> | null | undefined {
   if (value === null) return null;
   try {
+    if (!boundedClosedPreflight(value, TERMINAL_LIMITS)) return undefined;
     const captured = captureAuthorityInput(value);
     if (captured === null || typeof captured !== "object" || Array.isArray(captured)) return undefined;
     const record = captured as unknown as Readonly<Record<string, unknown>>;
@@ -503,6 +643,10 @@ function requestFor(authorityId: string, input: CapturedRedemption, state: Invit
     authority_id: authorityId,
     key,
     invite_revision: state.revision,
+    state_fingerprint: authorityBindingDigest("heterodyne.one-time-invite.state/v1", {
+      state: state.state,
+      revision: state.revision,
+    }),
     descriptor_digest: input.descriptor_digest,
     signature: input.envelope.signature,
     secret_commitment: input.envelope.descriptor.secret_sha256,
@@ -573,6 +717,44 @@ async function markIndeterminate(store: StoreCallbacks, request: DurableRequest)
   }
 }
 
+async function reloadInviteState(
+  authority: AuthorityRecord,
+  input: CapturedRedemption,
+): Promise<InviteState | null> {
+  try {
+    return captureInviteState(await authority.load_invite_state(
+      input.envelope.descriptor.invite_id,
+    ));
+  } catch {
+    return null;
+  }
+}
+
+function validInviteTime(authority: AuthorityRecord, input: CapturedRedemption): boolean {
+  try {
+    const now = authority.trusted_now();
+    return Number.isSafeInteger(now)
+      && now >= input.envelope.descriptor.issued_at
+      && now < input.envelope.descriptor.expires_at;
+  } catch {
+    return false;
+  }
+}
+
+async function currentInviteStateIsExact(
+  authority: AuthorityRecord,
+  input: CapturedRedemption,
+  expected: InviteState,
+): Promise<boolean> {
+  if (!validInviteTime(authority, input)) return false;
+  const current = await reloadInviteState(authority, input);
+  return validInviteTime(authority, input)
+    && current !== null
+    && current.state === "active"
+    && current.state === expected.state
+    && current.revision === expected.revision;
+}
+
 function sameOutput(left: OneTimeInviteOutput, right: OneTimeInviteOutput): boolean {
   return left.group_id === right.group_id && left.response_digest === right.response_digest;
 }
@@ -585,27 +767,13 @@ export async function redeemOneTimeInvite(
   if (authorityRecord === undefined) return REJECT;
   const captured = captureRedemption(input);
   if (captured === null) return REJECT;
-  let now: number;
-  try {
-    now = authorityRecord.trusted_now();
-  } catch {
-    return REJECT;
-  }
-  if (!Number.isSafeInteger(now)
-    || now < captured.envelope.descriptor.issued_at
-    || now >= captured.envelope.descriptor.expires_at) return REJECT;
-  let state: InviteState | null;
-  try {
-    state = captureInviteState(await authorityRecord.load_invite_state(
-      captured.envelope.descriptor.invite_id,
-    ));
-  } catch {
-    state = null;
-  }
+  if (!validInviteTime(authorityRecord, captured)) return REJECT;
+  const state = await reloadInviteState(authorityRecord, captured);
   if (state === null || state.state !== "active") return REJECT;
 
   const request = requestFor(authorityRecord.authority_id, captured, state);
   let loaded = await loadRecord(authorityRecord.store, request.key);
+  if (!await currentInviteStateIsExact(authorityRecord, captured, state)) return REJECT;
   if (loaded === undefined) return indeterminate(request);
   if (loaded !== null) {
     if (loaded.binding_digest !== request.binding_digest) return REJECT;
@@ -627,12 +795,18 @@ export async function redeemOneTimeInvite(
   }
   if (acquired !== "acquired") {
     loaded = await loadRecord(authorityRecord.store, request.key);
+    if (!await currentInviteStateIsExact(authorityRecord, captured, state)) return REJECT;
     if (loaded === undefined || loaded === null) return indeterminate(request);
     if (loaded.binding_digest !== request.binding_digest) return REJECT;
     const cached = committedOutput(loaded, request, captured.response_digest);
     return cached === null
       ? indeterminate(request)
       : Object.freeze({ verdict: "accept", output: cached });
+  }
+
+  if (!await currentInviteStateIsExact(authorityRecord, captured, state)) {
+    await markIndeterminate(authorityRecord.store, request);
+    return REJECT;
   }
 
   let output: OneTimeInviteOutput | null;
@@ -645,6 +819,10 @@ export async function redeemOneTimeInvite(
     output = null;
   }
   if (output === null || output.response_digest !== captured.response_digest) {
+    await markIndeterminate(authorityRecord.store, request);
+    return indeterminate(request);
+  }
+  if (!await currentInviteStateIsExact(authorityRecord, captured, state)) {
     await markIndeterminate(authorityRecord.store, request);
     return indeterminate(request);
   }
@@ -664,6 +842,10 @@ export async function redeemOneTimeInvite(
   if (committed !== "committed") {
     if (committed === "conflict") {
       const raced = await loadRecord(authorityRecord.store, request.key);
+      if (!await currentInviteStateIsExact(authorityRecord, captured, state)) {
+        await markIndeterminate(authorityRecord.store, request);
+        return indeterminate(request);
+      }
       if (raced !== undefined && raced !== null) {
         const cached = committedOutput(raced, request, captured.response_digest);
         if (cached !== null && sameOutput(cached, output)) {
@@ -675,6 +857,10 @@ export async function redeemOneTimeInvite(
     return indeterminate(request);
   }
   const terminal = await loadRecord(authorityRecord.store, request.key);
+  if (!await currentInviteStateIsExact(authorityRecord, captured, state)) {
+    await markIndeterminate(authorityRecord.store, request);
+    return REJECT;
+  }
   if (terminal === undefined || terminal === null) {
     await markIndeterminate(authorityRecord.store, request);
     return indeterminate(request);

@@ -1152,13 +1152,36 @@ the exact group-transition bytes, sender ref, purpose, recipient, current inbox
 checkpoint, and recipient NID MUST enter one domain-separated durable
 reservation. A KeyPackage already present in current authenticated inbox state
 or any existing durable reservation is consumed and fails with
-`marmot-keypackage-replayed`. Concurrent attempts have one winner. Success is
-exposed only after exact binding-, execution-token-, output-digest-, and
-output-equal committed readback. An executing, malformed, unavailable, or
-unknown terminal is indeterminate and MUST NOT repeat consumption. The
+`marmot-keypackage-replayed` only when current state or a closed committed or
+available terminal proves consumption. Concurrent attempts have one winner;
+an observed executing or indeterminate reservation remains reasonless
+indeterminate and MUST NOT be mislabeled as replay. Success is exposed only
+after exact binding-, execution-token-, output-digest-, and output-equal
+committed readback. A malformed, unavailable, missing-after-conflict, or
+unknown terminal is likewise indeterminate and MUST NOT repeat consumption. The
 authority constructor captures its trusted-time, current-state, and durable-
 store callbacks once; caller validity or consumption booleans are not
 authority inputs.
+
+The consuming implementation MUST compute a closed fingerprint over the exact
+checkpoint, recipient NID, consumed-KeyPackage list, and allowed-scope list and
+commit it in the durable binding. It MUST reload the same authenticated inbox
+state after durable load, after acquire, immediately before commit, and after
+terminal readback. A changed checkpoint or fingerprint is non-accepting. NID
+or scope removal and authenticated external KeyPackage consumption retain
+their owned rejection reasons; another change or unavailable reload is
+indeterminate. Once acquire succeeds, such a change MUST be recorded as
+absorbing uncertainty before return and no admission output may be exposed.
+
+Before recursive capture or hashing, this reference authority applies a local
+closed-data preflight: each KeyPackage or group-transition byte string is at
+most 1,048,576 bytes and their aggregate is at most 2,097,152 bytes; each
+policy string is at most 256 UTF-8 bytes; consumed-KeyPackage and agent-scope
+lists contain at most 1,024 and 256 dense entries respectively; and operation,
+state, output, and durable-record objects have fixed prototypes and members,
+bounded depth, property counts, node counts, and aggregate string budgets.
+Implementations MAY impose smaller local resource limits without changing
+otherwise valid Marmot wire bytes.
 
 For a public inbox, an unknown ref enters pull-based quarantine. The client
 MUST fetch and validate a bounded manifest conforming to
@@ -1305,6 +1328,28 @@ fails authentication. Executing, unavailable, malformed, or unknown post-
 effect state is indeterminate and MUST NOT repeat the effect. Constructor
 callbacks and durable-store methods are captured once. Neither caller validity
 booleans nor the retired device-state DM reasons participate in this boundary.
+
+The consuming implementation MUST bind a closed fingerprint of the exact
+active invite state and revision into the reservation terminal. It MUST reload
+and require that same active revision, and resample trusted time, after durable
+load, after acquire immediately before group establishment, after group
+establishment immediately before commit, and after terminal readback. A
+revocation, revision change, or expiry before establishment causes no group
+effect and leaves an acquired reservation absorbing and non-accepting. A
+change after a possible group effect is indeterminate and MUST NOT expose or
+repeat the result.
+
+Before recursive capture, UTF-8 decode, JCS canonicalization, or hashing, this
+reference authority applies a proxy/accessor-safe closed-data preflight. Each
+response, KeyPackage, or group-transition byte string is at most 1,048,576
+bytes and their aggregate is at most 2,097,152 bytes. Descriptor and response
+collections contain at most 16 relay hints and 64 capabilities, methods,
+objects, or limit entries; each policy string is at most 256 UTF-8 bytes; and
+nested inputs, callback results, outputs, and durable records have fixed
+prototypes and members, dense arrays, depth at most eight, and bounded
+property, node, and aggregate-string counts. Implementations MAY impose
+smaller local resource limits without changing otherwise valid signed invite
+or Marmot wire bytes.
 
 A valid `dm` redemption creates an ordinary two-member Marmot group and makes
 the Comms-native admission result `accept` for its issuer, subject to an

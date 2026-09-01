@@ -12,6 +12,11 @@ const HEX_32 = /^[0-9a-f]{64}$/u;
 const ACCOUNT = HEX_32;
 const NID = /^did:key:z[1-9A-HJ-NP-Za-km-z]+$/u;
 const SENDER_REF = /^refs\/xyz\.heterodyne\.marmot\/(?:writers|relays)\/[A-Za-z0-9._-]+$/u;
+const MAX_AUTHORITY_BYTES = 1_048_576;
+const MAX_AUTHORITY_TOTAL_BYTES = 2_097_152;
+const MAX_POLICY_STRING_BYTES = 256;
+const MAX_CONSUMED_KEY_PACKAGES = 1_024;
+const MAX_AGENT_SCOPES = 256;
 const NID_REQUIRED = Object.freeze({
   verdict: "reject" as const,
   reason_code: "marmot-private-inbox-nid-required" as const,
@@ -108,6 +113,119 @@ type DurableRequest = Readonly<{
 
 const AUTHORITIES = new WeakMap<object, AuthorityRecord>();
 
+type PreflightLimits = Readonly<{
+  max_depth: number;
+  max_nodes: number;
+  max_properties: number;
+  max_array_length: number;
+  max_string_bytes: number;
+  max_total_string_bytes: number;
+  max_byte_length: number;
+  max_total_bytes: number;
+}>;
+
+function boundedClosedPreflight(value: unknown, limits: PreflightLimits): boolean {
+  const active = new Set<object>();
+  let nodes = 0;
+  let totalStringBytes = 0;
+  let totalBytes = 0;
+  const addString = (text: string): boolean => {
+    if (text.length > limits.max_string_bytes) return false;
+    const bytes = Buffer.byteLength(text, "utf8");
+    if (bytes > limits.max_string_bytes) return false;
+    totalStringBytes += bytes;
+    return totalStringBytes <= limits.max_total_string_bytes;
+  };
+  const visit = (current: unknown, depth: number): boolean => {
+    nodes += 1;
+    if (nodes > limits.max_nodes || depth > limits.max_depth) return false;
+    if (current === null || typeof current === "boolean") return true;
+    if (typeof current === "string") return addString(current);
+    if (typeof current === "number") return Number.isFinite(current);
+    if (typeof current !== "object" || utilTypes.isProxy(current)) return false;
+    if (current instanceof Uint8Array) {
+      if (Object.getPrototypeOf(current) !== Uint8Array.prototype
+        || current.length > limits.max_byte_length) return false;
+      totalBytes += current.length;
+      return totalBytes <= limits.max_total_bytes;
+    }
+    if (active.has(current)) return false;
+    active.add(current);
+    try {
+      if (Array.isArray(current)) {
+        if (Object.getPrototypeOf(current) !== Array.prototype) return false;
+        const lengthDescriptor = Object.getOwnPropertyDescriptor(current, "length");
+        if (lengthDescriptor === undefined || !("value" in lengthDescriptor)
+          || !Number.isSafeInteger(lengthDescriptor.value)
+          || lengthDescriptor.value < 0
+          || lengthDescriptor.value > limits.max_array_length) return false;
+        const descriptors = Object.getOwnPropertyDescriptors(current);
+        const keys = Reflect.ownKeys(descriptors);
+        if (keys.length !== lengthDescriptor.value + 1) return false;
+        for (let index = 0; index < lengthDescriptor.value; index += 1) {
+          const descriptor = descriptors[String(index)];
+          if (descriptor === undefined || !("value" in descriptor) || descriptor.enumerable !== true
+            || !visit(descriptor.value, depth + 1)) return false;
+        }
+        return true;
+      }
+      if (Object.getPrototypeOf(current) !== Object.prototype) return false;
+      const descriptors = Object.getOwnPropertyDescriptors(current);
+      const keys = Reflect.ownKeys(descriptors);
+      if (keys.length > limits.max_properties || keys.some((key) => typeof key !== "string")) {
+        return false;
+      }
+      for (const key of keys as string[]) {
+        const descriptor = descriptors[key];
+        if (descriptor === undefined || !("value" in descriptor) || descriptor.enumerable !== true
+          || !addString(key) || !visit(descriptor.value, depth + 1)) return false;
+      }
+      return true;
+    } finally {
+      active.delete(current);
+    }
+  };
+  return visit(value, 0);
+}
+
+function ownBoundedDataValue(object: object, name: string): unknown {
+  const descriptor = Object.getOwnPropertyDescriptor(object, name);
+  return descriptor !== undefined && "value" in descriptor ? descriptor.value : undefined;
+}
+
+const BUNDLE_LIMITS: PreflightLimits = Object.freeze({
+  max_depth: 3,
+  max_nodes: 32,
+  max_properties: 16,
+  max_array_length: 0,
+  max_string_bytes: MAX_POLICY_STRING_BYTES,
+  max_total_string_bytes: 4_096,
+  max_byte_length: MAX_AUTHORITY_BYTES,
+  max_total_bytes: MAX_AUTHORITY_TOTAL_BYTES,
+});
+
+const INBOX_STATE_LIMITS: PreflightLimits = Object.freeze({
+  max_depth: 3,
+  max_nodes: 2_048,
+  max_properties: 8,
+  max_array_length: MAX_CONSUMED_KEY_PACKAGES,
+  max_string_bytes: MAX_POLICY_STRING_BYTES,
+  max_total_string_bytes: 196_608,
+  max_byte_length: 0,
+  max_total_bytes: 0,
+});
+
+const TERMINAL_LIMITS: PreflightLimits = Object.freeze({
+  max_depth: 4,
+  max_nodes: 32,
+  max_properties: 8,
+  max_array_length: 0,
+  max_string_bytes: MAX_POLICY_STRING_BYTES,
+  max_total_string_bytes: 4_096,
+  max_byte_length: 0,
+  max_total_bytes: 0,
+});
+
 function exactKeys(value: Readonly<Record<string, unknown>>, keys: readonly string[]): boolean {
   const actual = Object.keys(value).sort();
   const expected = [...keys].sort();
@@ -197,6 +315,7 @@ function sha256(bytes: Uint8Array): string {
 
 function captureBundle(value: PersonaInboxBundle): CapturedBundle | null {
   try {
+    if (!boundedClosedPreflight(value, BUNDLE_LIMITS)) return null;
     const captured = captureAuthorityInput(value);
     if (captured === null || typeof captured !== "object" || Array.isArray(captured)) return null;
     const input = captured as unknown as Readonly<Record<string, unknown>>;
@@ -244,6 +363,14 @@ function captureBundle(value: PersonaInboxBundle): CapturedBundle | null {
 
 function captureInboxState(value: unknown): InboxState | null {
   try {
+    if (!boundedClosedPreflight(value, INBOX_STATE_LIMITS)
+      || value === null || typeof value !== "object" || Array.isArray(value)) return null;
+    const consumedPreflight = ownBoundedDataValue(value, "consumed_key_packages");
+    const scopesPreflight = ownBoundedDataValue(value, "allowed_agent_scopes");
+    if (!Array.isArray(consumedPreflight)
+      || consumedPreflight.length > MAX_CONSUMED_KEY_PACKAGES
+      || !Array.isArray(scopesPreflight)
+      || scopesPreflight.length > MAX_AGENT_SCOPES) return null;
     const captured = captureAuthorityInput(value);
     if (captured === null || typeof captured !== "object" || Array.isArray(captured)) return null;
     const state = captured as unknown as Readonly<Record<string, unknown>>;
@@ -270,6 +397,7 @@ function captureInboxState(value: unknown): InboxState | null {
 
 function captureOutput(value: unknown): PersonaInboxAdmission | null {
   try {
+    if (!boundedClosedPreflight(value, TERMINAL_LIMITS)) return null;
     const captured = captureAuthorityInput(value);
     if (captured === null || typeof captured !== "object" || Array.isArray(captured)) return null;
     const output = captured as unknown as Readonly<Record<string, unknown>>;
@@ -289,6 +417,7 @@ function captureDurableRecord(
 ): DurableAuthorityRecord<PersonaInboxAdmission> | null | undefined {
   if (value === null) return null;
   try {
+    if (!boundedClosedPreflight(value, TERMINAL_LIMITS)) return undefined;
     const captured = captureAuthorityInput(value);
     if (captured === null || typeof captured !== "object" || Array.isArray(captured)) return undefined;
     const record = captured as unknown as Readonly<Record<string, unknown>>;
@@ -334,6 +463,12 @@ function requestFor(authorityId: string, input: CapturedBundle, state: InboxStat
     authority_id: authorityId,
     key,
     checkpoint: state.checkpoint,
+    state_fingerprint: authorityBindingDigest("heterodyne.persona-inbox.state/v1", {
+      checkpoint: state.checkpoint,
+      recipient_nid: state.recipient_nid,
+      consumed_key_packages: state.consumed_key_packages,
+      allowed_agent_scopes: state.allowed_agent_scopes,
+    }),
     recipient_nid: state.recipient_nid,
     recipient: input.recipient,
     sender: input.sender,
@@ -391,6 +526,57 @@ async function markIndeterminate(store: StoreCallbacks, request: DurableRequest)
   }
 }
 
+function sameInboxState(left: InboxState, right: InboxState): boolean {
+  return left.checkpoint === right.checkpoint
+    && left.recipient_nid === right.recipient_nid
+    && left.consumed_key_packages.length === right.consumed_key_packages.length
+    && left.consumed_key_packages.every((value, index) => value === right.consumed_key_packages[index])
+    && left.allowed_agent_scopes.length === right.allowed_agent_scopes.length
+    && left.allowed_agent_scopes.every((value, index) => value === right.allowed_agent_scopes[index]);
+}
+
+function inboxRejection(
+  state: InboxState,
+  input: CapturedBundle,
+): typeof NID_REQUIRED | typeof SCOPE_DENIED | typeof REPLAYED | null {
+  if (state.recipient_nid === null) return NID_REQUIRED;
+  if (
+    input.sender_kind === "agent"
+      ? input.required_agent_scope === null
+        || !state.allowed_agent_scopes.includes(input.required_agent_scope)
+      : input.required_agent_scope !== null
+  ) return SCOPE_DENIED;
+  return state.consumed_key_packages.includes(input.key_package_ref) ? REPLAYED : null;
+}
+
+async function reloadInbox(
+  authority: AuthorityRecord,
+  input: CapturedBundle,
+): Promise<InboxState | null> {
+  try {
+    return captureInboxState(await authority.load_inbox(input.recipient));
+  } catch {
+    return null;
+  }
+}
+
+async function revalidateInbox(
+  authority: AuthorityRecord,
+  input: CapturedBundle,
+  expected: InboxState,
+): Promise<Readonly<{
+  state: InboxState | null;
+  rejection: typeof NID_REQUIRED | typeof SCOPE_DENIED | typeof REPLAYED | null;
+  exact: boolean;
+}>> {
+  const state = await reloadInbox(authority, input);
+  return Object.freeze({
+    state,
+    rejection: state === null ? null : inboxRejection(state, input),
+    exact: state !== null && sameInboxState(state, expected),
+  });
+}
+
 export async function admitPersonaInboxBundle(
   authority: PersonaInboxAdmissionAuthority,
   bundle: PersonaInboxBundle,
@@ -406,25 +592,22 @@ export async function admitPersonaInboxBundle(
     return NID_REQUIRED;
   }
   if (!Number.isSafeInteger(now) || now < 0) return NID_REQUIRED;
-  let state: InboxState | null;
-  try {
-    state = captureInboxState(await authorityRecord.load_inbox(input.recipient));
-  } catch {
-    state = null;
-  }
-  if (state === null || state.recipient_nid === null) return NID_REQUIRED;
-  if (
-    input.sender_kind === "agent"
-      ? input.required_agent_scope === null
-        || !state.allowed_agent_scopes.includes(input.required_agent_scope)
-      : input.required_agent_scope !== null
-  ) return SCOPE_DENIED;
-  if (state.consumed_key_packages.includes(input.key_package_ref)) return REPLAYED;
+  const state = await reloadInbox(authorityRecord, input);
+  if (state === null) return NID_REQUIRED;
+  const initialRejection = inboxRejection(state, input);
+  if (initialRejection !== null) return initialRejection;
 
   const request = requestFor(authorityRecord.authority_id, input, state);
   let loaded = await loadRecord(authorityRecord.store, request.key);
+  let revalidated = await revalidateInbox(authorityRecord, input, state);
+  if (revalidated.rejection !== null) return revalidated.rejection;
+  if (!revalidated.exact) return indeterminate(request);
   if (loaded === undefined) return indeterminate(request);
-  if (loaded !== null) return REPLAYED;
+  if (loaded !== null) {
+    return loaded.state === "available" || loaded.state === "committed"
+      ? REPLAYED
+      : indeterminate(request);
+  }
 
   let acquired: "acquired" | "replay" | "conflict" | "unavailable";
   try {
@@ -439,7 +622,19 @@ export async function admitPersonaInboxBundle(
   }
   if (acquired !== "acquired") {
     loaded = await loadRecord(authorityRecord.store, request.key);
-    return loaded === undefined || loaded === null ? indeterminate(request) : REPLAYED;
+    revalidated = await revalidateInbox(authorityRecord, input, state);
+    if (revalidated.rejection !== null) return revalidated.rejection;
+    if (!revalidated.exact) return indeterminate(request);
+    if (loaded === undefined || loaded === null) return indeterminate(request);
+    return loaded.state === "available" || loaded.state === "committed"
+      ? REPLAYED
+      : indeterminate(request);
+  }
+
+  revalidated = await revalidateInbox(authorityRecord, input, state);
+  if (revalidated.rejection !== null || !revalidated.exact) {
+    await markIndeterminate(authorityRecord.store, request);
+    return revalidated.rejection ?? indeterminate(request);
   }
 
   const output = Object.freeze({
@@ -462,12 +657,25 @@ export async function admitPersonaInboxBundle(
   if (committed !== "committed") {
     if (committed === "conflict") {
       loaded = await loadRecord(authorityRecord.store, request.key);
-      if (loaded !== undefined && loaded !== null) return REPLAYED;
+      revalidated = await revalidateInbox(authorityRecord, input, state);
+      if (revalidated.rejection !== null || !revalidated.exact) {
+        await markIndeterminate(authorityRecord.store, request);
+        return revalidated.rejection ?? indeterminate(request);
+      }
+      if (loaded !== undefined && loaded !== null) {
+        if (loaded.state === "available" || loaded.state === "committed") return REPLAYED;
+        return indeterminate(request);
+      }
     }
     await markIndeterminate(authorityRecord.store, request);
     return indeterminate(request);
   }
   const terminal = await loadRecord(authorityRecord.store, request.key);
+  revalidated = await revalidateInbox(authorityRecord, input, state);
+  if (revalidated.rejection !== null || !revalidated.exact) {
+    await markIndeterminate(authorityRecord.store, request);
+    return revalidated.rejection ?? indeterminate(request);
+  }
   if (
     terminal === undefined
     || terminal === null

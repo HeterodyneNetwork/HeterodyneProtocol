@@ -7,6 +7,7 @@ import {
   descriptorDigest,
   responseProof,
   secretCommitment,
+  verifyInviteSignature,
   type InviteDescriptor,
   type InviteEnvelope,
   type InvitePurpose,
@@ -36,13 +37,20 @@ class MemoryStore implements DurableAuthorityStore<InviteOutput> {
   readonly records = new Map<string, DurableAuthorityRecord<InviteOutput>>();
   acquireResult: "acquired" | "replay" | "conflict" | "unavailable" | null = null;
   commitResult: "committed" | "conflict" | "unknown" = "committed";
+  commitConflictWritesExact = false;
   preserveExecutingOnMark = false;
   acquireCalls = 0;
   commitCalls = 0;
   markCalls = 0;
+  onLoad: (() => void) | null = null;
+  onAcquire: (() => void) | null = null;
+  onCommit: (() => void) | null = null;
 
   async load(key: string): Promise<DurableAuthorityRecord<InviteOutput> | null> {
-    return this.records.get(key) ?? null;
+    const result = this.records.get(key) ?? null;
+    this.onLoad?.();
+    this.onLoad = null;
+    return result;
   }
 
   async acquire(input: Readonly<{
@@ -62,6 +70,8 @@ class MemoryStore implements DurableAuthorityStore<InviteOutput> {
       binding_digest: input.binding_digest,
       execution_token: input.execution_token,
     }));
+    this.onAcquire?.();
+    this.onAcquire = null;
     return "acquired";
   }
 
@@ -74,6 +84,17 @@ class MemoryStore implements DurableAuthorityStore<InviteOutput> {
     output_digest: string; output: InviteOutput;
   }>): Promise<"committed" | "conflict" | "unknown"> {
     this.commitCalls += 1;
+    if (this.commitResult === "conflict" && this.commitConflictWritesExact) {
+      this.records.set(input.key, Object.freeze({
+        state: "committed", revision: 1,
+        binding_digest: input.binding_digest,
+        execution_token: input.execution_token,
+        output_digest: input.output_digest,
+        output: input.output,
+      }));
+    }
+    this.onCommit?.();
+    this.onCommit = null;
     if (this.commitResult !== "committed") return this.commitResult;
     this.records.set(input.key, Object.freeze({
       state: "committed", revision: 1,
@@ -155,6 +176,18 @@ function changedCanonicalResponse(bytes: Uint8Array): Uint8Array {
   const parsed = JSON.parse(new TextDecoder().decode(bytes)) as Record<string, unknown>;
   parsed.capabilities = ["chat", "files"];
   return new TextEncoder().encode(jcsCanonicalize(parsed));
+}
+
+function validPreauthorization(methods: string[]) {
+  return {
+    client_class: "human-light",
+    methods,
+    objects: ["messages"],
+    limits: { requests: 1 },
+    agent_role: null,
+    token_lifetime_ceiling_seconds: 600,
+    unbound_bearer: false,
+  };
 }
 
 function redemption(
@@ -368,6 +401,100 @@ describe("one-time invite authority", () => {
     expect(effects).toBe(1);
   });
 
+  it("BLUE TEAM VALIDATION: synthetic/local revalidates revocation after durable load", async () => {
+    const store = new MemoryStore();
+    let inviteState: "active" | "revoked" = "active";
+    let revision = 7;
+    store.onLoad = () => { inviteState = "revoked"; revision = 8; };
+    const input = redemption();
+    currentResponseDigest = createHash("sha256").update(input.response_bytes).digest("hex");
+    let effects = 0;
+    const authority = createOneTimeInviteAuthority(withComputedEstablisher(store, {
+      load_invite_state: async () => ({ state: inviteState, revision }),
+      establish_group: async () => {
+        effects += 1;
+        return { group_id: GROUP_ID, response_digest: currentResponseDigest };
+      },
+    }));
+    await expect(redeemOneTimeInvite(authority, input)).resolves.toEqual({
+      verdict: "reject", reason_code: "invite-authentication-invalid",
+    });
+    expect(store.acquireCalls).toBe(0);
+    expect(effects).toBe(0);
+  });
+
+  it.each(["revocation", "expiry"] as const)(
+    "BLUE TEAM VALIDATION: synthetic/local revalidates %s after durable acquire",
+    async (change) => {
+      const store = new MemoryStore();
+      let inviteState: "active" | "revoked" = "active";
+      let revision = 7;
+      let now = NOW;
+      store.onAcquire = () => {
+        if (change === "revocation") { inviteState = "revoked"; revision = 8; }
+        else now = 2_000;
+      };
+      const input = redemption();
+      currentResponseDigest = createHash("sha256").update(input.response_bytes).digest("hex");
+      let effects = 0;
+      const authority = createOneTimeInviteAuthority(withComputedEstablisher(store, {
+        trusted_now: () => now,
+        load_invite_state: async () => ({ state: inviteState, revision }),
+        establish_group: async () => {
+          effects += 1;
+          return { group_id: GROUP_ID, response_digest: currentResponseDigest };
+        },
+      }));
+      const decision = await redeemOneTimeInvite(authority, input);
+      expect(decision.verdict).not.toBe("accept");
+      expect(effects).toBe(0);
+      expect(store.commitCalls).toBe(0);
+      expect(store.markCalls).toBe(1);
+    },
+  );
+
+  it("BLUE TEAM VALIDATION: synthetic/local rechecks expiry after the awaited state reload", async () => {
+    const store = new MemoryStore();
+    let now = NOW;
+    let stateLoads = 0;
+    const input = redemption();
+    currentResponseDigest = createHash("sha256").update(input.response_bytes).digest("hex");
+    let effects = 0;
+    const authority = createOneTimeInviteAuthority(withComputedEstablisher(store, {
+      trusted_now: () => now,
+      load_invite_state: async () => {
+        stateLoads += 1;
+        if (stateLoads === 3) now = 2_000;
+        return { state: "active", revision: 7 };
+      },
+      establish_group: async () => {
+        effects += 1;
+        return { group_id: GROUP_ID, response_digest: currentResponseDigest };
+      },
+    }));
+    const decision = await redeemOneTimeInvite(authority, input);
+    expect(decision.verdict).not.toBe("accept");
+    expect(effects).toBe(0);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local revalidates revocation after commit-conflict readback", async () => {
+    const store = new MemoryStore();
+    store.commitResult = "conflict";
+    store.commitConflictWritesExact = true;
+    let inviteState: "active" | "revoked" = "active";
+    let revision = 7;
+    store.onCommit = () => {
+      store.onLoad = () => { inviteState = "revoked"; revision = 8; };
+    };
+    const input = redemption();
+    currentResponseDigest = createHash("sha256").update(input.response_bytes).digest("hex");
+    const authority = createOneTimeInviteAuthority(withComputedEstablisher(store, {
+      load_invite_state: async () => ({ state: inviteState, revision }),
+    }));
+    const decision = await redeemOneTimeInvite(authority, input);
+    expect(decision.verdict).not.toBe("accept");
+  });
+
   it("BLUE TEAM VALIDATION: synthetic/local captures the entire redemption before asynchronous state reads", async () => {
     const store = new MemoryStore();
     let release!: () => void;
@@ -420,6 +547,115 @@ describe("one-time invite authority", () => {
     });
   });
 
+  it("BLUE TEAM VALIDATION: synthetic/local bounds descriptor and response collections and strings", async () => {
+    const envelopes = [
+      signedEnvelope({
+        relay_hints: Array.from({ length: 17 }, (_, index) => `wss://relay-${index}.example`),
+      }),
+      signedEnvelope({
+        purpose: "control-enrollment",
+        approval_mode: "preauthorized",
+        preauthorization: validPreauthorization(
+          Array.from({ length: 65 }, (_, index) => `method-${index}`),
+        ),
+      }),
+    ];
+    for (const envelope of envelopes) {
+      const store = new MemoryStore();
+      const input = redemption({}, envelope);
+      currentResponseDigest = createHash("sha256").update(input.response_bytes).digest("hex");
+      const authority = createOneTimeInviteAuthority(withComputedEstablisher(store));
+      await expect(redeemOneTimeInvite(authority, input)).resolves.toEqual({
+        verdict: "reject", reason_code: "invite-authentication-invalid",
+      });
+      expect(store.acquireCalls).toBe(0);
+    }
+
+    const envelope = signedEnvelope();
+    for (const capabilities of [
+      Array.from({ length: 65 }, (_, index) => `capability-${index}`),
+      ["c".repeat(257)],
+    ]) {
+      const store = new MemoryStore();
+      const input = redemption({
+        response_bytes: responseBytes(envelope, { capabilities }),
+      }, envelope);
+      currentResponseDigest = createHash("sha256").update(input.response_bytes).digest("hex");
+      const authority = createOneTimeInviteAuthority(withComputedEstablisher(store));
+      await expect(redeemOneTimeInvite(authority, input)).resolves.toEqual({
+        verdict: "reject", reason_code: "invite-authentication-invalid",
+      });
+      expect(store.acquireCalls).toBe(0);
+    }
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local bounds individual and aggregate invite bytes", async () => {
+    const envelope = signedEnvelope();
+    const oversizedKeyPackage = new Uint8Array(1_048_577);
+    oversizedKeyPackage[0] = 1;
+    const oversizedTransition = new Uint8Array(1_048_577);
+    oversizedTransition[0] = 2;
+    const aggregateKeyPackage = new Uint8Array(600_000);
+    aggregateKeyPackage[0] = 3;
+    const aggregateTransition = new Uint8Array(700_000);
+    aggregateTransition[0] = 4;
+    const cases = [
+      redemption({
+        key_package_bytes: oversizedKeyPackage,
+        response_bytes: responseBytes(envelope, {
+          mls_key_package: Buffer.from(oversizedKeyPackage).toString("base64url"),
+        }),
+      }, envelope),
+      redemption({ group_transition: oversizedTransition }, envelope),
+      redemption({
+        key_package_bytes: aggregateKeyPackage,
+        group_transition: aggregateTransition,
+        response_bytes: responseBytes(envelope, {
+          mls_key_package: Buffer.from(aggregateKeyPackage).toString("base64url"),
+        }),
+      }, envelope),
+    ];
+    for (const input of cases) {
+      const store = new MemoryStore();
+      currentResponseDigest = createHash("sha256").update(input.response_bytes).digest("hex");
+      let effects = 0;
+      const authority = createOneTimeInviteAuthority(withComputedEstablisher(store, {
+        establish_group: async () => {
+          effects += 1;
+          return { group_id: GROUP_ID, response_digest: currentResponseDigest };
+        },
+      }));
+      await expect(redeemOneTimeInvite(authority, input)).resolves.toEqual({
+        verdict: "reject", reason_code: "invite-authentication-invalid",
+      });
+      expect(store.acquireCalls).toBe(0);
+      expect(effects).toBe(0);
+    }
+  });
+
+  it("accepts exact descriptor collection limits", async () => {
+    const envelope = signedEnvelope({
+      purpose: "control-enrollment",
+      approval_mode: "preauthorized",
+      relay_hints: Array.from({ length: 16 }, (_, index) => `wss://relay-${index}.example`),
+      preauthorization: validPreauthorization(
+        Array.from({ length: 64 }, (_, index) => `method-${index}`),
+      ),
+    });
+    const input = redemption({
+      response_bytes: responseBytes(envelope, {
+        capabilities: Array.from(
+          { length: 64 },
+          (_, index) => index === 0 ? "c".repeat(256) : `capability-${index}`,
+        ),
+      }),
+    }, envelope);
+    currentResponseDigest = createHash("sha256").update(input.response_bytes).digest("hex");
+    const store = new MemoryStore();
+    const authority = createOneTimeInviteAuthority(withComputedEstablisher(store));
+    await expect(redeemOneTimeInvite(authority, input)).resolves.toMatchObject({ verdict: "accept" });
+  });
+
   it("BLUE TEAM VALIDATION: synthetic/local rejects cloned authority handles", async () => {
     const store = new MemoryStore();
     const authority = createOneTimeInviteAuthority(withComputedEstablisher(store));
@@ -450,5 +686,38 @@ describe("one-time invite authority", () => {
     }
     expect(traps).toBe(0);
     expect(store.acquireCalls).toBe(0);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects extended and wrong-prototype redemptions", async () => {
+    const store = new MemoryStore();
+    const authority = createOneTimeInviteAuthority(withComputedEstablisher(store));
+    const extended = { ...redemption(), extra: true } as unknown as OneTimeInviteRedemption;
+    const wrongPrototype = Object.assign(Object.create(null), redemption()) as OneTimeInviteRedemption;
+    for (const input of [extended, wrongPrototype]) {
+      await expect(redeemOneTimeInvite(authority, input)).resolves.toEqual({
+        verdict: "reject", reason_code: "invite-authentication-invalid",
+      });
+    }
+    expect(store.acquireCalls).toBe(0);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local bounds signed descriptor nesting before hashing", () => {
+    const nested = (depth: number): Record<string, unknown> => {
+      let value: Record<string, unknown> = { leaf: true };
+      for (let index = 0; index < depth; index += 1) value = { next: value };
+      return value;
+    };
+    const atLimit = signedEnvelope({
+      purpose: "control-enrollment",
+      approval_mode: "preauthorized",
+      preauthorization: nested(6),
+    });
+    const aboveLimit = signedEnvelope({
+      purpose: "control-enrollment",
+      approval_mode: "preauthorized",
+      preauthorization: nested(7),
+    });
+    expect(verifyInviteSignature(atLimit.descriptor, atLimit.signature)).toBe(true);
+    expect(verifyInviteSignature(aboveLimit.descriptor, aboveLimit.signature)).toBe(false);
   });
 });
