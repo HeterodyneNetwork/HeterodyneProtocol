@@ -153,8 +153,8 @@ const NEW_0_6_REGISTRY_IDS = {
 describe("revisioned protocol registry", () => {
   const registry = loadRegistry(repositoryRoot);
 
-  it("BLUE TEAM VALIDATION: synthetic/local preserves revision 16 identities in immutable revision 17", () => {
-    expect(registry.manifest.revision).toBe(17);
+  it("BLUE TEAM VALIDATION: synthetic/local preserves revision 16 identities in revision 18", () => {
+    expect(registry.manifest.revision).toBe(18);
     expect(REVISION_16_ENTRY_SET_SHA256).toBe(
       "5ff98ff2af3bcbb413918dc207dcfc5da7035e9751e9836680df9b56a2b2230f",
     );
@@ -174,8 +174,21 @@ describe("revisioned protocol registry", () => {
     }
   });
 
-  it("preserves the complete Task 2-8 authority set through immutable revision 17", () => {
-    expect(registry.manifest.revision).toBe(17);
+  it("registers the exact public-reader private-content boundary through revision 18", () => {
+    expect(registry.reason_codes.find(
+      ({ code }) => code === "public-reader-private-content",
+    )).toEqual({
+      code: "public-reader-private-content",
+      owner: "comms",
+      status: "draft",
+      first_version: "heterodyne/0.5.0",
+      description: "Public-reader mode was asked to render private-repository plaintext or interpret Tier 2 or Tier 3 ciphertext as public content.",
+      spec_refs: ["heterodyne:0.6.0#comms-retrieval"],
+    });
+  });
+
+  it("preserves the complete Task 2-8 authority set through revision 18", () => {
+    expect(registry.manifest.revision).toBe(18);
 
     expect(registry.objects.find(
       ({ id }) => id === "repository-writer-binding-v1",
@@ -1309,8 +1322,8 @@ describe("revisioned protocol registry", () => {
     ]));
   });
 
-  it("keeps baseline and historical reason ownership through revision 17", () => {
-    expect(registry.manifest.revision).toBe(17);
+  it("keeps baseline and historical reason ownership through revision 18", () => {
+    expect(registry.manifest.revision).toBe(18);
     const reasons = new Map(
       registry.reason_codes.map((entry) => [entry.code, entry]),
     );

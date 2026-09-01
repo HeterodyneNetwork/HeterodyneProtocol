@@ -13,10 +13,17 @@ import {
 const here = dirname(fileURLToPath(import.meta.url));
 const registryRoot = resolve(here, "../../../registry");
 
-const REVISION_16_ENTRY_SET_SHA256 =
-  "5ff98ff2af3bcbb413918dc207dcfc5da7035e9751e9836680df9b56a2b2230f";
-const REVISION_16_IDENTITY_TUPLES_SHA256 =
+const REVISION_17_ENTRY_SET_SHA256 =
+  "1e37021c334fcbd01b3b15679779d59308833a85f612180630061e41cf72fb17";
+const REVISION_18_ENTRY_SET_SHA256 =
+  "068c36d589bd2eac4a65245c93095beca4134bbdfae9dabc845485a71c58933f";
+const REVISION_17_IDENTITY_TUPLES_SHA256 =
   "852355247956e80edfc1e987d5e46c6f1c15b47c635d2f176d69450967806a26";
+
+const PUBLIC_READER_PRIVATE_CONTENT_OLD_DESCRIPTION =
+  "Public-reader mode was asked to render Tier 2 plaintext or interpret Tier 3 ciphertext as public content.";
+const PUBLIC_READER_PRIVATE_CONTENT_NEW_DESCRIPTION =
+  "Public-reader mode was asked to render private-repository plaintext or interpret Tier 2 or Tier 3 ciphertext as public content.";
 
 const REVISION_17_REASON_REFINEMENTS = [
   ["agent-attribution-bypass-prohibited", "Retained non-wire history for the retired diagnostic that classified omitted, altered, or falsified canonical agent attribution; current attribution-before-signing is governed by live publication authority.", "heterodyne:0.6.0#control-retired-semantics"],
@@ -71,28 +78,63 @@ function identityTuples(entrySet: RegistryEntrySet): Array<[string, string, stri
   ].sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
 }
 
-describe("registry revision 17 transaction validation", () => {
-  it("BLUE TEAM VALIDATION: synthetic/local validates all revision 17 refinements and manifest digest", () => {
+describe("registry revision 17 historical reconstruction", () => {
+  it("BLUE TEAM VALIDATION: raw JSON reconstructs immutable revision 17 from the sole live revision 18 semantic delta", () => {
     const manifestText = readFileSync(join(registryRoot, "manifest.json"), "utf8");
     const manifest = JSON.parse(manifestText) as RegistryManifest;
-    expect(manifest).toMatchObject({
-      revision: 17,
+    expect(manifest).toEqual({
+      revision: 18,
       schema_version: "3.0.0",
+      entry_set_sha256: REVISION_18_ENTRY_SET_SHA256,
     });
-    expect(REVISION_16_ENTRY_SET_SHA256).toBe(
-      "5ff98ff2af3bcbb413918dc207dcfc5da7035e9751e9836680df9b56a2b2230f",
-    );
 
     const entrySet = readEntrySet();
     const rows = identityTuples(entrySet);
     expect(rows).toHaveLength(458);
     expect(createHash("sha256").update(JSON.stringify(rows)).digest("hex"))
-      .toBe(REVISION_16_IDENTITY_TUPLES_SHA256);
+      .toBe(REVISION_17_IDENTITY_TUPLES_SHA256);
 
-    const digest = computeRegistryDigest(entrySet);
-    expect(manifest.entry_set_sha256).toBe(digest);
-    expect(() => validateRegistry({ manifest, ...entrySet }, registryRoot))
+    const reason = entrySet.reason_codes.find(
+      ({ code }) => code === "public-reader-private-content",
+    );
+    expect(reason).toEqual({
+      code: "public-reader-private-content",
+      owner: "comms",
+      status: "draft",
+      first_version: "heterodyne/0.5.0",
+      description: PUBLIC_READER_PRIVATE_CONTENT_NEW_DESCRIPTION,
+      spec_refs: ["heterodyne:0.6.0#comms-retrieval"],
+    });
+
+    const revision17EntrySet = structuredClone(entrySet);
+    const revision17Reason = revision17EntrySet.reason_codes.find(
+      ({ code }) => code === "public-reader-private-content",
+    );
+    if (revision17Reason === undefined) {
+      throw new Error("revision 18 preflight requires public-reader-private-content");
+    }
+    revision17Reason.description = PUBLIC_READER_PRIVATE_CONTENT_OLD_DESCRIPTION;
+
+    expect(computeRegistryDigest(revision17EntrySet))
+      .toBe(REVISION_17_ENTRY_SET_SHA256);
+    const revision17Manifest: RegistryManifest = {
+      ...manifest,
+      revision: 17,
+      entry_set_sha256: REVISION_17_ENTRY_SET_SHA256,
+    };
+    expect(() => validateRegistry({
+      manifest: revision17Manifest,
+      ...revision17EntrySet,
+    }, registryRoot))
       .not.toThrow();
+
+    const revision18Digest = computeRegistryDigest(entrySet);
+    expect(revision18Digest).toBe(REVISION_18_ENTRY_SET_SHA256);
+    expect(() => validateRegistry({
+      manifest,
+      ...entrySet,
+    }, registryRoot)).not.toThrow();
+
     const reasons = new Map(entrySet.reason_codes.map((entry) => [entry.code, entry]));
     for (const [code, description, specRef] of REVISION_17_REASON_REFINEMENTS) {
       expect(reasons.get(code)).toMatchObject({ description, spec_refs: [specRef] });

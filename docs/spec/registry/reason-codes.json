@@ -967,7 +967,7 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Public-reader mode was asked to render Tier 2 plaintext or interpret Tier 3 ciphertext as public content.",
+      "description": "Public-reader mode was asked to render private-repository plaintext or interpret Tier 2 or Tier 3 ciphertext as public content.",
       "spec_refs": [
         "heterodyne:0.6.0#comms-retrieval"
       ]
