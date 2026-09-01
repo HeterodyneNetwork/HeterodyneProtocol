@@ -6,7 +6,11 @@ import {
   isCanonicalCoreGitRef,
   isCanonicalCoreRepositoryRid,
 } from "./core-policy.js";
-import type { CurrentRepositoryWriterBinding } from "./core-writer-binding.js";
+import {
+  revalidateCurrentRepositoryWriterBinding,
+  type CoreRepositoryWriterAuthority,
+  type CurrentRepositoryWriterBinding,
+} from "./core-writer-binding.js";
 import { bytesToHex, utf8Bytes } from "./hex.js";
 import {
   snapshotAndVerifyNostrEvent,
@@ -14,6 +18,7 @@ import {
   type VerifiedNostrEvent,
 } from "./nostr.js";
 import {
+  createReplaceableSelectionAuthority,
   selectCurrentReplaceableEvent,
   type ReplaceableSelectionAuthority,
 } from "./replaceable-selection.js";
@@ -29,6 +34,7 @@ export type CanonicalProfileSelectionAuthorityConfig = Readonly<{
   authority_id: string;
   trusted_now: () => number;
   replaceable_selection: ReplaceableSelectionAuthority;
+  repository_writer_authority: CoreRepositoryWriterAuthority;
   authenticate_repository_candidate: (
     event: NostrSignedEvent,
     rid: string,
@@ -53,8 +59,9 @@ export type CanonicalProfileView = Readonly<Record<never, never>>;
 
 type CapturedAuthority = Readonly<{
   authority_id: string;
-  trusted_now: () => number;
-  replaceable_selection: ReplaceableSelectionAuthority;
+  observed_at: number;
+  selection_authority: ReplaceableSelectionAuthority;
+  repository_writer_authority: CoreRepositoryWriterAuthority;
   authenticate_repository_candidate:
     CanonicalProfileSelectionAuthorityConfig["authenticate_repository_candidate"];
 }>;
@@ -109,6 +116,7 @@ export function createCanonicalProfileSelectionAuthority(
       "authority_id",
       "trusted_now",
       "replaceable_selection",
+      "repository_writer_authority",
       "authenticate_repository_candidate",
     ]], "Canonical profile selection authority config");
     if (
@@ -120,16 +128,25 @@ export function createCanonicalProfileSelectionAuthority(
       || captured.replaceable_selection === null
       || typeof captured.replaceable_selection !== "object"
       || utilTypes.isProxy(captured.replaceable_selection)
+      || captured.repository_writer_authority === null
+      || typeof captured.repository_writer_authority !== "object"
+      || utilTypes.isProxy(captured.repository_writer_authority)
       || typeof captured.authenticate_repository_candidate !== "function"
       || utilTypes.isProxy(captured.authenticate_repository_candidate)
     ) throw invalid();
+    const observedAt = (captured.trusted_now as () => number)();
+    if (!Number.isSafeInteger(observedAt) || observedAt < 0) throw invalid();
+    const selectionAuthority = createReplaceableSelectionAuthority({
+      trusted_now: () => observedAt,
+    });
 
     const authority = Object.freeze({}) as CanonicalProfileSelectionAuthority;
     AUTHORITIES.set(authority, Object.freeze({
       authority_id: captured.authority_id,
-      trusted_now: captured.trusted_now as () => number,
-      replaceable_selection:
-        captured.replaceable_selection as ReplaceableSelectionAuthority,
+      observed_at: observedAt,
+      selection_authority: selectionAuthority,
+      repository_writer_authority:
+        captured.repository_writer_authority as CoreRepositoryWriterAuthority,
       authenticate_repository_candidate:
         captured.authenticate_repository_candidate as CapturedAuthority[
           "authenticate_repository_candidate"
@@ -152,47 +169,48 @@ export async function selectCanonicalProfile(
   if (authority === null) return REJECTED;
 
   try {
-    const observedAt = authority.trusted_now();
-    if (!Number.isSafeInteger(observedAt) || observedAt < 0) return REJECTED;
     const input = captureInput(inputValue);
     if (input === null) return REJECTED;
 
-    const relayEvents: VerifiedNostrEvent[] = [];
-    for (const source of input.relay_candidates) {
-      const event = snapshotBoundedEvent(source);
-      if (event !== null && event.kind === 0 && profileContent(event.content) !== undefined) {
-        relayEvents.push(event);
-      }
+    const pending: Array<Readonly<{
+      candidate: RepositoryCandidate;
+      binding: CurrentRepositoryWriterBinding;
+    }>> = [];
+    for (const source of input.repository_candidates) {
+      const repositoryRid = profileContent(source.event.content);
+      if (repositoryRid === undefined) return REJECTED;
+      if (repositoryRid !== null && repositoryRid !== source.repository_rid) continue;
+      const binding = await authority.authenticate_repository_candidate(
+        source.event,
+        source.repository_rid,
+        source.ref,
+      );
+      if (binding === null) continue;
+      if (
+        typeof binding !== "object"
+        || utilTypes.isProxy(binding)
+      ) return REJECTED;
+      pending.push(Object.freeze({
+        candidate: source,
+        binding,
+      }));
     }
 
     const authenticated = new Map<string, Readonly<{
       candidate: RepositoryCandidate;
       binding: CurrentRepositoryWriterBinding;
     }>>();
-    for (const source of input.repository_candidates) {
-      const event = snapshotBoundedEvent(source.event);
-      if (event === null || event.kind !== 0) continue;
-      const repositoryRid = profileContent(event.content);
-      if (repositoryRid === undefined) continue;
-      if (repositoryRid !== null && repositoryRid !== source.repository_rid) continue;
-      const binding = await authority.authenticate_repository_candidate(
-        event,
-        source.repository_rid,
-        source.ref,
+    for (const result of pending) {
+      const revalidated = revalidateCurrentRepositoryWriterBinding(
+        authority.repository_writer_authority,
+        result.binding,
       );
-      if (!opaqueWriterBinding(binding)) continue;
-      authenticated.set(event.id, Object.freeze({
-        candidate: Object.freeze({
-          event,
-          repository_rid: source.repository_rid,
-          ref: source.ref,
-        }),
-        binding,
-      }));
+      if (revalidated !== result.binding) return REJECTED;
+      authenticated.set(result.candidate.event.id, result);
     }
 
     const union = new Map<string, VerifiedNostrEvent>();
-    for (const event of relayEvents) union.set(event.id, event);
+    for (const event of input.relay_candidates) union.set(event.id, event);
     for (const { candidate } of authenticated.values()) {
       union.set(candidate.event.id, candidate.event);
     }
@@ -201,7 +219,7 @@ export async function selectCanonicalProfile(
     }
 
     const selected = selectCurrentReplaceableEvent(
-      authority.replaceable_selection,
+      authority.selection_authority,
       [...union.values()],
     ).selected;
     if (selected === null || selected.kind !== 0) return REJECTED;
@@ -219,7 +237,7 @@ export async function selectCanonicalProfile(
     const view = Object.freeze({}) as CanonicalProfileView;
     const bindingDigest = bytesToHex(sha256(utf8Bytes(JSON.stringify({
       authority_id: authority.authority_id,
-      observed_at: observedAt,
+      observed_at: authority.observed_at,
       event_id: selected.id,
       repository_rid: requiredRepositoryRid,
       repository_ref: authenticatedSelection?.candidate.ref ?? null,
@@ -227,7 +245,7 @@ export async function selectCanonicalProfile(
     VIEWS.set(view, Object.freeze({
       authority: authorityValue,
       authority_id: authority.authority_id,
-      observed_at: observedAt,
+      observed_at: authority.observed_at,
       selected,
       repository_rid: requiredRepositoryRid,
       repository_binding: authenticatedSelection?.binding ?? null,
@@ -246,24 +264,9 @@ function opaqueAuthority(value: unknown): CapturedAuthority | null {
   return AUTHORITIES.get(value) ?? null;
 }
 
-function opaqueWriterBinding(
-  value: unknown,
-): value is CurrentRepositoryWriterBinding {
-  return value !== null
-    && typeof value === "object"
-    && !utilTypes.isProxy(value)
-    && Object.getPrototypeOf(value) === Object.prototype
-    && Object.isFrozen(value)
-    && Reflect.ownKeys(value).length === 0;
-}
-
 function captureInput(value: unknown): Readonly<{
-  relay_candidates: readonly NostrSignedEvent[];
-  repository_candidates: readonly Readonly<{
-    event: NostrSignedEvent;
-    repository_rid: string;
-    ref: string;
-  }>[];
+  relay_candidates: readonly VerifiedNostrEvent[];
+  repository_candidates: readonly RepositoryCandidate[];
 }> | null {
   try {
     const captured = captureExactDataObject(value, [[
@@ -284,11 +287,17 @@ function captureInput(value: unknown): Readonly<{
       || relayCandidates.length + repositorySources.length > MAX_TOTAL_CANDIDATES
     ) return null;
 
-    const repositoryCandidates: Array<Readonly<{
-      event: NostrSignedEvent;
-      repository_rid: string;
-      ref: string;
-    }>> = [];
+    const relayEvents: VerifiedNostrEvent[] = [];
+    for (const source of relayCandidates) {
+      const event = snapshotBoundedEvent(source);
+      if (
+        event !== null
+        && event.kind === 0
+        && profileContent(event.content) !== undefined
+      ) relayEvents.push(event);
+    }
+
+    const repositoryCandidates: RepositoryCandidate[] = [];
     for (const source of repositorySources) {
       const candidate = captureExactDataObject(source, [[
         "event",
@@ -299,14 +308,20 @@ function captureInput(value: unknown): Readonly<{
         !isCanonicalCoreRepositoryRid(candidate.repository_rid)
         || !isCanonicalCoreGitRef(candidate.ref)
       ) return null;
+      const event = snapshotBoundedEvent(candidate.event);
+      if (
+        event === null
+        || event.kind !== 0
+        || profileContent(event.content) === undefined
+      ) continue;
       repositoryCandidates.push(Object.freeze({
-        event: candidate.event as NostrSignedEvent,
+        event,
         repository_rid: candidate.repository_rid,
         ref: candidate.ref,
       }));
     }
     return Object.freeze({
-      relay_candidates: Object.freeze(relayCandidates as NostrSignedEvent[]),
+      relay_candidates: Object.freeze(relayEvents),
       repository_candidates: Object.freeze(repositoryCandidates),
     });
   } catch {

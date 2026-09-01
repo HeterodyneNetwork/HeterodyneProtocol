@@ -158,6 +158,31 @@ describe("Core operational assurance authority", () => {
     })).toEqual({ verdict: "reject", reason_code: "relay_profile_mutation" });
   });
 
+  it("BLUE TEAM VALIDATION: synthetic/local rejects duplicate outer members before retained-event semantics", async () => {
+    const operational = await loadOperational();
+    const authority = operational.createCoreOperationalAssuranceAuthority?.(
+      operationalConfig(),
+    ) ?? MISSING_AUTHORITY;
+    const event = await signedProfileEvent();
+    const duplicate = [
+      "{",
+      `\"pubkey\":${JSON.stringify(event.pubkey)},`,
+      `\"created_at\":${event.created_at},`,
+      `\"kind\":${event.kind},`,
+      `\"tags\":${JSON.stringify(event.tags)},`,
+      `\"content\":${JSON.stringify(event.content)},`,
+      `\"content\":${JSON.stringify(event.content)},`,
+      `\"id\":${JSON.stringify(event.id)},`,
+      `\"sig\":${JSON.stringify(event.sig)}`,
+      "}",
+    ].join("");
+
+    expect(operational.verifyRelayProfileCarrier?.(authority, {
+      event,
+      retained_bytes: new TextEncoder().encode(duplicate),
+    })).toEqual({ verdict: "reject", reason_code: "relay_profile_mutation" });
+  });
+
   it("BLUE TEAM VALIDATION: synthetic/local rejects strict role transport without Tor", async () => {
     const operational = await loadOperational();
     const authority = operational.createCoreOperationalAssuranceAuthority?.(

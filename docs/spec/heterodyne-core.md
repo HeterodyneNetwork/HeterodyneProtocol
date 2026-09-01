@@ -381,9 +381,14 @@ structural boundary.
 
 A canonical-profile selection authority MUST capture bounded, closed
 candidate descriptors; verify every candidate's exact NIP-01 ID and signature;
-authenticate every repository candidate against its exact RID and ref; union
-relay and authenticated-repository candidates without carrier priority; and
-apply the NIP-01 replacement rule to that union. It derives the repository
+authenticate every repository candidate against its exact event author, RID,
+ref, and a current Core repository-writer binding; revalidate the complete
+bounded batch of those opaque bindings against current writer policy
+immediately before selection; union relay and authenticated-repository
+candidates without carrier priority; and apply the NIP-01 replacement rule to
+that union. Candidate descriptors are fully captured before repository
+authentication begins, and one constructor-captured trusted-time observation
+governs both the view and premature-candidate selection. It derives the repository
 requirement solely from the selected signed profile's valid extension. A
 request boolean, repository label, cache entry, clone, or object mutation MUST
 NOT assert that requirement or satisfy it. If the selected profile advertises
@@ -1000,9 +1005,10 @@ Security-sensitive operational checks consume verifier-minted local views,
 not caller-supplied booleans. A friend-cache candidate is usable only after
 its captured NIP-01 event verifies and its author equals the expected persona;
 otherwise the boundary returns `unauthorized_cache_content`. A relay profile
-carrier is conforming only when bounded retained UTF-8 event bytes parse to
-the exact same kind `0` fields, ID, author, and signature as the independently
-captured event; otherwise it returns `relay_profile_mutation`.
+carrier is conforming only when bounded retained UTF-8 event bytes pass a
+duplicate-aware JSON decode before event semantics and parse to the exact same
+kind `0` fields, ID, author, and signature as the independently captured
+event; otherwise it returns `relay_profile_mutation`.
 
 The client captures its role, strict-profile selection, and effective route
 once at the local authority boundary. A strict profile over clearnet returns

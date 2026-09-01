@@ -155,7 +155,8 @@ export function verifyRelayProfileCarrier(
     const exposed = snapshotBoundedEvent(input.event);
     const retainedBytes = captureRetainedBytes(input.retained_bytes);
     if (exposed === null || exposed.kind !== 0 || retainedBytes === null) return rejected;
-    const retainedValue: unknown = JSON.parse(UTF8_DECODER.decode(retainedBytes));
+    const retainedValue = decodeRetainedJson(retainedBytes);
+    if (retainedValue === undefined) return rejected;
     const retained = snapshotBoundedEvent(retainedValue);
     if (
       retained === null
@@ -268,6 +269,133 @@ function captureRetainedBytes(value: unknown): Uint8Array | null {
     || value.byteLength > MAX_RETAINED_EVENT_BYTES
   ) return null;
   return Uint8Array.from(value);
+}
+
+/**
+ * JSON.parse silently keeps the last duplicate member. Reject ambiguous
+ * retained bytes in a bounded lexical pass before interpreting NIP-01 fields.
+ */
+function decodeRetainedJson(bytes: Uint8Array): unknown | undefined {
+  const text = UTF8_DECODER.decode(bytes);
+  const scanner = new UniqueJsonMemberScanner(text);
+  if (!scanner.scan()) return undefined;
+  return JSON.parse(text) as unknown;
+}
+
+class UniqueJsonMemberScanner {
+  private index = 0;
+
+  public constructor(private readonly source: string) {}
+
+  public scan(): boolean {
+    try {
+      this.space();
+      this.value(0);
+      this.space();
+      return this.index === this.source.length;
+    } catch {
+      return false;
+    }
+  }
+
+  private value(depth: number): void {
+    if (depth > 16) throw new Error("retained JSON nesting limit");
+    this.space();
+    const token = this.source[this.index];
+    if (token === "{") this.object(depth + 1);
+    else if (token === "[") this.array(depth + 1);
+    else if (token === "\"") void this.string();
+    else if (token === "t") this.literal("true");
+    else if (token === "f") this.literal("false");
+    else if (token === "n") this.literal("null");
+    else this.number();
+  }
+
+  private object(depth: number): void {
+    this.expect("{");
+    this.space();
+    const names = new Set<string>();
+    if (this.take("}")) return;
+    for (;;) {
+      this.space();
+      const name = this.string();
+      if (names.has(name)) throw new Error("duplicate retained JSON member");
+      names.add(name);
+      this.space();
+      this.expect(":");
+      this.value(depth);
+      this.space();
+      if (this.take("}")) return;
+      this.expect(",");
+    }
+  }
+
+  private array(depth: number): void {
+    this.expect("[");
+    this.space();
+    if (this.take("]")) return;
+    for (;;) {
+      this.value(depth);
+      this.space();
+      if (this.take("]")) return;
+      this.expect(",");
+    }
+  }
+
+  private string(): string {
+    const start = this.index;
+    this.expect("\"");
+    let escaped = false;
+    while (this.index < this.source.length) {
+      const token = this.source[this.index];
+      this.index += 1;
+      if (escaped) {
+        escaped = false;
+      } else if (token === "\\") {
+        escaped = true;
+      } else if (token === "\"") {
+        return JSON.parse(this.source.slice(start, this.index)) as string;
+      } else if (token !== undefined && token.charCodeAt(0) < 0x20) {
+        throw new Error("control character in retained JSON string");
+      }
+    }
+    throw new Error("unterminated retained JSON string");
+  }
+
+  private number(): void {
+    const remainder = this.source.slice(this.index);
+    const match = /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/u.exec(
+      remainder,
+    );
+    if (match === null) throw new Error("invalid retained JSON value");
+    this.index += match[0].length;
+  }
+
+  private literal(value: string): void {
+    if (!this.source.startsWith(value, this.index)) {
+      throw new Error("invalid retained JSON literal");
+    }
+    this.index += value.length;
+  }
+
+  private space(): void {
+    while (
+      this.source[this.index] === " "
+      || this.source[this.index] === "\n"
+      || this.source[this.index] === "\r"
+      || this.source[this.index] === "\t"
+    ) this.index += 1;
+  }
+
+  private expect(value: string): void {
+    if (!this.take(value)) throw new Error("invalid retained JSON syntax");
+  }
+
+  private take(value: string): boolean {
+    if (this.source[this.index] !== value) return false;
+    this.index += 1;
+    return true;
+  }
 }
 
 function snapshotBoundedEvent(value: unknown): VerifiedNostrEvent | null {
