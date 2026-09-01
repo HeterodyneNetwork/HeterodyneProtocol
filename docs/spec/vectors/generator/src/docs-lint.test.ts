@@ -377,6 +377,68 @@ it("reports an ordinary diagnostic", () => {
     ]);
   });
 
+  it.each([
+    ["target variable", `const targetType = "live relay";\nexpect(targetType).toBeDefined();`],
+    ["account variable", `const account = "live account";\nexpect(account).toBeDefined();`],
+    ["URL variable", `const url = "wss://live-relay.example";\nexpect(url).toBeDefined();`],
+    ["credential property", `const fixture = { credential: "real credential" };\nexpect(fixture).toBeDefined();`],
+    ["data assignment", `let data = "local";\ndata = "real data";\nexpect(data).toBeDefined();`],
+    ["relay property assignment", `const config = { relay: "local" };\nconfig.relay = "live relay";\nexpect(config).toBeDefined();`],
+    ["no-substitution template", "const target = `live relay`;\nexpect(target).toBeDefined();"],
+    [
+      "template config property",
+      `const fixtureId = "local";\nconst config = { relay: \`wss://live-relay.example/\${fixtureId}\` };\nexpect(config).toBeDefined();`,
+    ],
+    [
+      "operational call argument",
+      `const connect = (..._targets: string[]) => { throw new Error("must remain local"); };\nif (false) connect("live relay");`,
+    ],
+  ])("BLUE TEAM VALIDATION: synthetic/local — rejects restricted target literals in %s", (_case, body) => {
+    const root = defensiveReviewRoot(`it(
+  "BLUE TEAM VALIDATION: synthetic/local — rejects a hostile configuration",
+  () => {
+    let networkEffectCount = 0;
+    ${body}
+    expect(networkEffectCount).toBe(0);
+  },
+);\n`);
+
+    expect(lintDefensiveValidationRepositoryTests(root)).toEqual([
+      expect.objectContaining({ code: "defensive-validation-target" }),
+    ]);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local — ignores inert assertion and docs-lint fixture literals", () => {
+    const root = defensiveReviewRoot(`it(
+  "BLUE TEAM VALIDATION: synthetic/local — checks a hostile lint diagnostic",
+  () => {
+    const issue = { message: "live relay" };
+    expect(issue.message).toBe("live relay");
+    expect(lintDefensiveValidationText(
+      "BLUE TEAM VALIDATION: synthetic/local hostile case uses a live relay",
+      "synthetic-boundary.test.ts",
+    )).toEqual([{ code: "defensive-validation-target" }]);
+  },
+);\n`);
+
+    expect(lintDefensiveValidationRepositoryTests(root)).toEqual([]);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local — accepts reserved and local operational URLs", () => {
+    const root = defensiveReviewRoot(`it(
+  "BLUE TEAM VALIDATION: synthetic/local — checks a hostile local configuration",
+  () => {
+    const config = {
+      relay: "wss://relay.example",
+      url: "http://127.0.0.1:8080",
+    };
+    expect(config).toBeDefined();
+  },
+);\n`);
+
+    expect(lintDefensiveValidationRepositoryTests(root)).toEqual([]);
+  });
+
   it("BLUE TEAM VALIDATION: synthetic/local — lints each hostile declaration in an arbitrary test-file override", () => {
     const path = "docs/spec/vectors/generator/src/arbitrary-review.test.ts";
     const issues = lintMaintainedGuides(repositoryRoot, {

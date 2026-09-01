@@ -427,6 +427,160 @@ function defensiveValidationFileText(text: string, path: string): string {
   return characters.join("");
 }
 
+const DEFENSIVE_VALIDATION_OPERATIONAL_NAME_TOKENS = new Set([
+  "account",
+  "config",
+  "configuration",
+  "credential",
+  "data",
+  "deployment",
+  "endpoint",
+  "host",
+  "node",
+  "provider",
+  "relay",
+  "service",
+  "system",
+  "target",
+  "uri",
+  "url",
+]);
+const DEFENSIVE_VALIDATION_OPERATIONAL_CALL_TOKENS = new Set([
+  "access",
+  "connect",
+  "contact",
+  "deploy",
+  "fetch",
+  "open",
+  "publish",
+  "request",
+  "scan",
+  "send",
+  "target",
+  "test",
+  "use",
+]);
+const DEFENSIVE_VALIDATION_NETWORK_URL =
+  /\b(?:https?|wss?):\/\/(?<host>\[[^\]]+\]|[^\s/:?#"'`]+)/giu;
+
+function defensiveValidationNameIsOperational(name: ts.Node): boolean {
+  if (ts.isPropertyAccessExpression(name)) {
+    return defensiveValidationNameIsOperational(name.name);
+  }
+  if (ts.isElementAccessExpression(name) && name.argumentExpression !== undefined) {
+    return defensiveValidationNameIsOperational(name.argumentExpression);
+  }
+  if (!ts.isIdentifier(name) && !ts.isStringLiteralLike(name)) return false;
+  return identifierTokens(name.text).some((token) =>
+    DEFENSIVE_VALIDATION_OPERATIONAL_NAME_TOKENS.has(token)
+  );
+}
+
+function defensiveValidationCallIsOperational(call: ts.CallExpression): boolean {
+  let expression: ts.Expression = call.expression;
+  while (ts.isCallExpression(expression)) expression = expression.expression;
+  const name = ts.isIdentifier(expression)
+    ? expression
+    : ts.isPropertyAccessExpression(expression)
+    ? expression.name
+    : undefined;
+  return name !== undefined && identifierTokens(name.text).some((token) =>
+    DEFENSIVE_VALIDATION_OPERATIONAL_CALL_TOKENS.has(token)
+  );
+}
+
+function defensiveValidationLiteralIsOperational(node: ts.Node): boolean {
+  let child = node;
+  for (let parent = node.parent; parent !== undefined; parent = parent.parent) {
+    if (ts.isVariableDeclaration(parent) && parent.initializer !== undefined
+      && parent.initializer.getStart() <= child.getStart()
+      && defensiveValidationNameIsOperational(parent.name)) return true;
+    if (ts.isPropertyAssignment(parent) && parent.initializer.getStart() <= child.getStart()
+      && defensiveValidationNameIsOperational(parent.name)) return true;
+    if (ts.isBinaryExpression(parent) && parent.operatorToken.kind === ts.SyntaxKind.EqualsToken
+      && parent.right.getStart() <= child.getStart()
+      && defensiveValidationNameIsOperational(parent.left)) return true;
+    if (ts.isCallExpression(parent)) {
+      const argument = parent.arguments.find((candidate) =>
+        candidate.getStart() <= child.getStart() && candidate.end >= child.end
+      );
+      if (argument !== undefined) return defensiveValidationCallIsOperational(parent);
+    }
+    if (ts.isFunctionLike(parent) || ts.isStatement(parent)) break;
+    child = parent;
+  }
+  return false;
+}
+
+function defensiveValidationUrlIsUnsafe(text: string): boolean {
+  for (const match of text.matchAll(DEFENSIVE_VALIDATION_NETWORK_URL)) {
+    const host = (match.groups?.host ?? "").replace(/^\[|\]$/gu, "").toLowerCase();
+    const tokens = host.split(/[^a-z0-9]+/u);
+    if (tokens.some((token) => token === "live" || token === "production")) return true;
+    if (host === "localhost" || host.endsWith(".localhost")
+      || host.endsWith(".example") || host.endsWith(".test")
+      || host.endsWith(".invalid") || host === "::1"
+      || /^(?:127\.|0\.0\.0\.0$)/u.test(host)
+      || /^(?:192\.0\.2\.|198\.51\.100\.|203\.0\.113\.)/u.test(host)) continue;
+    return true;
+  }
+  return false;
+}
+
+function defensiveValidationLiteralIsUnsafe(text: string): boolean {
+  if (defensiveValidationUrlIsUnsafe(text)) return true;
+  return lintDefensiveValidationText(
+    `${BLUE_TEAM_TEST_PREFIX} hostile case ${text}`,
+    "synthetic-literal.test.ts",
+  ).some(({ code }) => code === "defensive-validation-target");
+}
+
+function lintDefensiveValidationOperationalTargets(
+  text: string,
+  path: string,
+): DocsLintIssue[] {
+  const source = ts.createSourceFile(
+    path,
+    text,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const issues: DocsLintIssue[] = [];
+  const visit = (node: ts.Node): void => {
+    if (ts.isCallExpression(node) && isTestDeclarationCall(node)
+      && !isSuiteDeclarationCall(node) && declarationNamesHostileFixture(node)) {
+      let issueNode: ts.Node | undefined;
+      const inspect = (child: ts.Node): void => {
+        if (issueNode !== undefined) return;
+        if (ts.isTemplateExpression(child)) {
+          if (defensiveValidationLiteralIsOperational(child)
+            && defensiveValidationLiteralIsUnsafe(child.getText(source))) issueNode = child;
+          return;
+        }
+        if (ts.isStringLiteralLike(child)) {
+          if (defensiveValidationLiteralIsOperational(child)
+            && defensiveValidationLiteralIsUnsafe(child.text)) issueNode = child;
+          return;
+        }
+        ts.forEachChild(child, inspect);
+      };
+      for (const argument of node.arguments.slice(1)) inspect(argument);
+      if (issueNode !== undefined) {
+        issues.push({
+          path,
+          line: source.getLineAndCharacterOfPosition(issueNode.getStart(source)).line + 1,
+          code: "defensive-validation-target",
+          message: "hostile-boundary validation must prohibit operational live targets, real credentials, external systems, and reusable payload directions",
+        });
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return issues;
+}
+
 /** Review every generator test declaration, excluding non-source dependency/build trees. */
 export function lintDefensiveValidationRepositoryTests(
   repoRoot: string,
@@ -435,6 +589,7 @@ export function lintDefensiveValidationRepositoryTests(
     const text = readFileSync(resolve(repoRoot, path), "utf8");
     return [
       ...lintDefensiveValidationText(defensiveValidationFileText(text, path), path),
+      ...lintDefensiveValidationOperationalTargets(text, path),
       ...lintDefensiveValidationTestDeclarations(text, path),
     ];
   });
