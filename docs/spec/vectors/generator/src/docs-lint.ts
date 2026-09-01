@@ -231,17 +231,25 @@ function literalTestTitle(node: ts.CallExpression): string | undefined {
   return title.text;
 }
 
+function identifierTokens(identifier: string): string[] {
+  return identifier
+    .replace(/([a-z0-9])([A-Z])/gu, "$1 $2")
+    .replace(/([A-Z]+)([A-Z][a-z])/gu, "$1 $2")
+    .split(/[^A-Za-z0-9]+/u)
+    .filter((token) => token.length > 0)
+    .map((token) => token.toLowerCase());
+}
+
 function declarationNamesHostileFixture(node: ts.CallExpression): boolean {
+  const title = literalTestTitle(node);
+  if (title !== undefined && /\b(?:hostile|adversarial)\b/iu.test(title)) return true;
   let hostile = false;
   const visit = (child: ts.Node): void => {
     if (hostile) return;
     if (ts.isIdentifier(child)
-      && /^(?:hostile|adversarial)$/iu.test(child.text)) {
-      hostile = true;
-      return;
-    }
-    if (ts.isStringLiteralLike(child)
-      && /\b(?:hostile|adversarial)\b/iu.test(child.text)) {
+      && identifierTokens(child.text).some((token) =>
+        token === "hostile" || token === "adversarial"
+      )) {
       hostile = true;
       return;
     }
@@ -249,6 +257,12 @@ function declarationNamesHostileFixture(node: ts.CallExpression): boolean {
   };
   visit(node);
   return hostile;
+}
+
+function hasExactBlueTeamTestPrefix(title: string): boolean {
+  if (!title.startsWith(BLUE_TEAM_TEST_PREFIX)) return false;
+  const boundary = title[BLUE_TEAM_TEST_PREFIX.length];
+  return boundary === undefined || /[\s:;,.!?()[\]{}—–-]/u.test(boundary);
 }
 
 /** Require exact BLUE TEAM framing on each explicitly hostile test declaration. */
@@ -268,7 +282,7 @@ export function lintDefensiveValidationTestDeclarations(
     if (ts.isCallExpression(node) && isTestDeclarationCall(node)) {
       const title = literalTestTitle(node);
       if (declarationNamesHostileFixture(node)
-        && (title === undefined || !title.startsWith(BLUE_TEAM_TEST_PREFIX))) {
+        && (title === undefined || !hasExactBlueTeamTestPrefix(title))) {
         issues.push({
           path,
           line: source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1,
@@ -309,6 +323,9 @@ function lintDefensiveValidationReviews(
       continue;
     }
     issues.push(...lintDefensiveValidationText(text, path));
+    if (path.endsWith(".test.ts")) {
+      issues.push(...lintDefensiveValidationTestDeclarations(text, path));
+    }
   }
   return issues;
 }

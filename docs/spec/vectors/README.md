@@ -71,7 +71,7 @@ imply a snapshot update.
 A later snapshot vector may carry an optional top-level `conformance_checks`
 array. It is
 non-wire checker evidence: it neither changes nor appears within the protocol
-input or expected output. The bootstrap snapshot declares none.
+input or expected output.
 
 Each declaration is a closed object with this shape:
 

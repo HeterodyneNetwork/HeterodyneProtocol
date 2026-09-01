@@ -220,19 +220,21 @@ describe("canonical family documentation", () => {
     const issues = lintDefensiveValidationTestDeclarations(
       `
         it("rejects a dangerous fixture", () => {
-          const fixture = { mode: "hostile" };
-          expect(fixture).toBeDefined();
+          const hostileFixture = { mode: "synthetic" };
+          expect(hostileFixture).toBeDefined();
         });
-        test.each([{ mode: "adversarial" }])(
-          "rejects matrix row $mode",
-          ({ mode }) => expect(mode).toBeDefined(),
+        test.each([{ adversarialInput: true }])(
+          "rejects matrix row $adversarialInput",
+          ({ adversarialInput }) => expect(adversarialInput).toBeDefined(),
         );
         const dynamicTitle = "rejects a dynamic fixture";
         it(dynamicTitle, () => {
-          expect("hostile").toBeDefined();
+          const hostileFixture = true;
+          expect(hostileFixture).toBe(true);
         });
-        it("BLUE TEAM VALIDATION: synthetic/local rejects hostile input", () => {
-          expect("hostile").toBeDefined();
+        it("BLUE TEAM VALIDATION: synthetic/local — rejects marked input", () => {
+          const hostileFixture = true;
+          expect(hostileFixture).toBe(true);
         });
       `,
       "synthetic-boundary.test.ts",
@@ -254,6 +256,53 @@ describe("canonical family documentation", () => {
         line: 11,
       }),
     ]);
+  });
+
+  it("lints each hostile declaration in an arbitrary test-file override", () => {
+    const path = "docs/spec/vectors/generator/src/arbitrary-review.test.ts";
+    const issues = lintMaintainedGuides(repositoryRoot, {
+      [path]: `it("BLUE TEAM VALIDATION: synthetic/local — checks marked input", () => {
+  const hostileFixture = true;
+  expect(hostileFixture).toBe(true);
+});
+it("checks the second declaration", () => {
+  const adversarialInput = true;
+  expect(adversarialInput).toBe(true);
+});\n`,
+    }).filter((issue) => issue.path === path);
+    expect(issues).toEqual([
+      expect.objectContaining({
+        code: "defensive-validation-scope",
+        line: 5,
+      }),
+    ]);
+  });
+
+  it("rejects a near-match BLUE TEAM prefix", () => {
+    expect(lintDefensiveValidationTestDeclarations(
+      `it("BLUE TEAM VALIDATION: synthetic/locality checks input", () => {
+  const hostileFixture = true;
+  expect(hostileFixture).toBe(true);
+});\n`,
+      "near-match.test.ts",
+    )).toEqual([
+      expect.objectContaining({
+        path: "near-match.test.ts",
+        code: "defensive-validation-scope",
+        line: 1,
+      }),
+    ]);
+  });
+
+  it("ignores hostile words in ordinary comments and body strings", () => {
+    expect(lintDefensiveValidationTestDeclarations(
+      `it("reports a diagnostic", () => {
+  // The literal below documents the word hostile; it is not a hostile fixture.
+  const message = "hostile";
+  expect(message).toBe("hostile");
+});\n`,
+      "ordinary-diagnostic.test.ts",
+    )).toEqual([]);
   });
 
   it("rejects an earlier prohibition that does not govern a later live target", () => {
