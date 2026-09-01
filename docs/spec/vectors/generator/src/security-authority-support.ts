@@ -1,14 +1,16 @@
 import { createHash } from "node:crypto";
 import { types as utilTypes } from "node:util";
 
-export type AuthorityDecision<
-  R extends string,
-  O,
-  I extends string = never,
-> = Readonly<
+export type IndeterminateDecision<I extends string = never> = Readonly<
+  [I] extends [never]
+    ? { verdict: "indeterminate"; reconciliation_digest: string }
+    : { verdict: "indeterminate"; reason_code: I; reconciliation_digest: string }
+>;
+
+export type AuthorityDecision<R extends string, O, I extends string = never> = Readonly<
   | { verdict: "accept"; output: O }
   | { verdict: "reject"; reason_code: R }
-  | { verdict: "indeterminate"; reason_code?: I }
+  | IndeterminateDecision<I>
 >;
 
 export type DurableAuthorityRecord<O> = Readonly<
@@ -103,7 +105,12 @@ function snapshotClosed(value: unknown, active: Set<object>): ClosedValue {
         || !("value" in descriptor)
         || descriptor.enumerable !== true
       ) return invalidInput();
-      result[key] = snapshotClosed(descriptor.value, active);
+      Object.defineProperty(result, key, {
+        value: snapshotClosed(descriptor.value, active),
+        enumerable: true,
+        writable: false,
+        configurable: false,
+      });
     }
     return Object.freeze(result);
   } finally {

@@ -1210,14 +1210,28 @@ Marmot object never grants Control, claim-ledger, repository, or persona
 authority.
 
 An ordinary-conversation admission boundary MUST capture the exact Welcome
-and referenced KeyPackage bytes before inspecting their contents. It MUST
-validate their cryptographic and closed-schema bindings to the authenticated
-inviter and recipient accounts, distinct MLS leaf keys, exact group and
-two-member set, and every required capability. Successful validation yields
-only an implementation-local, frozen opaque capability bound to the current
-conversation checkpoint. Caller-created objects, copies, capabilities minted
-by another authority instance, accessor-bearing inputs, and inputs changed
-after capture grant no admission authority.
+and referenced public KeyPackage bytes before processing them. Its constructor
+MUST capture an implementation-owned private KeyPackage-handle loader and a
+standards-conforming Marmot/MLS Welcome processor; neither the private
+`init_key`, the private handle, nor a validity assertion is a per-operation
+input. The processor performs the standard tentative Welcome join, including
+TLS decoding, GroupInfo decryption, inline ratchet-tree processing, leaf
+signature and `marmot.member.account-identity-proof.v2` validation, resulting
+group-state validation, and Welcome-author authorization. It returns a closed
+authenticated projection binding the inviter and recipient accounts, distinct
+MLS leaf keys, exact group and two-member set, every required capability, and
+the local conversation checkpoint, plus a private tentative-transition handle.
+This adapter boundary does not define a new wire encoding or replace any
+Marmot validation rule.
+
+Successful validation yields only an implementation-local, frozen opaque
+capability. Caller-created objects, copies, capabilities minted by another
+authority instance, accessor-bearing inputs, and inputs changed after capture
+grant no admission authority. Tentative processing MUST preserve the exact
+pre-join KeyPackage and group state unless the outer admission boundary later
+commits the private transition. Rejection before durable reservation rolls the
+tentative transition back; an unknown post-effect outcome is reconciled and
+MUST NOT repeat it.
 
 Before applying a local acceptance or hold decision, the same boundary MUST
 reload authenticated current conversation state and require the checkpoint to

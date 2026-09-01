@@ -19,7 +19,7 @@ const ordinary = {
 };
 
 describe("ordinary Marmot conversation admission", () => {
-  it("rejects authentication before invoking policy", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local rejects authentication before invoking policy", () => {
     expect(ordinaryConversationAdmission({ ...ordinary, cryptographic_valid: false }))
       .toEqual({ outcome: "reject", policy_hook_invoked: false, reason_code: "bad_signature" });
   });
@@ -39,7 +39,7 @@ describe("ordinary Marmot conversation admission", () => {
       .toBe("accept");
   });
 
-  it("reports an explicit local rejection with the registered conversation reason", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local reports explicit local rejection", () => {
     expect(ordinaryConversationAdmission({ ...ordinary, explicit_local_decision: "reject" }))
       .toEqual({
         outcome: "reject",
@@ -48,7 +48,7 @@ describe("ordinary Marmot conversation admission", () => {
       });
   });
 
-  it("allows Social only to tighten and keeps reject absorbing", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local allows Social only to tighten and keeps reject absorbing", () => {
     expect(applySocialAdmission("accept", "hold-as-message-request", false, false))
       .toBe("hold-as-message-request");
     expect(applySocialAdmission("hold-as-message-request", "accept", false, false))
@@ -72,7 +72,7 @@ describe("Control Marmot group admission", () => {
     explicit_local_decision: "none" as const,
   };
 
-  it("defaults unsolicited Control invitations to off", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local defaults unsolicited Control invitations to off", () => {
     expect(controlGroupAdmission(control)).toEqual({
       outcome: "reject",
       reason_code: "control-enrollment-unavailable",
@@ -86,14 +86,14 @@ describe("Control Marmot group admission", () => {
       .toBe("accept-enrollment-only");
   });
 
-  it("requires active non-conflicted entitlement for authorized admission", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local requires active non-conflicted entitlement", () => {
     expect(controlGroupAdmission({ ...control, entitlement_state: "active" }).outcome)
       .toBe("accept-authorized");
     expect(controlGroupAdmission({ ...control, entitlement_state: "conflicted" }).outcome)
       .toBe("reject");
   });
 
-  it("keeps explicit rejection and resource bounds absorbing", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local keeps rejection and resource bounds absorbing", () => {
     expect(controlGroupAdmission({
       ...control,
       entitlement_state: "active",

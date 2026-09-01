@@ -2,10 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   authorityBindingDigest,
   captureAuthorityInput,
+  type IndeterminateDecision,
 } from "./security-authority-support.js";
 
 describe("security authority support", () => {
-  it("captures closed inputs without retaining caller-owned bytes", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local captures without retaining caller-owned bytes", () => {
     const bytes = new Uint8Array([1, 2, 3]);
     const source = { bytes, nested: [{ value: "bound" }], nil: null };
     const captured = captureAuthorityInput(source);
@@ -82,5 +83,33 @@ describe("security authority support", () => {
       alpha: "bound",
       beta: new Uint8Array([0, 255]),
     })).not.toBe(left);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local preserves an own __proto__ data property without digest collapse", () => {
+    const source = Object.defineProperty({ safe: "value" }, "__proto__", {
+      value: "bound-prototype-data",
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
+    const captured = captureAuthorityInput(source) as Readonly<Record<string, unknown>>;
+
+    expect(Object.getPrototypeOf(captured)).toBe(Object.prototype);
+    expect(Object.hasOwn(captured, "__proto__")).toBe(true);
+    expect(Object.getOwnPropertyDescriptor(captured, "__proto__")?.value)
+      .toBe("bound-prototype-data");
+    expect(authorityBindingDigest("proto-collapse/v1", source))
+      .not.toBe(authorityBindingDigest("proto-collapse/v1", { safe: "value" }));
+  });
+
+  it("requires a reconciliation digest on a reasonless indeterminate decision", () => {
+    const decision: IndeterminateDecision = Object.freeze({
+      verdict: "indeterminate",
+      reconciliation_digest: "11".repeat(32),
+    });
+    expect(decision).toEqual({
+      verdict: "indeterminate",
+      reconciliation_digest: "11".repeat(32),
+    });
   });
 });
