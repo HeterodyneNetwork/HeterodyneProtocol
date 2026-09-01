@@ -68,6 +68,29 @@ const GENESIS_POLICY_HEAD = "d0".repeat(32);
 const ASSURED_POLICY_HEAD = "d1".repeat(32);
 const FINAL_POLICY_HEAD = "d2".repeat(32);
 const LATER_POLICY_HEAD = "d3".repeat(32);
+
+const durableInvitationStoreHarness = () => {
+  const records = new Map<string, Record<string, unknown>>();
+  const store = {
+    load(token: string): Record<string, unknown> | null {
+      const record = records.get(token);
+      return record === undefined ? null : structuredClone(record);
+    },
+    compareAndSwap(
+      token: string,
+      expectedRevision: number | null,
+      next: Record<string, unknown> | null,
+    ): "committed" | "conflict" {
+      const existing = records.get(token);
+      const revision = existing === undefined ? null : existing.revision;
+      if (revision !== expectedRevision) return "conflict";
+      if (next === null) records.delete(token);
+      else records.set(token, structuredClone(next));
+      return "committed";
+    },
+  };
+  return { records, store };
+};
 const WORKSPACE_ASSURANCE = Object.freeze({
   profile: "heterodyne.workspace.assurance.v1" as const,
   inception_event_id: ASSURANCE_INCEPTION_EVENT_ID,
@@ -2439,9 +2462,9 @@ describe("Workspace role authorization", () => {
       .toEqual({ verdict: "reject", reason_code: "checkpoint_stale" });
   });
 
-  it("consumes one signed subject acceptance through the configured atomic replay store", async () => {
+  it("BLUE TEAM VALIDATION: synthetic/local consumes invitation acceptance through durable CAS with exact authority binding", async () => {
     const api = await import("./workspace.js") as typeof import("./workspace.js") & {
-      ReferenceWorkspaceInvitationAcceptanceStore?: new () => object;
+      ReferenceWorkspaceInvitationAcceptanceStore?: new (backend?: object) => object;
       consumeWorkspaceInvitationAcceptance?: (input: unknown) => {
         verdict: "accept" | "reject";
         reason_code?: string;
@@ -2494,7 +2517,8 @@ describe("Workspace role authorization", () => {
     }, WORKSPACE_SECRET);
     const objects = [...currentAuthorityObjects(), grant];
     const evidence = repositoryViewEvidence(objects, { observed_at: 1_720_000_300 });
-    const store = new api.ReferenceWorkspaceInvitationAcceptanceStore!();
+    const durable = durableInvitationStoreHarness();
+    const store = new api.ReferenceWorkspaceInvitationAcceptanceStore!(durable.store);
     const authority = api.createWorkspaceRepositoryResolverAuthority({
       trust_anchors: [{ suite: "bip340", public_key: RESOLVER_KEY }],
       allowed_policies: ["radicle-verified-complete-v1"],
@@ -2681,16 +2705,58 @@ describe("Workspace role authorization", () => {
     };
     const committed = evaluateGrantActivation(committedActivation);
     expect(committed).toMatchObject({ verdict: "accept" });
+    expect(durable.records.size).toBe(1);
+    expect([...durable.records.values()][0]).toMatchObject({ state: "committed" });
     expect(evaluateGrantActivation(committedActivation)).toEqual(committed);
     const completedRetry = api.consumeWorkspaceInvitationAcceptance?.({
       authority,
       current_state: state.state,
       acceptance: retryableAcceptance,
     });
-    expect(completedRetry).toEqual({
-      verdict: "accept",
-      acceptance: finalRetry.acceptance,
+    expect(completedRetry).toMatchObject({ verdict: "accept", acceptance: expect.any(Object) });
+
+    const secondAuthority = api.createWorkspaceRepositoryResolverAuthority({
+      trust_anchors: [{ suite: "bip340", public_key: RESOLVER_KEY }],
+      allowed_policies: ["radicle-verified-complete-v1"],
+      minimum_version: "1.0.0",
+      max_ttl: 600,
+      max_view_age: 600,
+      repositories: [{
+        workspace_key: WORKSPACE_KEY,
+        repository_rid: "rad:zWorkspace",
+        pinned_head: H40,
+      }],
+      trusted_now: () => trustedNow,
+      invitation_store: new api.ReferenceWorkspaceInvitationAcceptanceStore!(durable.store),
     });
+    const secondState = api.authenticateWorkspaceRepositoryView({
+      authority: secondAuthority,
+      evidence,
+      objects,
+    });
+    expect(secondState.verdict).toBe("accept");
+    if (secondState.verdict !== "accept") throw new Error("second authority state rejected");
+    const secondAuthorization = api.resolveWorkspaceEffectiveAuthorization({
+      authority: secondAuthority,
+      current_state: secondState.state,
+      actor_account: OTHER_KEY,
+      actor_device: H64,
+      actor_leaf: LEAF,
+      operation_digest: operationDigest,
+      requested_capabilities: ["invite", "read"],
+      requested_resources: [RESOURCE_ID],
+      requested_delegable: false,
+    });
+    expect(secondAuthorization.verdict).toBe("accept");
+    if (secondAuthorization.verdict !== "accept") {
+      throw new Error("second authority authorization rejected");
+    }
+    expect(evaluateGrantActivation({
+      ...committedActivation,
+      authority: secondAuthority,
+      current_state: secondState.state,
+      authorization: secondAuthorization.authorization,
+    })).toEqual({ verdict: "reject", reason_code: "workspace_replay" });
   });
 
   it("revalidates every activation boundary at invitation commit's trusted time", () => {
@@ -2966,7 +3032,7 @@ describe("Workspace role authorization", () => {
 });
 
 describe("Workspace relationships and privacy", () => {
-  it("resolves bilateral allowance only from two same-authority current repository states", async () => {
+  it("BLUE TEAM VALIDATION: synthetic/local enforces the workspace-wide ceiling on bilateral allowance", async () => {
     const api = await import("./workspace.js") as typeof import("./workspace.js") & {
       resolveWorkspaceCurrentRelationship?: (input: unknown) => {
         verdict: "accept" | "reject";
@@ -3344,7 +3410,7 @@ describe("Workspace hosts, keys, repositories, and freshness", () => {
     { host_id: OTHER_KEY, priority: 10, radicle_locators: ["rad:zB"], radicle_backed_relay: true },
   ];
 
-  it("delivers resource keys across account rotation only with exact signed successor reauthorization", async () => {
+  it("BLUE TEAM VALIDATION: synthetic/local enforces the workspace-wide ceiling on resource-key delivery", async () => {
     const api = await import("./workspace.js") as typeof import("./workspace.js") & {
       authenticateWorkspaceSuccessorReauthorization?: (input: unknown) => {
         verdict: "accept" | "reject";
@@ -3673,6 +3739,17 @@ describe("Workspace hosts, keys, repositories, and freshness", () => {
       requested_resources: [RESOURCE_ID],
       requested_delegable: false,
     });
+    expect(api.resolveWorkspaceEffectiveAuthorization({
+      authority,
+      current_state: state.state,
+      actor_account: OTHER_KEY,
+      actor_device: H64,
+      actor_leaf: LEAF,
+      operation_digest: keyRequestDigest(requestBody),
+      requested_capabilities: ["triage"],
+      requested_resources: [RESOURCE_ID],
+      requested_delegable: false,
+    })).toEqual({ verdict: "reject", reason_code: "capability_escalation" });
     expect(keyAuthorization.verdict).toBe("accept");
     if (keyAuthorization.verdict !== "accept") throw new Error("fixture key authorization rejected");
     const request = {

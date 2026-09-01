@@ -61,12 +61,17 @@ const invitationNonceCommitment = (nonceOpening: string): string => bytesToHex(s
   },
 )));
 
-export function buildWorkspaceSecurityFixture(input: Readonly<{
+type WorkspaceSecurityFixtureInput = Readonly<{
   root_capabilities: readonly string[];
   ancestor_capabilities: readonly (readonly string[])[];
   grant_capabilities: readonly string[];
   revoked: boolean;
-}>): WorkspaceSecurityFixture {
+}>;
+
+function buildFixture(
+  input: WorkspaceSecurityFixtureInput,
+  invitationStore: ReferenceWorkspaceInvitationAcceptanceStore,
+): WorkspaceSecurityFixture {
   const common = {
     spec_version: "heterodyne/0.6.0",
     workspace_key: WORKSPACE_KEY,
@@ -306,7 +311,7 @@ export function buildWorkspaceSecurityFixture(input: Readonly<{
       pinned_head: REPOSITORY_HEAD,
     }],
     trusted_now: () => NOW,
-    invitation_store: new ReferenceWorkspaceInvitationAcceptanceStore(),
+    invitation_store: invitationStore,
   });
   const signedRepositoryView = Object.freeze({ authority, evidence, objects });
   return Object.freeze({
@@ -318,4 +323,17 @@ export function buildWorkspaceSecurityFixture(input: Readonly<{
     action: input.grant_capabilities.find((capability) => capability !== "invite")
       ?? input.grant_capabilities[0] ?? "read",
   });
+}
+
+export function buildWorkspaceSecurityFixture(
+  input: WorkspaceSecurityFixtureInput,
+): WorkspaceSecurityFixture {
+  return buildFixture(input, new ReferenceWorkspaceInvitationAcceptanceStore());
+}
+
+export function buildWorkspaceSecurityFixtureWithInvitationStore(
+  input: WorkspaceSecurityFixtureInput,
+  invitationStore: ReferenceWorkspaceInvitationAcceptanceStore,
+): WorkspaceSecurityFixture {
+  return buildFixture(input, invitationStore);
 }

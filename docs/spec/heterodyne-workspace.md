@@ -568,25 +568,36 @@ member with BIP-340 proof bytes for domain
 of proof bytes for domain `heterodyne-workspace-invitation-nonce-v1` over the
 grant ID, workspace key, subject account, exact device and leaf, and nonce
 opening. Every binding MUST equal the current signed grant and authenticated
-repository view. A configured authoritative atomic replay store reserves that
-workspace/grant/commitment tuple while activation is evaluated. It commits
-the reservation atomically only after sampling its configured trusted clock
-inside the commit operation and rerunning one complete pure activation
-validation over the immutable request and exact latest view at that new time.
+repository view. A configured authoritative durable CAS replay store reserves
+that workspace/grant/commitment tuple while activation is evaluated. The
+resolver constructor captures the store callbacks; later replacement of host
+methods cannot alter the authority. Each closed store record binds the exact
+acceptance, resolver-authority fingerprint, root role and capability ceiling,
+policy head, predecessor, authority checkpoint, and repository-view
+fingerprint. Its state is `prepared`, `executing`, `committed`, `rejected`, or
+`indeterminate`. The resolver commits the reservation atomically only after
+sampling its configured trusted clock inside the commit operation and
+rerunning one complete pure activation validation over the immutable request
+and exact latest view at that new time.
 That validation rechecks signed policy freshness, effective authorization,
 membership and exact successor bindings, grant activation and expiry,
 grant/account/device/resource/host revocations, capability/resource/
 delegability intersections, and every approval's time, signature, signer, and
-threshold. Only then does the store confirm the exact reserved holder and
-perform the atomic transition. Any failure releases the reservation so a
-still-valid acceptance is not permanently consumed; no partial activation
-takes effect. The store also releases or aborts an uncommitted reservation at
-its signed expiry and never commits after that expiry. The store retains the
-committed terminal bound to the exact signed acceptance and activation
-request. An exact committed retry returns that same opaque acceptance and
-byte-identical cached terminal without performing a second activation. A
-changed acceptance, mismatched request, second holder, or already-reserved
-non-terminal attempt fails with `workspace_replay`. A caller-supplied
+threshold. Only then does the store confirm the exact prepared holder,
+atomically enter `executing`, and persist the terminal. A validation failure
+records a retryable rejection so a still-valid exact acceptance may prepare
+again; no partial activation takes effect. An unknown acquire response,
+unknown post-effect outcome, callback exception after possible acquisition,
+or terminal-write failure is fail-closed and leaves an absorbing executing or
+`indeterminate` fence. It cannot activate or repeat the effect until bounded
+reconciliation proves an exact terminal. The store never commits after signed
+expiry and retains a committed terminal bound to the exact signed acceptance
+and activation request. Only after revalidating the exact minting authority,
+opaque holder, current root ceiling, checkpoint, repository-view fingerprint,
+and durable terminal does an exact committed retry return a byte-identical
+cached terminal without a second activation. A changed acceptance, mismatched
+request, cross-authority holder, terminal conflict, or already-prepared
+attempt fails with `workspace_replay`. A caller-supplied
 acceptance ID, consumed-ID list, replay boolean, or cached time has no
 authority. Invitation
 material for a private role is delivered through an authenticated two-member
