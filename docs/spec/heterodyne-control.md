@@ -228,6 +228,46 @@ provide at least 128 bits of entropy; normalized user codes provide at least
 The record MUST NOT be placed in a public event, URL query, portable backup,
 or replicated credential.
 
+The device-authorization authority fixes its authority identifier, trusted
+clock, cryptographic entropy source, and all durable-store method identities
+when it is constructed. The public authority value is an implementation-local
+opaque capability. Transaction creation and polling accept only closed data;
+they accept no caller-selected clock, entropy, current-state assertion,
+validity boolean, callback, or persistence result. Accessor-backed, proxied,
+extended, malformed, or post-capture-mutated inputs grant no authority.
+
+Transaction creation draws at least 128 independent device-code bits and 40
+independent user-code bits. It derives the transaction identifier from the
+authority and normalized device-code hash, and atomically creates the durable
+record with hashes rather than either plaintext code. The record binds the
+authority, transaction, client, persona, verification URI, displayed client
+fingerprint, issue and exclusive expiry times, initial and current poll
+intervals, next permitted poll time, failure budget and count, rate/slow-down
+state, and terminal state. A code collision retries with fresh entropy a
+bounded number of times; exhaustion or invalid entropy creates no transaction.
+
+A poll derives the durable lookup key from the normalized device code and
+loads that record as the only current-state authority. A malformed or unknown
+device code is `control-device-code-invalid`. A wrong or malformed user code
+increments the durable failure count by compare-and-swap; the fifth failed
+guess atomically commits a denied terminal before returning the same reason.
+A correct poll before the stored interval atomically increases the interval by
+five seconds for that transaction, records its next permitted time, and is
+`control-device-code-rate-limited`. A correct code shown with a different
+client fingerprint atomically commits denial and is
+`control-device-code-display-mismatch`. Reaching the stored expiry atomically
+commits an expired terminal and is `control-device-code-invalid`.
+
+Only the locally approved stored state can produce an `approved` result. A
+pending or approved result is exposed only after the corresponding atomic
+transition is read back with the exact authority, binding, revision, and
+output. A terminal transition uses durable acquire and commit; an exact
+binding-equal committed retry returns the cached result without repeating the
+transition. A conflicting or unknown store result, malformed record, or an
+`executing` or `indeterminate` record fails closed with a stable reconciliation
+digest and MUST NOT repeat or reopen the transition. These internal failures
+do not mint any additional public `control-device-code-*` reason.
+
 Approval binds the pending record's `transaction_id`, `grant_id`,
 `oidc_authorization_id`, persona, NIP-46 client, audience, selected signer and
 class, exact methods, kinds and limits, secret digest, issue and expiry times,
