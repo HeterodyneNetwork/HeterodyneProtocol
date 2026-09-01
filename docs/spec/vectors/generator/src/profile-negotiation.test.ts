@@ -171,6 +171,58 @@ describe("current Control frame profile", () => {
     expect(traps).toBe(0);
   });
 
+  it("BLUE TEAM VALIDATION: synthetic/local rejects over-budget request collections before descriptor work", () => {
+    const oversizedArray = Array.from({ length: 5_000 }, () => null);
+    const oversizedObject = Object.fromEntries(
+      Array.from({ length: 4_096 }, (_, index) => [`member-${index}`, null]),
+    );
+    const originalGetOwnPropertyDescriptors = Object.getOwnPropertyDescriptors;
+    let oversizedDescriptorMaterializations = 0;
+    Object.getOwnPropertyDescriptors = ((value: object) => {
+      if (value === oversizedArray || value === oversizedObject) {
+        oversizedDescriptorMaterializations += 1;
+      }
+      return originalGetOwnPropertyDescriptors(value);
+    }) as typeof Object.getOwnPropertyDescriptors;
+    try {
+      for (const oversized of [oversizedArray, oversizedObject]) {
+        expect(projectCurrentControlRequestBody("human-jsonrpc", {
+          ...HUMAN_BODY,
+          params: { oversized },
+        })).toBeNull();
+      }
+    } finally {
+      Object.getOwnPropertyDescriptors = originalGetOwnPropertyDescriptors;
+    }
+    expect(oversizedDescriptorMaterializations).toBe(0);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects exact typed-array metadata without traps", () => {
+    const hostileBytes = signedBytes();
+    let byteLengthTraps = 0;
+    let iteratorTraps = 0;
+    Object.defineProperty(hostileBytes, "byteLength", {
+      configurable: true,
+      get: () => {
+        byteLengthTraps += 1;
+        throw new Error("synthetic byteLength trap");
+      },
+    });
+    Object.defineProperty(hostileBytes, Symbol.iterator, {
+      configurable: true,
+      get: () => {
+        iteratorTraps += 1;
+        throw new Error("synthetic iterator trap");
+      },
+    });
+    expect(validateCurrentControlFrameProfile(hostileBytes, context())).toEqual({
+      verdict: "reject",
+      reason_code: "control-frame-invalid",
+    });
+    expect(byteLengthTraps).toBe(0);
+    expect(iteratorTraps).toBe(0);
+  });
+
   it("accepts one exact signed, current, request-bound Marmot frame", () => {
     const result = validateCurrentControlFrameProfile(signedBytes(), context());
     expect(result).toEqual({

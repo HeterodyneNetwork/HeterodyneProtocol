@@ -587,8 +587,12 @@ validation, or callback, every public, resolver, grant-view, JWT, status,
 JWKS, use, operation, store, and effect input MUST pass complete bounded
 descriptor-first preflight: ordinary closed prototypes and members, data
 descriptors only, Unicode scalar strings, finite JSON depth/node/string-byte
-budgets, and applicable token/status/JWKS byte ceilings. A proxy or accessor
-MUST fail without invoking its traps or getter.
+budgets, and applicable token/status/JWKS byte ceilings. Collection length,
+property count, and the global work for every key and value MUST fit those
+budgets before full descriptor materialization or traversal. A byte input MUST
+use captured intrinsic typed-array length and copy operations and MUST reject
+every unexpected own string or symbol member before copying. A proxy or
+accessor MUST fail without invoking its traps or getter.
 
 The operation payload MUST be an exact closed live `human-jsonrpc` or
 `agent-mcp` request. The verifier MUST reuse the Control frame request parser

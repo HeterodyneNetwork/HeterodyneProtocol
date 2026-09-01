@@ -437,6 +437,11 @@ const CONTROL_STATUS_JWKS_MAX_BYTES = 1_048_576;
 const CONTROL_DATA_MAX_DEPTH = 16;
 const CONTROL_DATA_MAX_NODES = 8_192;
 const CONTROL_DATA_MAX_STRING_BYTES = 1_048_576;
+const TYPED_ARRAY_LENGTH_GETTER = Object.getOwnPropertyDescriptor(
+  Object.getPrototypeOf(Uint8Array.prototype),
+  "length",
+)?.get;
+const UINT8_ARRAY_SET = Uint8Array.prototype.set;
 
 function exactDescriptorValues(
   value: unknown,
@@ -444,19 +449,51 @@ function exactDescriptorValues(
 ): Readonly<Record<string, unknown>> | null {
   if (value === null || typeof value !== "object" || Array.isArray(value)
     || utilTypes.isProxy(value) || Object.getPrototypeOf(value) !== Object.prototype) return null;
-  const descriptors = Object.getOwnPropertyDescriptors(value);
-  const ownKeys = Reflect.ownKeys(descriptors);
+  const ownKeys = boundedOwnKeys(value, keys.length);
+  if (ownKeys === null) return null;
   if (ownKeys.length !== keys.length || ownKeys.some((key) => typeof key !== "string")
-    || !keys.every((key) => Object.hasOwn(descriptors, key))) return null;
+    || !keys.every((key) => ownKeys.includes(key))) return null;
   const result: Record<string, unknown> = {};
   for (const key of keys) {
-    const descriptor = descriptors[key];
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
     if (descriptor === undefined || !("value" in descriptor) || descriptor.enumerable !== true) {
       return null;
     }
     result[key] = descriptor.value;
   }
   return result;
+}
+
+function boundedOwnKeys(value: object, maximum: number): readonly PropertyKey[] | null {
+  let enumerableCount = 0;
+  for (const key in value) {
+    if (Object.hasOwn(value, key) && ++enumerableCount > maximum) return null;
+  }
+  const keys = Reflect.ownKeys(value);
+  return keys.length <= maximum ? keys : null;
+}
+
+function captureExactUint8Array(value: unknown, maximum: number): Uint8Array | null {
+  if (value === null || typeof value !== "object" || utilTypes.isProxy(value)
+    || Object.getPrototypeOf(value) !== Uint8Array.prototype
+    || TYPED_ARRAY_LENGTH_GETTER === undefined) return null;
+  let length: number;
+  try {
+    length = Reflect.apply(TYPED_ARRAY_LENGTH_GETTER, value, []) as number;
+  } catch {
+    return null;
+  }
+  if (!Number.isSafeInteger(length) || length <= 0 || length > maximum) return null;
+  const keys = boundedOwnKeys(value, length);
+  if (keys === null || keys.length !== length
+    || keys.some((key, index) => typeof key !== "string" || key !== String(index))) return null;
+  const captured = new Uint8Array(length);
+  try {
+    Reflect.apply(UINT8_ARRAY_SET, captured, [value]);
+  } catch {
+    return null;
+  }
+  return captured;
 }
 
 function hasOnlyUnicodeScalars(value: string): boolean {
@@ -500,24 +537,41 @@ function preflightControlData(value: unknown): boolean {
     if (typeof current !== "object" || utilTypes.isProxy(current) || active.has(current)) return false;
     const prototype = Object.getPrototypeOf(current);
     if (prototype !== Object.prototype && prototype !== Array.prototype) return false;
-    const descriptors = Object.getOwnPropertyDescriptors(current);
-    const keys = Reflect.ownKeys(descriptors);
-    if (keys.some((key) => typeof key !== "string" || !hasOnlyUnicodeScalars(key))) return false;
     active.add(current);
     try {
       if (Array.isArray(current)) {
-        if (keys.length !== current.length + 1) return false;
-        for (let index = 0; index < current.length; index += 1) {
-          const descriptor = descriptors[String(index)];
+        const lengthDescriptor = Object.getOwnPropertyDescriptor(current, "length");
+        const length = lengthDescriptor !== undefined && "value" in lengthDescriptor
+          ? lengthDescriptor.value
+          : undefined;
+        if (!Number.isSafeInteger(length) || length < 0
+          || length > Math.floor((CONTROL_DATA_MAX_NODES - nodes) / 2)) return false;
+        const keys = boundedOwnKeys(current, length + 1);
+        if (keys === null || keys.length !== length + 1) return false;
+        nodes += length;
+        for (let index = 0; index < length; index += 1) {
+          const key = String(index);
+          const descriptor = Object.getOwnPropertyDescriptor(current, key);
           if (descriptor === undefined || !("value" in descriptor)
-            || descriptor.enumerable !== true || !visit(descriptor.value, depth + 1)) return false;
+            || descriptor.enumerable !== true || !hasOnlyUnicodeScalars(key)) return false;
+          stringBytes += Buffer.byteLength(key, "utf8");
+          if (stringBytes > CONTROL_DATA_MAX_STRING_BYTES
+            || !visit(descriptor.value, depth + 1)) return false;
         }
         return true;
       }
+      const maximumProperties = Math.floor((CONTROL_DATA_MAX_NODES - nodes) / 2);
+      const keys = boundedOwnKeys(current, maximumProperties);
+      if (keys === null || keys.some((key) => typeof key !== "string"
+        || !hasOnlyUnicodeScalars(key))) return false;
+      nodes += keys.length;
       for (const key of keys as string[]) {
-        const descriptor = descriptors[key];
+        const descriptor = Object.getOwnPropertyDescriptor(current, key);
         if (descriptor === undefined || !("value" in descriptor) || descriptor.enumerable !== true
-          || !visit(key, depth + 1) || !visit(descriptor.value, depth + 1)) return false;
+          || !hasOnlyUnicodeScalars(key)) return false;
+        stringBytes += Buffer.byteLength(key, "utf8");
+        if (stringBytes > CONTROL_DATA_MAX_STRING_BYTES
+          || !visit(descriptor.value, depth + 1)) return false;
       }
       return true;
     } finally {
@@ -594,13 +648,16 @@ function validateControlGrantShape(grant: CurrentControlGrantBinding): void {
 function exactControlLimits(value: unknown): value is Readonly<Record<string, number>> {
   if (value === null || typeof value !== "object" || Array.isArray(value)
     || utilTypes.isProxy(value) || Object.getPrototypeOf(value) !== Object.prototype) return false;
-  const descriptors = Object.getOwnPropertyDescriptors(value);
-  const keys = Reflect.ownKeys(descriptors);
+  const keys = boundedOwnKeys(value, CONTROL_LIST_MAX_ITEMS);
+  if (keys === null) return false;
   return keys.length > 0 && keys.length <= CONTROL_LIST_MAX_ITEMS
     && keys.every((key) => typeof key === "string" && boundedControlString(key)
-      && descriptors[key] !== undefined && "value" in descriptors[key]
-      && descriptors[key].enumerable === true
-      && Number.isSafeInteger(descriptors[key].value) && Number(descriptors[key].value) > 0)
+      && (() => {
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        return descriptor !== undefined && "value" in descriptor
+          && descriptor.enumerable === true
+          && Number.isSafeInteger(descriptor.value) && Number(descriptor.value) > 0;
+      })())
     && jcsCanonicalize(keys) === jcsCanonicalize([...keys].sort());
 }
 
@@ -781,20 +838,18 @@ export function createCurrentControlGrantView(
   const continuity = container.continuity as ValidatedContinuityChainContext;
   if (!preflightControlData(validatedJwt) || !preflightControlData(container.status_list)
     || !preflightControlData(continuity)) throw new Error("control-token-invalid");
-  const rawStatusJwks = container.status_jwks_bytes;
+  const statusJwksBytes = captureExactUint8Array(
+    container.status_jwks_bytes,
+    CONTROL_STATUS_JWKS_MAX_BYTES,
+  );
   const statusResolvedAt = container.status_resolved_at;
-  if (utilTypes.isProxy(rawStatusJwks)
-    || !(rawStatusJwks instanceof Uint8Array)
-    || Object.getPrototypeOf(rawStatusJwks) !== Uint8Array.prototype
-    || rawStatusJwks.byteLength === 0
-    || rawStatusJwks.byteLength > CONTROL_STATUS_JWKS_MAX_BYTES
+  if (statusJwksBytes === null
     || typeof statusResolvedAt !== "number" || !Number.isFinite(statusResolvedAt)
     || statusResolvedAt < 0) {
     throw new Error("control-token-invalid");
   }
   assertValidatedProjectedJwtContext(validatedJwt);
   const statusList = captureAuthorityInput(container.status_list) as unknown as StatusListToken;
-  const statusJwksBytes = Uint8Array.from(rawStatusJwks);
   const authorizationView = container.authorization_view as CurrentAuthorizationView;
   const freshness = revalidateAuthorizationViewAtEffect(authorizationView);
   if (freshness.verdict !== "accept") throw new Error("control-token-invalid");

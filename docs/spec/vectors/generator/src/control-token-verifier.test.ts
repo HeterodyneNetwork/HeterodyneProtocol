@@ -781,6 +781,94 @@ describe("current Control token verifier", () => {
     expect(fixture.freshnessCalls.loads).toBe(freshnessLoadsBeforeUnsafeInputs);
   });
 
+  it("BLUE TEAM VALIDATION: synthetic/local rejects typed-array metadata without traps or callbacks", async () => {
+    const fixture = await tokenFixture();
+    const resolved = await resolveCurrentControlGrant(fixture.grantResolver, AUTHORIZATION_ID);
+    if (resolved.verdict !== "accept") throw new Error("synthetic current grant rejected");
+    const testHarness = harness(fixture);
+    const hostileBytes = Uint8Array.from(fixture.jwksBytes);
+    let byteLengthTraps = 0;
+    let iteratorTraps = 0;
+    Object.defineProperty(hostileBytes, "byteLength", {
+      configurable: true,
+      get: () => {
+        byteLengthTraps += 1;
+        throw new Error("synthetic byteLength trap");
+      },
+    });
+    Object.defineProperty(hostileBytes, Symbol.iterator, {
+      configurable: true,
+      get: () => {
+        iteratorTraps += 1;
+        throw new Error("synthetic iterator trap");
+      },
+    });
+    const freshnessLoadsBefore = fixture.freshnessCalls.loads;
+
+    expect(() => createCurrentControlGrantView({
+      authorization_view: fixture.plain_view,
+      grant: resolved.output,
+      validated_jwt: fixture.validatedJwt,
+      status_list: fixture.statusList,
+      status_jwks_bytes: hostileBytes,
+      status_resolved_at: fixture.clock.now,
+      continuity: fixture.continuity,
+    })).toThrow();
+    expect(byteLengthTraps).toBe(0);
+    expect(iteratorTraps).toBe(0);
+    expect(fixture.freshnessCalls.loads).toBe(freshnessLoadsBefore);
+    expect(testHarness.calls.proof).toBe(0);
+    expect(testHarness.store.acquireCalls).toBe(0);
+    expect(testHarness.calls.effect).toBe(0);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects over-budget collections before descriptor work or callbacks", async () => {
+    const fixture = await tokenFixture();
+    const oversizedArray = Array.from({ length: 5_000 }, () => null);
+    const oversizedObject = Object.fromEntries(
+      Array.from({ length: 4_096 }, (_, index) => [`member-${index}`, null]),
+    );
+    const originalGetOwnPropertyDescriptors = Object.getOwnPropertyDescriptors;
+    let oversizedDescriptorMaterializations = 0;
+    Object.getOwnPropertyDescriptors = ((value: object) => {
+      if (value === oversizedArray || value === oversizedObject) {
+        oversizedDescriptorMaterializations += 1;
+      }
+      return originalGetOwnPropertyDescriptors(value);
+    }) as typeof Object.getOwnPropertyDescriptors;
+    try {
+      const resolved = await resolveCurrentControlGrant(fixture.grantResolver, AUTHORIZATION_ID);
+      if (resolved.verdict !== "accept") throw new Error("synthetic current grant rejected");
+      const freshnessLoadsBefore = fixture.freshnessCalls.loads;
+      expect(() => createCurrentControlGrantView({
+        authorization_view: fixture.plain_view,
+        grant: resolved.output,
+        validated_jwt: fixture.validatedJwt,
+        status_list: { ...fixture.statusList, oversized: oversizedObject } as never,
+        status_jwks_bytes: fixture.jwksBytes,
+        status_resolved_at: fixture.clock.now,
+        continuity: fixture.continuity,
+      })).toThrow();
+      expect(fixture.freshnessCalls.loads).toBe(freshnessLoadsBefore);
+
+      const ready = await verified(fixture);
+      const payload = {
+        ...operation().payload as object,
+        params: { object: OBJECT, oversized: oversizedArray },
+      };
+      expect(await consumeVerifiedControlToken(ready.verifier, ready.token, operation({
+        payload,
+        request_digest: "00".repeat(32),
+      }))).toEqual(REJECT);
+      expect(ready.calls.proof).toBe(0);
+      expect(ready.store.acquireCalls).toBe(0);
+      expect(ready.calls.effect).toBe(0);
+    } finally {
+      Object.getOwnPropertyDescriptors = originalGetOwnPropertyDescriptors;
+    }
+    expect(oversizedDescriptorMaterializations).toBe(0);
+  });
+
   it("BLUE TEAM VALIDATION: synthetic/local rejects wrong use bindings and a consumed proof", async () => {
     const fixture = await tokenFixture();
     const verifier = harness(fixture).verifier;

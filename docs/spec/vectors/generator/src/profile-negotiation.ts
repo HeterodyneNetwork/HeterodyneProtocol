@@ -293,16 +293,54 @@ function hasExactOwnMembers(
   value: object,
   expected: readonly string[],
 ): boolean {
-  const descriptors = Object.getOwnPropertyDescriptors(value);
-  const keys = Reflect.ownKeys(descriptors);
+  const keys = boundedOwnKeys(value, expected.length);
+  if (keys === null) return false;
   return keys.every((key) => typeof key === "string")
     && keys.length === expected.length
     && expected.every((member) => {
-      const descriptor = descriptors[member];
+      const descriptor = Object.getOwnPropertyDescriptor(value, member);
       return descriptor !== undefined
         && "value" in descriptor
         && descriptor.enumerable === true;
     });
+}
+
+function boundedOwnKeys(value: object, maximum: number): readonly PropertyKey[] | null {
+  let enumerableCount = 0;
+  for (const key in value) {
+    if (Object.hasOwn(value, key) && ++enumerableCount > maximum) return null;
+  }
+  const keys = Reflect.ownKeys(value);
+  return keys.length <= maximum ? keys : null;
+}
+
+const TYPED_ARRAY_LENGTH_GETTER = Object.getOwnPropertyDescriptor(
+  Object.getPrototypeOf(Uint8Array.prototype),
+  "length",
+)?.get;
+const UINT8_ARRAY_SET = Uint8Array.prototype.set;
+
+function captureExactUint8Array(value: unknown, maximum: number): Uint8Array | null {
+  if (value === null || typeof value !== "object" || utilTypes.isProxy(value)
+    || Object.getPrototypeOf(value) !== Uint8Array.prototype
+    || TYPED_ARRAY_LENGTH_GETTER === undefined) return null;
+  let length: number;
+  try {
+    length = Reflect.apply(TYPED_ARRAY_LENGTH_GETTER, value, []) as number;
+  } catch {
+    return null;
+  }
+  if (!Number.isSafeInteger(length) || length <= 0 || length > maximum) return null;
+  const keys = boundedOwnKeys(value, length);
+  if (keys === null || keys.length !== length
+    || keys.some((key, index) => typeof key !== "string" || key !== String(index))) return null;
+  const captured = new Uint8Array(length);
+  try {
+    Reflect.apply(UINT8_ARRAY_SET, captured, [value]);
+  } catch {
+    return null;
+  }
+  return captured;
 }
 
 function rejectCurrentControlFrame(): CurrentControlFrameDecision {
@@ -410,6 +448,7 @@ export type CurrentControlRequestBodyProjection = Readonly<{
 const REQUEST_BODY_MAX_DEPTH = 16;
 const REQUEST_BODY_MAX_NODES = 8_192;
 const REQUEST_BODY_MAX_STRING_BYTES = 1_048_576;
+const CONTROL_FRAME_MAX_BYTES = 1_048_576;
 const CONTROL_OBJECT_CLASSES = new Set([
   "none", "session", "repository", "config_namespace", "marmot_group",
   "feed", "media", "device",
@@ -444,24 +483,41 @@ function preflightRequestBody(value: unknown): value is JsonValue {
     if (typeof current !== "object" || utilTypes.isProxy(current) || active.has(current)) return false;
     const prototype = Object.getPrototypeOf(current);
     if (prototype !== Object.prototype && prototype !== Array.prototype) return false;
-    const descriptors = Object.getOwnPropertyDescriptors(current);
-    const keys = Reflect.ownKeys(descriptors);
-    if (keys.some((key) => typeof key !== "string" || !hasOnlyUnicodeScalars(key))) return false;
     active.add(current);
     try {
       if (Array.isArray(current)) {
-        if (keys.length !== current.length + 1) return false;
-        for (let index = 0; index < current.length; index += 1) {
-          const descriptor = descriptors[String(index)];
+        const lengthDescriptor = Object.getOwnPropertyDescriptor(current, "length");
+        const length = lengthDescriptor !== undefined && "value" in lengthDescriptor
+          ? lengthDescriptor.value
+          : undefined;
+        if (!Number.isSafeInteger(length) || length < 0
+          || length > Math.floor((REQUEST_BODY_MAX_NODES - nodes) / 2)) return false;
+        const keys = boundedOwnKeys(current, length + 1);
+        if (keys === null || keys.length !== length + 1) return false;
+        nodes += length;
+        for (let index = 0; index < length; index += 1) {
+          const key = String(index);
+          const descriptor = Object.getOwnPropertyDescriptor(current, key);
           if (descriptor === undefined || !("value" in descriptor)
-            || descriptor.enumerable !== true || !visit(descriptor.value, depth + 1)) return false;
+            || descriptor.enumerable !== true || !hasOnlyUnicodeScalars(key)) return false;
+          stringBytes += Buffer.byteLength(key, "utf8");
+          if (stringBytes > REQUEST_BODY_MAX_STRING_BYTES
+            || !visit(descriptor.value, depth + 1)) return false;
         }
         return true;
       }
+      const maximumProperties = Math.floor((REQUEST_BODY_MAX_NODES - nodes) / 2);
+      const keys = boundedOwnKeys(current, maximumProperties);
+      if (keys === null || keys.some((key) => typeof key !== "string"
+        || !hasOnlyUnicodeScalars(key))) return false;
+      nodes += keys.length;
       for (const key of keys as string[]) {
-        const descriptor = descriptors[key];
+        const descriptor = Object.getOwnPropertyDescriptor(current, key);
         if (descriptor === undefined || !("value" in descriptor) || descriptor.enumerable !== true
-          || !visit(key, depth + 1) || !visit(descriptor.value, depth + 1)) return false;
+          || !hasOnlyUnicodeScalars(key)) return false;
+        stringBytes += Buffer.byteLength(key, "utf8");
+        if (stringBytes > REQUEST_BODY_MAX_STRING_BYTES
+          || !visit(descriptor.value, depth + 1)) return false;
       }
       return true;
     } finally {
@@ -549,13 +605,12 @@ export function validateCurrentControlFrameProfile(
   context: CurrentControlFrameVerificationContext,
 ): CurrentControlFrameDecision {
   try {
+    const capturedBytes = captureExactUint8Array(frame_bytes, CONTROL_FRAME_MAX_BYTES);
     if (
-      !(frame_bytes instanceof Uint8Array)
-      || Object.getPrototypeOf(frame_bytes) !== Uint8Array.prototype
+      capturedBytes === null
       || !Number.isSafeInteger(context.trusted_now)
       || context.trusted_now < 0
     ) return rejectCurrentControlFrame();
-    const capturedBytes = frame_bytes.slice();
     const decoded = new TextDecoder("utf-8", { fatal: true }).decode(capturedBytes);
     const outerKeys = topLevelJsonObjectKeys(decoded);
     if (

@@ -180,19 +180,28 @@ function exactDescriptorValues(
 ): Readonly<Record<string, unknown>> | null {
   if (value === null || typeof value !== "object" || Array.isArray(value)
     || utilTypes.isProxy(value) || Object.getPrototypeOf(value) !== Object.prototype) return null;
-  const descriptors = Object.getOwnPropertyDescriptors(value);
-  const ownKeys = Reflect.ownKeys(descriptors);
+  const ownKeys = boundedOwnKeys(value, keys.length);
+  if (ownKeys === null) return null;
   if (ownKeys.length !== keys.length || ownKeys.some((key) => typeof key !== "string")
-    || !keys.every((key) => Object.hasOwn(descriptors, key))) return null;
+    || !keys.every((key) => ownKeys.includes(key))) return null;
   const result: Record<string, unknown> = {};
   for (const key of keys) {
-    const descriptor = descriptors[key];
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
     if (descriptor === undefined || !("value" in descriptor) || descriptor.enumerable !== true) {
       return null;
     }
     result[key] = descriptor.value;
   }
   return result;
+}
+
+function boundedOwnKeys(value: object, maximum: number): readonly PropertyKey[] | null {
+  let enumerableCount = 0;
+  for (const key in value) {
+    if (Object.hasOwn(value, key) && ++enumerableCount > maximum) return null;
+  }
+  const keys = Reflect.ownKeys(value);
+  return keys.length <= maximum ? keys : null;
 }
 
 function hasOnlyUnicodeScalars(value: string): boolean {
@@ -251,27 +260,41 @@ function boundedClosedJson(value: unknown): value is JsonValue {
       return stringBytes <= JSON_MAX_STRING_BYTES;
     }
     if (typeof current !== "object" || utilTypes.isProxy(current) || active.has(current)) return false;
+    const prototype = Object.getPrototypeOf(current);
+    if (prototype !== Object.prototype && prototype !== Array.prototype) return false;
     active.add(current);
     try {
-      const descriptors = Object.getOwnPropertyDescriptors(current);
-      const keys = Reflect.ownKeys(descriptors);
-      if (keys.some((key) => typeof key !== "string" || !hasOnlyUnicodeScalars(key))) return false;
       if (Array.isArray(current)) {
-        if (Object.getPrototypeOf(current) !== Array.prototype) return false;
-        const length = current.length;
-        if (!Number.isSafeInteger(length) || length < 0 || keys.length !== length + 1) return false;
+        const lengthDescriptor = Object.getOwnPropertyDescriptor(current, "length");
+        const length = lengthDescriptor !== undefined && "value" in lengthDescriptor
+          ? lengthDescriptor.value
+          : undefined;
+        if (!Number.isSafeInteger(length) || length < 0
+          || length > Math.floor((JSON_MAX_NODES - nodes) / 2)) return false;
+        const keys = boundedOwnKeys(current, length + 1);
+        if (keys === null || keys.length !== length + 1) return false;
+        nodes += length;
         for (let index = 0; index < length; index += 1) {
-          const descriptor = descriptors[String(index)];
+          const key = String(index);
+          const descriptor = Object.getOwnPropertyDescriptor(current, key);
           if (descriptor === undefined || !("value" in descriptor)
-            || descriptor.enumerable !== true || !visit(descriptor.value, depth + 1)) return false;
+            || descriptor.enumerable !== true || !hasOnlyUnicodeScalars(key)) return false;
+          stringBytes += Buffer.byteLength(key, "utf8");
+          if (stringBytes > JSON_MAX_STRING_BYTES || !visit(descriptor.value, depth + 1)) return false;
         }
         return true;
       }
-      if (Object.getPrototypeOf(current) !== Object.prototype) return false;
+      const maximumProperties = Math.floor((JSON_MAX_NODES - nodes) / 2);
+      const keys = boundedOwnKeys(current, maximumProperties);
+      if (keys === null || keys.some((key) => typeof key !== "string"
+        || !hasOnlyUnicodeScalars(key))) return false;
+      nodes += keys.length;
       for (const key of keys as string[]) {
-        const descriptor = descriptors[key];
+        const descriptor = Object.getOwnPropertyDescriptor(current, key);
         if (descriptor === undefined || !("value" in descriptor) || descriptor.enumerable !== true
-          || !visit(key, depth + 1) || !visit(descriptor.value, depth + 1)) return false;
+          || !hasOnlyUnicodeScalars(key)) return false;
+        stringBytes += Buffer.byteLength(key, "utf8");
+        if (stringBytes > JSON_MAX_STRING_BYTES || !visit(descriptor.value, depth + 1)) return false;
       }
       return true;
     } finally {
