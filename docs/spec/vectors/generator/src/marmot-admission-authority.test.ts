@@ -145,19 +145,23 @@ let conversation: {
 let projection: AuthenticatedMarmotWelcome;
 let loaderCalls: number;
 let processorCalls: number;
+let stagedTransitionCalls: number;
 let transitionCommitCalls: number;
 let transitionRollbackCalls: number;
+let privateKeyPackageAvailable: boolean;
 let escapedProcessorWelcome: Uint8Array | null;
 let escapedProcessorKeyPackage: Uint8Array | null;
 let processorTrapFactory: (() => unknown) | null;
 
 function makeTransition(): MarmotWelcomeTransition {
+  stagedTransitionCalls += 1;
   let terminal: "tentative" | "committed" | "rolled-back" = "tentative";
   return Object.freeze({
     async commit(executionToken: string): Promise<void> {
       expect(executionToken).toMatch(/^[0-9a-f]{64}$/);
       if (terminal !== "tentative") throw new Error("transition not tentative");
       transitionCommitCalls += 1;
+      privateKeyPackageAvailable = false;
       terminal = "committed";
     },
     rollback(): void {
@@ -178,7 +182,8 @@ function admissionConfig(
     load_conversation: async () => Object.freeze({ ...conversation }),
     load_private_key_package: (recipientAccount, keyPackageBytes) => {
       loaderCalls += 1;
-      return recipientAccount === RECIPIENT
+      return privateKeyPackageAvailable
+          && recipientAccount === RECIPIENT
           && exactBytes(keyPackageBytes, SYNTHETIC_KEY_PACKAGE_BYTES)
         ? PRIVATE_KEY_PACKAGE
         : null;
@@ -216,11 +221,11 @@ function admissionInput(overrides: Partial<MarmotWelcomeInput> = {}): MarmotWelc
   };
 }
 
-function verifiedWelcome(
+async function verifiedWelcome(
   authority: ReturnType<typeof createMarmotAdmissionAuthority>,
   input = admissionInput(),
-): VerifiedMarmotWelcome {
-  const decision = verifyMarmotWelcome(authority, input);
+): Promise<VerifiedMarmotWelcome> {
+  const decision = await verifyMarmotWelcome(authority, input);
   expect(decision.verdict).toBe("accept");
   if (decision.verdict !== "accept") throw new Error("fixture Welcome was not verified");
   return decision.output;
@@ -253,8 +258,10 @@ describe("Marmot admission authority", () => {
     });
     loaderCalls = 0;
     processorCalls = 0;
+    stagedTransitionCalls = 0;
     transitionCommitCalls = 0;
     transitionRollbackCalls = 0;
+    privateKeyPackageAvailable = true;
     escapedProcessorWelcome = null;
     escapedProcessorKeyPackage = null;
     processorTrapFactory = null;
@@ -262,7 +269,7 @@ describe("Marmot admission authority", () => {
 
   it("composes a captured standards adapter and commits its private transition after acquire", async () => {
     const authority = createMarmotAdmissionAuthority(admissionConfig());
-    const verification = verifyMarmotWelcome(authority, admissionInput());
+    const verification = await verifyMarmotWelcome(authority, admissionInput());
 
     expect(verification.verdict).toBe("accept");
     if (verification.verdict !== "accept") return;
@@ -287,7 +294,7 @@ describe("Marmot admission authority", () => {
 
   it("durably records the default no-signal hold terminal", async () => {
     const authority = createMarmotAdmissionAuthority(admissionConfig());
-    const welcome = verifiedWelcome(authority);
+    const welcome = await verifiedWelcome(authority);
     await expect(admitOrdinaryMarmotWelcome(authority, welcome, {
       decision: "hold",
       expected_checkpoint: CHECKPOINT,
@@ -306,35 +313,35 @@ describe("Marmot admission authority", () => {
     ["capabilities", { required_capabilities: [CAPABILITIES[0]] }],
     ["Welcome bytes", { welcome_bytes: new Uint8Array([0, 3, 0, 1, 0xa5, 0]) }],
     ["KeyPackage bytes", { key_package_bytes: new Uint8Array([0, 1, 0, 2, 0xc3, 0]) }],
-  ] as const)("BLUE TEAM VALIDATION: synthetic/local rejects a wrong %s binding", (
+  ] as const)("BLUE TEAM VALIDATION: synthetic/local rejects a wrong %s binding", async (
     _label,
     overrides,
   ) => {
     const authority = createMarmotAdmissionAuthority(admissionConfig());
-    expect(verifyMarmotWelcome(authority, admissionInput(overrides)))
+    expect(await verifyMarmotWelcome(authority, admissionInput(overrides)))
       .toEqual({ verdict: "reject", reason_code: "conversation-rejected" });
   });
 
-  it("BLUE TEAM VALIDATION: synthetic/local rejects leaf-key reuse from the authenticated projection", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local rejects leaf-key reuse from the authenticated projection", async () => {
     projection = Object.freeze({ ...projection, recipient_leaf_key: INVITER_LEAF });
     const authority = createMarmotAdmissionAuthority(admissionConfig());
-    expect(verifyMarmotWelcome(authority, admissionInput()))
+    expect(await verifyMarmotWelcome(authority, admissionInput()))
       .toEqual({ verdict: "reject", reason_code: "conversation-rejected" });
     expect(transitionRollbackCalls).toBe(1);
   });
 
-  it("BLUE TEAM VALIDATION: synthetic/local binds the authority-owned private KeyPackage handle", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local binds the authority-owned private KeyPackage handle", async () => {
     const otherHandle = Object.freeze({}) as MarmotPrivateKeyPackageHandle;
     const authority = createMarmotAdmissionAuthority(admissionConfig({
       load_private_key_package: () => otherHandle,
     }));
-    expect(verifyMarmotWelcome(authority, admissionInput()))
+    expect(await verifyMarmotWelcome(authority, admissionInput()))
       .toEqual({ verdict: "reject", reason_code: "conversation-rejected" });
   });
 
   it("BLUE TEAM VALIDATION: synthetic/local rolls back tentative processing on stale current state", async () => {
     const authority = createMarmotAdmissionAuthority(admissionConfig());
-    const welcome = verifiedWelcome(authority);
+    const welcome = await verifiedWelcome(authority);
     conversation = { checkpoint: "conversation:8", state: "unseen" };
 
     await expect(admitOrdinaryMarmotWelcome(authority, welcome, {
@@ -359,7 +366,7 @@ describe("Marmot admission authority", () => {
   it("BLUE TEAM VALIDATION: synthetic/local rejects clone and cross-authority handles", async () => {
     const authority = createMarmotAdmissionAuthority(admissionConfig());
     const other = createMarmotAdmissionAuthority(admissionConfig({ authority_id: "other-authority" }));
-    const welcome = verifiedWelcome(authority);
+    const welcome = await verifiedWelcome(authority);
     for (const hostile of [Object.freeze({ ...welcome }), welcome]) {
       await expect(admitOrdinaryMarmotWelcome(
         hostile === welcome ? other : authority,
@@ -373,7 +380,7 @@ describe("Marmot admission authority", () => {
   it("BLUE TEAM VALIDATION: synthetic/local isolates source and adapter byte mutations", async () => {
     const authority = createMarmotAdmissionAuthority(admissionConfig());
     const input = admissionInput();
-    const verification = verifyMarmotWelcome(authority, input);
+    const verification = await verifyMarmotWelcome(authority, input);
     expect(verification.verdict).toBe("accept");
     if (verification.verdict !== "accept") return;
 
@@ -390,7 +397,7 @@ describe("Marmot admission authority", () => {
     })).resolves.toMatchObject({ verdict: "accept" });
   });
 
-  it("BLUE TEAM VALIDATION: synthetic/local rejects input and processor proxies/accessors with zero traps", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local rejects input and processor proxies/accessors with zero traps", async () => {
     const authority = createMarmotAdmissionAuthority(admissionConfig());
     const ordinary = admissionInput();
     let traps = 0;
@@ -399,7 +406,7 @@ describe("Marmot admission authority", () => {
       getOwnPropertyDescriptor() { traps += 1; return undefined; },
       ownKeys() { traps += 1; return []; },
     });
-    expect(verifyMarmotWelcome(authority, proxy))
+    expect(await verifyMarmotWelcome(authority, proxy))
       .toEqual({ verdict: "reject", reason_code: "conversation-rejected" });
     expect(traps).toBe(0);
 
@@ -408,7 +415,7 @@ describe("Marmot admission authority", () => {
       getOwnPropertyDescriptor() { traps += 1; return undefined; },
       ownKeys() { traps += 1; return []; },
     });
-    expect(verifyMarmotWelcome(authority, admissionInput()))
+    expect(await verifyMarmotWelcome(authority, admissionInput()))
       .toEqual({ verdict: "reject", reason_code: "conversation-rejected" });
     expect(traps).toBe(0);
 
@@ -420,7 +427,7 @@ describe("Marmot admission authority", () => {
       },
       transition: { enumerable: true, value: makeTransition() },
     });
-    expect(verifyMarmotWelcome(authority, admissionInput()))
+    expect(await verifyMarmotWelcome(authority, admissionInput()))
       .toEqual({ verdict: "reject", reason_code: "conversation-rejected" });
     expect(reads).toBe(0);
   });
@@ -434,7 +441,7 @@ describe("Marmot admission authority", () => {
       },
     });
     const authority = createMarmotAdmissionAuthority(config);
-    const welcome = verifiedWelcome(authority);
+    const welcome = await verifiedWelcome(authority);
     (config as { load_conversation: MarmotAdmissionAuthorityConfig["load_conversation"] })
       .load_conversation = async () => ({ checkpoint: "attacker", state: "rejected" });
     await expect(admitOrdinaryMarmotWelcome(authority, welcome, {
@@ -444,32 +451,131 @@ describe("Marmot admission authority", () => {
     expect(originalLoads).toBe(1);
   });
 
-  it("returns an exact committed retry after restart and rolls back only the new tentative join", async () => {
+  it("BLUE TEAM VALIDATION: synthetic/local replays an exact committed join after restart without private MLS state", async () => {
     const firstAuthority = createMarmotAdmissionAuthority(admissionConfig());
     const first = await admitOrdinaryMarmotWelcome(
       firstAuthority,
-      verifiedWelcome(firstAuthority),
+      await verifiedWelcome(firstAuthority),
       { decision: "accept", expected_checkpoint: CHECKPOINT },
     );
+    expect(first).toEqual({
+      verdict: "accept",
+      output: { group_id: GROUP, checkpoint: CHECKPOINT, terminal: "accepted" },
+    });
+    expect(privateKeyPackageAvailable).toBe(false);
+    const callsAfterCommit = Object.freeze({
+      loader: loaderCalls,
+      processor: processorCalls,
+      staged: stagedTransitionCalls,
+      transitionCommit: transitionCommitCalls,
+      effect: admissionStore.effectCalls,
+      durableCommit: admissionStore.commitCalls,
+    });
+
     conversation = { checkpoint: CHECKPOINT, state: "accepted" };
     const restartedAuthority = createMarmotAdmissionAuthority(admissionConfig());
+    const replayVerification = await verifyMarmotWelcome(restartedAuthority, admissionInput());
+    expect(replayVerification.verdict).toBe("accept");
+    if (replayVerification.verdict !== "accept") return;
     const retried = await admitOrdinaryMarmotWelcome(
       restartedAuthority,
-      verifiedWelcome(restartedAuthority),
+      replayVerification.output,
       { decision: "accept", expected_checkpoint: CHECKPOINT },
     );
 
     expect(retried).toEqual(first);
-    expect(admissionStore.effectCalls).toBe(1);
-    expect(transitionCommitCalls).toBe(1);
-    expect(transitionRollbackCalls).toBe(1);
-    expect(admissionStore.commitCalls).toBe(1);
+    expect({
+      loader: loaderCalls,
+      processor: processorCalls,
+      staged: stagedTransitionCalls,
+      transitionCommit: transitionCommitCalls,
+      effect: admissionStore.effectCalls,
+      durableCommit: admissionStore.commitCalls,
+    }).toEqual(callsAfterCommit);
+    expect(transitionRollbackCalls).toBe(0);
+  });
+
+  it.each([
+    ["malformed committed terminal", "malformed"],
+    ["mismatched committed binding", "mismatched"],
+    ["executing terminal", "executing"],
+    ["indeterminate terminal", "indeterminate"],
+  ] as const)("BLUE TEAM VALIDATION: synthetic/local does not process a %s during restart lookup", async (
+    _label,
+    mode,
+  ) => {
+    const firstAuthority = createMarmotAdmissionAuthority(admissionConfig());
+    const firstWelcome = await verifiedWelcome(firstAuthority);
+    await expect(admitOrdinaryMarmotWelcome(firstAuthority, firstWelcome, {
+      decision: "accept",
+      expected_checkpoint: CHECKPOINT,
+    })).resolves.toMatchObject({ verdict: "accept" });
+    const entry = [...admissionStore.records.entries()][0];
+    if (entry === undefined || entry[1].state !== "committed") {
+      throw new Error("fixture did not persist a committed terminal");
+    }
+    const [key, committed] = entry;
+    const replacement: DurableAuthorityRecord<VerifiedMarmotAdmission> = mode === "malformed"
+      ? Object.freeze({ ...committed, attacker_extension: true }) as
+        DurableAuthorityRecord<VerifiedMarmotAdmission>
+      : mode === "mismatched"
+        ? Object.freeze({ ...committed, binding_digest: "00".repeat(32) })
+        : mode === "executing"
+          ? Object.freeze({
+            state: "executing",
+            revision: committed.revision,
+            binding_digest: committed.binding_digest,
+            execution_token: committed.execution_token,
+          })
+          : Object.freeze({
+            state: "indeterminate",
+            revision: committed.revision,
+            binding_digest: committed.binding_digest,
+            execution_token: committed.execution_token,
+            reconciliation_digest: "aa".repeat(32),
+          });
+    admissionStore.records.set(key, replacement);
+    const callsBeforeRestart = Object.freeze({
+      loader: loaderCalls,
+      processor: processorCalls,
+      staged: stagedTransitionCalls,
+    });
+
+    const restartedAuthority = createMarmotAdmissionAuthority(admissionConfig());
+    const decision = await verifyMarmotWelcome(restartedAuthority, admissionInput());
+
+    expect(decision.verdict).not.toBe("accept");
+    expect({
+      loader: loaderCalls,
+      processor: processorCalls,
+      staged: stagedTransitionCalls,
+    }).toEqual(callsBeforeRestart);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects a committed replay when retained group state is absent", async () => {
+    const firstAuthority = createMarmotAdmissionAuthority(admissionConfig());
+    const firstWelcome = await verifiedWelcome(firstAuthority);
+    await expect(admitOrdinaryMarmotWelcome(firstAuthority, firstWelcome, {
+      decision: "accept",
+      expected_checkpoint: CHECKPOINT,
+    })).resolves.toMatchObject({ verdict: "accept" });
+    conversation = { checkpoint: CHECKPOINT, state: "unseen" };
+    const restartedAuthority = createMarmotAdmissionAuthority(admissionConfig());
+    const replayVerification = await verifyMarmotWelcome(restartedAuthority, admissionInput());
+    expect(replayVerification.verdict).toBe("accept");
+    if (replayVerification.verdict !== "accept") return;
+
+    await expect(admitOrdinaryMarmotWelcome(
+      restartedAuthority,
+      replayVerification.output,
+      { decision: "accept", expected_checkpoint: CHECKPOINT },
+    )).resolves.toEqual({ verdict: "reject", reason_code: "conversation-rejected" });
   });
 
   it("BLUE TEAM VALIDATION: synthetic/local makes an unknown commit digest-bearing and never repeats the MLS effect", async () => {
     admissionStore.commitResult = "unknown";
     const authority = createMarmotAdmissionAuthority(admissionConfig());
-    const welcome = verifiedWelcome(authority);
+    const welcome = await verifiedWelcome(authority);
     const first = await admitOrdinaryMarmotWelcome(authority, welcome, {
       decision: "accept",
       expected_checkpoint: CHECKPOINT,
@@ -496,7 +602,7 @@ describe("Marmot admission authority", () => {
     const authority = createMarmotAdmissionAuthority(admissionConfig());
     const result = await admitOrdinaryMarmotWelcome(
       authority,
-      verifiedWelcome(authority),
+      await verifiedWelcome(authority),
       { decision: "accept", expected_checkpoint: CHECKPOINT },
     );
     expectReasonlessIndeterminate(result);

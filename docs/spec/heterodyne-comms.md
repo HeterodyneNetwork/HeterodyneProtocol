@@ -1233,6 +1233,16 @@ commits the private transition. Rejection before durable reservation rolls the
 tentative transition back; an unknown post-effect outcome is reconciled and
 MUST NOT repeat it.
 
+After restart, the boundary MUST look up an exact committed admission before
+loading a private KeyPackage handle or processing the Welcome again. This
+lookup is keyed by the captured public transport bytes and identifiers plus
+the configured authority identity, and authenticates the committed decision,
+checkpoint, output, request binding, and reconciliation binding. Only an exact,
+closed committed terminal may mint a replay capability. A malformed,
+mismatched, executing, or indeterminate terminal neither grants acceptance nor
+invokes private KeyPackage loading, Welcome processing, or a staged group
+transition.
+
 Before applying a local acceptance or hold decision, the same boundary MUST
 reload authenticated current conversation state and require the checkpoint to
 remain exact. It MUST durably reserve the full Welcome, KeyPackage, account,

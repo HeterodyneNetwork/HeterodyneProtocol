@@ -108,13 +108,37 @@ type PrivateTransition = {
   rollback: MarmotWelcomeTransition["rollback"];
 };
 
-type WelcomeRecord = Readonly<{
-  authority: MarmotAdmissionAuthority;
+type CapturedWelcomeInput = Readonly<{
   welcome_bytes: Uint8Array;
   key_package_bytes: Uint8Array;
+  inviter_account: string;
+  recipient_account: string;
+  group_id: string;
+  member_accounts: readonly [string, string];
+  required_capabilities: readonly string[];
+}>;
+
+type TentativeWelcomeRecord = Readonly<{
+  kind: "tentative";
+  authority: MarmotAdmissionAuthority;
+  input: CapturedWelcomeInput;
   authenticated: AuthenticatedMarmotWelcome;
   transition: PrivateTransition;
 }>;
+
+type ReplayWelcomeRecord = Readonly<{
+  kind: "committed-replay";
+  authority: MarmotAdmissionAuthority;
+  input: CapturedWelcomeInput;
+  decision: "accept" | "hold";
+  binding_digest: string;
+  execution_token: string;
+  output_digest: string;
+  reconciliation_digest: string;
+  output: VerifiedMarmotAdmission;
+}>;
+
+type WelcomeRecord = TentativeWelcomeRecord | ReplayWelcomeRecord;
 
 const AUTHORITIES = new WeakMap<object, AuthorityRecord>();
 const WELCOMES = new WeakMap<object, WelcomeRecord>();
@@ -218,7 +242,7 @@ function equalStrings(left: readonly string[], right: readonly string[]): boolea
   return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
-function capturedWelcomeInput(input: MarmotWelcomeInput): Readonly<MarmotWelcomeInput> | null {
+function capturedWelcomeInput(input: MarmotWelcomeInput): CapturedWelcomeInput | null {
   try {
     const captured = captureAuthorityInput(input);
     if (!exactKeys(captured as unknown as Readonly<Record<string, unknown>>, [
@@ -237,7 +261,15 @@ function capturedWelcomeInput(input: MarmotWelcomeInput): Readonly<MarmotWelcome
       || !Array.isArray(captured.required_capabilities)
       || !captured.required_capabilities.every((capability) => typeof capability === "string")
     ) return null;
-    return captured;
+    return Object.freeze({
+      welcome_bytes: new Uint8Array(captured.welcome_bytes),
+      key_package_bytes: new Uint8Array(captured.key_package_bytes),
+      inviter_account: captured.inviter_account,
+      recipient_account: captured.recipient_account,
+      group_id: captured.group_id,
+      member_accounts: Object.freeze([...captured.member_accounts] as [string, string]),
+      required_capabilities: Object.freeze([...captured.required_capabilities]),
+    });
   } catch {
     return null;
   }
@@ -345,22 +377,173 @@ function rollbackTransition(transition: PrivateTransition): void {
   }
 }
 
-export function verifyMarmotWelcome(
+function rollbackWelcome(record: WelcomeRecord): void {
+  if (record.kind === "tentative") rollbackTransition(record.transition);
+}
+
+function durableAdmissionKey(authorityId: string, input: CapturedWelcomeInput): string {
+  const publicInputDigest = authorityBindingDigest("heterodyne.marmot-welcome.public-input/v1", {
+    welcome_bytes: input.welcome_bytes,
+    key_package_bytes: input.key_package_bytes,
+    inviter_account: input.inviter_account,
+    recipient_account: input.recipient_account,
+    group_id: input.group_id,
+    member_accounts: input.member_accounts,
+    required_capabilities: input.required_capabilities,
+  });
+  return authorityBindingDigest("heterodyne.marmot-admission.key/v1", {
+    authority_id: authorityId,
+    recipient_account: input.recipient_account,
+    group_id: input.group_id,
+    public_input_digest: publicInputDigest,
+  });
+}
+
+function durableRequest(
+  authorityId: string,
+  key: string,
+  input: CapturedWelcomeInput,
+  decision: "accept" | "hold",
+  expectedCheckpoint: string,
+): Readonly<{
+  binding_digest: string;
+  execution_token: string;
+  output_digest: string;
+  reconciliation_digest: string;
+  output: VerifiedMarmotAdmission;
+}> {
+  const output = Object.freeze({
+    group_id: input.group_id,
+    checkpoint: expectedCheckpoint,
+    terminal: decision === "accept" ? "accepted" as const : "held" as const,
+  });
+  const bindingDigest = authorityBindingDigest("heterodyne.marmot-admission.binding/v1", {
+    authority_id: authorityId,
+    key,
+    decision,
+    expected_checkpoint: expectedCheckpoint,
+  });
+  const executionToken = authorityBindingDigest("heterodyne.marmot-admission.execution/v1", {
+    key,
+    binding_digest: bindingDigest,
+  });
+  const outputDigest = authorityBindingDigest("heterodyne.marmot-admission.output/v1", output);
+  const reconciliationDigest = authorityBindingDigest(
+    "heterodyne.marmot-admission.reconciliation/v1",
+    { key, binding_digest: bindingDigest, execution_token: executionToken },
+  );
+  return Object.freeze({
+    binding_digest: bindingDigest,
+    execution_token: executionToken,
+    output_digest: outputDigest,
+    reconciliation_digest: reconciliationDigest,
+    output,
+  });
+}
+
+function retainCommittedReplay(
+  welcome: VerifiedMarmotWelcome,
+  record: WelcomeRecord,
+  decision: "accept" | "hold",
+  request: ReturnType<typeof durableRequest>,
+  output: VerifiedMarmotAdmission,
+): void {
+  WELCOMES.set(welcome, Object.freeze({
+    kind: "committed-replay",
+    authority: record.authority,
+    input: record.input,
+    decision,
+    binding_digest: request.binding_digest,
+    execution_token: request.execution_token,
+    output_digest: request.output_digest,
+    reconciliation_digest: request.reconciliation_digest,
+    output,
+  }));
+}
+
+function replayLookupIndeterminate(
+  authorityId: string,
+  key: string,
+  record: DurableAuthorityRecord<VerifiedMarmotAdmission> | null | undefined,
+): MarmotWelcomeDecision {
+  return Object.freeze({
+    verdict: "indeterminate",
+    reconciliation_digest: authorityBindingDigest(
+      "heterodyne.marmot-admission.replay-lookup/v1",
+      {
+        authority_id: authorityId,
+        key,
+        observed_state: record?.state ?? "unreadable",
+        observed_binding_digest: record?.binding_digest ?? "unreadable",
+      },
+    ),
+  });
+}
+
+export async function verifyMarmotWelcome(
   authority: MarmotAdmissionAuthority,
   input: MarmotWelcomeInput,
-): MarmotWelcomeDecision {
+): Promise<MarmotWelcomeDecision> {
   const authorityRecord = AUTHORITIES.get(authority);
   if (authorityRecord === undefined) return REJECT;
   const captured = capturedWelcomeInput(input);
   if (captured === null) return REJECT;
-  const welcomeBytes = new Uint8Array(captured.welcome_bytes);
-  const keyPackageBytes = new Uint8Array(captured.key_package_bytes);
+  const key = durableAdmissionKey(authorityRecord.authority_id, captured);
+
+  let durable: DurableAuthorityRecord<VerifiedMarmotAdmission> | null | undefined;
+  try {
+    durable = captureDurableRecord(await authorityRecord.store.load(key));
+  } catch {
+    return replayLookupIndeterminate(authorityRecord.authority_id, key, undefined);
+  }
+  if (durable === undefined) return REJECT;
+  if (durable !== null) {
+    if (durable.state !== "committed") {
+      return replayLookupIndeterminate(authorityRecord.authority_id, key, durable);
+    }
+    const output = captureAdmissionOutput(durable.output);
+    if (output === null || output.group_id !== captured.group_id) return REJECT;
+    const decision = output.terminal === "accepted" ? "accept" : "hold";
+    const request = durableRequest(
+      authorityRecord.authority_id,
+      key,
+      captured,
+      decision,
+      output.checkpoint,
+    );
+    const cached = committedOutput(
+      durable,
+      request.binding_digest,
+      request.execution_token,
+      request.output_digest,
+    );
+    if (
+      cached === null
+      || cached.group_id !== request.output.group_id
+      || cached.checkpoint !== request.output.checkpoint
+      || cached.terminal !== request.output.terminal
+    ) return REJECT;
+    const handle = Object.freeze({});
+    WELCOMES.set(handle, Object.freeze({
+      kind: "committed-replay",
+      authority,
+      input: captured,
+      decision,
+      binding_digest: request.binding_digest,
+      execution_token: request.execution_token,
+      output_digest: request.output_digest,
+      reconciliation_digest: request.reconciliation_digest,
+      output: cached,
+    }));
+    return Object.freeze({ verdict: "accept", output: handle });
+  }
+
   try {
     const now = authorityRecord.trusted_now();
     if (!Number.isSafeInteger(now) || now < 0) return REJECT;
     const privateKeyPackage = authorityRecord.load_private_key_package(
       captured.recipient_account,
-      new Uint8Array(keyPackageBytes),
+      new Uint8Array(captured.key_package_bytes),
     );
     if (
       privateKeyPackage === null
@@ -368,8 +551,8 @@ export function verifyMarmotWelcome(
       || utilTypes.isProxy(privateKeyPackage)
     ) return REJECT;
     const rawResult = authorityRecord.process_mls_welcome(Object.freeze({
-      welcome_bytes: new Uint8Array(welcomeBytes),
-      key_package_bytes: new Uint8Array(keyPackageBytes),
+      welcome_bytes: new Uint8Array(captured.welcome_bytes),
+      key_package_bytes: new Uint8Array(captured.key_package_bytes),
       private_key_package: privateKeyPackage,
       now,
     }));
@@ -395,9 +578,9 @@ export function verifyMarmotWelcome(
     }
     const handle = Object.freeze({});
     WELCOMES.set(handle, Object.freeze({
+      kind: "tentative",
       authority,
-      welcome_bytes: new Uint8Array(welcomeBytes),
-      key_package_bytes: new Uint8Array(keyPackageBytes),
+      input: captured,
       authenticated,
       transition,
     }));
@@ -562,108 +745,121 @@ export async function admitOrdinaryMarmotWelcome(
       || !["accept", "hold", "reject"].includes(capturedAcceptance.decision)
       || typeof capturedAcceptance.expected_checkpoint !== "string"
     ) {
-      rollbackTransition(welcomeRecord.transition);
+      rollbackWelcome(welcomeRecord);
       return REJECT;
     }
   } catch {
-    rollbackTransition(welcomeRecord.transition);
+    rollbackWelcome(welcomeRecord);
     return REJECT;
   }
   if (capturedAcceptance.decision === "reject") {
-    rollbackTransition(welcomeRecord.transition);
+    rollbackWelcome(welcomeRecord);
     return REJECT;
   }
+
+  if (
+    welcomeRecord.kind === "committed-replay"
+    && (
+      capturedAcceptance.decision !== welcomeRecord.decision
+      || capturedAcceptance.expected_checkpoint !== welcomeRecord.output.checkpoint
+    )
+  ) return REJECT;
+
+  const recipientAccount = welcomeRecord.kind === "tentative"
+    ? welcomeRecord.authenticated.recipient_account
+    : welcomeRecord.input.recipient_account;
+  const groupId = welcomeRecord.kind === "tentative"
+    ? welcomeRecord.authenticated.group_id
+    : welcomeRecord.input.group_id;
+  const verifiedCheckpoint = welcomeRecord.kind === "tentative"
+    ? welcomeRecord.authenticated.checkpoint
+    : welcomeRecord.output.checkpoint;
 
   let conversation;
   try {
     conversation = captureConversation(await authorityRecord.load_conversation(
-      welcomeRecord.authenticated.recipient_account,
-      welcomeRecord.authenticated.group_id,
+      recipientAccount,
+      groupId,
     ));
   } catch {
-    rollbackTransition(welcomeRecord.transition);
+    rollbackWelcome(welcomeRecord);
     return REJECT;
   }
   if (
     conversation === null
     || conversation.state === "rejected"
-    || conversation.checkpoint !== welcomeRecord.authenticated.checkpoint
+    || conversation.checkpoint !== verifiedCheckpoint
     || conversation.checkpoint !== capturedAcceptance.expected_checkpoint
+    || (
+      welcomeRecord.kind === "committed-replay"
+      && conversation.state !== (welcomeRecord.decision === "accept" ? "accepted" : "held")
+    )
   ) {
-    rollbackTransition(welcomeRecord.transition);
+    rollbackWelcome(welcomeRecord);
     return REJECT;
   }
 
-  const terminal = capturedAcceptance.decision === "accept" ? "accepted" : "held";
-  const output = Object.freeze({
-    group_id: welcomeRecord.authenticated.group_id,
-    checkpoint: conversation.checkpoint,
-    terminal,
-  }) as VerifiedMarmotAdmission;
-  const welcomeDigest = authorityBindingDigest("heterodyne.marmot-welcome/v1", {
-    welcome_bytes: welcomeRecord.welcome_bytes,
-    key_package_bytes: welcomeRecord.key_package_bytes,
-    wire_format: welcomeRecord.authenticated.wire_format,
-    inviter_account: welcomeRecord.authenticated.inviter_account,
-    recipient_account: welcomeRecord.authenticated.recipient_account,
-    inviter_leaf_key: welcomeRecord.authenticated.inviter_leaf_key,
-    recipient_leaf_key: welcomeRecord.authenticated.recipient_leaf_key,
-    group_id: welcomeRecord.authenticated.group_id,
-    member_accounts: welcomeRecord.authenticated.member_accounts,
-    required_capabilities: welcomeRecord.authenticated.required_capabilities,
-    checkpoint: welcomeRecord.authenticated.checkpoint,
-  });
-  const key = authorityBindingDigest("heterodyne.marmot-admission.key/v1", {
-    authority_id: authorityRecord.authority_id,
-    recipient_account: welcomeRecord.authenticated.recipient_account,
-    group_id: welcomeRecord.authenticated.group_id,
-    welcome_digest: welcomeDigest,
-  });
-  const bindingDigest = authorityBindingDigest("heterodyne.marmot-admission.binding/v1", {
-    authority_id: authorityRecord.authority_id,
+  const key = durableAdmissionKey(authorityRecord.authority_id, welcomeRecord.input);
+  const request = durableRequest(
+    authorityRecord.authority_id,
     key,
-    decision: capturedAcceptance.decision,
-    expected_checkpoint: capturedAcceptance.expected_checkpoint,
-  });
-  const executionToken = authorityBindingDigest("heterodyne.marmot-admission.execution/v1", {
-    key,
-    binding_digest: bindingDigest,
-  });
-  const outputDigest = authorityBindingDigest("heterodyne.marmot-admission.output/v1", output);
-  const reconciliationDigest = authorityBindingDigest(
-    "heterodyne.marmot-admission.reconciliation/v1",
-    { key, binding_digest: bindingDigest, execution_token: executionToken },
+    welcomeRecord.input,
+    capturedAcceptance.decision,
+    capturedAcceptance.expected_checkpoint,
   );
+  const {
+    binding_digest: bindingDigest,
+    execution_token: executionToken,
+    output_digest: outputDigest,
+    reconciliation_digest: reconciliationDigest,
+    output,
+  } = request;
+  if (
+    welcomeRecord.kind === "committed-replay"
+    && (
+      bindingDigest !== welcomeRecord.binding_digest
+      || executionToken !== welcomeRecord.execution_token
+      || outputDigest !== welcomeRecord.output_digest
+      || reconciliationDigest !== welcomeRecord.reconciliation_digest
+    )
+  ) return REJECT;
   const indeterminate = () => indeterminateDecision(reconciliationDigest);
 
   let loaded: DurableAuthorityRecord<VerifiedMarmotAdmission> | null | undefined;
   try {
     loaded = captureDurableRecord(await authorityRecord.store.load(key));
   } catch {
-    rollbackTransition(welcomeRecord.transition);
+    rollbackWelcome(welcomeRecord);
     return indeterminate();
   }
   if (loaded === undefined) {
-    rollbackTransition(welcomeRecord.transition);
+    rollbackWelcome(welcomeRecord);
     return indeterminate();
   }
   if (loaded?.binding_digest !== undefined && loaded.binding_digest !== bindingDigest) {
-    rollbackTransition(welcomeRecord.transition);
+    rollbackWelcome(welcomeRecord);
     return REJECT;
   }
   if (loaded?.state === "committed") {
     const cached = committedOutput(loaded, bindingDigest, executionToken, outputDigest);
-    rollbackTransition(welcomeRecord.transition);
-    return cached === null
-      ? indeterminate()
-      : Object.freeze({ verdict: "accept", output: cached });
+    rollbackWelcome(welcomeRecord);
+    if (cached === null) return indeterminate();
+    retainCommittedReplay(
+      welcome,
+      welcomeRecord,
+      capturedAcceptance.decision,
+      request,
+      cached,
+    );
+    return Object.freeze({ verdict: "accept", output: cached });
   }
   if (loaded?.state === "indeterminate" || loaded?.state === "executing") {
-    rollbackTransition(welcomeRecord.transition);
+    rollbackWelcome(welcomeRecord);
     return indeterminate();
   }
+  if (welcomeRecord.kind === "committed-replay") return indeterminate();
   if (conversation.state === "accepted") {
-    rollbackTransition(welcomeRecord.transition);
+    rollbackWelcome(welcomeRecord);
     return REJECT;
   }
 
@@ -676,11 +872,11 @@ export async function admitOrdinaryMarmotWelcome(
       execution_token: executionToken,
     }));
   } catch {
-    rollbackTransition(welcomeRecord.transition);
+    rollbackWelcome(welcomeRecord);
     return indeterminate();
   }
   if (acquired !== "acquired") {
-    rollbackTransition(welcomeRecord.transition);
+    rollbackWelcome(welcomeRecord);
     if (acquired === "unavailable") return indeterminate();
     try {
       const replay = captureDurableRecord(await authorityRecord.store.load(key));
@@ -688,9 +884,15 @@ export async function admitOrdinaryMarmotWelcome(
       if (replay.binding_digest !== bindingDigest) return REJECT;
       if (replay.state === "committed") {
         const cached = committedOutput(replay, bindingDigest, executionToken, outputDigest);
-        return cached === null
-          ? indeterminate()
-          : Object.freeze({ verdict: "accept", output: cached });
+        if (cached === null) return indeterminate();
+        retainCommittedReplay(
+          welcome,
+          welcomeRecord,
+          capturedAcceptance.decision,
+          request,
+          cached,
+        );
+        return Object.freeze({ verdict: "accept", output: cached });
       }
       return indeterminate();
     } catch {
@@ -737,7 +939,16 @@ export async function admitOrdinaryMarmotWelcome(
         const raced = captureDurableRecord(await authorityRecord.store.load(key));
         if (raced !== undefined && raced !== null && raced.state === "committed") {
           const cached = committedOutput(raced, bindingDigest, executionToken, outputDigest);
-          if (cached !== null) return Object.freeze({ verdict: "accept", output: cached });
+          if (cached !== null) {
+            retainCommittedReplay(
+              welcome,
+              welcomeRecord,
+              capturedAcceptance.decision,
+              request,
+              cached,
+            );
+            return Object.freeze({ verdict: "accept", output: cached });
+          }
         }
       } catch {
         // Fall through to absorbing indeterminate state.
@@ -756,7 +967,16 @@ export async function admitOrdinaryMarmotWelcome(
     const committed = captureDurableRecord(await authorityRecord.store.load(key));
     if (committed !== undefined && committed !== null && committed.state === "committed") {
       const cached = committedOutput(committed, bindingDigest, executionToken, outputDigest);
-      if (cached !== null) return Object.freeze({ verdict: "accept", output: cached });
+      if (cached !== null) {
+        retainCommittedReplay(
+          welcome,
+          welcomeRecord,
+          capturedAcceptance.decision,
+          request,
+          cached,
+        );
+        return Object.freeze({ verdict: "accept", output: cached });
+      }
     }
   } catch {
     // A committed result that cannot be read back is not safe to expose.
