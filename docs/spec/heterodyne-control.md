@@ -588,11 +588,17 @@ JWKS, use, operation, store, and effect input MUST pass complete bounded
 descriptor-first preflight: ordinary closed prototypes and members, data
 descriptors only, Unicode scalar strings, finite JSON depth/node/string-byte
 budgets, and applicable token/status/JWKS byte ceilings. Collection length,
-property count, and the global work for every key and value MUST fit those
-budgets before full descriptor materialization or traversal. A byte input MUST
-use captured intrinsic typed-array length and copy operations and MUST reject
-every unexpected own string or symbol member before copying. A proxy or
-accessor MUST fail without invoking its traps or getter.
+enumerable-string property count, and the global work for every JSON key and
+value MUST fit those budgets before complete descriptor-map materialization or
+unbounded traversal.
+For this object API, a `JsonValue` consists only of enumerable own string data
+members. Non-enumerable properties and symbols are out-of-model host metadata:
+the verifier MUST NOT completely enumerate, capture, hash, or forward them,
+and wire closure applies to the resulting captured JSON projection. A byte
+input MUST use captured intrinsic typed-array length and copy operations and
+MUST individually reject known operation-shadowing own members, including
+`byteLength`, `length`, and `Symbol.iterator`, before copying. A proxy or
+enumerable accessor MUST fail without invoking its traps or getter.
 
 The operation payload MUST be an exact closed live `human-jsonrpc` or
 `agent-mcp` request. The verifier MUST reuse the Control frame request parser

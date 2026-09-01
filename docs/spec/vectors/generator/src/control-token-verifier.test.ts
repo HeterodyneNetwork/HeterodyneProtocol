@@ -869,6 +869,69 @@ describe("current Control token verifier", () => {
     expect(oversizedDescriptorMaterializations).toBe(0);
   });
 
+  it("BLUE TEAM VALIDATION: synthetic/local excludes hidden status and operation metadata from authority", async () => {
+    const fixture = await tokenFixture();
+    const statusWithMetadata = { ...fixture.statusList } as Record<string | symbol, unknown>;
+    const cleanPayload = operation().payload as Record<string, JsonValue>;
+    const paramsWithMetadata = {
+      ...cleanPayload.params as Record<string, JsonValue>,
+    } as Record<string | symbol, unknown>;
+    for (let index = 0; index < 10_000; index += 1) {
+      for (const target of [statusWithMetadata, paramsWithMetadata]) {
+        Object.defineProperty(target, `synthetic-hidden-${index}`, {
+          value: `not-authority-${index}`,
+        });
+        Object.defineProperty(target, Symbol(`synthetic-symbol-${index}`), {
+          value: `not-authority-${index}`,
+          enumerable: true,
+        });
+      }
+    }
+    const originalOwnKeys = Reflect.ownKeys;
+    let completeOwnKeyCalls = 0;
+    Reflect.ownKeys = ((value: object) => {
+      if (value === statusWithMetadata || value === paramsWithMetadata) {
+        completeOwnKeyCalls += 1;
+      }
+      return originalOwnKeys(value);
+    }) as typeof Reflect.ownKeys;
+    try {
+      const resolved = await resolveCurrentControlGrant(fixture.grantResolver, AUTHORIZATION_ID);
+      if (resolved.verdict !== "accept") throw new Error("synthetic current grant rejected");
+      const strongView = createCurrentControlGrantView({
+        authorization_view: fixture.plain_view,
+        grant: resolved.output,
+        validated_jwt: fixture.validatedJwt,
+        status_list: statusWithMetadata as never,
+        status_jwks_bytes: fixture.jwksBytes,
+        status_resolved_at: fixture.clock.now,
+        continuity: fixture.continuity,
+      });
+      const ready = await verified(fixture, harness(fixture, { view: strongView }));
+      const payload = {
+        ...cleanPayload,
+        params: paramsWithMetadata,
+      } as JsonValue;
+      const presented = operation({ payload });
+      expect(await consumeVerifiedControlToken(ready.verifier, ready.token, presented)).toEqual({
+        verdict: "accept",
+        output: { operation_id: presented.operation_id },
+      });
+      expect(ready.calls.proof).toBe(1);
+      expect(ready.store.acquireCalls).toBe(1);
+      expect(ready.calls.effect).toBe(1);
+      const effect = ready.calls.effectInputs[0] as {
+        input: { payload: JsonValue };
+      };
+      expect(effect.input.payload).toEqual(cleanPayload);
+      expect(JSON.stringify(effect.input.payload)).not.toContain("not-authority");
+      expect(presented.request_digest).toBe(operation().request_digest);
+    } finally {
+      Reflect.ownKeys = originalOwnKeys;
+    }
+    expect(completeOwnKeyCalls).toBe(0);
+  });
+
   it("BLUE TEAM VALIDATION: synthetic/local rejects wrong use bindings and a consumed proof", async () => {
     const fixture = await tokenFixture();
     const verifier = harness(fixture).verifier;

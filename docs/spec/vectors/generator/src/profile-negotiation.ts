@@ -293,7 +293,7 @@ function hasExactOwnMembers(
   value: object,
   expected: readonly string[],
 ): boolean {
-  const keys = boundedOwnKeys(value, expected.length);
+  const keys = boundedEnumerableOwnStringKeys(value, expected.length);
   if (keys === null) return false;
   return keys.every((key) => typeof key === "string")
     && keys.length === expected.length
@@ -305,13 +305,18 @@ function hasExactOwnMembers(
     });
 }
 
-function boundedOwnKeys(value: object, maximum: number): readonly PropertyKey[] | null {
-  let enumerableCount = 0;
+function boundedEnumerableOwnStringKeys(value: object, maximum: number): readonly string[] | null {
+  const keys: string[] = [];
   for (const key in value) {
-    if (Object.hasOwn(value, key) && ++enumerableCount > maximum) return null;
+    if (!Object.hasOwn(value, key)) continue;
+    if (keys.length >= maximum) return null;
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (descriptor === undefined || !("value" in descriptor) || descriptor.enumerable !== true) {
+      return null;
+    }
+    keys.push(key);
   }
-  const keys = Reflect.ownKeys(value);
-  return keys.length <= maximum ? keys : null;
+  return keys;
 }
 
 const TYPED_ARRAY_LENGTH_GETTER = Object.getOwnPropertyDescriptor(
@@ -319,6 +324,14 @@ const TYPED_ARRAY_LENGTH_GETTER = Object.getOwnPropertyDescriptor(
   "length",
 )?.get;
 const UINT8_ARRAY_SET = Uint8Array.prototype.set;
+const TYPED_ARRAY_DANGEROUS_OVERRIDES = Object.freeze([
+  "buffer", "byteLength", "byteOffset", "constructor", "copyWithin", "entries",
+  "every", "fill", "filter", "find", "findIndex", "findLast", "findLastIndex",
+  "forEach", "includes", "indexOf", "join", "keys", "lastIndexOf", "length",
+  "map", "reduce", "reduceRight", "reverse", "set", "slice", "some", "sort",
+  "subarray", "toLocaleString", "toReversed", "toSorted", "toString", "values",
+  "with", Symbol.iterator, Symbol.toStringTag,
+] as const);
 
 function captureExactUint8Array(value: unknown, maximum: number): Uint8Array | null {
   if (value === null || typeof value !== "object" || utilTypes.isProxy(value)
@@ -331,9 +344,11 @@ function captureExactUint8Array(value: unknown, maximum: number): Uint8Array | n
     return null;
   }
   if (!Number.isSafeInteger(length) || length <= 0 || length > maximum) return null;
-  const keys = boundedOwnKeys(value, length);
+  if (TYPED_ARRAY_DANGEROUS_OVERRIDES.some((key) =>
+    Object.getOwnPropertyDescriptor(value, key) !== undefined)) return null;
+  const keys = boundedEnumerableOwnStringKeys(value, length);
   if (keys === null || keys.length !== length
-    || keys.some((key, index) => typeof key !== "string" || key !== String(index))) return null;
+    || keys.some((key, index) => key !== String(index))) return null;
   const captured = new Uint8Array(length);
   try {
     Reflect.apply(UINT8_ARRAY_SET, captured, [value]);
@@ -492,8 +507,8 @@ function preflightRequestBody(value: unknown): value is JsonValue {
           : undefined;
         if (!Number.isSafeInteger(length) || length < 0
           || length > Math.floor((REQUEST_BODY_MAX_NODES - nodes) / 2)) return false;
-        const keys = boundedOwnKeys(current, length + 1);
-        if (keys === null || keys.length !== length + 1) return false;
+        const keys = boundedEnumerableOwnStringKeys(current, length);
+        if (keys === null || keys.length !== length) return false;
         nodes += length;
         for (let index = 0; index < length; index += 1) {
           const key = String(index);
@@ -507,9 +522,8 @@ function preflightRequestBody(value: unknown): value is JsonValue {
         return true;
       }
       const maximumProperties = Math.floor((REQUEST_BODY_MAX_NODES - nodes) / 2);
-      const keys = boundedOwnKeys(current, maximumProperties);
-      if (keys === null || keys.some((key) => typeof key !== "string"
-        || !hasOnlyUnicodeScalars(key))) return false;
+      const keys = boundedEnumerableOwnStringKeys(current, maximumProperties);
+      if (keys === null || keys.some((key) => !hasOnlyUnicodeScalars(key))) return false;
       nodes += keys.length;
       for (const key of keys as string[]) {
         const descriptor = Object.getOwnPropertyDescriptor(current, key);
@@ -527,12 +541,30 @@ function preflightRequestBody(value: unknown): value is JsonValue {
   return visit(value, 0);
 }
 
-function freezeJson(value: JsonValue): JsonValue {
-  if (value !== null && typeof value === "object") {
-    for (const child of Object.values(value)) freezeJson(child);
-    Object.freeze(value);
+function captureRequestBody(value: JsonValue): JsonValue {
+  if (value === null || typeof value !== "object") return value;
+  if (Array.isArray(value)) {
+    const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
+    const length = lengthDescriptor !== undefined && "value" in lengthDescriptor
+      ? lengthDescriptor.value as number
+      : 0;
+    return Object.freeze(Array.from({ length }, (_, index) => {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+      return captureRequestBody(descriptor!.value as JsonValue);
+    })) as unknown as JsonValue;
   }
-  return value;
+  const captured: Record<string, JsonValue> = {};
+  const keys = boundedEnumerableOwnStringKeys(value, REQUEST_BODY_MAX_NODES) ?? [];
+  for (const key of keys) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key)!;
+    Object.defineProperty(captured, key, {
+      value: captureRequestBody(descriptor.value as JsonValue),
+      enumerable: true,
+      writable: false,
+      configurable: false,
+    });
+  }
+  return Object.freeze(captured);
 }
 
 function projectedAuthorizationObject(
@@ -556,7 +588,7 @@ export function projectCurrentControlRequestBody(
     || !preflightRequestBody(value) || value === null || Array.isArray(value)
     || typeof value !== "object") return null;
   try {
-    const body = freezeJson(structuredClone(value)) as Readonly<Record<string, JsonValue>>;
+    const body = captureRequestBody(value) as Readonly<Record<string, JsonValue>>;
     if (profile === "human-jsonrpc") {
       validateControlRpcRequestSchemaOrThrow(body);
       if (typeof body.id !== "string" || typeof body.method !== "string"

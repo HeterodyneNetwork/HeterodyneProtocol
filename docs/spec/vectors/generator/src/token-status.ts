@@ -39,7 +39,6 @@ import type {
   ControlAuthorizationObject,
   ControlAuthorizationRecord,
 } from "./control-profile.js";
-import { captureAuthorityInput } from "./security-authority-support.js";
 import { proofBytes } from "./proof-bytes.js";
 import { didKeyFromEd25519 } from "./radicle.js";
 import { validateOidcContinuityManifestSchemaOrThrow } from "./schema.js";
@@ -442,6 +441,14 @@ const TYPED_ARRAY_LENGTH_GETTER = Object.getOwnPropertyDescriptor(
   "length",
 )?.get;
 const UINT8_ARRAY_SET = Uint8Array.prototype.set;
+const TYPED_ARRAY_DANGEROUS_OVERRIDES = Object.freeze([
+  "buffer", "byteLength", "byteOffset", "constructor", "copyWithin", "entries",
+  "every", "fill", "filter", "find", "findIndex", "findLast", "findLastIndex",
+  "forEach", "includes", "indexOf", "join", "keys", "lastIndexOf", "length",
+  "map", "reduce", "reduceRight", "reverse", "set", "slice", "some", "sort",
+  "subarray", "toLocaleString", "toReversed", "toSorted", "toString", "values",
+  "with", Symbol.iterator, Symbol.toStringTag,
+] as const);
 
 function exactDescriptorValues(
   value: unknown,
@@ -449,7 +456,7 @@ function exactDescriptorValues(
 ): Readonly<Record<string, unknown>> | null {
   if (value === null || typeof value !== "object" || Array.isArray(value)
     || utilTypes.isProxy(value) || Object.getPrototypeOf(value) !== Object.prototype) return null;
-  const ownKeys = boundedOwnKeys(value, keys.length);
+  const ownKeys = boundedEnumerableOwnStringKeys(value, keys.length);
   if (ownKeys === null) return null;
   if (ownKeys.length !== keys.length || ownKeys.some((key) => typeof key !== "string")
     || !keys.every((key) => ownKeys.includes(key))) return null;
@@ -464,13 +471,18 @@ function exactDescriptorValues(
   return result;
 }
 
-function boundedOwnKeys(value: object, maximum: number): readonly PropertyKey[] | null {
-  let enumerableCount = 0;
+function boundedEnumerableOwnStringKeys(value: object, maximum: number): readonly string[] | null {
+  const keys: string[] = [];
   for (const key in value) {
-    if (Object.hasOwn(value, key) && ++enumerableCount > maximum) return null;
+    if (!Object.hasOwn(value, key)) continue;
+    if (keys.length >= maximum) return null;
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (descriptor === undefined || !("value" in descriptor) || descriptor.enumerable !== true) {
+      return null;
+    }
+    keys.push(key);
   }
-  const keys = Reflect.ownKeys(value);
-  return keys.length <= maximum ? keys : null;
+  return keys;
 }
 
 function captureExactUint8Array(value: unknown, maximum: number): Uint8Array | null {
@@ -484,9 +496,11 @@ function captureExactUint8Array(value: unknown, maximum: number): Uint8Array | n
     return null;
   }
   if (!Number.isSafeInteger(length) || length <= 0 || length > maximum) return null;
-  const keys = boundedOwnKeys(value, length);
+  if (TYPED_ARRAY_DANGEROUS_OVERRIDES.some((key) =>
+    Object.getOwnPropertyDescriptor(value, key) !== undefined)) return null;
+  const keys = boundedEnumerableOwnStringKeys(value, length);
   if (keys === null || keys.length !== length
-    || keys.some((key, index) => typeof key !== "string" || key !== String(index))) return null;
+    || keys.some((key, index) => key !== String(index))) return null;
   const captured = new Uint8Array(length);
   try {
     Reflect.apply(UINT8_ARRAY_SET, captured, [value]);
@@ -546,8 +560,8 @@ function preflightControlData(value: unknown): boolean {
           : undefined;
         if (!Number.isSafeInteger(length) || length < 0
           || length > Math.floor((CONTROL_DATA_MAX_NODES - nodes) / 2)) return false;
-        const keys = boundedOwnKeys(current, length + 1);
-        if (keys === null || keys.length !== length + 1) return false;
+        const keys = boundedEnumerableOwnStringKeys(current, length);
+        if (keys === null || keys.length !== length) return false;
         nodes += length;
         for (let index = 0; index < length; index += 1) {
           const key = String(index);
@@ -561,9 +575,8 @@ function preflightControlData(value: unknown): boolean {
         return true;
       }
       const maximumProperties = Math.floor((CONTROL_DATA_MAX_NODES - nodes) / 2);
-      const keys = boundedOwnKeys(current, maximumProperties);
-      if (keys === null || keys.some((key) => typeof key !== "string"
-        || !hasOnlyUnicodeScalars(key))) return false;
+      const keys = boundedEnumerableOwnStringKeys(current, maximumProperties);
+      if (keys === null || keys.some((key) => !hasOnlyUnicodeScalars(key))) return false;
       nodes += keys.length;
       for (const key of keys as string[]) {
         const descriptor = Object.getOwnPropertyDescriptor(current, key);
@@ -579,6 +592,32 @@ function preflightControlData(value: unknown): boolean {
     }
   };
   return visit(value, 0);
+}
+
+function captureControlData(value: JsonValue): JsonValue {
+  if (value === null || typeof value !== "object") return value;
+  if (Array.isArray(value)) {
+    const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
+    const length = lengthDescriptor !== undefined && "value" in lengthDescriptor
+      ? lengthDescriptor.value as number
+      : 0;
+    return Object.freeze(Array.from({ length }, (_, index) => {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+      return captureControlData(descriptor!.value as JsonValue);
+    })) as unknown as JsonValue;
+  }
+  const captured: Record<string, JsonValue> = {};
+  const keys = boundedEnumerableOwnStringKeys(value, CONTROL_DATA_MAX_NODES) ?? [];
+  for (const key of keys) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key)!;
+    Object.defineProperty(captured, key, {
+      value: captureControlData(descriptor.value as JsonValue),
+      enumerable: true,
+      writable: false,
+      configurable: false,
+    });
+  }
+  return Object.freeze(captured);
 }
 
 function exactControlStringList(value: unknown): value is readonly string[] {
@@ -648,7 +687,7 @@ function validateControlGrantShape(grant: CurrentControlGrantBinding): void {
 function exactControlLimits(value: unknown): value is Readonly<Record<string, number>> {
   if (value === null || typeof value !== "object" || Array.isArray(value)
     || utilTypes.isProxy(value) || Object.getPrototypeOf(value) !== Object.prototype) return false;
-  const keys = boundedOwnKeys(value, CONTROL_LIST_MAX_ITEMS);
+  const keys = boundedEnumerableOwnStringKeys(value, CONTROL_LIST_MAX_ITEMS);
   if (keys === null) return false;
   return keys.length > 0 && keys.length <= CONTROL_LIST_MAX_ITEMS
     && keys.every((key) => typeof key === "string" && boundedControlString(key)
@@ -687,7 +726,7 @@ function captureVerifiedAuthorizationRecord(
   if (raw === null) return null;
   let record: ControlAuthorizationRecord;
   try {
-    record = captureAuthorityInput(raw) as unknown as ControlAuthorizationRecord;
+    record = captureControlData(raw as JsonValue) as unknown as ControlAuthorizationRecord;
   } catch {
     return null;
   }
@@ -849,7 +888,7 @@ export function createCurrentControlGrantView(
     throw new Error("control-token-invalid");
   }
   assertValidatedProjectedJwtContext(validatedJwt);
-  const statusList = captureAuthorityInput(container.status_list) as unknown as StatusListToken;
+  const statusList = captureControlData(container.status_list as JsonValue) as unknown as StatusListToken;
   const authorizationView = container.authorization_view as CurrentAuthorizationView;
   const freshness = revalidateAuthorizationViewAtEffect(authorizationView);
   if (freshness.verdict !== "accept") throw new Error("control-token-invalid");
@@ -927,7 +966,8 @@ export async function assertCurrentControlGrantUse(
   if (retained === undefined || captured === null || !preflightControlData(captured)) {
     throw new Error("control-token-invalid");
   }
-  const expected = captureAuthorityInput(captured) as unknown as CurrentControlGrantUseExpectation;
+  const expected = captureControlData(captured as JsonValue) as unknown as
+    CurrentControlGrantUseExpectation;
   if (!boundedControlString(expected.authority_id)
     || !boundedControlJwt(expected.compact_jwt)
     || !boundedControlString(expected.expected_issuer)

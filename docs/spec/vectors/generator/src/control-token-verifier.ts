@@ -13,7 +13,6 @@ import {
 } from "./profile-negotiation.js";
 import {
   authorityBindingDigest,
-  captureAuthorityInput,
   type AuthorityDecision,
   type DurableAuthorityRecord,
   type DurableAuthorityStore,
@@ -180,7 +179,7 @@ function exactDescriptorValues(
 ): Readonly<Record<string, unknown>> | null {
   if (value === null || typeof value !== "object" || Array.isArray(value)
     || utilTypes.isProxy(value) || Object.getPrototypeOf(value) !== Object.prototype) return null;
-  const ownKeys = boundedOwnKeys(value, keys.length);
+  const ownKeys = boundedEnumerableOwnStringKeys(value, keys.length);
   if (ownKeys === null) return null;
   if (ownKeys.length !== keys.length || ownKeys.some((key) => typeof key !== "string")
     || !keys.every((key) => ownKeys.includes(key))) return null;
@@ -195,13 +194,18 @@ function exactDescriptorValues(
   return result;
 }
 
-function boundedOwnKeys(value: object, maximum: number): readonly PropertyKey[] | null {
-  let enumerableCount = 0;
+function boundedEnumerableOwnStringKeys(value: object, maximum: number): readonly string[] | null {
+  const keys: string[] = [];
   for (const key in value) {
-    if (Object.hasOwn(value, key) && ++enumerableCount > maximum) return null;
+    if (!Object.hasOwn(value, key)) continue;
+    if (keys.length >= maximum) return null;
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (descriptor === undefined || !("value" in descriptor) || descriptor.enumerable !== true) {
+      return null;
+    }
+    keys.push(key);
   }
-  const keys = Reflect.ownKeys(value);
-  return keys.length <= maximum ? keys : null;
+  return keys;
 }
 
 function hasOnlyUnicodeScalars(value: string): boolean {
@@ -271,8 +275,8 @@ function boundedClosedJson(value: unknown): value is JsonValue {
           : undefined;
         if (!Number.isSafeInteger(length) || length < 0
           || length > Math.floor((JSON_MAX_NODES - nodes) / 2)) return false;
-        const keys = boundedOwnKeys(current, length + 1);
-        if (keys === null || keys.length !== length + 1) return false;
+        const keys = boundedEnumerableOwnStringKeys(current, length);
+        if (keys === null || keys.length !== length) return false;
         nodes += length;
         for (let index = 0; index < length; index += 1) {
           const key = String(index);
@@ -285,9 +289,8 @@ function boundedClosedJson(value: unknown): value is JsonValue {
         return true;
       }
       const maximumProperties = Math.floor((JSON_MAX_NODES - nodes) / 2);
-      const keys = boundedOwnKeys(current, maximumProperties);
-      if (keys === null || keys.some((key) => typeof key !== "string"
-        || !hasOnlyUnicodeScalars(key))) return false;
+      const keys = boundedEnumerableOwnStringKeys(current, maximumProperties);
+      if (keys === null || keys.some((key) => !hasOnlyUnicodeScalars(key))) return false;
       nodes += keys.length;
       for (const key of keys as string[]) {
         const descriptor = Object.getOwnPropertyDescriptor(current, key);
@@ -304,10 +307,36 @@ function boundedClosedJson(value: unknown): value is JsonValue {
   return visit(value, 0);
 }
 
+function captureJsonProjection(value: JsonValue): JsonValue {
+  if (value === null || typeof value !== "object") return value;
+  if (Array.isArray(value)) {
+    const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
+    const length = lengthDescriptor !== undefined && "value" in lengthDescriptor
+      ? lengthDescriptor.value as number
+      : 0;
+    return Object.freeze(Array.from({ length }, (_, index) => {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+      return captureJsonProjection(descriptor!.value as JsonValue);
+    })) as unknown as JsonValue;
+  }
+  const captured: Record<string, JsonValue> = {};
+  const keys = boundedEnumerableOwnStringKeys(value, JSON_MAX_NODES) ?? [];
+  for (const key of keys) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key)!;
+    Object.defineProperty(captured, key, {
+      value: captureJsonProjection(descriptor.value as JsonValue),
+      enumerable: true,
+      writable: false,
+      configurable: false,
+    });
+  }
+  return Object.freeze(captured);
+}
+
 function captureUse(value: ControlTokenUse): ControlTokenUse | null {
   const raw = exactDescriptorValues(value, USE_KEYS);
   if (raw === null || !boundedClosedJson(raw)) return null;
-  const captured = captureAuthorityInput(raw) as unknown as ControlTokenUse;
+  const captured = captureJsonProjection(raw as JsonValue) as unknown as ControlTokenUse;
   return boundedString(captured.sender_key)
     && boundedString(captured.marmot_group_id)
     && boundedString(captured.authorization_id)
@@ -323,7 +352,7 @@ function captureUse(value: ControlTokenUse): ControlTokenUse | null {
 function captureOperation(value: ControlTokenOperation): ControlTokenOperation | null {
   const raw = exactDescriptorValues(value, OPERATION_KEYS);
   if (raw === null || !boundedClosedJson(raw)) return null;
-  const captured = captureAuthorityInput(raw) as unknown as ControlTokenOperation;
+  const captured = captureJsonProjection(raw as JsonValue) as unknown as ControlTokenOperation;
   return boundedString(captured.operation_id)
     && /^[0-9a-f]{64}$/u.test(captured.request_digest)
     && boundedClosedJson(captured.payload)
@@ -524,7 +553,8 @@ function captureDurableRecord(
   if (raw === null || !Number.isSafeInteger(raw.revision) || Number(raw.revision) < 0
     || !boundedString(raw.binding_digest)) return undefined;
   try {
-    const captured = captureAuthorityInput(raw) as unknown as DurableAuthorityRecord<ControlTokenOutput>;
+    const captured = captureJsonProjection(raw as JsonValue) as unknown as
+      DurableAuthorityRecord<ControlTokenOutput>;
     if (captured.state === "available") {
       return captureOutput(captured.output) === null ? undefined : captured;
     }
@@ -637,7 +667,7 @@ export function createControlTokenVerifier(
     trusted_now: values.trusted_now as ControlTokenVerifierConfig["trusted_now"],
     expected_issuer: values.expected_issuer,
     expected_audience: values.expected_audience,
-    jwks: captureAuthorityInput(values.jwks) as JsonValue,
+    jwks: captureJsonProjection(values.jwks as JsonValue),
     load_grant_view: values.load_grant_view as ControlTokenVerifierConfig["load_grant_view"],
     consume_proof: values.consume_proof as ControlTokenVerifierConfig["consume_proof"],
     store: Object.freeze({

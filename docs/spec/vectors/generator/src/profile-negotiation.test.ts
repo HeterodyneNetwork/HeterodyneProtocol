@@ -223,6 +223,60 @@ describe("current Control frame profile", () => {
     expect(iteratorTraps).toBe(0);
   });
 
+  it("BLUE TEAM VALIDATION: synthetic/local ignores hidden JSON metadata without complete own-key work", () => {
+    const params: Record<string | symbol, unknown> = {};
+    for (let index = 0; index < 10_000; index += 1) {
+      Object.defineProperty(params, `synthetic-hidden-${index}`, {
+        value: `not-authority-${index}`,
+      });
+      Object.defineProperty(params, Symbol(`synthetic-symbol-${index}`), {
+        value: `not-authority-${index}`,
+        enumerable: true,
+      });
+    }
+    const body = { ...HUMAN_BODY, params };
+    const cleanBody = { ...HUMAN_BODY, params: {} };
+    const originalOwnKeys = Reflect.ownKeys;
+    let completeOwnKeyCalls = 0;
+    Reflect.ownKeys = ((value: object) => {
+      if (value === params) completeOwnKeyCalls += 1;
+      return originalOwnKeys(value);
+    }) as typeof Reflect.ownKeys;
+    let projection;
+    try {
+      projection = projectCurrentControlRequestBody("human-jsonrpc", body);
+    } finally {
+      Reflect.ownKeys = originalOwnKeys;
+    }
+    expect(completeOwnKeyCalls).toBe(0);
+    expect(projection).toEqual({
+      profile: "human-jsonrpc",
+      request_id: REQUEST_ID,
+      expires_at: NOW + 60,
+      authorization_method: "status",
+      authorization_object: null,
+      body: cleanBody,
+    });
+    expect(requestDigest({
+      profile: "human-jsonrpc",
+      version: "heterodyne/0.6.0",
+      group_id: GROUP,
+      sender: SENDER,
+      request_id: REQUEST_ID,
+      expires_at: NOW + 60,
+      body: projection?.body ?? {},
+    })).toBe(requestDigest({
+      profile: "human-jsonrpc",
+      version: "heterodyne/0.6.0",
+      group_id: GROUP,
+      sender: SENDER,
+      request_id: REQUEST_ID,
+      expires_at: NOW + 60,
+      body: cleanBody,
+    }));
+    expect(JSON.stringify(projection)).not.toContain("not-authority");
+  });
+
   it("accepts one exact signed, current, request-bound Marmot frame", () => {
     const result = validateCurrentControlFrameProfile(signedBytes(), context());
     expect(result).toEqual({
