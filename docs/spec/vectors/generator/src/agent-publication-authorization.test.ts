@@ -10,7 +10,14 @@ import {
 import { injectAgentAttribution } from "./agent-authorship.js";
 import type { CurrentClaimAuthorizationView } from "./claim-authorization.js";
 import { buildClaimLedgerScenario } from "./claim-ledger-test-support.js";
-import type { VerifiedClaimArtifact } from "./claims.js";
+import {
+  CLAIM_REVOCATION_PROFILE,
+  inspectVerifiedClaim,
+  verifyClaimRevocationEnvelope,
+  type ClaimSemanticBody,
+  type VerifiedClaimArtifact,
+  type VerifiedClaimRevocationArtifact,
+} from "./claims.js";
 import { buildFixtures } from "./fixtures.js";
 import { jcsCanonicalize } from "./jcs.js";
 import {
@@ -49,7 +56,6 @@ const STATUS_MIRROR_CLAIM = "https://heterodyne.network/jwt/status-mirror";
 
 let ledger: Awaited<ReturnType<typeof buildClaimLedgerScenario>>;
 let dpopWorkload: VerifiedClaimArtifact;
-let mtlsWorkload: VerifiedClaimArtifact;
 let unrelatedWorkload: VerifiedClaimArtifact;
 let now: number;
 let issuer: string;
@@ -59,7 +65,6 @@ beforeAll(async () => {
   now = ledger.now + 100;
   issuer = `https://node.example/oidc/${nip19.npubEncode(persona)}`;
   dpopWorkload = (await workloadClaim(dpopSender)).verified_artifact;
-  mtlsWorkload = (await workloadClaim(mtlsPeer)).verified_artifact;
   unrelatedWorkload = (await workloadClaim(dpopSender, { client_id: "unrelated-synthetic-agent" }))
     .verified_artifact;
 });
@@ -67,6 +72,7 @@ beforeAll(async () => {
 async function workloadClaim(
   senderIdentity: string,
   registrationOverrides: Record<string, unknown> = {},
+  claimOverrides: Partial<Omit<ClaimSemanticBody, "claim_id">> = {},
 ) {
   return ledger.makeClaim(ledger.writerOne, {
     subject: { type: "jwk-thumbprint", value: senderIdentity },
@@ -85,7 +91,7 @@ async function workloadClaim(
       scopes: [scope],
       allowed_kinds: [1],
       allowed_feeds: ["timeline"],
-      allowed_resources: [audience],
+      allowed_resources: [target],
       max_content_bytes: 4_096,
       rate_limit: { window_seconds: 60, count: 10, burst: 2 },
       not_before: now - 60,
@@ -93,10 +99,67 @@ async function workloadClaim(
       ...registrationOverrides,
     },
     audience: [audience],
-    resources: [audience],
+    resources: [target],
+    not_before: now - 60,
+    expires_at: now + 600,
+    ...claimOverrides,
+  });
+}
+
+async function delegatedWorkload(
+  childOverrides: Partial<Omit<ClaimSemanticBody, "claim_id">> = {},
+) {
+  const leaf = inspectVerifiedClaim(dpopWorkload);
+  const parent = await ledger.makeClaim(ledger.writerOne, {
+    subject: { type: "nostr-secp256k1", value: persona },
+    namespace: leaf.namespace,
+    name: leaf.name,
+    value: leaf.value,
+    audience: [audience],
+    resources: [target],
+    constraints: {
+      namespaces: ["heterodyne.agent"],
+      audiences: [audience],
+      resources: [target],
+      remaining_depth: 1,
+    },
     not_before: now - 60,
     expires_at: now + 600,
   });
+  const child = await ledger.makeClaim(ledger.writerOne, {
+    subject: { type: "jwk-thumbprint", value: dpopSender },
+    namespace: leaf.namespace,
+    name: leaf.name,
+    value: leaf.value,
+    audience: [audience],
+    resources: [target],
+    parent_claim_id: parent.artifact.semantic.claim_id,
+    not_before: now - 60,
+    expires_at: now + 600,
+    ...childOverrides,
+  });
+  return { parent: parent.verified_artifact, child: child.verified_artifact };
+}
+
+async function revokeClaim(
+  artifact: VerifiedClaimArtifact,
+): Promise<VerifiedClaimRevocationArtifact> {
+  const semantic = inspectVerifiedClaim(artifact);
+  const revocation = {
+    ...CLAIM_REVOCATION_PROFILE,
+    claim_id: semantic.claim_id,
+    revoked_at: now - 1,
+    reason_code: "claim-revoked",
+    revoker: semantic.issuer,
+  } as const;
+  return verifyClaimRevocationEnvelope(await signEvent({
+    secretKey: ledger.issuer.private_key,
+    auxRand,
+    created_at: revocation.revoked_at,
+    kind: 31014,
+    tags: [["d", revocation.claim_id]],
+    content: jcsCanonicalize(revocation),
+  }));
 }
 
 function exactView(
@@ -184,6 +247,7 @@ class MemoryStore implements DurableAuthorityStore<NostrSignedEvent> {
   markCalls = 0;
   commitResult: "committed" | "conflict" | "unknown" = "committed";
   hideExecutingReadback = false;
+  substituteIndeterminateDigest: string | null = null;
 
   async load(key: string): Promise<DurableAuthorityRecord<NostrSignedEvent> | null> {
     this.loadCalls += 1;
@@ -248,7 +312,7 @@ class MemoryStore implements DurableAuthorityStore<NostrSignedEvent> {
       revision: current.revision + 1,
       binding_digest: input.binding_digest,
       execution_token: input.execution_token,
-      reconciliation_digest: input.reconciliation_digest,
+      reconciliation_digest: this.substituteIndeterminateDigest ?? input.reconciliation_digest,
     }));
     return "indeterminate" as const;
   }
@@ -266,7 +330,7 @@ async function harness(options: Readonly<{
   signerThrows?: boolean;
 }> = {}) {
   const sender = options.sender ?? "dpop";
-  const artifact = sender === "dpop" ? dpopWorkload : mtlsWorkload;
+  const artifact = dpopWorkload;
   const views = options.claimViews ?? [exactView(artifact), exactView(artifact)];
   const statuses = options.statuses ?? [
     { generation: 0, state: "active", checkpoint: checkpointDigest },
@@ -435,7 +499,7 @@ describe("agent workload publication authorization", () => {
     expect([...value.store.records.values()][0]).toMatchObject({ state: "committed" });
   });
 
-  it("BLUE TEAM VALIDATION: synthetic/local captures mTLS identity and signer callbacks at construction", async () => {
+  it("BLUE TEAM VALIDATION: synthetic/local fails closed mTLS before state, peer, fence, or signer effects", async () => {
     const value = await harness({ sender: "mtls" });
     let substitutedSignerCalls = 0;
     (value.config as { read_mtls_peer_identity: () => string | null }).read_mtls_peer_identity = () => "wrong";
@@ -446,9 +510,14 @@ describe("agent workload publication authorization", () => {
 
     const result = await authorizeAndSignAgentPublication(value.authority, value.request);
 
-    expect(result.verdict).toBe("accept");
-    expect(value.counts.mtls()).toBeGreaterThan(0);
-    expect(value.counts.signer()).toBe(1);
+    expect(result).toEqual({ verdict: "reject", reason_code: "agent-sender-proof-invalid" });
+    expect(value.counts.views()).toBe(0);
+    expect(value.counts.statuses()).toBe(0);
+    expect(value.counts.mtls()).toBe(0);
+    expect(value.counts.dpop()).toBe(0);
+    expect(value.counts.signer()).toBe(0);
+    expect(value.store.loadCalls).toBe(0);
+    expect(value.store.acquireInputs).toHaveLength(0);
     expect(substitutedSignerCalls).toBe(0);
   });
 
@@ -463,21 +532,100 @@ describe("agent workload publication authorization", () => {
       .toBe("accept");
   });
 
+  it("BLUE TEAM VALIDATION: synthetic/local requires the complete opaque workload claim chain", async () => {
+    const active = await delegatedWorkload();
+    const accepted = await harness({
+      claimViews: [
+        exactView(active.child, { claims: [active.parent, active.child] }),
+        exactView(active.child, { claims: [active.parent, active.child] }),
+      ],
+    });
+    expect((await authorizeAndSignAgentPublication(accepted.authority, accepted.request)).verdict)
+      .toBe("accept");
+
+    const parentId = inspectVerifiedClaim(active.parent).claim_id;
+    const parentRevocation = await revokeClaim(active.parent);
+    const hostileViews: CurrentClaimAuthorizationView[] = [
+      exactView(active.child, {
+        claims: [active.parent, active.child],
+        revocations: [parentRevocation],
+      }),
+      exactView(active.child, {
+        claims: [active.parent, active.child],
+        conflicted_claim_ids: [parentId],
+      }),
+      exactView(active.child, {
+        credential_ledger: {
+          credential_ledger_persona: persona,
+          credential_ledger_generation: 1,
+        },
+        claims: [active.parent, active.child],
+      }),
+    ];
+    for (const view of hostileViews) {
+      const value = await harness({ claimViews: [view] });
+      await expectRejected(value, value.request);
+      expect(value.store.acquireInputs).toHaveLength(0);
+      expect(value.counts.dpop()).toBe(0);
+    }
+
+    const expired = await delegatedWorkload({ expires_at: now - 1 });
+    const expiredValue = await harness({
+      claimViews: [exactView(expired.child, { claims: [expired.parent, expired.child] })],
+    });
+    await expectRejected(expiredValue, expiredValue.request);
+    expect(expiredValue.store.acquireInputs).toHaveLength(0);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects non-attenuated ancestors and exact outer audience/resource mismatches", async () => {
+    const widened = await delegatedWorkload({ resources: [target, "https://wrong.example/resource"] });
+    const wrongAudience = (await workloadClaim(dpopSender, {}, { audience: ["https://wrong.example/audience"] }))
+      .verified_artifact;
+    const wrongResource = (await workloadClaim(dpopSender, {}, { resources: ["https://wrong.example/resource"] }))
+      .verified_artifact;
+    const views = [
+      exactView(widened.child, { claims: [widened.parent, widened.child] }),
+      exactView(wrongAudience),
+      exactView(wrongResource),
+    ];
+    for (const view of views) {
+      const value = await harness({ claimViews: [view] });
+      await expectRejected(value, value.request);
+      expect(value.store.acquireInputs).toHaveLength(0);
+      expect(value.counts.dpop()).toBe(0);
+    }
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local revalidates the opaque chain immediately before signing", async () => {
+    const active = await delegatedWorkload();
+    const activeView = exactView(active.child, { claims: [active.parent, active.child] });
+    const conflictedView = exactView(active.child, {
+      claims: [active.parent, active.child],
+      conflicted_claim_ids: [inspectVerifiedClaim(active.parent).claim_id],
+    });
+    const value = await harness({ claimViews: [activeView, activeView, conflictedView] });
+    const result = await authorizeAndSignAgentPublication(value.authority, value.request);
+
+    expect(result.verdict).toBe("indeterminate");
+    expect(value.counts.views()).toBe(3);
+    expect(value.counts.signer()).toBe(0);
+  });
+
   it("BLUE TEAM VALIDATION: synthetic/local rejects a wrong or substituted mTLS peer", async () => {
     const value = await harness({ sender: "mtls", peerIdentity: "x".repeat(43) });
     await expectRejected(value, value.request);
+    expect(value.counts.mtls()).toBe(0);
+    expect(value.store.acquireInputs).toHaveLength(0);
   });
 
-  it("BLUE TEAM VALIDATION: synthetic/local reauthenticates mTLS on an exact cached retry", async () => {
+  it("BLUE TEAM VALIDATION: synthetic/local never creates a retry terminal for unsupported mTLS", async () => {
     const value = await harness({ sender: "mtls" });
-    expect((await authorizeAndSignAgentPublication(value.authority, value.request)).verdict).toBe("accept");
+    await expectRejected(value, value.request);
     value.setPeerIdentity("x".repeat(43));
-
-    await expect(authorizeAndSignAgentPublication(value.authority, value.request)).resolves.toEqual({
-      verdict: "reject",
-      reason_code: "agent-sender-proof-invalid",
-    });
-    expect(value.counts.signer()).toBe(1);
+    await expectRejected(value, value.request);
+    expect(value.counts.views()).toBe(0);
+    expect(value.counts.mtls()).toBe(0);
+    expect(value.store.records.size).toBe(0);
   });
 
   it("BLUE TEAM VALIDATION: synthetic/local never exposes authorize-then-sign and rejects proof replay", async () => {
@@ -610,6 +758,37 @@ describe("agent workload publication authorization", () => {
     expect(store.commitCalls).toBe(1);
   });
 
+  it("BLUE TEAM VALIDATION: synthetic/local never exposes a cached store-selected reconciliation digest", async () => {
+    const value = await harness({ signerThrows: true });
+    const first = await authorizeAndSignAgentPublication(value.authority, value.request);
+    expect(first.verdict).toBe("indeterminate");
+    const [key, record] = [...value.store.records.entries()][0]!;
+    if (record.state !== "indeterminate") throw new Error("synthetic indeterminate record required");
+    const substituted = "ef".repeat(32);
+    value.store.records.set(key, { ...record, reconciliation_digest: substituted });
+
+    const retry = await authorizeAndSignAgentPublication(value.authority, value.request);
+    expect(retry).toEqual(first);
+    expect(retry).not.toEqual({ verdict: "indeterminate", reconciliation_digest: substituted });
+    expect(value.counts.signer()).toBe(1);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local authenticates post-write indeterminate readback locally", async () => {
+    const store = new MemoryStore();
+    store.substituteIndeterminateDigest = "ed".repeat(32);
+    const value = await harness({ store, signerThrows: true });
+
+    const first = await authorizeAndSignAgentPublication(value.authority, value.request);
+    const retry = await authorizeAndSignAgentPublication(value.authority, value.request);
+    expect(first.verdict).toBe("indeterminate");
+    expect(first).toEqual(retry);
+    expect(first).not.toEqual({
+      verdict: "indeterminate",
+      reconciliation_digest: store.substituteIndeterminateDigest,
+    });
+    expect(value.counts.signer()).toBe(1);
+  });
+
   it("returns the immutable committed output on an exact retry without replaying DPoP or signing", async () => {
     const value = await harness();
     const first = await authorizeAndSignAgentPublication(value.authority, value.request);
@@ -644,5 +823,62 @@ describe("agent workload publication authorization", () => {
     const proxied = new Proxy(structuredClone(value.request), {});
     await expectRejected(value, proxied);
     expect(value.counts.views()).toBe(0);
+
+    const deepUnexpected: Record<string, unknown> = {};
+    let cursor = deepUnexpected;
+    for (let depth = 0; depth < 128; depth += 1) {
+      const next: Record<string, unknown> = {};
+      cursor.next = next;
+      cursor = next;
+    }
+    const deep = { ...value.request, unexpected: deepUnexpected } as unknown as AgentPublicationRequest;
+    await expectRejected(value, deep);
+    expect(value.counts.views()).toBe(0);
+
+    let traps = 0;
+    const trapped = new Proxy({}, {
+      getPrototypeOf: () => { traps += 1; throw new Error("trap must remain cold"); },
+      ownKeys: () => { traps += 1; throw new Error("trap must remain cold"); },
+    });
+    await expectRejected(value, {
+      ...value.request,
+      unexpected: trapped,
+    } as unknown as AgentPublicationRequest);
+    expect(traps).toBe(0);
+    expect(value.counts.views()).toBe(0);
+
+    const outerTags = structuredClone(value.request);
+    outerTags.publication.tags = Array.from({ length: 1_025 }, () => ["t", "synthetic-local"]);
+    await expectRejected(value, outerTags);
+    expect(value.counts.views()).toBe(0);
+
+    const tagMembers = structuredClone(value.request);
+    tagMembers.publication.tags = [Array.from({ length: 65 }, () => "synthetic-local")];
+    await expectRejected(value, tagMembers);
+    expect(value.counts.views()).toBe(0);
+
+    const aggregate = structuredClone(value.request);
+    const largeMember = "x".repeat(4_096);
+    aggregate.publication.tags = Array.from(
+      { length: 81 },
+      () => Array.from({ length: 64 }, () => largeMember),
+    );
+    await expectRejected(value, aggregate);
+    expect(value.counts.views()).toBe(0);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects oversized malformed durable output before cryptographic work", async () => {
+    const value = await harness();
+    expect((await authorizeAndSignAgentPublication(value.authority, value.request)).verdict).toBe("accept");
+    const [key, record] = [...value.store.records.entries()][0]!;
+    if (record.state !== "committed") throw new Error("synthetic committed record required");
+    value.store.records.set(key, {
+      ...record,
+      output: { ...record.output, content: "x".repeat(16_777_217) },
+    });
+
+    const result = await authorizeAndSignAgentPublication(value.authority, value.request);
+    expect(result.verdict).toBe("indeterminate");
+    expect(value.counts.signer()).toBe(1);
   });
 });

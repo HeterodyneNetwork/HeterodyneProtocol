@@ -16,6 +16,9 @@ import {
   claimRevocationArtifactBindingDigest,
   inspectVerifiedClaim,
   inspectVerifiedClaimRevocation,
+  isClaimRevocationAuthorized,
+  verifyClaimChain,
+  type ClaimVerificationContext,
   type JsonValue,
   type VerifiedClaimArtifact,
   type VerifiedClaimRevocationArtifact,
@@ -123,6 +126,8 @@ type CapturedClaimView = Readonly<{
   repository_revision: number;
   fingerprint: string;
   workload_artifact: VerifiedClaimArtifact;
+  workload_chain: readonly VerifiedClaimArtifact[];
+  workload_chain_bindings: readonly string[];
   workload_binding: string;
   workload_claim_id: string;
   registration: WorkloadRegistration;
@@ -151,7 +156,7 @@ type VerifiedToken = Readonly<{
   token_id: string;
   generation: number;
   sender_key: string;
-  sender_kind: "dpop" | "mtls";
+  sender_kind: "dpop";
 }>;
 
 type PreparedAuthorization = Readonly<{
@@ -164,7 +169,6 @@ type PreparedAuthorization = Readonly<{
   proof_key: string;
   durable_key: string;
   binding_digest: string;
-  reconciliation_digest: string;
 }>;
 
 type VerifiedAgentPublicationAuthorization = Readonly<Record<never, never>>;
@@ -184,9 +188,130 @@ const MAX_COMPACT = 65_536;
 const MAX_CONTENT_BYTES = 16_777_216;
 const MAX_TAGS = 1_024;
 const MAX_TAG_MEMBERS = 64;
+const MAX_AUTHORITY_AGGREGATE_BYTES = 20_000_000;
 const SELECTED_SIGNER_CLAIM = "https://heterodyne.network/jwt/agent-selected-signer";
 const SIGNER_CLASS_CLAIM = "https://heterodyne.network/jwt/agent-signer-key-class";
 const ASSOCIATION_CLAIM = "https://heterodyne.network/jwt/agent-association";
+const CLAIM_NAMESPACE = "heterodyne.agent";
+const CLAIM_OPERATION = "heterodyne:agent:publish";
+
+type PreflightLimits = Readonly<{
+  max_depth: number;
+  max_nodes: number;
+  max_properties: number;
+  max_total_properties: number;
+  max_array_length: number;
+  max_string_bytes: number;
+  max_total_string_bytes: number;
+  max_byte_length: number;
+  max_total_bytes: number;
+}>;
+
+const REQUEST_LIMITS: PreflightLimits = Object.freeze({
+  max_depth: 4,
+  max_nodes: 70_000,
+  max_properties: 9,
+  max_total_properties: 70_000,
+  max_array_length: MAX_TAGS,
+  max_string_bytes: MAX_CONTENT_BYTES,
+  max_total_string_bytes: MAX_AUTHORITY_AGGREGATE_BYTES,
+  max_byte_length: 0,
+  max_total_bytes: 0,
+});
+const JWKS_LIMITS: PreflightLimits = Object.freeze({
+  max_depth: 8,
+  max_nodes: 4_096,
+  max_properties: 32,
+  max_total_properties: 4_096,
+  max_array_length: 256,
+  max_string_bytes: 65_536,
+  max_total_string_bytes: 1_048_576,
+  max_byte_length: 0,
+  max_total_bytes: 0,
+});
+const SMALL_CALLBACK_LIMITS: PreflightLimits = Object.freeze({
+  max_depth: 2,
+  max_nodes: 32,
+  max_properties: 8,
+  max_total_properties: 32,
+  max_array_length: 8,
+  max_string_bytes: MAX_STRING,
+  max_total_string_bytes: 16_384,
+  max_byte_length: 0,
+  max_total_bytes: 0,
+});
+const DURABLE_LIMITS: PreflightLimits = Object.freeze({
+  ...REQUEST_LIMITS,
+  max_depth: 5,
+  max_properties: 8,
+});
+
+function boundedClosedPreflight(value: unknown, limits: PreflightLimits): boolean {
+  const active = new Set<object>();
+  let nodes = 0;
+  let properties = 0;
+  let totalStringBytes = 0;
+  let totalBytes = 0;
+  const addString = (text: string): boolean => {
+    if (text.length > limits.max_string_bytes) return false;
+    const bytes = Buffer.byteLength(text, "utf8");
+    if (bytes > limits.max_string_bytes) return false;
+    totalStringBytes += bytes;
+    return totalStringBytes <= limits.max_total_string_bytes;
+  };
+  const visit = (current: unknown, depth: number): boolean => {
+    nodes += 1;
+    if (nodes > limits.max_nodes || depth > limits.max_depth) return false;
+    if (current === null || typeof current === "boolean") return true;
+    if (typeof current === "string") return addString(current);
+    if (typeof current === "number") return Number.isFinite(current);
+    if (typeof current !== "object" || utilTypes.isProxy(current)) return false;
+    if (current instanceof Uint8Array) {
+      if (Object.getPrototypeOf(current) !== Uint8Array.prototype
+        || current.byteLength > limits.max_byte_length) return false;
+      totalBytes += current.byteLength;
+      return totalBytes <= limits.max_total_bytes;
+    }
+    if (active.has(current)) return false;
+    active.add(current);
+    try {
+      if (Array.isArray(current)) {
+        if (Object.getPrototypeOf(current) !== Array.prototype) return false;
+        const length = Object.getOwnPropertyDescriptor(current, "length");
+        if (length === undefined || !("value" in length)
+          || !Number.isSafeInteger(length.value) || length.value < 0
+          || length.value > limits.max_array_length) return false;
+        const descriptors = Object.getOwnPropertyDescriptors(current);
+        const keys = Reflect.ownKeys(descriptors);
+        if (keys.length !== length.value + 1) return false;
+        properties += length.value;
+        if (properties > limits.max_total_properties) return false;
+        for (let index = 0; index < length.value; index += 1) {
+          const descriptor = descriptors[String(index)];
+          if (descriptor === undefined || !("value" in descriptor) || !descriptor.enumerable
+            || !visit(descriptor.value, depth + 1)) return false;
+        }
+        return true;
+      }
+      const descriptors = Object.getOwnPropertyDescriptors(current);
+      const keys = Reflect.ownKeys(descriptors);
+      if (Object.getPrototypeOf(current) !== Object.prototype
+        || keys.length > limits.max_properties
+        || keys.some((key) => typeof key !== "string")) return false;
+      properties += keys.length;
+      if (properties > limits.max_total_properties) return false;
+      for (const key of keys as string[]) {
+        const descriptor = descriptors[key];
+        if (descriptor === undefined || !("value" in descriptor) || !descriptor.enumerable
+          || !addString(key) || !visit(descriptor.value, depth + 1)) return false;
+      }
+      return true;
+    } finally {
+      active.delete(current);
+    }
+  };
+  return visit(value, 0);
+}
 
 const PROOF_REJECT = Object.freeze({
   verdict: "reject" as const,
@@ -274,6 +399,9 @@ function captureConfig(config: AgentPublicationAuthorizationAuthorityConfig): Au
     "sign_once",
   ], "agent publication authority configuration");
   const store = descriptors.store.value;
+  if (!boundedClosedPreflight(descriptors.jwks.value, JWKS_LIMITS)) {
+    throw new TypeError("bounded closed JWKS required");
+  }
   return Object.freeze({
     authority_id: boundedString(descriptors.authority_id.value, 256),
     trusted_now: callback<AgentPublicationAuthorizationAuthorityConfig["trusted_now"]>(
@@ -318,6 +446,37 @@ export function createAgentPublicationAuthorizationAuthority(
 
 function captureRequest(value: unknown): AgentPublicationRequest | null {
   try {
+    const descriptors = exactDataDescriptors(value, [
+      "compact_jwt",
+      "represented_persona",
+      "agent_id",
+      "signer",
+      "scope",
+      "ledger_generation",
+      "publication",
+      "attribution_profile",
+      "sender_proof",
+    ], "agent publication request");
+    const publication = exactDataDescriptors(descriptors.publication.value, [
+      "pubkey", "created_at", "kind", "tags", "content",
+    ], "unsigned agent publication");
+    const proofValue = descriptors.sender_proof.value;
+    if (proofValue === null || typeof proofValue !== "object" || utilTypes.isProxy(proofValue)) {
+      return null;
+    }
+    const proofKind = Object.getOwnPropertyDescriptor(proofValue, "kind");
+    if (proofKind === undefined || !("value" in proofKind)) return null;
+    exactDataDescriptors(proofValue, proofKind.value === "dpop"
+      ? ["kind", "compact", "method", "target", "nonce"]
+      : proofKind.value === "mtls" ? ["kind"] : [], "agent sender proof");
+    const tags = publication.tags.value;
+    if (!Array.isArray(tags) || utilTypes.isProxy(tags)
+      || Object.getPrototypeOf(tags) !== Array.prototype) return null;
+    const tagLength = Object.getOwnPropertyDescriptor(tags, "length");
+    if (tagLength === undefined || !("value" in tagLength)
+      || !Number.isSafeInteger(tagLength.value) || tagLength.value < 0
+      || tagLength.value > MAX_TAGS) return null;
+    if (!boundedClosedPreflight(value, REQUEST_LIMITS)) return null;
     const request = captureAuthorityInput(value) as AgentPublicationRequest;
     const expected = [
       "compact_jwt",
@@ -412,6 +571,12 @@ function snapshotOpaqueArray<T>(value: unknown, maximum: number): readonly T[] {
     if (descriptor === undefined || !("value" in descriptor) || descriptor.enumerable !== true) {
       throw new TypeError("array members must be data properties");
     }
+    if (descriptor.value === null || typeof descriptor.value !== "object"
+      || utilTypes.isProxy(descriptor.value)
+      || Object.getPrototypeOf(descriptor.value) !== Object.prototype
+      || Reflect.ownKeys(Object.getOwnPropertyDescriptors(descriptor.value)).length !== 0) {
+      throw new TypeError("opaque array members must be closed ordinary handles");
+    }
     result.push(descriptor.value as T);
   }
   return Object.freeze(result);
@@ -421,6 +586,7 @@ function captureClaimView(
   value: unknown,
   now: number,
   request: AgentPublicationRequest,
+  expectedAudience: string,
 ): CapturedClaimView {
   const descriptors = exactDataDescriptors(value, [
     "credential_ledger",
@@ -431,6 +597,19 @@ function captureClaimView(
     "conflicted_claim_ids",
     "ledger_state",
   ], "current claim authorization view");
+  exactDataDescriptors(descriptors.credential_ledger.value, [
+    "credential_ledger_persona", "credential_ledger_generation",
+  ], "current credential ledger binding");
+  if (!boundedClosedPreflight(descriptors.credential_ledger.value, SMALL_CALLBACK_LIMITS)
+    || !boundedClosedPreflight(descriptors.conflicted_claim_ids.value, {
+      ...SMALL_CALLBACK_LIMITS,
+      max_nodes: 257,
+      max_array_length: 256,
+      max_total_properties: 256,
+      max_total_string_bytes: 16_384,
+    })) {
+    throw new TypeError("bounded current claim authorization view required");
+  }
   const credential = captureAuthorityInput(descriptors.credential_ledger.value) as {
     credential_ledger_persona: string;
     credential_ledger_generation: number;
@@ -459,7 +638,14 @@ function captureClaimView(
   const writerState = revalidateLedgerWriterAuthorities(
     descriptors.ledger_state.value as CurrentClaimAuthorizationView["ledger_state"],
   );
-  if (writerState.verdict !== "accept") throw new TypeError("current writer authority invalid");
+  if (writerState.verdict !== "accept"
+    || !boundedClosedPreflight(writerState.writer_fingerprints, {
+      ...SMALL_CALLBACK_LIMITS,
+      max_nodes: 257,
+      max_array_length: 256,
+      max_total_properties: 256,
+      max_total_string_bytes: 16_384,
+    })) throw new TypeError("current writer authority invalid");
 
   const claimBindings = claims.map((artifact) => Object.freeze({
     semantic: inspectVerifiedClaim(artifact),
@@ -475,6 +661,7 @@ function captureClaimView(
       binding: claimRevocationArtifactBindingDigest(artifact),
       claim_id: inspected.claim_id,
       revoked_at: inspected.revoked_at,
+      artifact,
     });
   });
   if (new Set(revocationBindings.map(({ binding }) => binding)).size !== revocationBindings.length) {
@@ -492,8 +679,7 @@ function captureClaimView(
       || semantic.not_before > now
       || (semantic.expires_at !== undefined && now >= semantic.expires_at)
       || conflicts.includes(semantic.claim_id)
-      || revocationBindings.some((revocation) =>
-        revocation.claim_id === semantic.claim_id && revocation.revoked_at <= now)) return [];
+      || semantic.subject.type !== "jwk-thumbprint") return [];
     try {
       const registration = validateWorkloadRegistration(semantic.value);
       return registration.persona_key === request.represented_persona
@@ -511,6 +697,62 @@ function captureClaimView(
     || workload.semantic.subject.value !== registration.subject_jkt) {
     throw new TypeError("workload subject binding invalid");
   }
+  if (request.sender_proof.kind !== "dpop") {
+    throw new TypeError("no normative workload mTLS registration profile");
+  }
+  const claimsById = new Map(
+    claimBindings.map(({ semantic, artifact }) => [semantic.claim_id, artifact] as const),
+  );
+  const chain = verifyClaimChain(workload.artifact, claimsById);
+  const chainSemantics = chain.map(inspectVerifiedClaim);
+  const chainBindings = chain.map(claimArtifactBindingDigest);
+  const root = chainSemantics[0];
+  if (root === undefined
+    || root.issuer.type !== "nostr-secp256k1"
+    || root.issuer.value !== request.represented_persona
+    || workload.semantic.audience === undefined
+    || !workload.semantic.audience.includes(expectedAudience)
+    || workload.semantic.resources === undefined
+    || !workload.semantic.resources.includes(request.sender_proof.target)
+    || !registration.allowed_resources.includes(request.sender_proof.target)
+    || !registration.scopes.includes(CLAIM_OPERATION)) {
+    throw new TypeError("workload outer authorization restriction invalid");
+  }
+  if (chainSemantics.some((semantic) =>
+    semantic.claim_class !== "authorization"
+    || semantic.credential_ledger_persona !== credential.credential_ledger_persona
+    || semantic.credential_ledger_generation !== credential.credential_ledger_generation
+    || now < semantic.not_before
+    || (semantic.expires_at !== undefined && now >= semantic.expires_at)
+    || conflicts.includes(semantic.claim_id))) {
+    throw new TypeError("workload claim chain is not current");
+  }
+  const claimContext: ClaimVerificationContext = {
+    now,
+    audience: expectedAudience,
+    resource: request.sender_proof.target,
+    requested_namespace: CLAIM_NAMESPACE,
+    requested_operation: CLAIM_OPERATION,
+    expected_nonce: request.sender_proof.nonce,
+    used_nonces: new Set<string>(),
+    trusted_issuers: [{ type: "nostr-secp256k1", value: request.represented_persona }],
+    credential_ledger: credential,
+    repository_confirmed: new Set(claimBindings.map(({ semantic }) => semantic.claim_id)),
+    repository_conflicted: new Set(conflicts),
+    revocations,
+    subject_proof: null,
+  };
+  for (let index = 0; index < chain.length; index += 1) {
+    const targetArtifact = chain[index]!;
+    const targetId = chainSemantics[index]!.claim_id;
+    const prefix = chain.slice(0, index + 1);
+    if (revocationBindings.some((candidate) =>
+      candidate.claim_id === targetId
+      && candidate.revoked_at <= now
+      && isClaimRevocationAuthorized(targetArtifact, prefix, candidate.artifact, claimContext))) {
+      throw new TypeError("workload claim chain is revoked");
+    }
+  }
   const fingerprint = authorityBindingDigest("heterodyne-current-agent-claim-view-v1", {
     credential_ledger: credential,
     checkpoint_digest: descriptors.checkpoint_digest.value,
@@ -520,6 +762,16 @@ function captureClaimView(
     revocations: revocationBindings.map(({ binding }) => binding).sort(),
     conflicted_claim_ids: [...conflicts].sort(),
     writer_fingerprints: [...writerState.writer_fingerprints],
+    workload_chain: chainSemantics.map((semantic, index) => ({
+      claim_id: semantic.claim_id,
+      artifact_binding: chainBindings[index],
+    })),
+    authorization_context: {
+      audience: expectedAudience,
+      resource: request.sender_proof.target,
+      namespace: CLAIM_NAMESPACE,
+      operation: CLAIM_OPERATION,
+    },
   });
   return Object.freeze({
     credential_ledger: Object.freeze({ ...credential }),
@@ -527,6 +779,8 @@ function captureClaimView(
     repository_revision: descriptors.repository_revision.value as number,
     fingerprint,
     workload_artifact: workload.artifact,
+    workload_chain: chain,
+    workload_chain_bindings: Object.freeze(chainBindings),
     workload_binding: workload.binding,
     workload_claim_id: workload.semantic.claim_id,
     registration,
@@ -534,6 +788,10 @@ function captureClaimView(
 }
 
 function captureStatus(value: unknown): CapturedStatus {
+  exactDataDescriptors(value, ["generation", "state", "checkpoint"], "workload token status");
+  if (!boundedClosedPreflight(value, SMALL_CALLBACK_LIMITS)) {
+    throw new TypeError("bounded workload token status required");
+  }
   const captured = captureAuthorityInput(value) as {
     generation: number;
     state: "active" | "revoked";
@@ -560,6 +818,9 @@ function parseJwtClaims(compact: string): Record<string, JsonValue> {
   const parsed: unknown = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(decoded));
   if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
     throw new TypeError("JWT claims object required");
+  }
+  if (!boundedClosedPreflight(parsed, JWKS_LIMITS)) {
+    throw new TypeError("bounded JWT claims required");
   }
   return parsed as Record<string, JsonValue>;
 }
@@ -594,9 +855,8 @@ function verifyToken(
   }
   const capturedConfirmation = captureAuthorityInput(confirmation) as Record<string, JsonValue>;
   const senderKind = request.sender_proof.kind;
-  const senderKey = senderKind === "dpop"
-    ? capturedConfirmation.jkt
-    : capturedConfirmation["x5t#S256"];
+  if (senderKind !== "dpop") throw new TypeError("no normative workload mTLS registration profile");
+  const senderKey = capturedConfirmation.jkt;
   if (typeof senderKey !== "string" || !SHA256_BASE64URL.test(senderKey)) {
     throw new TypeError("sender key binding invalid");
   }
@@ -733,12 +993,10 @@ function attributedEvent(
 }
 
 function proofDigest(request: AgentPublicationRequest): string {
-  return request.sender_proof.kind === "dpop"
-    ? sha256String(request.sender_proof.compact)
-    : authorityBindingDigest("heterodyne-agent-mtls-proof-v1", {
-      compact_jwt: sha256String(request.compact_jwt),
-      publication: request.publication,
-    });
+  if (request.sender_proof.kind !== "dpop") {
+    throw new TypeError("no normative workload mTLS registration profile");
+  }
+  return sha256String(request.sender_proof.compact);
 }
 
 function durableRequest(
@@ -749,13 +1007,11 @@ function durableRequest(
   token: VerifiedToken,
   event: NostrUnsignedEvent,
 ): Omit<PreparedAuthorization, "now"> {
+  if (request.sender_proof.kind !== "dpop") {
+    throw new TypeError("no normative workload mTLS registration profile");
+  }
   const digest = proofDigest(request);
-  const proofKey = request.sender_proof.kind === "dpop"
-    ? digest
-    : authorityBindingDigest("heterodyne-agent-mtls-operation-v1", {
-      token_id: token.token_id,
-      proof_digest: digest,
-    });
+  const proofKey = digest;
   const durableKey = authorityBindingDigest("heterodyne-agent-publication-key-v1", {
     authority_id: authority.authority_id,
     sender_kind: request.sender_proof.kind,
@@ -771,6 +1027,13 @@ function durableRequest(
     claim_view_fingerprint: view.fingerprint,
     workload_artifact_binding: view.workload_binding,
     workload_claim_id: view.workload_claim_id,
+    workload_chain_bindings: view.workload_chain_bindings,
+    claim_authorization_context: {
+      audience: authority.expected_audience,
+      resource: request.sender_proof.target,
+      namespace: CLAIM_NAMESPACE,
+      operation: CLAIM_OPERATION,
+    },
     status_fingerprint: status.fingerprint,
     represented_persona: request.represented_persona,
     agent_id: request.agent_id,
@@ -790,10 +1053,6 @@ function durableRequest(
     proof_key: proofKey,
     durable_key: durableKey,
     binding_digest: bindingDigest,
-    reconciliation_digest: authorityBindingDigest(
-      "heterodyne-agent-publication-reconciliation-v1",
-      { durable_key: durableKey, binding_digest: bindingDigest },
-    ),
   });
 }
 
@@ -803,7 +1062,12 @@ async function prepare(
 ): Promise<PreparedAuthorization> {
   const now = authority.trusted_now();
   if (!Number.isSafeInteger(now) || now < 0) throw new TypeError("trusted time invalid");
-  const view = captureClaimView(await authority.load_claim_view(), now, request);
+  const view = captureClaimView(
+    await authority.load_claim_view(),
+    now,
+    request,
+    authority.expected_audience,
+  );
   const token = verifyToken(authority, request, view, now);
   const status = captureStatus(await authority.load_status(token.subject));
   if (
@@ -832,15 +1096,7 @@ async function verifySenderProof(
   request: AgentPublicationRequest,
   prepared: PreparedAuthorization,
 ): Promise<boolean> {
-  if (request.sender_proof.kind === "mtls") {
-    let identity: unknown;
-    try {
-      identity = authority.read_mtls_peer_identity();
-    } catch {
-      return false;
-    }
-    return identity === prepared.token.sender_key && SHA256_BASE64URL.test(identity);
-  }
+  if (request.sender_proof.kind !== "dpop") return false;
   try {
     const proof = await authority.consume_dpop(Object.freeze({
       compact: request.sender_proof.compact,
@@ -849,6 +1105,8 @@ async function verifySenderProof(
       nonce: request.sender_proof.nonce,
     }));
     if (proof === null) return false;
+    exactDataDescriptors(proof, ["proof_digest", "sender_key"], "DPoP consumption result");
+    if (!boundedClosedPreflight(proof, SMALL_CALLBACK_LIMITS)) return false;
     const captured = captureAuthorityInput(proof) as {
       proof_digest: string;
       sender_key: string;
@@ -900,6 +1158,32 @@ function captureDurableRecord(
   value: unknown,
 ): DurableAuthorityRecord<NostrSignedEvent> | null {
   try {
+    if (value === null || typeof value !== "object" || utilTypes.isProxy(value)
+      || Object.getPrototypeOf(value) !== Object.prototype) return null;
+    const stateDescriptor = Object.getOwnPropertyDescriptor(value, "state");
+    if (stateDescriptor === undefined || !("value" in stateDescriptor)
+      || typeof stateDescriptor.value !== "string") return null;
+    const recordKeys = stateDescriptor.value === "executing"
+      ? ["state", "revision", "binding_digest", "execution_token"]
+      : stateDescriptor.value === "indeterminate"
+        ? ["state", "revision", "binding_digest", "execution_token", "reconciliation_digest"]
+        : stateDescriptor.value === "committed"
+          ? ["state", "revision", "binding_digest", "execution_token", "output_digest", "output"]
+          : stateDescriptor.value === "available"
+            ? ["state", "revision", "binding_digest", "output"]
+            : null;
+    if (recordKeys === null) return null;
+    const recordDescriptors = exactDataDescriptors(
+      value,
+      recordKeys,
+      "durable agent publication record",
+    );
+    if (stateDescriptor.value === "committed" || stateDescriptor.value === "available") {
+      exactDataDescriptors(recordDescriptors.output.value, [
+        "id", "pubkey", "created_at", "kind", "tags", "content", "sig",
+      ], "durable agent publication output");
+    }
+    if (!boundedClosedPreflight(value, DURABLE_LIMITS)) return null;
     const captured = captureAuthorityInput(value) as DurableAuthorityRecord<NostrSignedEvent>;
     if (!Number.isSafeInteger(captured.revision) || captured.revision < 0
       || !LOWER_HEX_32.test(captured.binding_digest)) return null;
@@ -953,7 +1237,38 @@ function indeterminate(reconciliationDigest: string): AgentPublicationDecision {
   return Object.freeze({ verdict: "indeterminate" as const, reconciliation_digest: reconciliationDigest });
 }
 
+function localReconciliationDigest(
+  authority: AuthorityRecord,
+  prepared: PreparedAuthorization,
+  executionToken: string | null,
+): string {
+  return authorityBindingDigest("heterodyne-agent-publication-reconciliation-v2", {
+    authority_id: authority.authority_id,
+    durable_key: prepared.durable_key,
+    binding_digest: prepared.binding_digest,
+    execution_state: executionToken === null ? "unresolved-before-execution" : "executing",
+    execution_token: executionToken,
+    request_state: {
+      token_digest: prepared.token.compact_digest,
+      proof_digest: prepared.proof_digest,
+      proof_key: prepared.proof_key,
+      claim_view_fingerprint: prepared.view.fingerprint,
+      status_fingerprint: prepared.status.fingerprint,
+      attributed_event: prepared.attributed_event,
+    },
+  });
+}
+
+function localIndeterminate(
+  authority: AuthorityRecord,
+  prepared: PreparedAuthorization,
+  executionToken: string | null,
+): AgentPublicationDecision {
+  return indeterminate(localReconciliationDigest(authority, prepared, executionToken));
+}
+
 function cachedDecision(
+  authority: AuthorityRecord,
   record: DurableAuthorityRecord<NostrSignedEvent>,
   prepared: PreparedAuthorization,
 ): AgentPublicationDecision | null {
@@ -964,8 +1279,18 @@ function cachedDecision(
     ) return null;
     return Object.freeze({ verdict: "accept" as const, output: event });
   }
-  if (record.state === "indeterminate") return indeterminate(record.reconciliation_digest);
-  if (record.state === "executing") return indeterminate(prepared.reconciliation_digest);
+  if (record.state === "indeterminate") {
+    const local = localReconciliationDigest(authority, prepared, record.execution_token);
+    if (record.reconciliation_digest !== local) {
+      // The store record remains absorbing, but its substituted identifier is
+      // never surfaced as reconciliation authority.
+      return indeterminate(local);
+    }
+    return indeterminate(local);
+  }
+  if (record.state === "executing") {
+    return localIndeterminate(authority, prepared, record.execution_token);
+  }
   return null;
 }
 
@@ -974,23 +1299,29 @@ async function markIndeterminate(
   prepared: PreparedAuthorization,
   executionToken: string,
 ): Promise<AgentPublicationDecision> {
+  const reconciliationDigest = localReconciliationDigest(
+    authority,
+    prepared,
+    executionToken,
+  );
   try {
     await authority.store.markIndeterminate(Object.freeze({
       key: prepared.durable_key,
       binding_digest: prepared.binding_digest,
       execution_token: executionToken,
-      reconciliation_digest: prepared.reconciliation_digest,
+      reconciliation_digest: reconciliationDigest,
     }));
     const loaded = await loadRecord(authority.store, prepared.durable_key);
     if (loaded?.state === "indeterminate"
       && loaded.binding_digest === prepared.binding_digest
-      && loaded.execution_token === executionToken) {
-      return indeterminate(loaded.reconciliation_digest);
+      && loaded.execution_token === executionToken
+      && loaded.reconciliation_digest === reconciliationDigest) {
+      return indeterminate(reconciliationDigest);
     }
   } catch {
     // The deterministic local digest remains the only safe terminal result.
   }
-  return indeterminate(prepared.reconciliation_digest);
+  return indeterminate(reconciliationDigest);
 }
 
 function failureReason(error: unknown): AgentPublicationDecision {
@@ -1005,6 +1336,7 @@ export async function authorizeAndSignAgentPublication(
   if (authorityRecord === undefined) return PROOF_REJECT;
   const captured = captureRequest(request);
   if (captured === null) return PROOF_REJECT;
+  if (captured.sender_proof.kind !== "dpop") return PROOF_REJECT;
   if (captured.publication.pubkey !== captured.signer || !LOWER_HEX_32.test(captured.signer)) {
     return SIGNER_REJECT;
   }
@@ -1016,17 +1348,14 @@ export async function authorizeAndSignAgentPublication(
     return failureReason(error);
   }
 
-  if (captured.sender_proof.kind === "mtls"
-    && !await verifySenderProof(authorityRecord, captured, prepared)) return PROOF_REJECT;
-
   let loaded = await loadRecord(authorityRecord.store, prepared.durable_key);
-  if (loaded === undefined) return indeterminate(prepared.reconciliation_digest);
+  if (loaded === undefined) return localIndeterminate(authorityRecord, prepared, null);
   if (loaded !== null) {
-    return cachedDecision(loaded, prepared) ?? indeterminate(prepared.reconciliation_digest);
+    return cachedDecision(authorityRecord, loaded, prepared)
+      ?? localIndeterminate(authorityRecord, prepared, null);
   }
 
-  if (captured.sender_proof.kind === "dpop"
-    && !await verifySenderProof(authorityRecord, captured, prepared)) return PROOF_REJECT;
+  if (!await verifySenderProof(authorityRecord, captured, prepared)) return PROOF_REJECT;
 
   let current: PreparedAuthorization;
   try {
@@ -1049,13 +1378,16 @@ export async function authorizeAndSignAgentPublication(
     }));
   } catch {
     discardInternalAuthorization(authorization);
-    return indeterminate(prepared.reconciliation_digest);
+    return localIndeterminate(authorityRecord, prepared, executionToken);
   }
   if (acquired !== "acquired") {
     discardInternalAuthorization(authorization);
     loaded = await loadRecord(authorityRecord.store, prepared.durable_key);
-    if (loaded === undefined || loaded === null) return indeterminate(prepared.reconciliation_digest);
-    return cachedDecision(loaded, prepared) ?? indeterminate(prepared.reconciliation_digest);
+    if (loaded === undefined || loaded === null) {
+      return localIndeterminate(authorityRecord, prepared, null);
+    }
+    return cachedDecision(authorityRecord, loaded, prepared)
+      ?? localIndeterminate(authorityRecord, prepared, null);
   }
 
   const executing = await loadRecord(authorityRecord.store, prepared.durable_key);
@@ -1065,13 +1397,30 @@ export async function authorizeAndSignAgentPublication(
     discardInternalAuthorization(authorization);
     return markIndeterminate(authorityRecord, prepared, executionToken);
   }
+  let signerCurrent: PreparedAuthorization;
+  try {
+    signerCurrent = await prepare(authorityRecord, captured);
+  } catch {
+    discardInternalAuthorization(authorization);
+    return markIndeterminate(authorityRecord, prepared, executionToken);
+  }
+  if (!samePreparation(prepared, signerCurrent)) {
+    discardInternalAuthorization(authorization);
+    return markIndeterminate(authorityRecord, prepared, executionToken);
+  }
+  prepared = signerCurrent;
   const authorized = consumeInternalAuthorization(authority, authorization, prepared.binding_digest);
   if (authorized === null) return markIndeterminate(authorityRecord, prepared, executionToken);
 
   let signed: NostrSignedEvent | null;
   try {
     const raw = await authorityRecord.sign_once(executionToken, authorized.attributed_event);
-    signed = snapshotAndVerifyAgentPublication(raw, authorized.attributed_event);
+    exactDataDescriptors(raw, [
+      "id", "pubkey", "created_at", "kind", "tags", "content", "sig",
+    ], "agent publication signer result");
+    signed = boundedClosedPreflight(raw, REQUEST_LIMITS)
+      ? snapshotAndVerifyAgentPublication(raw, authorized.attributed_event)
+      : null;
   } catch {
     signed = null;
   }
@@ -1095,7 +1444,9 @@ export async function authorizeAndSignAgentPublication(
   if (committed !== "committed") {
     if (committed === "conflict") {
       loaded = await loadRecord(authorityRecord.store, prepared.durable_key);
-      const raced = loaded === undefined || loaded === null ? null : cachedDecision(loaded, prepared);
+      const raced = loaded === undefined || loaded === null
+        ? null
+        : cachedDecision(authorityRecord, loaded, prepared);
       if (raced?.verdict === "accept" && jcsCanonicalize(raced.output) === jcsCanonicalize(signed)) {
         return raced;
       }
@@ -1110,7 +1461,7 @@ export async function authorizeAndSignAgentPublication(
     || terminal.output_digest !== digest) {
     return markIndeterminate(authorityRecord, prepared, executionToken);
   }
-  const decision = cachedDecision(terminal, prepared);
+  const decision = cachedDecision(authorityRecord, terminal, prepared);
   return decision?.verdict === "accept"
     ? decision
     : markIndeterminate(authorityRecord, prepared, executionToken);

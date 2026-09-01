@@ -2399,13 +2399,24 @@ A projected JWT never replaces canonical private-ledger state. Client
 Credentials remains prohibited; a separately integrated sender-constrained
 HTTPS workload profile is required before that grant can be added.
 
+The v1 workload-registration schema allocates only the DPoP/JWK subject-proof
+form. Consequently the atomic workload-publication boundary in this release
+MUST accept only DPoP with `cnf.jkt`. It MUST reject mutual TLS before reading
+current claim or token state, peer identity, durable state, or signing state.
+Mutual-TLS workload publication requires a future normative registration and
+schema allocation that distinguishes a certificate thumbprint from a JWK
+thumbprint and binds that signed method-specific identity; local configuration
+alone MUST NOT certify that authority.
+
 The workload-publication boundary is one atomic operation equivalent to
 `authorizeAndSignAgentPublication`; no conforming interface returns a
 caller-consumable pre-sign authorization, signing capability, private key, or
 post-validation boolean. Its constructor captures one authority identifier,
 trusted clock, exact issuer and audience, JWKS, current claim-view and token-
-status resolvers, DPoP consumer, mutual-TLS peer-identity reader, durable
-execute-once store, and signing callback. Replacing any constructor input or
+status resolvers, DPoP consumer, future-reserved mutual-TLS peer-identity
+reader, durable execute-once store, and signing callback. The reader is
+captured for interface compatibility but MUST NOT be called or grant authority
+under the v1 DPoP-only registration. Replacing any constructor input or
 callback after construction MUST NOT affect an operation.
 
 For this boundary, `client_id` is the exact requested agent identifier and
@@ -2426,22 +2437,42 @@ current claim-view checkpoint. A conflicted, revoked, expired, absent,
 non-opaque, multiply selected, or writer-unauthorized workload claim grants no
 publication authority.
 
+Selection of the workload leaf is not authorization by itself. The boundary
+MUST resolve its complete root-to-leaf opaque verified-artifact chain from the
+current view, prove every issuer edge and attenuation, and require every
+ancestor and the leaf to be repository-confirmed, current in the exact
+credential-ledger generation, within time, unconflicted, and not validly
+revoked. The trust root is the exact represented persona key. For this
+publication effect the signed outer claim audience is the configured exact
+resource-server audience, the signed outer resource is the exact DPoP target,
+the namespace is `heterodyne.agent`, and the operation/purpose is exactly
+`heterodyne:agent:publish`; the leaf's registered resources and normalized
+scope MUST also include those exact values. The complete ordered chain and
+this authorization context are part of the durable binding.
+
 A DPoP request supplies the exact compact proof bytes plus method, target, and
 nonce to the constructor-captured consuming verifier. Its returned sender key
 MUST equal both `cnf.jkt` and the workload registration's subject thumbprint;
 the SHA-256 digest of the exact compact bytes is part of the durable binding,
 so the same proof cannot authorize a different token, request, publication, or
-authority. A mutual-TLS request instead captures the authenticated peer
-certificate identity from the constructor-captured reader and requires exact
-equality with both `cnf.x5t#S256` and that registered subject thumbprint. No
-peer identity or proof-validity assertion is accepted from the publication
-request.
+authority. A mutual-TLS request is unsupported and fails closed as specified
+above. No peer identity or proof-validity assertion is accepted from the
+publication request.
 
 Before reading current state, the boundary descriptor-captures and bounds the
 complete closed request, including the compact JWT, proof, unsigned Nostr
-event and every nested tag. It verifies the JWT signature and complete
+event and every nested tag. Before recursive capture, canonicalization,
+cryptographic hashing, or verification, the same rule applies to constructor
+JWKS, decoded JWT claims, current-view data components, token status, DPoP
+consumer results, durable records and outputs, and signer results. Each input
+has fixed depth, node, own-member, dense-array/list, per-string/byte and
+aggregate-string/byte limits; a proxy, accessor, symbol, exotic prototype,
+sparse array, cycle, unexpected key, or exceeded limit fails closed without
+invoking a later callback. It verifies the JWT signature and complete
 bindings, consumes DPoP when applicable, then reloads and revalidates the
-claim view and token status immediately before the durable acquire/CAS. Any
+complete claim chain, claim view, and token status immediately before the
+durable acquire/CAS and again after exact `executing` readback immediately
+before invoking the signer. Any
 view, checkpoint, writer set, status, generation, or binding change fails
 closed. Only then does it mint a module-private one-use authorization bound to
 the exact attributed unsigned event. The signer is invoked only after a
@@ -2457,6 +2488,15 @@ reservation, signer throw, unverifiable signer return, unknown terminal write,
 or unverifiable readback returns a stable indeterminate reconciliation digest
 and never retries the signing effect. A proof conflict or any stale/mismatched
 authorization input rejects without calling the signer.
+
+Every indeterminate reconciliation digest is derived locally with a distinct
+domain from the exact authority, request/durable binding, attributed event,
+current claim/status fingerprints, and either the exact persisted execution
+token or the explicit unresolved-before-execution state. A store-returned
+digest is never authoritative: cached and post-write indeterminate records
+MUST be checked against the local derivation, and a mismatch MUST NOT be
+exposed or permit re-execution. Exact retries with the same persisted execution
+token return the same local digest.
 
 An internal Social publication boundary MUST atomically validate, attribute,
 sign, and verify; it MUST NOT split those actions across caller-consumable
