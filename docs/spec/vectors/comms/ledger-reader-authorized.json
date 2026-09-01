@@ -28,9 +28,13 @@
   "expected_output": {
     "verdict": "accept",
     "authorization": {
+      "verdict": "accept",
       "allowed": true,
       "state": "active",
-      "reason_code": null
+      "disposition": "executed",
+      "result": {
+        "access": "granted"
+      }
     }
   }
 }

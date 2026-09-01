@@ -1,17 +1,15 @@
 {
-  "vector_id": "comms/claim-repository-unconfirmed",
+  "vector_id": "comms/claim-authorization-effect-indeterminate",
   "vector_schema_version": "3.0.0",
   "owner_document": "comms",
   "spec_refs": [
-    "heterodyne:comms#comms-claim-ledger"
+    "heterodyne:comms#comms-claim-verification"
   ],
   "invariants": [
-    "COMMS-I-CLAIM-REPOSITORY-AUTHORITY"
+    "COMMS-I-CLAIM-AUTHENTICITY"
   ],
-  "reason_codes": [
-    "claim-repository-unconfirmed"
-  ],
-  "description": "A valid persona authorization remains provisional until canonical private claim-repository state confirms it.",
+  "reason_codes": [],
+  "description": "A durable claim effect with no known terminal outcome records one fail-closed reconciliation state without exposing a result.",
   "direction": "consume",
   "input": {
     "claim": {
@@ -59,15 +57,13 @@
         "profile_revision": 2
       }
     },
-    "repository_confirmed_claim_ids": []
+    "idempotency_key": "current-claim-authorization-effect-indeterminate:current-vector",
+    "effect_digest": "e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6"
   },
   "expected_output": {
-    "verdict": "reject",
-    "reason_code": "claim-repository-unconfirmed",
-    "evaluator_output": {
-      "allowed": false,
-      "state": "provisional",
-      "reason_code": "claim-repository-unconfirmed"
-    }
+    "verdict": "indeterminate",
+    "allowed": false,
+    "state": "active",
+    "reason_code": "claim-authorization-effect-indeterminate"
   }
 }

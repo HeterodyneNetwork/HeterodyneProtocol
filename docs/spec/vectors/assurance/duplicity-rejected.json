@@ -20,7 +20,6 @@
       "recovery_authority": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
     },
     "presented_head": "5e42684ee4f5c3c754487dff44d8b5ffec5b601d5893e34bb726a6ec3b846e66",
-    "downgrade": null,
     "authorized_successors": [
       "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"

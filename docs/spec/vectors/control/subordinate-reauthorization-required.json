@@ -14,10 +14,7 @@
   "description": "The current Control policy boundary rejects subordinate reauthorization required.",
   "direction": "consume",
   "input": {
-    "authority_signature_valid": true,
-    "inventory_digest_matches": true,
-    "transition_evidence_valid": true,
-    "subordinate_reauthorized": false
+    "evidence": "required subordinate fresh authorization is absent"
   },
   "expected_output": {
     "verdict": "reject",

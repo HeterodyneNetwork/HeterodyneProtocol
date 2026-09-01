@@ -10,6 +10,7 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `assurance/associated-key-subject-proof-required` | assurance | `heterodyne-assurance-associated-key-v1` | `ASSURANCE-I-ASSOCIATED-KEY-BOUNDS` | `assurance-associated-key-subject-proof-required` | `heterodyne:assurance#assurance-associated-keys` |
 | `assurance/authority-at-compromise-cutoff` | assurance | — | `ASSURANCE-I-COMPROMISE-CUTOFF` | `assurance-compromise-cutoff` | `heterodyne:assurance#assurance-compromise` |
 | `assurance/compromise-subordinate-continuation-forbidden` | assurance | — | `ASSURANCE-I-COMPROMISE-CUTOFF`<br>`ASSURANCE-I-NO-IMPLICIT-CONTINUATION` | `assurance-subordinate-continuation-forbidden` | `heterodyne:assurance#assurance-compromise` |
+| `assurance/dual-consent-downgrade-accepted` | assurance | `heterodyne-assurance-active-key-acceptance-v1` | `ASSURANCE-I-PIN-DOWNGRADE` | — | `heterodyne:assurance#assurance-downgrade-resistance` |
 | `assurance/duplicity-rejected` | assurance | — | `ASSURANCE-I-SUCCESSION-NON-ALIASING` | `assurance-duplicity` | `heterodyne:assurance#assurance-chain-validation` |
 | `assurance/enrollment-competing-inception` | assurance | — | `ASSURANCE-I-ENROLLMENT-WINDOWED` | `assurance-enrollment-contested` | `heterodyne:assurance#assurance-enrollment-window` |
 | `assurance/enrollment-forged-contest-ignored` | assurance | — | `ASSURANCE-I-CORE-OPTIONALITY`<br>`ASSURANCE-I-ENROLLMENT-WINDOWED` | — | `heterodyne:assurance#assurance-enrollment-window` |
@@ -31,7 +32,6 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `assurance/profile-heterodyne-assurance-enrollment-inception-v1` | assurance | `heterodyne-assurance-enrollment-inception-v1` | `ASSURANCE-I-RECIPROCAL-ENROLLMENT` | — | `heterodyne:assurance#assurance-security` |
 | `assurance/profile-heterodyne-assurance-succession-v1` | assurance | `heterodyne-assurance-succession-v1` | `ASSURANCE-I-TRANSITION-PROOF-BINDING` | — | `heterodyne:assurance#assurance-security` |
 | `assurance/reciprocal-proof-invalid` | assurance | — | `ASSURANCE-I-RECIPROCAL-ENROLLMENT` | `assurance-reciprocal-proof-invalid` | `heterodyne:assurance#assurance-reciprocal-enrollment` |
-| `assurance/retired-key-post-compromise` | assurance | — | `ASSURANCE-I-COMPROMISE-CUTOFF` | `revoked_key_post_compromise` | `heterodyne:assurance#assurance-retired-wire-profiles` |
 | `assurance/succession-authority-invalid` | assurance | — | `ASSURANCE-I-TRANSITION-PROOF-BINDING` | `assurance-authority-invalid` | `heterodyne:assurance#assurance-succession` |
 | `assurance/succession-head-mismatch` | assurance | — | `ASSURANCE-I-TRANSITION-PROOF-BINDING` | `assurance-head-mismatch` | `heterodyne:assurance#assurance-chain-validation` |
 | `assurance/succession-new-key-acceptance-invalid` | assurance | — | `ASSURANCE-I-TRANSITION-PROOF-BINDING` | `assurance-new-key-acceptance-invalid` | `heterodyne:assurance#assurance-succession` |

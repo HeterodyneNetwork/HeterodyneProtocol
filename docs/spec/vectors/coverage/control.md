@@ -9,13 +9,8 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | Vector | Owner | Profile | Invariants | Reason codes | Spec references |
 |---|---|---|---|---|---|
 | `control/activation-binding-mismatch` | control | — | `CONTROL-I-NIP46-OIDC-ACTIVATION` | `control-activation-binding-mismatch` | `heterodyne:control#control-oidc-activation` |
-| `control/agent-attribution-bypass-prohibited` | control | — | `CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING` | `agent-attribution-bypass-prohibited` | `heterodyne:control#control-agent-requirements` |
-| `control/agent-human-profile-prohibited` | control | — | `CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING` | `agent-human-profile-prohibited` | `heterodyne:control#control-agent-requirements` |
 | `control/agent-intent-invalid` | control | — | `CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING` | `control-agent-intent-invalid` | `heterodyne:control#control-agent-requirements` |
-| `control/agent-key-access-prohibited` | control | — | `CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING` | `agent-key-access-prohibited` | `heterodyne:control#control-agent-requirements` |
-| `control/agent-method-prohibited` | control | — | `CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING` | `agent-method-prohibited` | `heterodyne:control#control-agent-requirements` |
 | `control/agent-rate-limited` | control | — | `CONTROL-I-OPERATION-AT-MOST-ONCE` | `agent-rate-limited` | `heterodyne:control#control-agent-requirements` |
-| `control/agent-resource-denied` | control | — | `CONTROL-I-EXACT-SIGNER-GRANT` | `agent-resource-denied` | `heterodyne:control#control-agent-requirements` |
 | `control/agent-size-exceeded` | control | — | `CONTROL-I-EXACT-SIGNER-GRANT` | `agent-size-exceeded` | `heterodyne:control#control-agent-requirements` |
 | `control/attribution-binding-mismatch` | control | — | `CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING` | `control-attribution-binding-mismatch` | `heterodyne:control#control-agent-requirements` |
 | `control/attribution-required` | control | — | `CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING` | `control-attribution-required` | `heterodyne:control#control-agent-requirements` |
@@ -51,8 +46,6 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `control/profile-heterodyne-control-marmot-frame-v1` | control | `heterodyne-control-marmot-frame-v1` | `CONTROL-I-MARMOT-GRANT-CONFINEMENT` | — | `heterodyne:control#control-security` |
 | `control/refresh-prohibited` | control | — | `CONTROL-I-CLIENT-KEY-CONFINEMENT` | `control-refresh-prohibited` | `heterodyne:control#control-token` |
 | `control/request-expired` | control | — | `CONTROL-I-OPERATION-AT-MOST-ONCE` | `control-request-expired` | `heterodyne:control#control-request-processing` |
-| `control/request-id-conflict` | control | — | `CONTROL-I-OPERATION-AT-MOST-ONCE` | `control-request-id-conflict` | `heterodyne:control#control-request-processing` |
-| `control/signed-event-invalid` | control | — | `CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING` | `control-signed-event-invalid` | `heterodyne:control#control-agent-requirements` |
 | `control/signer-binding-mismatch` | control | — | `CONTROL-I-EXACT-SIGNER-GRANT` | `control-signer-binding-mismatch` | `heterodyne:control#control-signer-grants` |
 | `control/signer-effect-indeterminate` | control | — | `CONTROL-I-OPERATION-AT-MOST-ONCE` | — | `heterodyne:control#control-agent-requirements` |
 | `control/signer-unavailable` | control | — | `CONTROL-I-NO-SIGNER-FALLBACK` | `control-signer-unavailable` | `heterodyne:control#control-signer-selection` |

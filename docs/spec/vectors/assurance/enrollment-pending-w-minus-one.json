@@ -55,14 +55,40 @@
       "id": "5e42684ee4f5c3c754487dff44d8b5ffec5b601d5893e34bb726a6ec3b846e66",
       "sig": "b0eddc1eee27f8d80f036d8b4bcf6f0906c6ee7a3f599fc6a47ed1535e92e16ac7b82fd171ab0ec12d741407dae410c6a6e846387dd5bd437bd9c23ce8f1e3e5"
     },
-    "trusted_now": 1785700000,
-    "evidence": {
-      "local_first_observed_at": 1785095201,
-      "witness_receipts": [],
-      "contests": [],
-      "competing_inceptions": [],
-      "authoritative_pin": null
-    }
+    "authority_id": "current-vector-assurance-observer",
+    "journal_integrity_key": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "witness_policy": {
+      "policy_digest": "d437bace89606af038e1876321b42209f976d58061dd654a2a618180eac72521",
+      "minimum_weight": 1,
+      "witnesses": [
+        [
+          "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+          1
+        ],
+        [
+          "774ae7f858a9411e5ef4246b70c65aac5649980be5c17891bbec17895da008cb",
+          1
+        ]
+      ]
+    },
+    "steps": [
+      {
+        "at": 1785095201,
+        "evidence": {
+          "witness_receipts": [],
+          "contests": [],
+          "competing_enrollments": []
+        }
+      },
+      {
+        "at": 1785700000,
+        "evidence": {
+          "witness_receipts": [],
+          "contests": [],
+          "competing_enrollments": []
+        }
+      }
+    ]
   },
   "expected_output": {
     "verdict": "reject",

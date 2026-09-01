@@ -14,11 +14,8 @@
   "description": "A requested publisher acknowledgement is rejected until its exact bytes cross the configured durability boundary.",
   "direction": "produce",
   "input": {
-    "signed_event_bytes_preserved": true,
-    "encrypted_media_bytes_preserved": true,
-    "durable_local": false,
-    "configured_host_acceptances": 0,
-    "acknowledgement_requested": true
+    "receipt_state": "fresh-unregistered-sentinel",
+    "append_attempted": false
   },
   "expected_output": {
     "verdict": "reject",

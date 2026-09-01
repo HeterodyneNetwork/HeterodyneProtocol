@@ -14,29 +14,11 @@
   "description": "A request outside one inherited role-path ceiling is rejected even when a wider workspace ceiling contains it.",
   "direction": "consume",
   "input": {
-    "authenticated_current_state": true,
-    "explicit_grant": true,
-    "carrier_only_evidence": false,
+    "actor_account": "4d4b6cd1361032ca9bd2aeb9d900aa4d45d9ead80ac9423374c451a7254d0766",
     "requested_capabilities": [
       "write"
     ],
-    "workspace_ceiling": [
-      "read",
-      "write"
-    ],
-    "role_path_ceilings": [
-      [
-        "read",
-        "write"
-      ],
-      [
-        "read"
-      ]
-    ],
-    "grant_capabilities": [
-      "read"
-    ],
-    "revoked_effective": false
+    "current_state": "authenticated-private"
   },
   "expected_output": {
     "verdict": "reject",

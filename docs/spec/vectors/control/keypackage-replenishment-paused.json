@@ -14,16 +14,7 @@
   "description": "The current Control policy boundary rejects keypackage replenishment paused.",
   "direction": "consume",
   "input": {
-    "keypackage_valid": true,
-    "member_count": 2,
-    "node_account_matches": true,
-    "entitlement_state": "none",
-    "resource_available": true,
-    "welcome_rate_remaining": 1,
-    "replenishment_requested": true,
-    "replenishment_rate_remaining": 1,
-    "pending_at_cap": true,
-    "method": "control.enrollment.start"
+    "evidence": "authoritative inventory has paused replenishment"
   },
   "expected_output": {
     "verdict": "reject",

@@ -65,36 +65,59 @@
       "id": "5e42684ee4f5c3c754487dff44d8b5ffec5b601d5893e34bb726a6ec3b846e66",
       "sig": "b0eddc1eee27f8d80f036d8b4bcf6f0906c6ee7a3f599fc6a47ed1535e92e16ac7b82fd171ab0ec12d741407dae410c6a6e846387dd5bd437bd9c23ce8f1e3e5"
     },
-    "trusted_now": 1785700000,
-    "evidence": {
-      "local_first_observed_at": 1785095200,
-      "witness_receipts": [],
-      "contests": [
-        {
-          "observed_at": 1785095201,
-          "event": {
-            "pubkey": "acd484e2f0c7f65309ad178a9f559abde09796974c57e714c35f110dfc27ccbe",
-            "created_at": 1785000050,
-            "kind": 31006,
-            "tags": [
-              [
-                "d",
-                "619aac8e3a4f2771819f16c1f27512f4dccc7e881de6b5c5399fce6b0041f3f9"
-              ],
-              [
-                "p",
-                "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
-              ]
-            ],
-            "content": "{\"cold_root\":\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",\"inception_event_id\":\"619aac8e3a4f2771819f16c1f27512f4dccc7e881de6b5c5399fce6b0041f3f9\",\"profile\":\"heterodyne.assurance.enrollment-contest.v1\",\"spec_version\":\"heterodyne/0.6.0\"}",
-            "id": "d393844e001d56b7f4ea25fc76483b693d658cb9eefccf3fe981d9b74eb7a0e2",
-            "sig": "31a57d046f1a076272f3a8b5359817062b3f62fdb4eb509bb2d7413a24bfcd1aa8836e601f3e690947bdacce3817123745a717a2b3aa4b6c75691b041638c6f6"
-          }
+    "authority_id": "current-vector-assurance-observer",
+    "journal_integrity_key": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "witness_policy": {
+      "policy_digest": "d437bace89606af038e1876321b42209f976d58061dd654a2a618180eac72521",
+      "minimum_weight": 1,
+      "witnesses": [
+        [
+          "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+          1
+        ],
+        [
+          "774ae7f858a9411e5ef4246b70c65aac5649980be5c17891bbec17895da008cb",
+          1
+        ]
+      ]
+    },
+    "steps": [
+      {
+        "at": 1785095200,
+        "evidence": {
+          "witness_receipts": [],
+          "contests": [],
+          "competing_enrollments": []
         }
-      ],
-      "competing_inceptions": [],
-      "authoritative_pin": null
-    }
+      },
+      {
+        "at": 1785700000,
+        "evidence": {
+          "witness_receipts": [],
+          "contests": [
+            {
+              "pubkey": "acd484e2f0c7f65309ad178a9f559abde09796974c57e714c35f110dfc27ccbe",
+              "created_at": 1785000050,
+              "kind": 31006,
+              "tags": [
+                [
+                  "d",
+                  "619aac8e3a4f2771819f16c1f27512f4dccc7e881de6b5c5399fce6b0041f3f9"
+                ],
+                [
+                  "p",
+                  "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+                ]
+              ],
+              "content": "{\"cold_root\":\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",\"inception_event_id\":\"619aac8e3a4f2771819f16c1f27512f4dccc7e881de6b5c5399fce6b0041f3f9\",\"profile\":\"heterodyne.assurance.enrollment-contest.v1\",\"spec_version\":\"heterodyne/0.6.0\"}",
+              "id": "d393844e001d56b7f4ea25fc76483b693d658cb9eefccf3fe981d9b74eb7a0e2",
+              "sig": "31a57d046f1a076272f3a8b5359817062b3f62fdb4eb509bb2d7413a24bfcd1aa8836e601f3e690947bdacce3817123745a717a2b3aa4b6c75691b041638c6f6"
+            }
+          ],
+          "competing_enrollments": []
+        }
+      }
+    ]
   },
   "expected_output": {
     "verdict": "accept",

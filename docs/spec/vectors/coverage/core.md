@@ -11,13 +11,12 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `core/node-advert-bad-signature` | core | — | `CORE-I-VERIFY-BEFORE-USE` | `bad_signature` | `heterodyne:core#core-node-advertisement` |
 | `core/node-advert-clock-skew` | core | — | `CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY` | `node-advert-clock-skew` | `heterodyne:core#core-node-advertisement` |
 | `core/node-advert-clock-uncertain` | core | — | `CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY` | `node-advert-clock-uncertain` | `heterodyne:core#core-node-advertisement` |
-| `core/node-advert-dual-proof-valid` | core | — | `CORE-I-NID-DELEGATION-DUAL-PROOF`<br>`CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY` | — | `heterodyne:core#core-node-advertisement` |
+| `core/node-advert-dual-proof-valid` | core | — | `CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY` | — | `heterodyne:core#core-node-advertisement` |
 | `core/node-advert-expired` | core | — | `CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY` | `node_advert_expired` | `heterodyne:core#core-node-advertisement` |
 | `core/node-advert-expiry-invalid` | core | — | `CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY` | `node-advert-expiry-invalid` | `heterodyne:core#core-node-advertisement` |
 | `core/node-advert-lifetime-exceeded` | core | — | `CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY` | `node-advert-lifetime-exceeded` | `heterodyne:core#core-node-advertisement` |
-| `core/node-advert-nid-proof-invalid` | core | — | `CORE-I-NID-DELEGATION-DUAL-PROOF` | `nid_proof_invalid` | `heterodyne:core#core-node-advertisement` |
+| `core/node-advert-nid-proof-invalid` | core | — | `CORE-I-VERIFY-BEFORE-USE` | `nid_proof_invalid` | `heterodyne:core#core-node-advertisement` |
 | `core/onion-clearnet-resolution` | core | — | `CORE-I-VERIFY-BEFORE-USE` | `onion_dns_leak` | `heterodyne:core#core-conformance` |
-| `core/org-member-add-unauthorized` | core | — | `CORE-I-IDENTITY-INTEGRITY` | `org_member_add_unauthorized` | `heterodyne:core#core-conformance` |
 | `core/profile-heterodyne-core-rotation-breadcrumb-note-v1` | core | `heterodyne-core-rotation-breadcrumb-note-v1` | `CORE-I-IDENTITY-INTEGRITY` | — | `heterodyne:core#core-security` |
 | `core/profile-heterodyne-core-rotation-breadcrumb-profile-v1` | core | `heterodyne-core-rotation-breadcrumb-profile-v1` | `CORE-I-IDENTITY-INTEGRITY` | — | `heterodyne:core#core-security` |
 | `core/profile-nip05-key-mismatch` | core | — | `CORE-I-IDENTITY-INTEGRITY` | `profile-nip05-key-mismatch` | `heterodyne:core#core-persona-profile` |
@@ -28,9 +27,8 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `core/replaceable-at-premature-boundary` | core | — | `CORE-I-VERIFY-BEFORE-USE` | — | `heterodyne:core#core-created-at-bound` |
 | `core/replaceable-equal-time-lowest-id` | core | — | `CORE-I-VERIFY-BEFORE-USE` | — | `heterodyne:core#core-source-neutral-selection` |
 | `core/replaceable-future-quarantined` | core | — | `CORE-I-VERIFY-BEFORE-USE` | `core-created-at-premature` | `heterodyne:core#core-created-at-bound` |
-| `core/retired-key-authority-window-invalid` | core | — | `CORE-I-IDENTITY-INTEGRITY` | `retired-key-authority-window-invalid` | `heterodyne:core#core-retired-key-observation` |
-| `core/role-delegation-address-invalid` | core | — | `CORE-I-NID-DELEGATION-DUAL-PROOF` | `role-delegation-address-invalid` | `heterodyne:core#core-nid-delegation` |
-| `core/role-delegation-key-proof-invalid` | core | — | `CORE-I-NID-DELEGATION-DUAL-PROOF` | `role-delegation-key-proof-invalid` | `heterodyne:core#core-nid-delegation` |
+| `core/repository-writer-dual-proof-valid` | core | — | `CORE-I-NID-DELEGATION-DUAL-PROOF` | — | `heterodyne:core#core-nid-delegation` |
+| `core/repository-writer-owner-proof-invalid` | core | — | `CORE-I-NID-DELEGATION-DUAL-PROOF` | `repository-writer-binding-invalid` | `heterodyne:core#core-nid-delegation` |
 | `core/strict-mode-without-tor` | core | — | `CORE-I-VERIFY-BEFORE-USE` | `strict_mode_tor_disabled` | `heterodyne:core#core-conformance` |
 | `core/version-future-major` | core | — | `CORE-I-VERIFY-BEFORE-USE` | `unknown_major_version` | `heterodyne:core#core-conformance` |
 | `core/version-stamp-missing` | core | — | `CORE-I-VERIFY-BEFORE-USE` | `version_stamp_invalid` | `heterodyne:core#core-verification` |

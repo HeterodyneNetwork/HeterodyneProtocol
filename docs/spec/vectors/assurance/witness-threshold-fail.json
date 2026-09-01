@@ -54,27 +54,68 @@
       "id": "46f07c8885cae4e4c5a3c8566f264d2948248da4e7afebaae601ceb72104f904",
       "sig": "508c448d80aeda690ce7a59ad0ec285c2db67a5d6efd6a1cccd121e71dee0c96cc09d14ac366f21aa2aee4bcdef8ab7e4ec4f8da5b72e0b584bceb3fae97d3bb"
     },
-    "trusted_now": 1785700000,
-    "evidence": {
-      "local_first_observed_at": null,
-      "witness_receipts": [
-        {
-          "profile": "heterodyne.assurance.enrollment-observation-receipt.v1",
-          "spec_version": "heterodyne/0.6.0",
-          "inception_event_id": "89c18e506f70e3925dbe9cb0ec821cbf299afffbabe200f49cf927b47180a39f",
-          "active_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
-          "cold_root": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-          "first_observed_at": 1785095200,
-          "last_observed_at": 1785700000,
-          "conflict_free": true,
-          "witness_key": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
-          "signature": "afdb65d5d24f737e357294c7f5b941895fcbdcc218b62b519173656d7f5bf913ca8f5f585b650d470cd53d803e65965237be4eb6cf129d4f667828618ba18d49"
+    "authority_id": "current-vector-assurance-observer",
+    "journal_integrity_key": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "witness_policy": {
+      "policy_digest": "cadc7f6ec14e01b06faa8ced604e104c9d619d8e96688f0e9f8a9197b9e92937",
+      "minimum_weight": 2,
+      "witnesses": [
+        [
+          "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+          1
+        ],
+        [
+          "774ae7f858a9411e5ef4246b70c65aac5649980be5c17891bbec17895da008cb",
+          1
+        ]
+      ]
+    },
+    "steps": [
+      {
+        "at": 1785095201,
+        "evidence": {
+          "witness_receipts": [
+            {
+              "profile": "heterodyne.assurance.enrollment-observation-receipt.v1",
+              "spec_version": "heterodyne/0.6.0",
+              "inception_event_id": "89c18e506f70e3925dbe9cb0ec821cbf299afffbabe200f49cf927b47180a39f",
+              "active_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+              "cold_root": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+              "accepted_head": "46f07c8885cae4e4c5a3c8566f264d2948248da4e7afebaae601ceb72104f904",
+              "first_observed_at": 1,
+              "last_observed_at": 1785095201,
+              "conflict_free": true,
+              "witness_key": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+              "signature": "1b153f90934c65ed9621b46bb388eb3ea39450ef1c3fe770527eb3e5fcbac2b8e02e9b6ef9e0350e8f600256c4efc9a8ae8aa37384e9d2943a822c72d3fdffbc"
+            }
+          ],
+          "contests": [],
+          "competing_enrollments": []
         }
-      ],
-      "contests": [],
-      "competing_inceptions": [],
-      "authoritative_pin": null
-    }
+      },
+      {
+        "at": 1785700000,
+        "evidence": {
+          "witness_receipts": [
+            {
+              "profile": "heterodyne.assurance.enrollment-observation-receipt.v1",
+              "spec_version": "heterodyne/0.6.0",
+              "inception_event_id": "89c18e506f70e3925dbe9cb0ec821cbf299afffbabe200f49cf927b47180a39f",
+              "active_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+              "cold_root": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+              "accepted_head": "46f07c8885cae4e4c5a3c8566f264d2948248da4e7afebaae601ceb72104f904",
+              "first_observed_at": 1,
+              "last_observed_at": 1785095201,
+              "conflict_free": true,
+              "witness_key": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+              "signature": "1b153f90934c65ed9621b46bb388eb3ea39450ef1c3fe770527eb3e5fcbac2b8e02e9b6ef9e0350e8f600256c4efc9a8ae8aa37384e9d2943a822c72d3fdffbc"
+            }
+          ],
+          "contests": [],
+          "competing_enrollments": []
+        }
+      }
+    ]
   },
   "expected_output": {
     "verdict": "reject",

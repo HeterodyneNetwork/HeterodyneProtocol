@@ -15,29 +15,9 @@
   "description": "Carrier-only evidence cannot replace an explicit current Workspace grant.",
   "direction": "consume",
   "input": {
-    "authenticated_current_state": true,
-    "explicit_grant": false,
-    "carrier_only_evidence": true,
-    "requested_capabilities": [
-      "read"
-    ],
-    "workspace_ceiling": [
-      "read",
-      "write"
-    ],
-    "role_path_ceilings": [
-      [
-        "read",
-        "write"
-      ],
-      [
-        "read"
-      ]
-    ],
-    "grant_capabilities": [
-      "read"
-    ],
-    "revoked_effective": false
+    "actor_account": "a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2",
+    "actor_source": "carrier",
+    "current_state": "authenticated-private"
   },
   "expected_output": {
     "verdict": "reject",

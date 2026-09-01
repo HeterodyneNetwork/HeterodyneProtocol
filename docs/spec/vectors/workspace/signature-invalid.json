@@ -14,10 +14,38 @@
   "description": "The current Workspace semantic boundary rejects signature invalid.",
   "direction": "consume",
   "input": {
-    "events": [
-      "signed-event-a",
-      "signed-event-b"
-    ]
+    "object": {
+      "spec_version": "heterodyne/0.6.0",
+      "object_type": "workspace-manifest-v1",
+      "workspace_key": "9c5530e4385ebc41cdaf8257edf9a2baaf8506a4099103211e6ed7382103ed67",
+      "policy_head": "3333333333333333333333333333333333333333333333333333333333333333",
+      "predecessor": null,
+      "authority_checkpoint": "2222222222222222222222222222222222222222222222222222222222222222",
+      "repository_rid": "rad:zWorkspaceHostA",
+      "repository_head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "issued_at": 1720000400,
+      "root_policy_rid": "rad:zWorkspacePolicy",
+      "root_policy_head": "3333333333333333333333333333333333333333333333333333333333333333",
+      "visibility": "private",
+      "public_roles": [],
+      "signature": "0072b50702f499d14450c01a825b01db99b58752964a146ccd0f062c06da89244e966547e366e0f66310ffa9eee26f216e073f116f5e6526891c10c5b7a04bea"
+    },
+    "expected_object_id": "08c459b877db99b665ab9c6760a3e45e3fb00f19573127e84c1b73a993dd6ac0",
+    "current": {
+      "workspace_key": "9c5530e4385ebc41cdaf8257edf9a2baaf8506a4099103211e6ed7382103ed67",
+      "policy_head": "3333333333333333333333333333333333333333333333333333333333333333",
+      "predecessor": null,
+      "authority_checkpoint": "2222222222222222222222222222222222222222222222222222222222222222",
+      "repository_rid": "rad:zWorkspaceHostA",
+      "repository_head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "repository_ancestry": [
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      ],
+      "authority_checkpoint_candidates": [
+        "2222222222222222222222222222222222222222222222222222222222222222"
+      ],
+      "competing_repository_heads": []
+    }
   },
   "expected_output": {
     "verdict": "reject",

@@ -14,10 +14,7 @@
   "description": "The current Control policy boundary rejects compromise reset evidence invalid.",
   "direction": "consume",
   "input": {
-    "authority_signature_valid": true,
-    "inventory_digest_matches": true,
-    "transition_evidence_valid": false,
-    "subordinate_reauthorized": true
+    "evidence": "signed grant and completion carry invalid consecutive transition evidence"
   },
   "expected_output": {
     "verdict": "reject",

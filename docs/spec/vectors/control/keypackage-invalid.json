@@ -14,16 +14,7 @@
   "description": "The current Control policy boundary rejects keypackage invalid.",
   "direction": "consume",
   "input": {
-    "keypackage_valid": false,
-    "member_count": 2,
-    "node_account_matches": true,
-    "entitlement_state": "none",
-    "resource_available": true,
-    "welcome_rate_remaining": 1,
-    "replenishment_requested": false,
-    "replenishment_rate_remaining": 1,
-    "pending_at_cap": false,
-    "method": "control.enrollment.start"
+    "evidence": "authenticated KeyPackage verification rejects"
   },
   "expected_output": {
     "verdict": "reject",

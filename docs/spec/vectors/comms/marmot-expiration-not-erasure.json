@@ -12,13 +12,19 @@
   "description": "Retention expiry stops conforming advertisement and replication without claiming deletion of independently retained Git objects.",
   "direction": "consume",
   "input": {
-    "retention_expired": true,
-    "independent_git_objects_possible": true
+    "repository_rid": "rad:z3gqcJUoA1n9HaHKufZs5FCSGazv5",
+    "ref": "refs/xyz.heterodyne.marmot/writers/synthetic-current",
+    "presentation_transition": "expire",
+    "durable_readback": "acknowledge"
   },
   "expected_output": {
     "verdict": "accept",
-    "stop_advertising": true,
-    "stop_replication": true,
-    "erasure_guarantee": false
+    "output": {
+      "repository_rid": "rad:z3gqcJUoA1n9HaHKufZs5FCSGazv5",
+      "ref": "refs/xyz.heterodyne.marmot/writers/synthetic-current",
+      "object_digest": "9173b8bbcbf23f20330696934897360b122248393515a1e13730af5340a5d657",
+      "source_digest": "428f1a9a8e072987a7a78b616a1cae74ca11a522c9959f9eee51233f3120a475",
+      "commit": "abababababababababababababababababababab"
+    }
   }
 }

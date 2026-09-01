@@ -14,10 +14,7 @@
   "description": "The current Control policy boundary rejects compromise reset inventory mismatch.",
   "direction": "consume",
   "input": {
-    "authority_signature_valid": true,
-    "inventory_digest_matches": false,
-    "transition_evidence_valid": true,
-    "subordinate_reauthorized": true
+    "evidence": "authenticated required-reset inventory differs from signed completion"
   },
   "expected_output": {
     "verdict": "reject",

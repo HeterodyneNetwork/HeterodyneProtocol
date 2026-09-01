@@ -83,6 +83,18 @@
     ]
   },
   {
+    "vector_id": "assurance/dual-consent-downgrade-accepted",
+    "owner_document": "assurance",
+    "profile": "heterodyne-assurance-active-key-acceptance-v1",
+    "spec_refs": [
+      "heterodyne:assurance#assurance-downgrade-resistance"
+    ],
+    "invariants": [
+      "ASSURANCE-I-PIN-DOWNGRADE"
+    ],
+    "reason_codes": []
+  },
+  {
     "vector_id": "assurance/duplicity-rejected",
     "owner_document": "assurance",
     "spec_refs": [
@@ -344,19 +356,6 @@
     ],
     "reason_codes": [
       "assurance-reciprocal-proof-invalid"
-    ]
-  },
-  {
-    "vector_id": "assurance/retired-key-post-compromise",
-    "owner_document": "assurance",
-    "spec_refs": [
-      "heterodyne:assurance#assurance-retired-wire-profiles"
-    ],
-    "invariants": [
-      "ASSURANCE-I-COMPROMISE-CUTOFF"
-    ],
-    "reason_codes": [
-      "revoked_key_post_compromise"
     ]
   },
   {
@@ -702,6 +701,17 @@
     ]
   },
   {
+    "vector_id": "comms/claim-authorization-effect-indeterminate",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-claim-verification"
+    ],
+    "invariants": [
+      "COMMS-I-CLAIM-AUTHENTICITY"
+    ],
+    "reason_codes": []
+  },
+  {
     "vector_id": "comms/claim-chain-cycle",
     "owner_document": "comms",
     "spec_refs": [
@@ -832,6 +842,19 @@
     ]
   },
   {
+    "vector_id": "comms/claim-ledger-writer-unauthorized",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-claim-ledger"
+    ],
+    "invariants": [
+      "COMMS-I-CLAIM-REPOSITORY-AUTHORITY"
+    ],
+    "reason_codes": [
+      "claim-ledger-writer-unauthorized"
+    ]
+  },
+  {
     "vector_id": "comms/claim-repository-conflict",
     "owner_document": "comms",
     "spec_refs": [
@@ -897,6 +920,19 @@
     ]
   },
   {
+    "vector_id": "comms/claim-subject-proof-replayed",
+    "owner_document": "comms",
+    "spec_refs": [
+      "heterodyne:comms#comms-conformance"
+    ],
+    "invariants": [
+      "COMMS-I-CLAIM-AUTHENTICITY"
+    ],
+    "reason_codes": [
+      "claim-subject-proof-replayed"
+    ]
+  },
+  {
     "vector_id": "comms/claim-subject-proof-required",
     "owner_document": "comms",
     "spec_refs": [
@@ -932,32 +968,6 @@
     ],
     "reason_codes": [
       "conversation-rejected"
-    ]
-  },
-  {
-    "vector_id": "comms/dm-invite-revoked-device",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-direct-messages"
-    ],
-    "invariants": [
-      "COMMS-I-MARMOT-UPSTREAM-AUTHORITY"
-    ],
-    "reason_codes": [
-      "dm_invite_revoked_device"
-    ]
-  },
-  {
-    "vector_id": "comms/dm-invite-unbound-device",
-    "owner_document": "comms",
-    "spec_refs": [
-      "heterodyne:comms#comms-direct-messages"
-    ],
-    "invariants": [
-      "COMMS-I-MARMOT-UPSTREAM-AUTHORITY"
-    ],
-    "reason_codes": [
-      "dm_invite_unbound_device"
     ]
   },
   {
@@ -1891,32 +1901,6 @@
     ]
   },
   {
-    "vector_id": "control/agent-attribution-bypass-prohibited",
-    "owner_document": "control",
-    "spec_refs": [
-      "heterodyne:control#control-agent-requirements"
-    ],
-    "invariants": [
-      "CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING"
-    ],
-    "reason_codes": [
-      "agent-attribution-bypass-prohibited"
-    ]
-  },
-  {
-    "vector_id": "control/agent-human-profile-prohibited",
-    "owner_document": "control",
-    "spec_refs": [
-      "heterodyne:control#control-agent-requirements"
-    ],
-    "invariants": [
-      "CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING"
-    ],
-    "reason_codes": [
-      "agent-human-profile-prohibited"
-    ]
-  },
-  {
     "vector_id": "control/agent-intent-invalid",
     "owner_document": "control",
     "spec_refs": [
@@ -1930,32 +1914,6 @@
     ]
   },
   {
-    "vector_id": "control/agent-key-access-prohibited",
-    "owner_document": "control",
-    "spec_refs": [
-      "heterodyne:control#control-agent-requirements"
-    ],
-    "invariants": [
-      "CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING"
-    ],
-    "reason_codes": [
-      "agent-key-access-prohibited"
-    ]
-  },
-  {
-    "vector_id": "control/agent-method-prohibited",
-    "owner_document": "control",
-    "spec_refs": [
-      "heterodyne:control#control-agent-requirements"
-    ],
-    "invariants": [
-      "CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING"
-    ],
-    "reason_codes": [
-      "agent-method-prohibited"
-    ]
-  },
-  {
     "vector_id": "control/agent-rate-limited",
     "owner_document": "control",
     "spec_refs": [
@@ -1966,19 +1924,6 @@
     ],
     "reason_codes": [
       "agent-rate-limited"
-    ]
-  },
-  {
-    "vector_id": "control/agent-resource-denied",
-    "owner_document": "control",
-    "spec_refs": [
-      "heterodyne:control#control-agent-requirements"
-    ],
-    "invariants": [
-      "CONTROL-I-EXACT-SIGNER-GRANT"
-    ],
-    "reason_codes": [
-      "agent-resource-denied"
     ]
   },
   {
@@ -2438,32 +2383,6 @@
     ]
   },
   {
-    "vector_id": "control/request-id-conflict",
-    "owner_document": "control",
-    "spec_refs": [
-      "heterodyne:control#control-request-processing"
-    ],
-    "invariants": [
-      "CONTROL-I-OPERATION-AT-MOST-ONCE"
-    ],
-    "reason_codes": [
-      "control-request-id-conflict"
-    ]
-  },
-  {
-    "vector_id": "control/signed-event-invalid",
-    "owner_document": "control",
-    "spec_refs": [
-      "heterodyne:control#control-agent-requirements"
-    ],
-    "invariants": [
-      "CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING"
-    ],
-    "reason_codes": [
-      "control-signed-event-invalid"
-    ]
-  },
-  {
     "vector_id": "control/signer-binding-mismatch",
     "owner_document": "control",
     "spec_refs": [
@@ -2713,7 +2632,6 @@
       "heterodyne:core#core-node-advertisement"
     ],
     "invariants": [
-      "CORE-I-NID-DELEGATION-DUAL-PROOF",
       "CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY"
     ],
     "reason_codes": []
@@ -2764,7 +2682,7 @@
       "heterodyne:core#core-node-advertisement"
     ],
     "invariants": [
-      "CORE-I-NID-DELEGATION-DUAL-PROOF"
+      "CORE-I-VERIFY-BEFORE-USE"
     ],
     "reason_codes": [
       "nid_proof_invalid"
@@ -2781,19 +2699,6 @@
     ],
     "reason_codes": [
       "onion_dns_leak"
-    ]
-  },
-  {
-    "vector_id": "core/org-member-add-unauthorized",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-conformance"
-    ],
-    "invariants": [
-      "CORE-I-IDENTITY-INTEGRITY"
-    ],
-    "reason_codes": [
-      "org_member_add_unauthorized"
     ]
   },
   {
@@ -2919,20 +2824,18 @@
     ]
   },
   {
-    "vector_id": "core/retired-key-authority-window-invalid",
+    "vector_id": "core/repository-writer-dual-proof-valid",
     "owner_document": "core",
     "spec_refs": [
-      "heterodyne:core#core-retired-key-observation"
+      "heterodyne:core#core-nid-delegation"
     ],
     "invariants": [
-      "CORE-I-IDENTITY-INTEGRITY"
+      "CORE-I-NID-DELEGATION-DUAL-PROOF"
     ],
-    "reason_codes": [
-      "retired-key-authority-window-invalid"
-    ]
+    "reason_codes": []
   },
   {
-    "vector_id": "core/role-delegation-address-invalid",
+    "vector_id": "core/repository-writer-owner-proof-invalid",
     "owner_document": "core",
     "spec_refs": [
       "heterodyne:core#core-nid-delegation"
@@ -2941,20 +2844,7 @@
       "CORE-I-NID-DELEGATION-DUAL-PROOF"
     ],
     "reason_codes": [
-      "role-delegation-address-invalid"
-    ]
-  },
-  {
-    "vector_id": "core/role-delegation-key-proof-invalid",
-    "owner_document": "core",
-    "spec_refs": [
-      "heterodyne:core#core-nid-delegation"
-    ],
-    "invariants": [
-      "CORE-I-NID-DELEGATION-DUAL-PROOF"
-    ],
-    "reason_codes": [
-      "role-delegation-key-proof-invalid"
+      "repository-writer-binding-invalid"
     ]
   },
   {

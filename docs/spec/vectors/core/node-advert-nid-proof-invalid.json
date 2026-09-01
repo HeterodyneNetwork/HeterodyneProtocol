@@ -6,7 +6,7 @@
     "heterodyne:core#core-node-advertisement"
   ],
   "invariants": [
-    "CORE-I-NID-DELEGATION-DUAL-PROOF"
+    "CORE-I-VERIFY-BEFORE-USE"
   ],
   "reason_codes": [
     "nid_proof_invalid"

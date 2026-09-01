@@ -52,39 +52,94 @@
       "id": "46f07c8885cae4e4c5a3c8566f264d2948248da4e7afebaae601ceb72104f904",
       "sig": "508c448d80aeda690ce7a59ad0ec285c2db67a5d6efd6a1cccd121e71dee0c96cc09d14ac366f21aa2aee4bcdef8ab7e4ec4f8da5b72e0b584bceb3fae97d3bb"
     },
-    "trusted_now": 1785700000,
-    "evidence": {
-      "local_first_observed_at": null,
-      "witness_receipts": [
-        {
-          "profile": "heterodyne.assurance.enrollment-observation-receipt.v1",
-          "spec_version": "heterodyne/0.6.0",
-          "inception_event_id": "89c18e506f70e3925dbe9cb0ec821cbf299afffbabe200f49cf927b47180a39f",
-          "active_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
-          "cold_root": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-          "first_observed_at": 1785095200,
-          "last_observed_at": 1785700000,
-          "conflict_free": true,
-          "witness_key": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
-          "signature": "afdb65d5d24f737e357294c7f5b941895fcbdcc218b62b519173656d7f5bf913ca8f5f585b650d470cd53d803e65965237be4eb6cf129d4f667828618ba18d49"
-        },
-        {
-          "profile": "heterodyne.assurance.enrollment-observation-receipt.v1",
-          "spec_version": "heterodyne/0.6.0",
-          "inception_event_id": "89c18e506f70e3925dbe9cb0ec821cbf299afffbabe200f49cf927b47180a39f",
-          "active_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
-          "cold_root": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-          "first_observed_at": 1785095200,
-          "last_observed_at": 1785700000,
-          "conflict_free": true,
-          "witness_key": "774ae7f858a9411e5ef4246b70c65aac5649980be5c17891bbec17895da008cb",
-          "signature": "b490ae5df4fa6a598f031461aa9f088f268bf7404d3c7f01ac90447c40d7c90ea1644a650f8b89b4214300d112415b509d39180d7405f6d2b80450e70c496007"
+    "authority_id": "current-vector-assurance-observer",
+    "journal_integrity_key": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "witness_policy": {
+      "policy_digest": "cadc7f6ec14e01b06faa8ced604e104c9d619d8e96688f0e9f8a9197b9e92937",
+      "minimum_weight": 2,
+      "witnesses": [
+        [
+          "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+          1
+        ],
+        [
+          "774ae7f858a9411e5ef4246b70c65aac5649980be5c17891bbec17895da008cb",
+          1
+        ]
+      ]
+    },
+    "steps": [
+      {
+        "at": 1785095200,
+        "evidence": {
+          "witness_receipts": [
+            {
+              "profile": "heterodyne.assurance.enrollment-observation-receipt.v1",
+              "spec_version": "heterodyne/0.6.0",
+              "inception_event_id": "89c18e506f70e3925dbe9cb0ec821cbf299afffbabe200f49cf927b47180a39f",
+              "active_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+              "cold_root": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+              "accepted_head": "46f07c8885cae4e4c5a3c8566f264d2948248da4e7afebaae601ceb72104f904",
+              "first_observed_at": 1,
+              "last_observed_at": 1785095200,
+              "conflict_free": true,
+              "witness_key": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+              "signature": "f4a558f5c9082d7599f323ff46017805c7736006d7dc4d1d152516a382b00c91a045269f578ffffa662504d690ab8b837f8acb10afece1ba2641cb935bbceeec"
+            },
+            {
+              "profile": "heterodyne.assurance.enrollment-observation-receipt.v1",
+              "spec_version": "heterodyne/0.6.0",
+              "inception_event_id": "89c18e506f70e3925dbe9cb0ec821cbf299afffbabe200f49cf927b47180a39f",
+              "active_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+              "cold_root": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+              "accepted_head": "46f07c8885cae4e4c5a3c8566f264d2948248da4e7afebaae601ceb72104f904",
+              "first_observed_at": 1,
+              "last_observed_at": 1785095200,
+              "conflict_free": true,
+              "witness_key": "774ae7f858a9411e5ef4246b70c65aac5649980be5c17891bbec17895da008cb",
+              "signature": "a1f8ce8a4fe630d3b881d8d5d7373acf877abdf35d7f7a0e952bce831c4ccca5fbdb376f89e28d515636ea505aee3f9b9a871a840f29dacb141760aed5b6f856"
+            }
+          ],
+          "contests": [],
+          "competing_enrollments": []
         }
-      ],
-      "contests": [],
-      "competing_inceptions": [],
-      "authoritative_pin": null
-    }
+      },
+      {
+        "at": 1785700000,
+        "evidence": {
+          "witness_receipts": [
+            {
+              "profile": "heterodyne.assurance.enrollment-observation-receipt.v1",
+              "spec_version": "heterodyne/0.6.0",
+              "inception_event_id": "89c18e506f70e3925dbe9cb0ec821cbf299afffbabe200f49cf927b47180a39f",
+              "active_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+              "cold_root": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+              "accepted_head": "46f07c8885cae4e4c5a3c8566f264d2948248da4e7afebaae601ceb72104f904",
+              "first_observed_at": 1,
+              "last_observed_at": 1785700000,
+              "conflict_free": true,
+              "witness_key": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+              "signature": "793aad0b03989767bd272d974d33406763f22985b295dc423683edf87f63693ab1133d2e4e639a3a0796d760776b3e7ca86fd65f1683ba954b7c1e99222b8640"
+            },
+            {
+              "profile": "heterodyne.assurance.enrollment-observation-receipt.v1",
+              "spec_version": "heterodyne/0.6.0",
+              "inception_event_id": "89c18e506f70e3925dbe9cb0ec821cbf299afffbabe200f49cf927b47180a39f",
+              "active_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+              "cold_root": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+              "accepted_head": "46f07c8885cae4e4c5a3c8566f264d2948248da4e7afebaae601ceb72104f904",
+              "first_observed_at": 1,
+              "last_observed_at": 1785700000,
+              "conflict_free": true,
+              "witness_key": "774ae7f858a9411e5ef4246b70c65aac5649980be5c17891bbec17895da008cb",
+              "signature": "8f95a0e39423c54cb676a5c61a94ccb95b685b8009170201178329a89007c62c04de43e31676a623a4f13f6d83fea4e0379f7cdef5f4cf43dee121e13d97f3fc"
+            }
+          ],
+          "contests": [],
+          "competing_enrollments": []
+        }
+      }
+    ]
   },
   "expected_output": {
     "verdict": "accept",

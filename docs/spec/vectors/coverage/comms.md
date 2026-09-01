@@ -21,6 +21,7 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `comms/checkpoint-stale-independent` | comms | — | `COMMS-I-MINT-FRESHNESS` | `oidc-checkpoint-stale` | `heterodyne:comms#comms-authorization-freshness` |
 | `comms/claim-active-authenticated` | comms | — | `COMMS-I-CLAIM-ATTENUATION`<br>`COMMS-I-CLAIM-AUTHENTICITY` | — | `heterodyne:comms#comms-claim-verification` |
 | `comms/claim-attenuation-violation` | comms | — | `COMMS-I-CLAIM-ATTENUATION` | `claim-attenuation-violation` | `heterodyne:comms#comms-conformance` |
+| `comms/claim-authorization-effect-indeterminate` | comms | — | `COMMS-I-CLAIM-AUTHENTICITY` | — | `heterodyne:comms#comms-claim-verification` |
 | `comms/claim-chain-cycle` | comms | — | `COMMS-I-CLAIM-ATTENUATION` | `claim-chain-cycle` | `heterodyne:comms#comms-conformance` |
 | `comms/claim-chain-depth-exceeded` | comms | — | `COMMS-I-CLAIM-ATTENUATION` | `claim-chain-depth-exceeded` | `heterodyne:comms#comms-conformance` |
 | `comms/claim-delegation-not-authorized` | comms | — | `COMMS-I-CLAIM-ATTENUATION` | `claim-delegation-not-authorized` | `heterodyne:comms#comms-conformance` |
@@ -31,16 +32,16 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `comms/claim-issuer-untrusted` | comms | — | `COMMS-I-CLAIM-AUTHENTICITY` | `claim-issuer-untrusted` | `heterodyne:comms#comms-conformance` |
 | `comms/claim-key-reference-invalid` | comms | — | `COMMS-I-CLAIM-AUTHENTICITY` | `claim-key-reference-invalid` | `heterodyne:comms#comms-conformance` |
 | `comms/claim-ledger-rollback` | comms | — | `COMMS-I-CLAIM-REPOSITORY-AUTHORITY` | `claim-ledger-rollback` | `heterodyne:comms#comms-conformance` |
+| `comms/claim-ledger-writer-unauthorized` | comms | — | `COMMS-I-CLAIM-REPOSITORY-AUTHORITY` | `claim-ledger-writer-unauthorized` | `heterodyne:comms#comms-claim-ledger` |
 | `comms/claim-repository-conflict` | comms | — | `COMMS-I-CLAIM-REPOSITORY-AUTHORITY` | `claim-repository-conflict` | `heterodyne:comms#comms-conformance` |
 | `comms/claim-repository-unconfirmed` | comms | — | `COMMS-I-CLAIM-REPOSITORY-AUTHORITY` | `claim-repository-unconfirmed` | `heterodyne:comms#comms-claim-ledger` |
 | `comms/claim-revoked` | comms | — | `COMMS-I-CLAIM-REVOCATION` | `claim-revoked` | `heterodyne:comms#comms-conformance` |
 | `comms/claim-revoker-unauthorized` | comms | — | `COMMS-I-CLAIM-REVOCATION` | `claim-revoker-unauthorized` | `heterodyne:comms#comms-conformance` |
 | `comms/claim-subject-proof-invalid` | comms | — | `COMMS-I-CLAIM-AUTHENTICITY` | `claim-subject-proof-invalid` | `heterodyne:comms#comms-conformance` |
+| `comms/claim-subject-proof-replayed` | comms | — | `COMMS-I-CLAIM-AUTHENTICITY` | `claim-subject-proof-replayed` | `heterodyne:comms#comms-conformance` |
 | `comms/claim-subject-proof-required` | comms | — | `COMMS-I-CLAIM-AUTHENTICITY` | `claim-subject-proof-required` | `heterodyne:comms#comms-conformance` |
 | `comms/config-private-state-encrypted` | comms | — | `COMMS-I-CONFIG-AT-REST`<br>`COMMS-I-TIER2-HONESTY` | — | `heterodyne:comms#comms-config-repository` |
 | `comms/conversation-rejected` | comms | — | `COMMS-I-MARMOT-UPSTREAM-AUTHORITY` | `conversation-rejected` | `heterodyne:comms#comms-ordinary-conversation-admission` |
-| `comms/dm-invite-revoked-device` | comms | — | `COMMS-I-MARMOT-UPSTREAM-AUTHORITY` | `dm_invite_revoked_device` | `heterodyne:comms#comms-direct-messages` |
-| `comms/dm-invite-unbound-device` | comms | — | `COMMS-I-MARMOT-UPSTREAM-AUTHORITY` | `dm_invite_unbound_device` | `heterodyne:comms#comms-direct-messages` |
 | `comms/invite-already-reserved` | comms | — | `COMMS-I-MARMOT-UPSTREAM-AUTHORITY` | `invite-already-reserved` | `heterodyne:comms#comms-one-time-invites` |
 | `comms/invite-authentication-invalid` | comms | — | `COMMS-I-MARMOT-UPSTREAM-AUTHORITY` | `invite-authentication-invalid` | `heterodyne:comms#comms-one-time-invites` |
 | `comms/invite-expired` | comms | — | `COMMS-I-MARMOT-UPSTREAM-AUTHORITY` | `invite-expired` | `heterodyne:comms#comms-one-time-invites` |

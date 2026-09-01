@@ -2,10 +2,10 @@
 
 Generated from [manifest.json](manifest.json); do not edit by hand.
 
-- core: 30
+- core: 28
 - assurance: 38
-- comms: 109
-- control: 57
+- comms: 110
+- control: 50
 - social: 14
 - workspace: 27
 
@@ -17,6 +17,7 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `assurance/associated-key-subject-proof-required` | assurance | `heterodyne-assurance-associated-key-v1` | `ASSURANCE-I-ASSOCIATED-KEY-BOUNDS` | `assurance-associated-key-subject-proof-required` | `heterodyne:assurance#assurance-associated-keys` |
 | `assurance/authority-at-compromise-cutoff` | assurance | — | `ASSURANCE-I-COMPROMISE-CUTOFF` | `assurance-compromise-cutoff` | `heterodyne:assurance#assurance-compromise` |
 | `assurance/compromise-subordinate-continuation-forbidden` | assurance | — | `ASSURANCE-I-COMPROMISE-CUTOFF`<br>`ASSURANCE-I-NO-IMPLICIT-CONTINUATION` | `assurance-subordinate-continuation-forbidden` | `heterodyne:assurance#assurance-compromise` |
+| `assurance/dual-consent-downgrade-accepted` | assurance | `heterodyne-assurance-active-key-acceptance-v1` | `ASSURANCE-I-PIN-DOWNGRADE` | — | `heterodyne:assurance#assurance-downgrade-resistance` |
 | `assurance/duplicity-rejected` | assurance | — | `ASSURANCE-I-SUCCESSION-NON-ALIASING` | `assurance-duplicity` | `heterodyne:assurance#assurance-chain-validation` |
 | `assurance/enrollment-competing-inception` | assurance | — | `ASSURANCE-I-ENROLLMENT-WINDOWED` | `assurance-enrollment-contested` | `heterodyne:assurance#assurance-enrollment-window` |
 | `assurance/enrollment-forged-contest-ignored` | assurance | — | `ASSURANCE-I-CORE-OPTIONALITY`<br>`ASSURANCE-I-ENROLLMENT-WINDOWED` | — | `heterodyne:assurance#assurance-enrollment-window` |
@@ -38,7 +39,6 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `assurance/profile-heterodyne-assurance-enrollment-inception-v1` | assurance | `heterodyne-assurance-enrollment-inception-v1` | `ASSURANCE-I-RECIPROCAL-ENROLLMENT` | — | `heterodyne:assurance#assurance-security` |
 | `assurance/profile-heterodyne-assurance-succession-v1` | assurance | `heterodyne-assurance-succession-v1` | `ASSURANCE-I-TRANSITION-PROOF-BINDING` | — | `heterodyne:assurance#assurance-security` |
 | `assurance/reciprocal-proof-invalid` | assurance | — | `ASSURANCE-I-RECIPROCAL-ENROLLMENT` | `assurance-reciprocal-proof-invalid` | `heterodyne:assurance#assurance-reciprocal-enrollment` |
-| `assurance/retired-key-post-compromise` | assurance | — | `ASSURANCE-I-COMPROMISE-CUTOFF` | `revoked_key_post_compromise` | `heterodyne:assurance#assurance-retired-wire-profiles` |
 | `assurance/succession-authority-invalid` | assurance | — | `ASSURANCE-I-TRANSITION-PROOF-BINDING` | `assurance-authority-invalid` | `heterodyne:assurance#assurance-succession` |
 | `assurance/succession-head-mismatch` | assurance | — | `ASSURANCE-I-TRANSITION-PROOF-BINDING` | `assurance-head-mismatch` | `heterodyne:assurance#assurance-chain-validation` |
 | `assurance/succession-new-key-acceptance-invalid` | assurance | — | `ASSURANCE-I-TRANSITION-PROOF-BINDING` | `assurance-new-key-acceptance-invalid` | `heterodyne:assurance#assurance-succession` |
@@ -66,6 +66,7 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `comms/checkpoint-stale-independent` | comms | — | `COMMS-I-MINT-FRESHNESS` | `oidc-checkpoint-stale` | `heterodyne:comms#comms-authorization-freshness` |
 | `comms/claim-active-authenticated` | comms | — | `COMMS-I-CLAIM-ATTENUATION`<br>`COMMS-I-CLAIM-AUTHENTICITY` | — | `heterodyne:comms#comms-claim-verification` |
 | `comms/claim-attenuation-violation` | comms | — | `COMMS-I-CLAIM-ATTENUATION` | `claim-attenuation-violation` | `heterodyne:comms#comms-conformance` |
+| `comms/claim-authorization-effect-indeterminate` | comms | — | `COMMS-I-CLAIM-AUTHENTICITY` | — | `heterodyne:comms#comms-claim-verification` |
 | `comms/claim-chain-cycle` | comms | — | `COMMS-I-CLAIM-ATTENUATION` | `claim-chain-cycle` | `heterodyne:comms#comms-conformance` |
 | `comms/claim-chain-depth-exceeded` | comms | — | `COMMS-I-CLAIM-ATTENUATION` | `claim-chain-depth-exceeded` | `heterodyne:comms#comms-conformance` |
 | `comms/claim-delegation-not-authorized` | comms | — | `COMMS-I-CLAIM-ATTENUATION` | `claim-delegation-not-authorized` | `heterodyne:comms#comms-conformance` |
@@ -76,16 +77,16 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `comms/claim-issuer-untrusted` | comms | — | `COMMS-I-CLAIM-AUTHENTICITY` | `claim-issuer-untrusted` | `heterodyne:comms#comms-conformance` |
 | `comms/claim-key-reference-invalid` | comms | — | `COMMS-I-CLAIM-AUTHENTICITY` | `claim-key-reference-invalid` | `heterodyne:comms#comms-conformance` |
 | `comms/claim-ledger-rollback` | comms | — | `COMMS-I-CLAIM-REPOSITORY-AUTHORITY` | `claim-ledger-rollback` | `heterodyne:comms#comms-conformance` |
+| `comms/claim-ledger-writer-unauthorized` | comms | — | `COMMS-I-CLAIM-REPOSITORY-AUTHORITY` | `claim-ledger-writer-unauthorized` | `heterodyne:comms#comms-claim-ledger` |
 | `comms/claim-repository-conflict` | comms | — | `COMMS-I-CLAIM-REPOSITORY-AUTHORITY` | `claim-repository-conflict` | `heterodyne:comms#comms-conformance` |
 | `comms/claim-repository-unconfirmed` | comms | — | `COMMS-I-CLAIM-REPOSITORY-AUTHORITY` | `claim-repository-unconfirmed` | `heterodyne:comms#comms-claim-ledger` |
 | `comms/claim-revoked` | comms | — | `COMMS-I-CLAIM-REVOCATION` | `claim-revoked` | `heterodyne:comms#comms-conformance` |
 | `comms/claim-revoker-unauthorized` | comms | — | `COMMS-I-CLAIM-REVOCATION` | `claim-revoker-unauthorized` | `heterodyne:comms#comms-conformance` |
 | `comms/claim-subject-proof-invalid` | comms | — | `COMMS-I-CLAIM-AUTHENTICITY` | `claim-subject-proof-invalid` | `heterodyne:comms#comms-conformance` |
+| `comms/claim-subject-proof-replayed` | comms | — | `COMMS-I-CLAIM-AUTHENTICITY` | `claim-subject-proof-replayed` | `heterodyne:comms#comms-conformance` |
 | `comms/claim-subject-proof-required` | comms | — | `COMMS-I-CLAIM-AUTHENTICITY` | `claim-subject-proof-required` | `heterodyne:comms#comms-conformance` |
 | `comms/config-private-state-encrypted` | comms | — | `COMMS-I-CONFIG-AT-REST`<br>`COMMS-I-TIER2-HONESTY` | — | `heterodyne:comms#comms-config-repository` |
 | `comms/conversation-rejected` | comms | — | `COMMS-I-MARMOT-UPSTREAM-AUTHORITY` | `conversation-rejected` | `heterodyne:comms#comms-ordinary-conversation-admission` |
-| `comms/dm-invite-revoked-device` | comms | — | `COMMS-I-MARMOT-UPSTREAM-AUTHORITY` | `dm_invite_revoked_device` | `heterodyne:comms#comms-direct-messages` |
-| `comms/dm-invite-unbound-device` | comms | — | `COMMS-I-MARMOT-UPSTREAM-AUTHORITY` | `dm_invite_unbound_device` | `heterodyne:comms#comms-direct-messages` |
 | `comms/invite-already-reserved` | comms | — | `COMMS-I-MARMOT-UPSTREAM-AUTHORITY` | `invite-already-reserved` | `heterodyne:comms#comms-one-time-invites` |
 | `comms/invite-authentication-invalid` | comms | — | `COMMS-I-MARMOT-UPSTREAM-AUTHORITY` | `invite-authentication-invalid` | `heterodyne:comms#comms-one-time-invites` |
 | `comms/invite-expired` | comms | — | `COMMS-I-MARMOT-UPSTREAM-AUTHORITY` | `invite-expired` | `heterodyne:comms#comms-one-time-invites` |
@@ -159,13 +160,8 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `comms/trusted-seed-route-mismatch` | comms | — | `COMMS-I-TRUSTED-SEED-CONFINEMENT` | `trusted-seed-route-mismatch` | `heterodyne:comms#comms-trusted-seed-private-relay` |
 | `comms/trusted-seed-unauthorized` | comms | — | `COMMS-I-TRUSTED-SEED-CONFINEMENT` | `trusted-seed-unauthorized` | `heterodyne:comms#comms-trusted-seed-private-relay` |
 | `control/activation-binding-mismatch` | control | — | `CONTROL-I-NIP46-OIDC-ACTIVATION` | `control-activation-binding-mismatch` | `heterodyne:control#control-oidc-activation` |
-| `control/agent-attribution-bypass-prohibited` | control | — | `CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING` | `agent-attribution-bypass-prohibited` | `heterodyne:control#control-agent-requirements` |
-| `control/agent-human-profile-prohibited` | control | — | `CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING` | `agent-human-profile-prohibited` | `heterodyne:control#control-agent-requirements` |
 | `control/agent-intent-invalid` | control | — | `CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING` | `control-agent-intent-invalid` | `heterodyne:control#control-agent-requirements` |
-| `control/agent-key-access-prohibited` | control | — | `CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING` | `agent-key-access-prohibited` | `heterodyne:control#control-agent-requirements` |
-| `control/agent-method-prohibited` | control | — | `CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING` | `agent-method-prohibited` | `heterodyne:control#control-agent-requirements` |
 | `control/agent-rate-limited` | control | — | `CONTROL-I-OPERATION-AT-MOST-ONCE` | `agent-rate-limited` | `heterodyne:control#control-agent-requirements` |
-| `control/agent-resource-denied` | control | — | `CONTROL-I-EXACT-SIGNER-GRANT` | `agent-resource-denied` | `heterodyne:control#control-agent-requirements` |
 | `control/agent-size-exceeded` | control | — | `CONTROL-I-EXACT-SIGNER-GRANT` | `agent-size-exceeded` | `heterodyne:control#control-agent-requirements` |
 | `control/attribution-binding-mismatch` | control | — | `CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING` | `control-attribution-binding-mismatch` | `heterodyne:control#control-agent-requirements` |
 | `control/attribution-required` | control | — | `CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING` | `control-attribution-required` | `heterodyne:control#control-agent-requirements` |
@@ -201,8 +197,6 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `control/profile-heterodyne-control-marmot-frame-v1` | control | `heterodyne-control-marmot-frame-v1` | `CONTROL-I-MARMOT-GRANT-CONFINEMENT` | — | `heterodyne:control#control-security` |
 | `control/refresh-prohibited` | control | — | `CONTROL-I-CLIENT-KEY-CONFINEMENT` | `control-refresh-prohibited` | `heterodyne:control#control-token` |
 | `control/request-expired` | control | — | `CONTROL-I-OPERATION-AT-MOST-ONCE` | `control-request-expired` | `heterodyne:control#control-request-processing` |
-| `control/request-id-conflict` | control | — | `CONTROL-I-OPERATION-AT-MOST-ONCE` | `control-request-id-conflict` | `heterodyne:control#control-request-processing` |
-| `control/signed-event-invalid` | control | — | `CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING` | `control-signed-event-invalid` | `heterodyne:control#control-agent-requirements` |
 | `control/signer-binding-mismatch` | control | — | `CONTROL-I-EXACT-SIGNER-GRANT` | `control-signer-binding-mismatch` | `heterodyne:control#control-signer-grants` |
 | `control/signer-effect-indeterminate` | control | — | `CONTROL-I-OPERATION-AT-MOST-ONCE` | — | `heterodyne:control#control-agent-requirements` |
 | `control/signer-unavailable` | control | — | `CONTROL-I-NO-SIGNER-FALLBACK` | `control-signer-unavailable` | `heterodyne:control#control-signer-selection` |
@@ -222,13 +216,12 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `core/node-advert-bad-signature` | core | — | `CORE-I-VERIFY-BEFORE-USE` | `bad_signature` | `heterodyne:core#core-node-advertisement` |
 | `core/node-advert-clock-skew` | core | — | `CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY` | `node-advert-clock-skew` | `heterodyne:core#core-node-advertisement` |
 | `core/node-advert-clock-uncertain` | core | — | `CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY` | `node-advert-clock-uncertain` | `heterodyne:core#core-node-advertisement` |
-| `core/node-advert-dual-proof-valid` | core | — | `CORE-I-NID-DELEGATION-DUAL-PROOF`<br>`CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY` | — | `heterodyne:core#core-node-advertisement` |
+| `core/node-advert-dual-proof-valid` | core | — | `CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY` | — | `heterodyne:core#core-node-advertisement` |
 | `core/node-advert-expired` | core | — | `CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY` | `node_advert_expired` | `heterodyne:core#core-node-advertisement` |
 | `core/node-advert-expiry-invalid` | core | — | `CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY` | `node-advert-expiry-invalid` | `heterodyne:core#core-node-advertisement` |
 | `core/node-advert-lifetime-exceeded` | core | — | `CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY` | `node-advert-lifetime-exceeded` | `heterodyne:core#core-node-advertisement` |
-| `core/node-advert-nid-proof-invalid` | core | — | `CORE-I-NID-DELEGATION-DUAL-PROOF` | `nid_proof_invalid` | `heterodyne:core#core-node-advertisement` |
+| `core/node-advert-nid-proof-invalid` | core | — | `CORE-I-VERIFY-BEFORE-USE` | `nid_proof_invalid` | `heterodyne:core#core-node-advertisement` |
 | `core/onion-clearnet-resolution` | core | — | `CORE-I-VERIFY-BEFORE-USE` | `onion_dns_leak` | `heterodyne:core#core-conformance` |
-| `core/org-member-add-unauthorized` | core | — | `CORE-I-IDENTITY-INTEGRITY` | `org_member_add_unauthorized` | `heterodyne:core#core-conformance` |
 | `core/profile-heterodyne-core-rotation-breadcrumb-note-v1` | core | `heterodyne-core-rotation-breadcrumb-note-v1` | `CORE-I-IDENTITY-INTEGRITY` | — | `heterodyne:core#core-security` |
 | `core/profile-heterodyne-core-rotation-breadcrumb-profile-v1` | core | `heterodyne-core-rotation-breadcrumb-profile-v1` | `CORE-I-IDENTITY-INTEGRITY` | — | `heterodyne:core#core-security` |
 | `core/profile-nip05-key-mismatch` | core | — | `CORE-I-IDENTITY-INTEGRITY` | `profile-nip05-key-mismatch` | `heterodyne:core#core-persona-profile` |
@@ -239,9 +232,8 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `core/replaceable-at-premature-boundary` | core | — | `CORE-I-VERIFY-BEFORE-USE` | — | `heterodyne:core#core-created-at-bound` |
 | `core/replaceable-equal-time-lowest-id` | core | — | `CORE-I-VERIFY-BEFORE-USE` | — | `heterodyne:core#core-source-neutral-selection` |
 | `core/replaceable-future-quarantined` | core | — | `CORE-I-VERIFY-BEFORE-USE` | `core-created-at-premature` | `heterodyne:core#core-created-at-bound` |
-| `core/retired-key-authority-window-invalid` | core | — | `CORE-I-IDENTITY-INTEGRITY` | `retired-key-authority-window-invalid` | `heterodyne:core#core-retired-key-observation` |
-| `core/role-delegation-address-invalid` | core | — | `CORE-I-NID-DELEGATION-DUAL-PROOF` | `role-delegation-address-invalid` | `heterodyne:core#core-nid-delegation` |
-| `core/role-delegation-key-proof-invalid` | core | — | `CORE-I-NID-DELEGATION-DUAL-PROOF` | `role-delegation-key-proof-invalid` | `heterodyne:core#core-nid-delegation` |
+| `core/repository-writer-dual-proof-valid` | core | — | `CORE-I-NID-DELEGATION-DUAL-PROOF` | — | `heterodyne:core#core-nid-delegation` |
+| `core/repository-writer-owner-proof-invalid` | core | — | `CORE-I-NID-DELEGATION-DUAL-PROOF` | `repository-writer-binding-invalid` | `heterodyne:core#core-nid-delegation` |
 | `core/strict-mode-without-tor` | core | — | `CORE-I-VERIFY-BEFORE-USE` | `strict_mode_tor_disabled` | `heterodyne:core#core-conformance` |
 | `core/version-future-major` | core | — | `CORE-I-VERIFY-BEFORE-USE` | `unknown_major_version` | `heterodyne:core#core-conformance` |
 | `core/version-stamp-missing` | core | — | `CORE-I-VERIFY-BEFORE-USE` | `version_stamp_invalid` | `heterodyne:core#core-verification` |

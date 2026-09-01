@@ -14,10 +14,7 @@
   "description": "The current Workspace semantic boundary rejects invitation replay.",
   "direction": "consume",
   "input": {
-    "prior_head": "policy-head-a",
-    "asserted_predecessor": "policy-head-a",
-    "device_active": true,
-    "invitation_nonce_unused": false
+    "evidence": "genuine first consume and activation followed by mismatched second acceptance"
   },
   "expected_output": {
     "verdict": "reject",

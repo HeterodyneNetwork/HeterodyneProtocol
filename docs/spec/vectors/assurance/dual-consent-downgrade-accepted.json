@@ -1,17 +1,16 @@
 {
-  "vector_id": "assurance/unilateral-downgrade-rejected",
+  "vector_id": "assurance/dual-consent-downgrade-accepted",
   "vector_schema_version": "3.0.0",
   "owner_document": "assurance",
+  "profile": "heterodyne-assurance-active-key-acceptance-v1",
   "spec_refs": [
     "heterodyne:assurance#assurance-downgrade-resistance"
   ],
   "invariants": [
     "ASSURANCE-I-PIN-DOWNGRADE"
   ],
-  "reason_codes": [
-    "assurance-downgrade-consent-required"
-  ],
-  "description": "Active-key consent without the current recovery-authority proof cannot downgrade a retained pin.",
+  "reason_codes": [],
+  "description": "An active-key-authored downgrade with the exact current recovery-authority proof becomes the retained terminal state.",
   "direction": "consume",
   "input": {
     "inception": {
@@ -102,13 +101,25 @@
           "heterodyne.assurance.active-key-acceptance.v1"
         ]
       ],
-      "content": "{\"active_key\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",\"assurance_head\":\"5e42684ee4f5c3c754487dff44d8b5ffec5b601d5893e34bb726a6ec3b846e66\",\"cold_root\":\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",\"cold_root_signature\":\"3d9c8a39fbddba60213a4876914a196b2f64a5b38302c9809e986aeca20bf8113ede674eed791bd188328d768f7609e7290b87996c4cd706f3ab56bdca48ba20\",\"created_at\":1785700001,\"inception_event_id\":\"619aac8e3a4f2771819f16c1f27512f4dccc7e881de6b5c5399fce6b0041f3f9\",\"predecessor\":\"5e42684ee4f5c3c754487dff44d8b5ffec5b601d5893e34bb726a6ec3b846e66\",\"profile\":\"heterodyne.assurance.active-key-acceptance.v1\",\"spec_version\":\"heterodyne/0.6.0\",\"state\":\"downgraded\"}",
-      "id": "0f74a6fc121ee33ff6d35a35cd8e72718abd14ca33939ede20e8b8c6ee012a6f",
-      "sig": "245d298423bd620b1bf0b329c2dca2a8f8da2ecc0f35e24a5e2ef9aa004f7a0d0fe314914e229658a39ef3436e1ae39768dcc19ed2d8af0dfc0bd199a515b971"
+      "content": "{\"active_key\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",\"assurance_head\":\"5e42684ee4f5c3c754487dff44d8b5ffec5b601d5893e34bb726a6ec3b846e66\",\"cold_root\":\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",\"cold_root_signature\":\"3d9c8a39fbddba60213a4876914a196b2f64a5b38302c9809e986aeca20bf8113ede674eed791bd188328d768f7609e7290b87996c4cd706f3ab56bdca48ba20\",\"created_at\":1785700001,\"downgrade_consent\":{\"recovery_authority\":\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",\"signature\":\"1ee64bf5f9530c93f39e7c04b17bbb4bf10b88c3bf10bb361f60683113fdf05ec95db56799b990827aec4d86bb0f981c3cb12f44074d3479933090599576538a\"},\"inception_event_id\":\"619aac8e3a4f2771819f16c1f27512f4dccc7e881de6b5c5399fce6b0041f3f9\",\"predecessor\":\"5e42684ee4f5c3c754487dff44d8b5ffec5b601d5893e34bb726a6ec3b846e66\",\"profile\":\"heterodyne.assurance.active-key-acceptance.v1\",\"spec_version\":\"heterodyne/0.6.0\",\"state\":\"downgraded\"}",
+      "id": "af8d58b9b53ea10015e20aa966d98a7aa047ba4c360d24ad6c04be97661414fd",
+      "sig": "f43ab7947cd07685223356c07d34aa3ae0e5aa19b4f24cd0ea54aa3e3be4a0bc6d1c62910b74929a2acec516e7f2923f1fff76759146be6e0f78f3dfd9f2c5cc"
     }
   },
   "expected_output": {
-    "verdict": "reject",
-    "reason_code": "assurance-downgrade-consent-required"
+    "verdict": "accept",
+    "normalized": {
+      "state": "downgraded",
+      "active_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "inception_event_id": "619aac8e3a4f2771819f16c1f27512f4dccc7e881de6b5c5399fce6b0041f3f9",
+      "cold_root": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "accepted_head": "5e42684ee4f5c3c754487dff44d8b5ffec5b601d5893e34bb726a6ec3b846e66",
+      "predecessor": "5e42684ee4f5c3c754487dff44d8b5ffec5b601d5893e34bb726a6ec3b846e66",
+      "created_at": 1785700001,
+      "downgrade_event_id": "af8d58b9b53ea10015e20aa966d98a7aa047ba4c360d24ad6c04be97661414fd",
+      "downgrade_event_signature": "f43ab7947cd07685223356c07d34aa3ae0e5aa19b4f24cd0ea54aa3e3be4a0bc6d1c62910b74929a2acec516e7f2923f1fff76759146be6e0f78f3dfd9f2c5cc",
+      "transition_digest": "72a716c88368d6d93f56edd5ee3b938187431c4ec8f11578b8d326dcb7bcd1e3",
+      "binding_digest": "43fd51470579dd9a1e72340780f602df474e0d77e26c4743abd8ebd2d50ede15"
+    }
   }
 }

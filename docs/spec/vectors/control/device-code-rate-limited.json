@@ -14,10 +14,7 @@
   "description": "The current Control policy boundary rejects device code rate limited.",
   "direction": "consume",
   "input": {
-    "entropy_valid": true,
-    "failed_guesses": 0,
-    "rate_allowed": false,
-    "display_binding_matches": true
+    "evidence": "genuine private transaction is polled before its authoritative interval"
   },
   "expected_output": {
     "verdict": "reject",

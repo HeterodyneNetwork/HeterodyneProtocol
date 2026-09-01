@@ -14,9 +14,7 @@
   "description": "The current Comms policy boundary rejects marmot private inbox nid required.",
   "direction": "consume",
   "input": {
-    "sender_nid_authorized": false,
-    "keypackage_already_consumed": false,
-    "automated_scope_valid": true
+    "evidence": "authenticated current inbox lacks its recipient NID"
   },
   "expected_output": {
     "verdict": "reject",

@@ -14,8 +14,7 @@
   "description": "The Core operational boundary rejects relay profile mutated.",
   "direction": "consume",
   "input": {
-    "operation": "relay-profile",
-    "vanilla_nip01_unchanged": false
+    "evidence": "retained raw profile bytes differ from the exact signed event"
   },
   "expected_output": {
     "verdict": "reject",

@@ -1,0 +1,26 @@
+{
+  "vector_id": "comms/claim-ledger-writer-unauthorized",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-claim-ledger"
+  ],
+  "invariants": [
+    "COMMS-I-CLAIM-REPOSITORY-AUTHORITY"
+  ],
+  "reason_codes": [
+    "claim-ledger-writer-unauthorized"
+  ],
+  "description": "A self-signed ledger record without the current repository owner's exact Core writer proof is rejected before replay.",
+  "direction": "consume",
+  "input": {
+    "record_ids": [
+      "63f1b0ef27dfb7e43d5c17624f1fb5e4cabb2e266d3aaba91392fb71cd85728e",
+      "084534f07234ffc178c74b940366ef1340ebcac0445f15509064bd96935f09de"
+    ]
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "claim-ledger-writer-unauthorized"
+  }
+}

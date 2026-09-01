@@ -12,12 +12,32 @@
   "description": "The current Control policy boundary rejects signer effect indeterminate.",
   "direction": "consume",
   "input": {
-    "canonical_event_valid": true,
-    "fields_exact": true,
-    "effect_certain": false
+    "evidence": "persisted signer execution has an absorbing indeterminate completion fence"
   },
   "expected_output": {
     "verdict": "indeterminate",
-    "reason_code": "control-signer-effect-indeterminate"
+    "reason_code": "control-signer-effect-indeterminate",
+    "signer_execution_disposition": "cached",
+    "completion_transition": {
+      "operation_id": "1eb9280613d8fa1e519580ccded47441e0ae48e370d784382b86cf7e93c2d2d5",
+      "grant_id": "0000000000000000000000000000000000000000000000000000000000000015",
+      "grant_digest": "aa4fac19ae773edf0d5f416f6ce507ab5900fb09d0eb4334913f654e08d0e8df",
+      "authority": {
+        "vault_id": "0000000000000000000000000000000000000000000000000000000000000016",
+        "persona_active_key": "1d16453b3ab3132acb0a5bc16cc49690d819a585267a15cd5a064e2a0ad40599",
+        "nip46_client_pubkey": "0000000000000000000000000000000000000000000000000000000000000017",
+        "signer_audience": "https://node.invalid/nip46/synthetic-local",
+        "selected_signing_pubkey": "ff8adab52623bcb2717fc71d7edc6f55e98396e6c234dff01f307a12b2af1c99",
+        "key_class": "agent"
+      },
+      "request_id": "synthetic-local-request",
+      "request_digest": "241bace6e61ebe8d9c5109b2f01f2dcf54ccd02a83b3b069ec0a5323856a2c24",
+      "expected_revision": 7,
+      "next_revision": 8,
+      "completed_at": 110,
+      "prior_reservation_state": "executing",
+      "reservation_state": "indeterminate",
+      "failure_digest": "ed96e53ce6524a5b43faa321080bbd117b0d0b8a162c147d5d2411345c31bed3"
+    }
   }
 }

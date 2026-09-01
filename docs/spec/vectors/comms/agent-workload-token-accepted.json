@@ -13,103 +13,45 @@
   "description": "A closed finite workload registration and exact sender-constrained token resolve one registered automated signer without exposing private claims.",
   "direction": "consume",
   "input": {
-    "registration": {
-      "persona_key": "1111111111111111111111111111111111111111111111111111111111111111",
-      "client_id": "current-agent-client",
-      "subject_jkt": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-      "subject_proof": {
-        "method": "dpop",
-        "jkt": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-      },
-      "agent_class": "ai",
-      "selected_signer": "3333333333333333333333333333333333333333333333333333333333333333",
-      "signer_key_class": "agent",
-      "agent_association": {
-        "kind": "key",
-        "value": "3333333333333333333333333333333333333333333333333333333333333333"
-      },
-      "audience": "https://node.example/control/agent-publication",
-      "scopes": [
-        "heterodyne:agent:publish"
-      ],
-      "allowed_kinds": [
-        1
-      ],
-      "allowed_feeds": [
-        "main"
-      ],
-      "allowed_resources": [
-        "feed:main"
-      ],
-      "max_content_bytes": 4096,
-      "rate_limit": {
-        "window_seconds": 60,
-        "count": 20,
-        "burst": 5
-      },
-      "not_before": 1000,
-      "expires_at": 1300
-    },
-    "token": {
-      "typ": "at+jwt",
-      "credential_ledger_persona": "1111111111111111111111111111111111111111111111111111111111111111",
-      "credential_ledger_generation": 0,
-      "expected_credential_ledger_persona": "1111111111111111111111111111111111111111111111111111111111111111",
-      "expected_credential_ledger_generation": 0,
-      "iss": "https://issuer.example/oidc/npub1persona",
-      "sub": "stable-pairwise-sub",
-      "aud": [
-        "https://node.example/control/agent-publication"
-      ],
-      "exp": 1250,
-      "iat": 1000,
-      "jti": "current-token-1",
-      "client_id": "current-agent-client",
-      "scope": "heterodyne:agent:publish",
-      "cnf_jkt": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-      "sender_proof_jkt": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-      "sender_proof_valid": true,
-      "signer_key": "3333333333333333333333333333333333333333333333333333333333333333",
-      "signer_key_class": "agent",
-      "agent_association": {
-        "kind": "key",
-        "value": "3333333333333333333333333333333333333333333333333333333333333333"
-      },
-      "expected_issuer": "https://issuer.example/oidc/npub1persona",
-      "expected_subject": "stable-pairwise-sub",
-      "expected_audience": "https://node.example/control/agent-publication",
-      "expected_client_id": "current-agent-client",
-      "expected_scope": "heterodyne:agent:publish",
-      "expected_signer_key": "3333333333333333333333333333333333333333333333333333333333333333",
-      "expected_signer_key_class": "agent",
-      "expected_agent_association": {
-        "kind": "key",
-        "value": "3333333333333333333333333333333333333333333333333333333333333333"
-      },
-      "now": 1100,
-      "status": "VALID",
-      "ledger_active": true,
-      "ledger_binding_valid": true,
-      "status_binding_valid": true,
-      "session_expires_at": 1300,
-      "delegation_expires_at": 1300,
-      "registration_expires_at": 1300,
-      "consent_expires_at": 1300,
-      "source_authorization_expires_at": 1300
-    }
+    "represented_persona": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+    "signer": "531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337",
+    "sender_proof_kind": "dpop",
+    "publication_kind": 1
   },
   "expected_output": {
     "verdict": "accept",
-    "identity": {
-      "issuer": "https://issuer.example/oidc/npub1persona",
-      "sub": "stable-pairwise-sub",
-      "client_id": "current-agent-client",
-      "signer": "3333333333333333333333333333333333333333333333333333333333333333",
-      "key_class": "agent",
-      "agent_association": {
-        "kind": "key",
-        "value": "3333333333333333333333333333333333333333333333333333333333333333"
-      }
+    "output": {
+      "pubkey": "531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337",
+      "created_at": 1767245700,
+      "kind": 1,
+      "tags": [
+        [
+          "t",
+          "synthetic-local"
+        ],
+        [
+          "L",
+          "network.heterodyne.agent"
+        ],
+        [
+          "l",
+          "ai",
+          "network.heterodyne.agent"
+        ],
+        [
+          "heterodyne_agent",
+          "v1",
+          "key",
+          "531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337"
+        ],
+        [
+          "agent_action",
+          "publish"
+        ]
+      ],
+      "content": "synthetic local current agent publication",
+      "id": "c2d1ae23e5b6083e037b443498aac96a74626191b6c112c7b15ac536208c8979",
+      "sig": "9ef1c92d5e6da470c80b72b7beb43befbb2a7e296da58be0d2bd164110ea531b4da2b011bb2ba343f791ee585e3d39ea959166d08d8fa37e7f16a8074c58223b"
     }
   }
 }

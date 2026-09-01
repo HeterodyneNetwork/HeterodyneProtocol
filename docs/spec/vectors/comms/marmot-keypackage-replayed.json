@@ -14,9 +14,7 @@
   "description": "The current Comms policy boundary rejects marmot keypackage replayed.",
   "direction": "consume",
   "input": {
-    "sender_nid_authorized": true,
-    "keypackage_already_consumed": true,
-    "automated_scope_valid": true
+    "evidence": "authenticated current inbox records the exact KeyPackage consumed"
   },
   "expected_output": {
     "verdict": "reject",

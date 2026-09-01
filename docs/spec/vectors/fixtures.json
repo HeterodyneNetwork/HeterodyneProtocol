@@ -1,6 +1,6 @@
 {
   "vector_schema_version": "3.0.0",
-  "registry_sha256": "d14208b69fa1b61dd12d27045e9730acdcc669a46e2eb6ddb17730278b767d79",
+  "registry_sha256": "068c36d589bd2eac4a65245c93095beca4134bbdfae9dabc845485a71c58933f",
   "test_epoch": 1767225600,
   "pinned_randomness": {
     "schnorr_aux_rand": "0000000000000000000000000000000000000000000000000000000000000000",

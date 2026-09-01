@@ -14,10 +14,7 @@
   "description": "The current Control policy boundary rejects device code display mismatch.",
   "direction": "consume",
   "input": {
-    "entropy_valid": true,
-    "failed_guesses": 0,
-    "rate_allowed": true,
-    "display_binding_matches": false
+    "evidence": "genuine private transaction receives mismatched authenticated display fingerprint"
   },
   "expected_output": {
     "verdict": "reject",

@@ -14,10 +14,7 @@
   "description": "The current Control policy boundary rejects compromise reset unauthenticated.",
   "direction": "consume",
   "input": {
-    "authority_signature_valid": false,
-    "inventory_digest_matches": true,
-    "transition_evidence_valid": true,
-    "subordinate_reauthorized": true
+    "evidence": "signed reset grant or completion fails current Assurance binding"
   },
   "expected_output": {
     "verdict": "reject",

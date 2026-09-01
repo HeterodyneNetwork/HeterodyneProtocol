@@ -13,6 +13,16 @@ import { dirname, join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import snapshotManifestSchema from "../../snapshot.schema.json" with { type: "json" };
 import {
+  findInvariantCoverageIssues,
+  findProfileCoverageIssues,
+  findReasonCoverageIssues,
+} from "./coverage.js";
+import {
+  currentCaseContract,
+  currentCaseIds,
+} from "./current-vectors/case-contracts.js";
+import { loadRegistry } from "./registry.js";
+import {
   buildSnapshotManifest,
   loadSnapshotManifest,
   validateSnapshotManifestSchema,
@@ -39,7 +49,21 @@ const VECTOR_PATHS = [
   "workspace/001-second.json",
 ] as const;
 const SOURCE_COMMIT = "1".repeat(40);
-const RECONCILIATION_SOURCE_COMMIT = "0dd150682903d14eddd8d14b57892395f750c47f";
+const RECONCILIATION_SOURCE_COMMIT = "bfb71fbff0a7753db56146bf0d5b49534c06af9d";
+const RECONCILIATION_VECTOR_COUNT = 267;
+const SNAPSHOT_OWNERS = [
+  "assurance",
+  "comms",
+  "control",
+  "core",
+  "social",
+  "workspace",
+] as const;
+const RETIRED_CASE_IDS = [
+  "core/org-member-add-unauthorized",
+  "core/role-delegation-address-invalid",
+  "core/role-delegation-key-proof-invalid",
+] as const;
 const HETERODYNE_SCHEMA_ORIGIN = "https://" + ["heterodyne", "network"].join(".");
 const JSON_SCHEMA_ORIGIN = "https://" + ["json-schema", "org"].join(".");
 const SNAPSHOT_META_SCHEMA_ID =
@@ -50,6 +74,20 @@ const UNIQUE_BY_PATH_VOCABULARY_ID =
   `${HETERODYNE_SCHEMA_ORIGIN}/vocab/unique-by-path-v1`;
 const repositoryRoot = resolve(import.meta.dirname, "../../../../../");
 const temps: string[] = [];
+
+function compareText(left: string, right: string): number {
+  return left.localeCompare(right, "en");
+}
+
+type PublishedVector = Readonly<{
+  vector_id: string;
+  owner_document: (typeof SNAPSHOT_OWNERS)[number];
+  profile?: string;
+  spec_refs: readonly string[];
+  invariants: readonly string[];
+  reason_codes: readonly string[];
+  expected_output: Readonly<Record<string, unknown>>;
+}>;
 
 afterEach(() => {
   for (const path of temps.splice(0)) rmSync(path, { recursive: true, force: true });
@@ -71,6 +109,16 @@ function sha256(bytes: string): string {
 
 function readRepositoryJson(path: string): Record<string, unknown> {
   return JSON.parse(readFileSync(resolve(repositoryRoot, path), "utf8")) as Record<string, unknown>;
+}
+
+function publishedVectors(manifest: SnapshotManifest): PublishedVector[] {
+  const ownerPattern = SNAPSHOT_OWNERS.join("|");
+  const vectorPath = new RegExp(`^docs/spec/vectors/(${ownerPattern})/.+\\.json$`, "u");
+  return manifest.artifacts
+    .filter(({ path }) => vectorPath.test(path))
+    .map(({ path }) => JSON.parse(
+      readFileSync(resolve(repositoryRoot, path), "utf8"),
+    ) as PublishedVector);
 }
 
 function repository(): string {
@@ -103,12 +151,75 @@ function writeManifest(root: string, manifest: SnapshotManifest, bytes = canonic
 }
 
 describe("snapshot manifest", () => {
-  it("pins the 0.6 reconciliation to the reviewed source and corpus", () => {
-    expect(loadSnapshotManifest(repositoryRoot)).toMatchObject({
+  it("pins the complete schema-3 reconciliation to the exact stable source catalog", () => {
+    const manifest = loadSnapshotManifest(repositoryRoot);
+    expect(currentCaseIds()).toHaveLength(RECONCILIATION_VECTOR_COUNT);
+    expect(manifest).toMatchObject({
       source_commit: RECONCILIATION_SOURCE_COMMIT,
       vector_schema_version: "3.0.0",
-      vector_count: 275,
+      vector_count: currentCaseIds().length,
     });
+  });
+
+  it("publishes sorted unique six-owner IDs with retired cases absent", () => {
+    const vectors = publishedVectors(loadSnapshotManifest(repositoryRoot));
+    const vectorIds = vectors.map(({ vector_id }) => vector_id);
+    const coverage = JSON.parse(readFileSync(
+      resolve(repositoryRoot, "docs/spec/vectors/coverage/manifest.json"),
+      "utf8",
+    )) as Array<{ vector_id: string }>;
+    const coverageIds = coverage.map(({ vector_id }) => vector_id);
+    expect(coverageIds).toEqual([...coverageIds].sort(compareText));
+    expect(new Set(coverageIds).size).toBe(coverageIds.length);
+    expect([...vectorIds].sort(compareText)).toEqual([...currentCaseIds()].sort(compareText));
+    expect(coverageIds).toEqual([...vectorIds].sort(compareText));
+    expect([...new Set(vectors.map(({ owner_document }) => owner_document))].sort())
+      .toEqual([...SNAPSHOT_OWNERS]);
+    expect(vectorIds.filter((id) => RETIRED_CASE_IDS.includes(
+      id as (typeof RETIRED_CASE_IDS)[number],
+    ))).toEqual([]);
+  });
+
+  it("preserves complete certificate-derived invariant, reason, and profile closure", () => {
+    const vectors = publishedVectors(loadSnapshotManifest(repositoryRoot));
+    expect(vectors.map(({ vector_id }) => vector_id).sort(compareText))
+      .toEqual([...currentCaseIds()].sort(compareText));
+
+    const semanticCoverage = vectors.map((vector) => {
+      const contract = currentCaseContract(vector.vector_id);
+      expect(vector.owner_document).toBe(contract.owner_document);
+      expect(vector.profile).toBe(contract.profile);
+      expect(vector.invariants).toEqual(
+        [...(contract.terminal_vector_invariants ?? contract.invariants)].sort(),
+      );
+      expect(vector.reason_codes).toEqual([...contract.reason_codes].sort());
+      return {
+        vector_id: vector.vector_id,
+        owner_document: contract.owner_document,
+        ...(contract.profile === undefined ? {} : { profile: contract.profile }),
+        spec_refs: vector.spec_refs,
+        invariants: contract.invariants,
+        reason_codes: contract.semantic_reason_codes ?? contract.reason_codes,
+        semantic_boundary: contract.boundary_id,
+      };
+    });
+    const registry = loadRegistry(repositoryRoot);
+    expect(findInvariantCoverageIssues(registry, semanticCoverage)).toEqual([]);
+    expect(findReasonCoverageIssues(registry, semanticCoverage)).toEqual([]);
+    expect(findProfileCoverageIssues(registry, semanticCoverage)).toEqual([]);
+  });
+
+  it("gives every rejecting vector exactly one registered reason", () => {
+    const vectors = publishedVectors(loadSnapshotManifest(repositoryRoot));
+    const registeredReasons = new Set(
+      loadRegistry(repositoryRoot).reason_codes.map(({ code }) => code),
+    );
+    for (const vector of vectors) {
+      if (vector.expected_output.verdict !== "reject") continue;
+      expect(vector.reason_codes, vector.vector_id).toHaveLength(1);
+      expect(vector.expected_output.reason_code, vector.vector_id).toBe(vector.reason_codes[0]);
+      expect(registeredReasons.has(vector.reason_codes[0]!), vector.vector_id).toBe(true);
+    }
   });
 
   it("rejects non-canonical snapshot manifests", () => {

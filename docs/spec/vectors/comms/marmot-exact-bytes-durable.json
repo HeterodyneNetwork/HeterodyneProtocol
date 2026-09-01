@@ -12,15 +12,12 @@
   "description": "A publisher acknowledges only after exact signed-event and encrypted-media bytes are durable locally and on a configured host.",
   "direction": "round-trip",
   "input": {
-    "signed_event_bytes_preserved": true,
-    "encrypted_media_bytes_preserved": true,
-    "durable_local": true,
-    "configured_host_acceptances": 1,
-    "acknowledgement_requested": true
+    "repository_rid": "rad:z3gqcJUoA1n9HaHKufZs5FCSGazv5",
+    "ref": "refs/xyz.heterodyne.marmot/writers/synthetic-current",
+    "source_kind": "signed-event"
   },
   "expected_output": {
     "verdict": "accept",
-    "durable_ack": true,
-    "exact_bytes": true
+    "output": {}
   }
 }

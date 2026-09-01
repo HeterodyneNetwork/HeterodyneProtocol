@@ -14,9 +14,7 @@
   "description": "The current Comms policy boundary rejects marmot agent scope denied.",
   "direction": "consume",
   "input": {
-    "sender_nid_authorized": true,
-    "keypackage_already_consumed": false,
-    "automated_scope_valid": false
+    "evidence": "authenticated current inbox excludes the requested agent scope"
   },
   "expected_output": {
     "verdict": "reject",

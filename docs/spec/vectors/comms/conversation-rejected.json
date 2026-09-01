@@ -14,24 +14,10 @@
   "description": "The current Comms policy boundary rejects conversation rejected.",
   "direction": "consume",
   "input": {
-    "cryptographic_valid": true,
-    "inviter_account": "1111111111111111111111111111111111111111111111111111111111111111",
-    "recipient_account": "2222222222222222222222222222222222222222222222222222222222222222",
-    "group_id": "4444444444444444444444444444444444444444444444444444444444444444",
-    "key_package_ref": "5555555555555555555555555555555555555555555555555555555555555555",
-    "member_count": 2,
-    "supported_capabilities": true,
-    "prior_local_acceptance": false,
-    "one_time_dm_invite_valid": false,
-    "explicit_local_decision": "reject"
+    "evidence": "verified Welcome is rejected by current local conversation admission"
   },
   "expected_output": {
     "verdict": "reject",
-    "reason_code": "conversation-rejected",
-    "evaluator_output": {
-      "outcome": "reject",
-      "policy_hook_invoked": true,
-      "reason_code": "conversation-rejected"
-    }
+    "reason_code": "conversation-rejected"
   }
 }

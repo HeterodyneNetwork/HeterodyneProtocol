@@ -31,52 +31,10 @@
         ]
       ]
     },
-    "publication": {
-      "kind": 1,
-      "tags": [
-        [
-          "client",
-          "heterodyne-current-profile"
-        ]
-      ],
-      "agent_class": "ai",
-      "persona": "1111111111111111111111111111111111111111111111111111111111111111",
-      "issuer": "https://issuer.example/current-profile",
-      "subject": "current-profile-agent",
-      "client_id": "current-profile-client",
-      "signer": "2222222222222222222222222222222222222222222222222222222222222222",
-      "expected_signer": "2222222222222222222222222222222222222222222222222222222222222222",
-      "signer_key_class": "agent",
-      "oidc_scopes": [
-        "heterodyne:agent:publish"
-      ],
-      "agent_association": {
-        "kind": "key",
-        "value": "2222222222222222222222222222222222222222222222222222222222222222"
-      },
-      "expected_agent_association": {
-        "kind": "key",
-        "value": "2222222222222222222222222222222222222222222222222222222222222222"
-      },
-      "tier": 1
-    },
-    "policy": {
-      "subscribed": true,
-      "policy_persona": "1111111111111111111111111111111111111111111111111111111111111111",
-      "policy_event_selected": true,
-      "event_author": "2222222222222222222222222222222222222222222222222222222222222222",
-      "muted_event_authors": [
-        "2222222222222222222222222222222222222222222222222222222222222222"
-      ],
-      "default_subscription": false,
-      "default_visible": true,
-      "can_disable_default": true
-    }
+    "evidence": "signed subscribed local agent policy list and receipt resolve before exact application"
   },
   "expected_output": {
     "verdict": "accept",
-    "author": "2222222222222222222222222222222222222222222222222222222222222222",
-    "profile_matches": true,
     "local_policy_applied": true
   }
 }

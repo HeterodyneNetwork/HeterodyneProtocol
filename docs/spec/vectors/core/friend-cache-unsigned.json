@@ -14,9 +14,8 @@
   "description": "The Core operational boundary rejects friend cache unsigned.",
   "direction": "consume",
   "input": {
-    "operation": "read-friend-cache",
-    "owner_signed": false,
-    "content_class": "nostr"
+    "candidate_event_id": "fd0ee688e69ca306d6ebb32420a01698aa77071bb62baa1b7d66670a222311eb",
+    "expected_persona": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
   },
   "expected_output": {
     "verdict": "reject",

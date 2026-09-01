@@ -1,8 +1,8 @@
 {
   "snapshot_schema": "1",
-  "source_commit": "0dd150682903d14eddd8d14b57892395f750c47f",
+  "source_commit": "bfb71fbff0a7753db56146bf0d5b49534c06af9d",
   "vector_schema_version": "3.0.0",
-  "vector_count": 275,
+  "vector_count": 267,
   "artifacts": [
     {
       "path": "docs/spec/vectors/assurance/associated-key-expired.json",
@@ -29,32 +29,36 @@
       "sha256": "c7d8d7a204889d7d0a7d961b8e727dee7cd21560d7f71bdc705111fa91a60a76"
     },
     {
+      "path": "docs/spec/vectors/assurance/dual-consent-downgrade-accepted.json",
+      "sha256": "5a17af26a0b1dba83088a9219df3bac8c19316d4f397ac672f3538a75b6d301e"
+    },
+    {
       "path": "docs/spec/vectors/assurance/duplicity-rejected.json",
-      "sha256": "e18ccf63ff9aaff6808f7030706e890cc6a09afc3682147c37112b6f156c9e64"
+      "sha256": "ef7569944fc7e81acdc5cf009f1b34a76b63092815b8fd2b4f01f7d049c7b4ed"
     },
     {
       "path": "docs/spec/vectors/assurance/enrollment-competing-inception.json",
-      "sha256": "8d981e7da64533921b2597740ebc27e45a3d475e5e05253979b20c990c764e0b"
+      "sha256": "6a8f75bbfc612ddeebbd6e9245c8e48c1d092e1c5d14dc8e2a942512be65d0ae"
     },
     {
       "path": "docs/spec/vectors/assurance/enrollment-forged-contest-ignored.json",
-      "sha256": "5381a647a2ba715c6255ff2a515c95195d9b66810d88940b01056d08cc9aaf9c"
+      "sha256": "ccf44f303268eed6b0a869ac1ffc1d341be479b10c817a69427d29cafabaf668"
     },
     {
       "path": "docs/spec/vectors/assurance/enrollment-late-warning-no-unpin.json",
-      "sha256": "37c6c1c1d4a9b2b6b0976a12a8f9a2096f8c7cd4007cf0e8a5d5d4e0f110eda2"
+      "sha256": "d55423d2ba6ceba7f90cf3a696121573f73f00e3f0efb658f688cc97536fcaea"
     },
     {
       "path": "docs/spec/vectors/assurance/enrollment-pending-w-minus-one.json",
-      "sha256": "89061311b806dc282f63814d777118468483b7f5565d4abb5c9299ecfd2cd631"
+      "sha256": "5a083d208aca1d02d8955bd83492b41e1046757a4cc86228ab62ada0c9c1028f"
     },
     {
       "path": "docs/spec/vectors/assurance/enrollment-timely-contest.json",
-      "sha256": "d80609f5c6e7c6bb037b947a697f32998dd7aef160f778b17a66a1fca195cbaf"
+      "sha256": "a66988050e6efa7f284143cc8e0061cbe6d73690a5d44b5c9107dee899a2c8f8"
     },
     {
       "path": "docs/spec/vectors/assurance/enrollment-verified-at-window.json",
-      "sha256": "f313995cae00086a86a9da1cc334985b50bd86342cd7fd044cd24c65894983a9"
+      "sha256": "3efda574f501e35b86a12b90da9f4816128b77fc15acc9f5a86c202e44160e3d"
     },
     {
       "path": "docs/spec/vectors/assurance/export-aid-substitution.json",
@@ -86,7 +90,7 @@
     },
     {
       "path": "docs/spec/vectors/assurance/pin-conflict-rejected.json",
-      "sha256": "a434e74a53429abbbc42862d52103e1231f255e9bdbfd76087ad4f36b1d6ce72"
+      "sha256": "e03b0a67cc2e598d983bd5cada115a5bb273545d882bcb8d303387c7196f629b"
     },
     {
       "path": "docs/spec/vectors/assurance/profile-heterodyne-assurance-active-key-acceptance-v1.json",
@@ -98,7 +102,7 @@
     },
     {
       "path": "docs/spec/vectors/assurance/profile-heterodyne-assurance-enrollment-contest-profile-v1.json",
-      "sha256": "101832f5a5e3811254102de0f41b0cc23461ffe02f1d9bfbbd7c1dd25e172dc0"
+      "sha256": "0719daadd593669bed684d6b57ff51123d3663c034325de212da1da93a8535aa"
     },
     {
       "path": "docs/spec/vectors/assurance/profile-heterodyne-assurance-enrollment-inception-v1.json",
@@ -111,10 +115,6 @@
     {
       "path": "docs/spec/vectors/assurance/reciprocal-proof-invalid.json",
       "sha256": "17206678effb0b75883a2ea5ad8856b5a7c239fd5b904fb3c1adcec0a0690244"
-    },
-    {
-      "path": "docs/spec/vectors/assurance/retired-key-post-compromise.json",
-      "sha256": "6e6d3b617e4f6594ec00c3a8d0bca025b0e860045beb0795c1207d3bf0a6b32b"
     },
     {
       "path": "docs/spec/vectors/assurance/succession-authority-invalid.json",
@@ -146,15 +146,15 @@
     },
     {
       "path": "docs/spec/vectors/assurance/unilateral-downgrade-rejected.json",
-      "sha256": "8c70c39d3001417e6721655f0d45317c598fbc548d0c729a5fdbff37d2298ff4"
+      "sha256": "92ed8b17d53c3b14e601e35750cd0cc684ad55f4feeaf99da458ba23eb4ce0f6"
     },
     {
       "path": "docs/spec/vectors/assurance/witness-threshold-fail.json",
-      "sha256": "3a5fa502a474dae2b15cd15a8c4dfe2e4b5017f6c24e3f88c7fdd5ade39155f1"
+      "sha256": "b0c78d5af23d4397a5856d4e5d997401232aeae40bb6ab650b89471bf483c866"
     },
     {
       "path": "docs/spec/vectors/assurance/witness-threshold-pass.json",
-      "sha256": "437d6c4695f3de02dd0e6a0a44eb7e06ab607bbe7252584fd1a6c77216775dbf"
+      "sha256": "46b0f63ab6c708599a8eddeaae8582d654f20c1aaee80f1d9d58cc8a0149eb93"
     },
     {
       "path": "docs/spec/vectors/comms/agent-attribution-encrypted-inner.json",
@@ -174,7 +174,7 @@
     },
     {
       "path": "docs/spec/vectors/comms/agent-sender-proof-invalid.json",
-      "sha256": "306ce009daf46a27be8e08fe590ed3e4559a8efda229ffb7a98092a382472c80"
+      "sha256": "2dadf8bcc3884465ba09f9aa0a25924d15e218f80754b6dcde1248f38dd47947"
     },
     {
       "path": "docs/spec/vectors/comms/agent-signer-mismatch.json",
@@ -190,7 +190,7 @@
     },
     {
       "path": "docs/spec/vectors/comms/agent-workload-token-accepted.json",
-      "sha256": "1daa859a7d0b09c6305f073ff8b6fabd519f79ec189e3878acd343b128c95d42"
+      "sha256": "da99e71caff46a9979e2a8ac32f569954a2204be9fac76951767668be9cca73e"
     },
     {
       "path": "docs/spec/vectors/comms/auth-rejected-permanent.json",
@@ -218,11 +218,15 @@
     },
     {
       "path": "docs/spec/vectors/comms/claim-active-authenticated.json",
-      "sha256": "4ede7b05f59c6b589faa13222cf0aecbbcedbf1edd22579c3a0293c85447a72c"
+      "sha256": "7817d9ca9181edb6cff0f5c59fc7aefa8ff6dfd587355fdb3e9a634f6708b570"
     },
     {
       "path": "docs/spec/vectors/comms/claim-attenuation-violation.json",
       "sha256": "ae88bf4ea03b0ba8f7b160094983f5dacbac6b2fe46521e46c7a1335978de134"
+    },
+    {
+      "path": "docs/spec/vectors/comms/claim-authorization-effect-indeterminate.json",
+      "sha256": "9ebe9698c3398cc661b46d7057e47f1eb95d25d2739e9c5906ffc108902f80a4"
     },
     {
       "path": "docs/spec/vectors/comms/claim-chain-cycle.json",
@@ -246,7 +250,7 @@
     },
     {
       "path": "docs/spec/vectors/comms/claim-id-mismatch.json",
-      "sha256": "de69f3337cdc701f1b6aa4676376a048fe807eb6cb5be00339c67f15474932c1"
+      "sha256": "5df70a4cf7acef36606bb5ec8bdfa13812a144ff1e36dd44483d1b237e86c16d"
     },
     {
       "path": "docs/spec/vectors/comms/claim-issuer-authority-invalid.json",
@@ -265,12 +269,16 @@
       "sha256": "c0fa6a83298641f0068e20f5e6982f0b7b2f960d827f261585802ba2b23c90df"
     },
     {
+      "path": "docs/spec/vectors/comms/claim-ledger-writer-unauthorized.json",
+      "sha256": "8833711a1ed5c6d015f94fab44c35838259c1975ef541aa2cadc49776b81f1fe"
+    },
+    {
       "path": "docs/spec/vectors/comms/claim-repository-conflict.json",
       "sha256": "7d6e17601f3e110491f5f02dea207e4f6b4a4e2f248cdf180fc97eac2cecc190"
     },
     {
       "path": "docs/spec/vectors/comms/claim-repository-unconfirmed.json",
-      "sha256": "987b9e79afd555ce94083ab9b87eabdbb2619db98633483e0ff7561e4adf9748"
+      "sha256": "bbaeedb21f2ce34303a01402b11793a00328e0d05e69d3627758acd24cc999cd"
     },
     {
       "path": "docs/spec/vectors/comms/claim-revoked.json",
@@ -285,6 +293,10 @@
       "sha256": "767d4ede6c50b9baef3186b32914c058f0c5fbbf31188ac6ff9f56c3dcea642e"
     },
     {
+      "path": "docs/spec/vectors/comms/claim-subject-proof-replayed.json",
+      "sha256": "d3d913e647193d5a4da43ceb97328ddd07b895ff3e6fbdd3234db38eb9e13983"
+    },
+    {
       "path": "docs/spec/vectors/comms/claim-subject-proof-required.json",
       "sha256": "16c858565d0bf0a9cebd2029dc9e306fb2d629b125a9ff3b6f53201088f997d3"
     },
@@ -294,15 +306,7 @@
     },
     {
       "path": "docs/spec/vectors/comms/conversation-rejected.json",
-      "sha256": "75f51c9b19f3d8b6f6eaa81f7e625f9cf04a09ca5e0fe4d1a0f60188493c36a9"
-    },
-    {
-      "path": "docs/spec/vectors/comms/dm-invite-revoked-device.json",
-      "sha256": "7b639412ade01b2ffd76981fd571f1c62ff75a3d13e5c2b7474eef46662f2376"
-    },
-    {
-      "path": "docs/spec/vectors/comms/dm-invite-unbound-device.json",
-      "sha256": "bd8301d5859cf72df77538ba23826fb461eb68680ab55ec789ec016fc509f251"
+      "sha256": "6ae93ff87517365f8fe8b1ad84b120fc13c0f92cf401a589b9cba22db8548478"
     },
     {
       "path": "docs/spec/vectors/comms/invite-already-reserved.json",
@@ -310,7 +314,7 @@
     },
     {
       "path": "docs/spec/vectors/comms/invite-authentication-invalid.json",
-      "sha256": "f776cc2239cbb87274859bc8dc63453705368d48ef5a1067008e617b2e2621b3"
+      "sha256": "c9d559f9806b7cbbd18d0b1daa962f4a4f74aff8dfe671027995cf84dbfcf972"
     },
     {
       "path": "docs/spec/vectors/comms/invite-expired.json",
@@ -322,7 +326,7 @@
     },
     {
       "path": "docs/spec/vectors/comms/ledger-reader-authorized.json",
-      "sha256": "187ccc47f1a81fc1f006e3dce4b511db3f28dd26079d97e932cafca1380c02cd"
+      "sha256": "d7f27b79364aaa7d9eef9eb32d41f6258f18e7e8596c88bc74c189d75e97f947"
     },
     {
       "path": "docs/spec/vectors/comms/ledger-reader-unauthorized.json",
@@ -330,31 +334,31 @@
     },
     {
       "path": "docs/spec/vectors/comms/marmot-agent-scope-denied.json",
-      "sha256": "fd85d43190a2a9681c9f23b99a8fa7d4eee5701a134dbdc5b331579a70904ce1"
+      "sha256": "e806b78a6734cbe8178bbcaea70872e6fd4ab3e9d03e756454e36e49beecaeef"
     },
     {
       "path": "docs/spec/vectors/comms/marmot-exact-bytes-durable.json",
-      "sha256": "73a00cdffd2ad0c2b5e6d0e4eeab6b19a0380c0f1ba488e993318935c2da63bb"
+      "sha256": "eef635d9b1245d45a119dbad62bba83bd2158b74e370610e2230ee102883484e"
     },
     {
       "path": "docs/spec/vectors/comms/marmot-expiration-not-erasure.json",
-      "sha256": "5d07a13060c94a75fd86245e19097c6f52a7652f08246e9680793cc55169a1ae"
+      "sha256": "3e3fc6f990ce150b0369a258b71eb066e1920c7cda88d596c6fcbe4f9a054e57"
     },
     {
       "path": "docs/spec/vectors/comms/marmot-keypackage-replayed.json",
-      "sha256": "cbdb1beddd301223663aeea1faded4516530828140ac457d44d0b5d3aa80c6fd"
+      "sha256": "1376e6cb8f2d85c97e15c25a065f89cd026e0cadc9747522ad1a95dba1b1fd74"
     },
     {
       "path": "docs/spec/vectors/comms/marmot-ordinary-welcome-held.json",
-      "sha256": "b113b694e6da083b143ca66ec2a3ba9857669c2f79ba6d19bfdba00ba1f4e038"
+      "sha256": "a0870a9b2d8b2445658df0700769eb90fc9585deb2266497a5259f8c5b94a54c"
     },
     {
       "path": "docs/spec/vectors/comms/marmot-premature-ack.json",
-      "sha256": "07942ea8a3b12c8ea526d6fff1d2c6ba7eebd90a674a5b751afa7f371d7c3edf"
+      "sha256": "d526197988d56ea01e486d9df76b431aefd3c647becc6404ffccb84eaa3ce607"
     },
     {
       "path": "docs/spec/vectors/comms/marmot-private-inbox-nid-required.json",
-      "sha256": "9f9f7704ae0a0dab339bd018634304e58e31cc17feffadebfa23f6478dde0976"
+      "sha256": "8f3e77f0b3e91b73752ef8dcc8958d23dc605c4d429c5d61412d228a307e507f"
     },
     {
       "path": "docs/spec/vectors/comms/marmot-private-route-required.json",
@@ -597,32 +601,12 @@
       "sha256": "f79076203ed2654dd6e170f763f44b8ac5b9eba6b0beafc34ab08129c727fa06"
     },
     {
-      "path": "docs/spec/vectors/control/agent-attribution-bypass-prohibited.json",
-      "sha256": "3110844854bd81afd0e0641d0b234c1923c04183955d25ef0ab63a57dbcdf9b6"
-    },
-    {
-      "path": "docs/spec/vectors/control/agent-human-profile-prohibited.json",
-      "sha256": "2b4eee289918e42f19da4a3018265cd214da8dc4464ddcd7c8621eecbdf1f539"
-    },
-    {
       "path": "docs/spec/vectors/control/agent-intent-invalid.json",
       "sha256": "18b7a95ef5b321c90959e9e970c9cd797cb2b19a6a7bdd562e537f6df9c7b195"
     },
     {
-      "path": "docs/spec/vectors/control/agent-key-access-prohibited.json",
-      "sha256": "a008db79a8ec669f23ce9bfda6309a5e1afd6fd91f3ab5087105a67c5bf5b1dd"
-    },
-    {
-      "path": "docs/spec/vectors/control/agent-method-prohibited.json",
-      "sha256": "5da5e6b76122655f9ec138233f569c892e573a13b573973e9083fa481b01b827"
-    },
-    {
       "path": "docs/spec/vectors/control/agent-rate-limited.json",
       "sha256": "ca8779e92ca0d83b8a092e1c40ed948fc100b8f2f5c5f763100953f3ccfc535d"
-    },
-    {
-      "path": "docs/spec/vectors/control/agent-resource-denied.json",
-      "sha256": "8c989bcd518dd193dd61e6348e5405d0d0c8dfa868d09a143670b2176f605496"
     },
     {
       "path": "docs/spec/vectors/control/agent-size-exceeded.json",
@@ -658,15 +642,15 @@
     },
     {
       "path": "docs/spec/vectors/control/compromise-reset-evidence-invalid.json",
-      "sha256": "1e4620fd218b4e7511334a1c37fa38abe868d3c195787d7c5d7e214a184f6181"
+      "sha256": "e6a54bd2d50186627ac3aa20225c9f3b81ecbb419120b6bc1bebd226877a20b1"
     },
     {
       "path": "docs/spec/vectors/control/compromise-reset-inventory-mismatch.json",
-      "sha256": "a2f442be674bd21fa6f77ed061d570b7aedaa20e3ee1f038f49081d582f12fd2"
+      "sha256": "32035b6d9c5a3493c0b0ad2b099b8f0f003d60ad19086a140285388d31406944"
     },
     {
       "path": "docs/spec/vectors/control/compromise-reset-unauthenticated.json",
-      "sha256": "17db3528d4fdfcc22d5217643e68bcfa181b3061f7ad3691ae7d7cd9ab6ef98c"
+      "sha256": "0bbca52f60ba53d84d4eedbb9f2785c5a99947c8078c8f08f2bfa9387ff02c43"
     },
     {
       "path": "docs/spec/vectors/control/connection-secret-invalid.json",
@@ -678,15 +662,15 @@
     },
     {
       "path": "docs/spec/vectors/control/device-code-display-mismatch.json",
-      "sha256": "bc2230e118c88335791d3cfd4209f7fd76fbe84d820df7e8fcba3d5259304d54"
+      "sha256": "0d323ba8815ce36eb5ee6aebc89854c421c0b247a693592b3149466d1157f3d5"
     },
     {
       "path": "docs/spec/vectors/control/device-code-invalid.json",
-      "sha256": "4fbb5ba4e18f0b25b19f3aac4f880824f1b7d3257aa4272d69d2f5ebc4c7e9b8"
+      "sha256": "441f5c8aa2dc9c15dec9f8f2ce1d173f6a906ec6d50484461f0143416da16ad0"
     },
     {
       "path": "docs/spec/vectors/control/device-code-rate-limited.json",
-      "sha256": "1d39b5eb5122058cde3251c03a7d80b9f10b6ccd6e7c5674e7de3ca7d7fab9ae"
+      "sha256": "41e6b294df1d2cd7df1bb713e9fee56f6e96d64acd4d0fbefcd3e4546bf5877d"
     },
     {
       "path": "docs/spec/vectors/control/enrollment-rate-limited.json",
@@ -698,7 +682,7 @@
     },
     {
       "path": "docs/spec/vectors/control/enrollment-unavailable.json",
-      "sha256": "479ec3150e5904d846f5454ddd0841c50f00b1643b7de86da00f0a47420d1429"
+      "sha256": "25774e8879f27432abe8884a1d238349857df7b3043a2465d6f89af0d8b20f6a"
     },
     {
       "path": "docs/spec/vectors/control/entitlement-conflict.json",
@@ -710,19 +694,19 @@
     },
     {
       "path": "docs/spec/vectors/control/frame-invalid.json",
-      "sha256": "7a7bc3727f661fa4749606a3e8a70781c442480bfbebb2ee61dfa6dbcbb4685b"
+      "sha256": "460b93dd58ca3065b5b6a65caf13878a91ea741893f6ff8d06c4165b4415fb52"
     },
     {
       "path": "docs/spec/vectors/control/invite-preauthorization-invalid.json",
-      "sha256": "a0f0677df80a28765c194de0ca45a09c385fb732e2e0ce655316301a8a54df0c"
+      "sha256": "38c8d078b5ed92945d9bc743872a1895927b3160d71690093264fa3cd85d3364"
     },
     {
       "path": "docs/spec/vectors/control/keypackage-invalid.json",
-      "sha256": "25bf8fbec363343c4263ad63a500001871befda24bf5785521ec46b46134bc3b"
+      "sha256": "dd3fd27689f30a8c0fe84be127e7af9e79a559b4aa381fbbdfa70a5f30e2570e"
     },
     {
       "path": "docs/spec/vectors/control/keypackage-replenishment-paused.json",
-      "sha256": "9eb0118f21235aa7b92bf8f20a16c8e6adae8ec5d87ee68c1f10a292c7ef44d9"
+      "sha256": "81a96dd2d265e99c25ac24f96de31320acb34b30ad832050c0d9022662cdd3e8"
     },
     {
       "path": "docs/spec/vectors/control/nip46-request-invalid.json",
@@ -765,20 +749,12 @@
       "sha256": "1569a10e091f6601a13f0aee5d0169929b10985dd58be8553f789d3f5bc2e414"
     },
     {
-      "path": "docs/spec/vectors/control/request-id-conflict.json",
-      "sha256": "ed94d1ef4f28e80fdb2424024390d2653cd55cae7b740afd12795ad18f8d3ed5"
-    },
-    {
-      "path": "docs/spec/vectors/control/signed-event-invalid.json",
-      "sha256": "a99010978ab75e4f1a38663415d298c5badb38825a513c8a3183f54b4f7dc209"
-    },
-    {
       "path": "docs/spec/vectors/control/signer-binding-mismatch.json",
       "sha256": "492d49901b9f0914291b81c521431c14459b18443e231a381ba824a1976b3502"
     },
     {
       "path": "docs/spec/vectors/control/signer-effect-indeterminate.json",
-      "sha256": "91ecd3f0faafc0685f14a4d15cfca9fcd0608edfcfb62971d9449d354f31c2aa"
+      "sha256": "f93918d481c9d3a33ce03ca1fa3b2e4f7bf015189defc448d41cb183f4804afa"
     },
     {
       "path": "docs/spec/vectors/control/signer-unavailable.json",
@@ -806,11 +782,11 @@
     },
     {
       "path": "docs/spec/vectors/control/subordinate-reauthorization-required.json",
-      "sha256": "4f02f8c1dae5ac86ef7d6c4fc51a886cbab287af82df8967aebd11b258d7858c"
+      "sha256": "ca516606243915f4488a632ef14cf9d834f81ac04ce2ab35d10fd070f8365662"
     },
     {
       "path": "docs/spec/vectors/control/token-invalid.json",
-      "sha256": "a8921b0245671d5f6ae6938879c7df57cf99f3439babb9c4d82fe5692fae3fe3"
+      "sha256": "9938028676c6486f42d9df16db78f7b64afc7fc14174ddf432c8948ab01152a3"
     },
     {
       "path": "docs/spec/vectors/control/usage-binding-mismatch.json",
@@ -826,7 +802,7 @@
     },
     {
       "path": "docs/spec/vectors/core/friend-cache-unsigned.json",
-      "sha256": "1a6a8e36266cbbeabeb81d926f2850c1f7f9f4f720217cc1fb99a53620261a00"
+      "sha256": "30c41fda51b4105cfde4014338904de381786d091382b662b8acefff1b5bb9f0"
     },
     {
       "path": "docs/spec/vectors/core/nip01-raw-mismatch.json",
@@ -850,7 +826,7 @@
     },
     {
       "path": "docs/spec/vectors/core/node-advert-dual-proof-valid.json",
-      "sha256": "3986b0f396cc315259890bc5099a5ac31152b4662bf3378afb27c9a3117310b1"
+      "sha256": "172472c432aa2227a0c3f04df83584ab84b75d7268169f1d57fe33e785ce029e"
     },
     {
       "path": "docs/spec/vectors/core/node-advert-expired.json",
@@ -866,15 +842,11 @@
     },
     {
       "path": "docs/spec/vectors/core/node-advert-nid-proof-invalid.json",
-      "sha256": "a7a6e30e9e5d79105ec9b26a78b4c2fdf1ea5c1bb203c33f6edc70240c15bd0e"
+      "sha256": "8e1c4e825f238c3385520591360e6bbf11fefad6c03779a298448decddd0eed3"
     },
     {
       "path": "docs/spec/vectors/core/onion-clearnet-resolution.json",
       "sha256": "92ec3f9d38b1e7010efa9eaac41cd8d49242168f94118f81e30a72bff11232ab"
-    },
-    {
-      "path": "docs/spec/vectors/core/org-member-add-unauthorized.json",
-      "sha256": "666796961189739d00f11e59769dccaf3aa56fef95cbf4ddf54b7a1a55bf534a"
     },
     {
       "path": "docs/spec/vectors/core/profile-heterodyne-core-rotation-breadcrumb-note-v1.json",
@@ -894,11 +866,11 @@
     },
     {
       "path": "docs/spec/vectors/core/profile-repository-selection-required.json",
-      "sha256": "6087932f9ded88c5d57241ccb21de9b26b6c135023956aa92558f6844178ea6f"
+      "sha256": "0f87de3057eedefad1c7ae71f9dd86ffbd9061772ba405ac97dbf085938dd6e8"
     },
     {
       "path": "docs/spec/vectors/core/relay-profile-mutated.json",
-      "sha256": "4f8bfaec52c7edc1f58ae8fbf29792570368cbc8958b1ae62e071e2d660decd6"
+      "sha256": "521b8b63543caa97c98969b754217a53da0b670790113fb48859a87ce8e7eeae"
     },
     {
       "path": "docs/spec/vectors/core/replaceable-advisory-nip03-ignored.json",
@@ -917,20 +889,16 @@
       "sha256": "99d42417e621c477f786092ce62307031fe440cabe7cea8d761625c5d0b56682"
     },
     {
-      "path": "docs/spec/vectors/core/retired-key-authority-window-invalid.json",
-      "sha256": "c7c135f747ebad004062d7e5c5b1eafbad16fdcad2ec559771652200758cc2de"
+      "path": "docs/spec/vectors/core/repository-writer-dual-proof-valid.json",
+      "sha256": "3f65d8bce8d010fb4c7398fdb41403ad6ff722499e84e3239f4502752ddccabe"
     },
     {
-      "path": "docs/spec/vectors/core/role-delegation-address-invalid.json",
-      "sha256": "2d4befcf9cc4a3a7bb0a53bde482303d0cb7db5065f50418fdb9b2b04d7b1f86"
-    },
-    {
-      "path": "docs/spec/vectors/core/role-delegation-key-proof-invalid.json",
-      "sha256": "8932e0376a924c0238f19ccd2c6975fbe324222c9961b7550689004dfa83e77c"
+      "path": "docs/spec/vectors/core/repository-writer-owner-proof-invalid.json",
+      "sha256": "811f5a3cd2837fcd81f3b8a2919ce82844fa11a07a386a61e6b56b33377c1abe"
     },
     {
       "path": "docs/spec/vectors/core/strict-mode-without-tor.json",
-      "sha256": "88e5d2073153d798bad16e16aa23a531a7a375ec1d977626550380b1adaac9ff"
+      "sha256": "6159b0b1b0746c78c9dba4073a5d2b51d42748655d7858a2862d6f9da3a4212b"
     },
     {
       "path": "docs/spec/vectors/core/version-future-major.json",
@@ -942,27 +910,27 @@
     },
     {
       "path": "docs/spec/vectors/coverage/assurance.md",
-      "sha256": "f5b5d757981dfeee7ffd94f7403309e867694a970f962cfa9396c1487203518f"
+      "sha256": "f7b7b5105a987c39be68d2a20beb936e3f11158d17439552c41b54efdf0d25ed"
     },
     {
       "path": "docs/spec/vectors/coverage/comms.md",
-      "sha256": "4b80342286a56c43f68159872140e3bdc0961ea327cb78e5505acaa3498acbda"
+      "sha256": "2c2de50c2023229d106b03ace9790fd713351c67916bb6ee22fb63805d59af90"
     },
     {
       "path": "docs/spec/vectors/coverage/control.md",
-      "sha256": "28fece99f9a0ebbad6057e2195a55331c69561b17aaa115912d8b07692f1f6a2"
+      "sha256": "d1a045eb3b5c68088976aa7edb78d8a89b3dcd0b8a76a03061c114666f859fad"
     },
     {
       "path": "docs/spec/vectors/coverage/core.md",
-      "sha256": "c435e60a0e9c85c82bd460c699019a8f36aa48132aef1fd6445cd484eee7f429"
+      "sha256": "dfef24f056185f292b60cbcc72ee57b15636f13dbc2b44dc5c394590c6c4619d"
     },
     {
       "path": "docs/spec/vectors/coverage/family.md",
-      "sha256": "eb7ebd1c14c96c7c854c43ff94fa6d5557ccbe2503bff62286f7397c94f17c8a"
+      "sha256": "b38b382105eebfcc16d13b7670095a86ece6c000cc80426ac958a74e91e2e578"
     },
     {
       "path": "docs/spec/vectors/coverage/manifest.json",
-      "sha256": "f952cdc54a5ec36f416579cb2062325454cdd8ae5231ef1a7649dada4979718e"
+      "sha256": "31ca4939dd66124c271b8cc9be3f2d18ed8be384f83af2420d8aea73b5f8999f"
     },
     {
       "path": "docs/spec/vectors/coverage/social.md",
@@ -974,19 +942,19 @@
     },
     {
       "path": "docs/spec/vectors/fixtures.json",
-      "sha256": "a0331d14298f514c18745861337d89746bebed2beabcd739f082114f713e4583"
+      "sha256": "19063884adfab1910da5249f58da307128ffe4d95217afd45adc77718ce32ab8"
     },
     {
       "path": "docs/spec/vectors/schema/reason-codes.json",
-      "sha256": "99999ce390d4a547fcebb61a5fe319eb4793f16cae78af044d79a8f6b1c38cbe"
+      "sha256": "a8da47015f18089cc8a5172a9c870b14689e26c8a2251d16310afde2974fa528"
     },
     {
       "path": "docs/spec/vectors/schema/reason-codes.md",
-      "sha256": "1edd2d0ae7586903ddf97dc78e656c26fb4a497a85c9153dfa94f82078072619"
+      "sha256": "c31659b54d296dddaf193a56296631b4a9fb3e2bb56191a05c6fa4a18cb8df14"
     },
     {
       "path": "docs/spec/vectors/schema/vector.schema.json",
-      "sha256": "58144b1a9daeda541a5b56930837758046bf0d256f8a26464a51793947d17c63"
+      "sha256": "0b0455fa624bf84523b3c7628329fa71dcfd5365b5d0d3c058f7a12fc833533b"
     },
     {
       "path": "docs/spec/vectors/social/agent-attribution-falsified.json",
@@ -1022,11 +990,11 @@
     },
     {
       "path": "docs/spec/vectors/social/profile-heterodyne-social-agent-policy-list-v1.json",
-      "sha256": "1b9297f97e34f1422895c0ca0d799907063e32983920f39c823bce093e8add69"
+      "sha256": "10a5d6d65747f403698056de1c9627b20c6cf9b11d5adbd22eef25dd7e8956c3"
     },
     {
       "path": "docs/spec/vectors/social/profile-heterodyne-social-agent-policy-receipt-v1.json",
-      "sha256": "99b3b95e1ef3cf143b62a2012fdd10fe2db1a6ee25e96fb036e0fba13576814f"
+      "sha256": "9cf85d1e6bb9ed5ca397e65c075025c005358868e9c66760ff2191a63de6f169"
     },
     {
       "path": "docs/spec/vectors/social/profile-heterodyne-social-mute-list-v1.json",
@@ -1086,11 +1054,11 @@
     },
     {
       "path": "docs/spec/vectors/workspace/carrier-not-ambient-authority.json",
-      "sha256": "fb10b9b3a3a4a3125225d4d174573e5da32626b32d3b16fbcb7a0bcae4affc52"
+      "sha256": "8bfd26e0c4ab12ff207dd1a984906b3115017b6fce8a00ea3575751686b4774e"
     },
     {
       "path": "docs/spec/vectors/workspace/current-capability-intersection.json",
-      "sha256": "045d6a20084008d2f951a3018abc5603571229e102cf0a94c75c03a689ce6486"
+      "sha256": "4a21b429a23c33c30c463d8e31ab0e525ab6bfa3b7ede1c84cab5ad0f59fa4d9"
     },
     {
       "path": "docs/spec/vectors/workspace/device-revoked.json",
@@ -1114,11 +1082,11 @@
     },
     {
       "path": "docs/spec/vectors/workspace/inheritance-escalation-rejected.json",
-      "sha256": "01813d65d078ea344eaecaf9a392e86baf7928ab32a18bde125542fe9a5b1da3"
+      "sha256": "72a4496718c14d5b64d0c2311d38f1436ecb9de5a70c0855b41d8ffe5f5d2bd9"
     },
     {
       "path": "docs/spec/vectors/workspace/invitation-replay.json",
-      "sha256": "00d7b5b249f5708713450fc797f3417e9075219ac41b3cf94bf19296fc40da42"
+      "sha256": "92b4e3123f628219b792614ecd0840aa53a245833537152f3276b4aecc11c991"
     },
     {
       "path": "docs/spec/vectors/workspace/private-topology-clean.json",
@@ -1142,7 +1110,7 @@
     },
     {
       "path": "docs/spec/vectors/workspace/revocation-blocks-future-effect.json",
-      "sha256": "8a5fd47e4bf1014ba9489ca67d6228369c77f2ae73a9fb3ac609986ca1e8b24f"
+      "sha256": "1403808a16eda7db16628836a4b85896f8c0e4cfb5b09acb982164dd53d6eacd"
     },
     {
       "path": "docs/spec/vectors/workspace/schema-invalid.json",
@@ -1150,7 +1118,7 @@
     },
     {
       "path": "docs/spec/vectors/workspace/signature-invalid.json",
-      "sha256": "33412c173714c55fa7bda5a0cc58b71727789cff6f7ba399b042583abfa287dc"
+      "sha256": "5e42d8bdce92c72ba94cf202a5ae40d66942a96a9ce2c71e92454396fa687d32"
     }
   ]
 }

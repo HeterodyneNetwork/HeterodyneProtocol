@@ -14,51 +14,7 @@
   "description": "The current workload boundary rejects agent sender proof invalid.",
   "direction": "consume",
   "input": {
-    "typ": "at+jwt",
-    "credential_ledger_persona": "1111111111111111111111111111111111111111111111111111111111111111",
-    "credential_ledger_generation": 0,
-    "expected_credential_ledger_persona": "1111111111111111111111111111111111111111111111111111111111111111",
-    "expected_credential_ledger_generation": 0,
-    "iss": "https://issuer.example/oidc/npub1persona",
-    "sub": "stable-pairwise-sub",
-    "aud": [
-      "https://node.example/control/agent-publication"
-    ],
-    "exp": 1250,
-    "iat": 1000,
-    "jti": "current-token-1",
-    "client_id": "current-agent-client",
-    "scope": "heterodyne:agent:publish",
-    "cnf_jkt": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-    "sender_proof_jkt": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-    "sender_proof_valid": false,
-    "signer_key": "3333333333333333333333333333333333333333333333333333333333333333",
-    "signer_key_class": "agent",
-    "agent_association": {
-      "kind": "key",
-      "value": "3333333333333333333333333333333333333333333333333333333333333333"
-    },
-    "expected_issuer": "https://issuer.example/oidc/npub1persona",
-    "expected_subject": "stable-pairwise-sub",
-    "expected_audience": "https://node.example/control/agent-publication",
-    "expected_client_id": "current-agent-client",
-    "expected_scope": "heterodyne:agent:publish",
-    "expected_signer_key": "3333333333333333333333333333333333333333333333333333333333333333",
-    "expected_signer_key_class": "agent",
-    "expected_agent_association": {
-      "kind": "key",
-      "value": "3333333333333333333333333333333333333333333333333333333333333333"
-    },
-    "now": 1100,
-    "status": "VALID",
-    "ledger_active": true,
-    "ledger_binding_valid": true,
-    "status_binding_valid": true,
-    "session_expires_at": 1300,
-    "delegation_expires_at": 1300,
-    "registration_expires_at": 1300,
-    "consent_expires_at": 1300,
-    "source_authorization_expires_at": 1300
+    "evidence": "real JWT accepted and exact DPoP proof rejected before signer effect"
   },
   "expected_output": {
     "verdict": "reject",
