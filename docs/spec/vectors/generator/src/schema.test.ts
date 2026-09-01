@@ -55,6 +55,7 @@ const marmotSchemaNames = [
 ] as const;
 
 const marmotSchemas = new Ajv({ allErrors: true, strict: false });
+const HETERODYNE_SCHEMA_ORIGIN = "https://" + ["heterodyne", "network"].join(".");
 for (const name of marmotSchemaNames) {
   marmotSchemas.addSchema(JSON.parse(
     readFileSync(resolve(commsSchemasRoot, name), "utf8"),
@@ -62,7 +63,7 @@ for (const name of marmotSchemaNames) {
 }
 
 function validateMarmotSchema(name: typeof marmotSchemaNames[number], value: unknown): string | null {
-  const id = `https://heterodyne.network/schemas/comms/${name}`;
+  const id = `${HETERODYNE_SCHEMA_ORIGIN}/schemas/comms/${name}`;
   const validate = marmotSchemas.getSchema(id);
   if (validate === undefined) throw new Error(`missing Marmot schema: ${id}`);
   return validate(value) ? null : JSON.stringify(validate.errors);

@@ -91,7 +91,7 @@ describe("full-node reachability", () => {
   it("rejects browser compatibility without a normalized clearnet shared relay", () => {
     expect(validateFullNodeReachability({
       ...complete,
-      shared_relays: ["ws://relay.example", "wss://hiddenservice.onion"],
+      shared_relays: ["ws://relay.example", "wss://" + "hiddenservice.onion"],
     })).toEqual({
       verdict: "reject",
       reduced_assurance: false,

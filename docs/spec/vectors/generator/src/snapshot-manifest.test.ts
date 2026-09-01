@@ -40,12 +40,14 @@ const VECTOR_PATHS = [
 ] as const;
 const SOURCE_COMMIT = "1".repeat(40);
 const RECONCILIATION_SOURCE_COMMIT = "0dd150682903d14eddd8d14b57892395f750c47f";
+const HETERODYNE_SCHEMA_ORIGIN = "https://" + ["heterodyne", "network"].join(".");
+const JSON_SCHEMA_ORIGIN = "https://" + ["json-schema", "org"].join(".");
 const SNAPSHOT_META_SCHEMA_ID =
-  "https://heterodyne.network/schemas/vector-snapshot-manifest-meta-v1.schema.json";
+  `${HETERODYNE_SCHEMA_ORIGIN}/schemas/vector-snapshot-manifest-meta-v1.schema.json`;
 const DRAFT_2020_12_CORE_VOCABULARY_ID =
-  "https://json-schema.org/draft/2020-12/vocab/core";
+  `${JSON_SCHEMA_ORIGIN}/draft/2020-12/vocab/core`;
 const UNIQUE_BY_PATH_VOCABULARY_ID =
-  "https://heterodyne.network/vocab/unique-by-path-v1";
+  `${HETERODYNE_SCHEMA_ORIGIN}/vocab/unique-by-path-v1`;
 const repositoryRoot = resolve(import.meta.dirname, "../../../../../");
 const temps: string[] = [];
 

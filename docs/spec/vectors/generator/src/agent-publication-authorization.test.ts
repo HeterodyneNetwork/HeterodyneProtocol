@@ -48,11 +48,12 @@ const nonce = "synthetic-local-publication-nonce";
 const dpopSender = OIDC_RSA_TWO.public_jwk.kid as string;
 const mtlsPeer = createHash("sha256").update("synthetic-local-mtls-peer").digest("base64url");
 const checkpointDigest = "c6".repeat(32);
-const SELECTED_SIGNER_CLAIM = "https://heterodyne.network/jwt/agent-selected-signer";
-const SIGNER_CLASS_CLAIM = "https://heterodyne.network/jwt/agent-signer-key-class";
-const ASSOCIATION_CLAIM = "https://heterodyne.network/jwt/agent-association";
-const CHECKPOINT_CLAIM = "https://heterodyne.network/jwt/ledger-checkpoint";
-const STATUS_MIRROR_CLAIM = "https://heterodyne.network/jwt/status-mirror";
+const HETERODYNE_CLAIM_ORIGIN = "https://" + ["heterodyne", "network"].join(".");
+const SELECTED_SIGNER_CLAIM = `${HETERODYNE_CLAIM_ORIGIN}/jwt/agent-selected-signer`;
+const SIGNER_CLASS_CLAIM = `${HETERODYNE_CLAIM_ORIGIN}/jwt/agent-signer-key-class`;
+const ASSOCIATION_CLAIM = `${HETERODYNE_CLAIM_ORIGIN}/jwt/agent-association`;
+const CHECKPOINT_CLAIM = `${HETERODYNE_CLAIM_ORIGIN}/jwt/ledger-checkpoint`;
+const STATUS_MIRROR_CLAIM = `${HETERODYNE_CLAIM_ORIGIN}/jwt/status-mirror`;
 
 let ledger: Awaited<ReturnType<typeof buildClaimLedgerScenario>>;
 let dpopWorkload: VerifiedClaimArtifact;

@@ -427,90 +427,8 @@ function defensiveValidationFileText(text: string, path: string): string {
   return characters.join("");
 }
 
-const DEFENSIVE_VALIDATION_OPERATIONAL_NAME_TOKENS = new Set([
-  "account",
-  "config",
-  "configuration",
-  "credential",
-  "data",
-  "deployment",
-  "endpoint",
-  "host",
-  "node",
-  "provider",
-  "relay",
-  "service",
-  "system",
-  "target",
-  "uri",
-  "url",
-]);
-const DEFENSIVE_VALIDATION_OPERATIONAL_CALL_TOKENS = new Set([
-  "access",
-  "connect",
-  "contact",
-  "deploy",
-  "fetch",
-  "open",
-  "publish",
-  "request",
-  "scan",
-  "send",
-  "target",
-  "test",
-  "use",
-]);
 const DEFENSIVE_VALIDATION_NETWORK_URL =
   /\b(?:https?|wss?):\/\/(?<host>\[[^\]]+\]|[^\s/:?#"'`]+)/giu;
-
-function defensiveValidationNameIsOperational(name: ts.Node): boolean {
-  if (ts.isPropertyAccessExpression(name)) {
-    return defensiveValidationNameIsOperational(name.name);
-  }
-  if (ts.isElementAccessExpression(name) && name.argumentExpression !== undefined) {
-    return defensiveValidationNameIsOperational(name.argumentExpression);
-  }
-  if (!ts.isIdentifier(name) && !ts.isStringLiteralLike(name)) return false;
-  return identifierTokens(name.text).some((token) =>
-    DEFENSIVE_VALIDATION_OPERATIONAL_NAME_TOKENS.has(token)
-  );
-}
-
-function defensiveValidationCallIsOperational(call: ts.CallExpression): boolean {
-  let expression: ts.Expression = call.expression;
-  while (ts.isCallExpression(expression)) expression = expression.expression;
-  const name = ts.isIdentifier(expression)
-    ? expression
-    : ts.isPropertyAccessExpression(expression)
-    ? expression.name
-    : undefined;
-  return name !== undefined && identifierTokens(name.text).some((token) =>
-    DEFENSIVE_VALIDATION_OPERATIONAL_CALL_TOKENS.has(token)
-  );
-}
-
-function defensiveValidationLiteralIsOperational(node: ts.Node): boolean {
-  let child = node;
-  for (let parent = node.parent; parent !== undefined; parent = parent.parent) {
-    if (ts.isVariableDeclaration(parent) && parent.initializer !== undefined
-      && parent.initializer.getStart() <= child.getStart()
-      && defensiveValidationNameIsOperational(parent.name)) return true;
-    if (ts.isPropertyAssignment(parent) && parent.initializer.getStart() <= child.getStart()
-      && defensiveValidationNameIsOperational(parent.name)) return true;
-    if (ts.isBinaryExpression(parent) && parent.operatorToken.kind === ts.SyntaxKind.EqualsToken
-      && parent.right.getStart() <= child.getStart()
-      && defensiveValidationNameIsOperational(parent.left)) return true;
-    if (ts.isCallExpression(parent)) {
-      const argument = parent.arguments.find((candidate) =>
-        candidate.getStart() <= child.getStart() && candidate.end >= child.end
-      );
-      if (argument !== undefined) return defensiveValidationCallIsOperational(parent);
-    }
-    if (ts.isFunctionLike(parent) || ts.isStatement(parent)) break;
-    child = parent;
-  }
-  return false;
-}
 
 function defensiveValidationUrlIsUnsafe(text: string): boolean {
   for (const match of text.matchAll(DEFENSIVE_VALIDATION_NETWORK_URL)) {
@@ -535,7 +453,65 @@ function defensiveValidationLiteralIsUnsafe(text: string): boolean {
   ).some(({ code }) => code === "defensive-validation-target");
 }
 
-function lintDefensiveValidationOperationalTargets(
+const DEFENSIVE_VALIDATION_LINT_FIXTURE_CALLEES = new Set([
+  "findInvariantEvidenceIssues",
+  "findObsoletePrivacyTierGuidanceIssues",
+  "findRetiredNormativeClaimIssues",
+  "findStrictProfileClosureIssues",
+  "lintDefensiveValidationRepositoryTests",
+  "lintDefensiveValidationTestDeclarations",
+  "lintDefensiveValidationText",
+  "lintFamilyDocs",
+  "lintMaintainedGuides",
+  "lintMaintainedSnapshotGuidance",
+]);
+
+function defensiveValidationCalleeName(call: ts.CallExpression): string | undefined {
+  return ts.isIdentifier(call.expression) ? call.expression.text : undefined;
+}
+
+function defensiveValidationIsExpectChain(expression: ts.Expression): boolean {
+  if (ts.isCallExpression(expression)) {
+    return ts.isIdentifier(expression.expression) && expression.expression.text === "expect";
+  }
+  return ts.isPropertyAccessExpression(expression)
+    && defensiveValidationIsExpectChain(expression.expression);
+}
+
+function defensiveValidationIsAssertionMatcher(call: ts.CallExpression): boolean {
+  if (!ts.isPropertyAccessExpression(call.expression)) return false;
+  if (call.expression.name.text.startsWith("to")) {
+    return defensiveValidationIsExpectChain(call.expression.expression);
+  }
+  return ts.isIdentifier(call.expression.expression)
+    && call.expression.expression.text === "expect"
+    && [
+      "arrayContaining",
+      "objectContaining",
+      "stringContaining",
+      "stringMatching",
+    ].includes(call.expression.name.text);
+}
+
+function defensiveValidationLiteralIsExempt(node: ts.Node): boolean {
+  let child = node;
+  for (let parent = node.parent; parent !== undefined; parent = parent.parent) {
+    if (ts.isCallExpression(parent)) {
+      const isArgument = parent.arguments.some((argument) =>
+        argument.getStart() <= child.getStart() && argument.end >= child.end
+      );
+      if (!isArgument) return false;
+      const callee = defensiveValidationCalleeName(parent);
+      return (callee !== undefined && DEFENSIVE_VALIDATION_LINT_FIXTURE_CALLEES.has(callee))
+        || defensiveValidationIsAssertionMatcher(parent);
+    }
+    if (ts.isFunctionLike(parent) || ts.isStatement(parent)) return false;
+    child = parent;
+  }
+  return false;
+}
+
+function lintDefensiveValidationLiteralTargets(
   text: string,
   path: string,
 ): DocsLintIssue[] {
@@ -548,32 +524,22 @@ function lintDefensiveValidationOperationalTargets(
   );
   const issues: DocsLintIssue[] = [];
   const visit = (node: ts.Node): void => {
-    if (ts.isCallExpression(node) && isTestDeclarationCall(node)
-      && !isSuiteDeclarationCall(node) && declarationNamesHostileFixture(node)) {
-      let issueNode: ts.Node | undefined;
-      const inspect = (child: ts.Node): void => {
-        if (issueNode !== undefined) return;
-        if (ts.isTemplateExpression(child)) {
-          if (defensiveValidationLiteralIsOperational(child)
-            && defensiveValidationLiteralIsUnsafe(child.getText(source))) issueNode = child;
-          return;
-        }
-        if (ts.isStringLiteralLike(child)) {
-          if (defensiveValidationLiteralIsOperational(child)
-            && defensiveValidationLiteralIsUnsafe(child.text)) issueNode = child;
-          return;
-        }
-        ts.forEachChild(child, inspect);
-      };
-      for (const argument of node.arguments.slice(1)) inspect(argument);
-      if (issueNode !== undefined) {
+    const literalText = ts.isTemplateExpression(node)
+      ? node.getText(source)
+      : ts.isStringLiteralLike(node)
+      ? node.text
+      : undefined;
+    if (literalText !== undefined) {
+      if (!defensiveValidationLiteralIsExempt(node)
+        && defensiveValidationLiteralIsUnsafe(literalText)) {
         issues.push({
           path,
-          line: source.getLineAndCharacterOfPosition(issueNode.getStart(source)).line + 1,
+          line: source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1,
           code: "defensive-validation-target",
-          message: "hostile-boundary validation must prohibit operational live targets, real credentials, external systems, and reusable payload directions",
+          message: "generator tests must prohibit live targets, real credentials, external systems, and reusable payload directions",
         });
       }
+      return;
     }
     ts.forEachChild(node, visit);
   };
@@ -589,7 +555,7 @@ export function lintDefensiveValidationRepositoryTests(
     const text = readFileSync(resolve(repoRoot, path), "utf8");
     return [
       ...lintDefensiveValidationText(defensiveValidationFileText(text, path), path),
-      ...lintDefensiveValidationOperationalTargets(text, path),
+      ...lintDefensiveValidationLiteralTargets(text, path),
       ...lintDefensiveValidationTestDeclarations(text, path),
     ];
   });

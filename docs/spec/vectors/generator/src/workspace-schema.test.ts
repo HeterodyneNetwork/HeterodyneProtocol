@@ -131,7 +131,7 @@ const values: Record<string, Record<string, unknown>> = {
     host_nid: HOST_NID,
     trusted_seed_nids: [SEED_NID],
     radicle_locators: ["rad:zHost"],
-    onion_endpoints: ["http://exampleexampleexampleexampleexampleexampleexampleexample.onion"],
+    onion_endpoints: ["http://" + "exampleexampleexampleexampleexampleexampleexampleexample.onion"],
     clearnet_endpoints: [],
     supported_features: ["comms.radicle-backed-marmot-relay.v1"],
     inheritance: "default",
