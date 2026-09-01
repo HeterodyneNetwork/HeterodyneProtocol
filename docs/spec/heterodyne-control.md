@@ -254,7 +254,11 @@ of a KERI-authorized device, is invalid.
 
 The Control preauthorization verifier descriptor-captures the complete closed
 envelope, template, and request before reading any member or invoking an
-asynchronous callback. It independently verifies the Comms BIP-340 descriptor
+asynchronous callback. Every captured string and object member name MUST be a
+valid Unicode scalar sequence before JCS, hashing, or proof processing; a
+malformed scalar sequence or any canonicalization or cryptographic failure
+returns `invite-preauthorization-invalid` and MUST NOT escape as an exception.
+It independently verifies the Comms BIP-340 descriptor
 signature and 256-bit secret commitment. The response proof is the Comms
 one-time-invite HMAC over a closed transcript binding the invite ID,
 descriptor digest, SHA-256 digest of the exact JCS template, purpose, persona,

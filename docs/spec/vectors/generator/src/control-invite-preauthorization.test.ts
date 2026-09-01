@@ -381,6 +381,98 @@ describe("Control invite preauthorization authority", () => {
     expect(traps).toBe(0);
   });
 
+  it("BLUE TEAM VALIDATION: synthetic/local rejects non-scalar strings before revocation lookup", async () => {
+    type Fixture = Readonly<{
+      envelope: InviteEnvelope;
+      template: ControlInviteTemplate;
+      request: ControlInviteRequest;
+    }>;
+    const validFixture = (): Fixture => {
+      const template = inviteTemplate();
+      const envelope = signedInviteEnvelope({}, template);
+      return { envelope, template, request: inviteRequest(envelope, template) };
+    };
+    const cases: Array<Readonly<{ name: string; fixture: Fixture }>> = [];
+
+    for (const [name, malformed] of [["high", "\ud800"], ["low", "\udfff"]] as const) {
+      {
+        const fixture = validFixture();
+        fixture.envelope.descriptor.relay_hints[0] = `wss://relay.example/${malformed}`;
+        cases.push({ name: `envelope ${name} value`, fixture });
+      }
+      {
+        const fixture = validFixture();
+        cases.push({
+          name: `template ${name} value`,
+          fixture: { ...fixture, template: { ...fixture.template, audience: malformed } },
+        });
+      }
+      {
+        const fixture = validFixture();
+        cases.push({
+          name: `request ${name} value`,
+          fixture: { ...fixture, request: { ...fixture.request, persona: malformed } },
+        });
+      }
+      {
+        const fixture = validFixture();
+        cases.push({
+          name: `response ${name} value`,
+          fixture: {
+            ...fixture,
+            request: {
+              ...fixture.request,
+              response: { ...fixture.request.response, seal_pubkey: malformed },
+            },
+          },
+        });
+      }
+    }
+
+    {
+      const fixture = validFixture();
+      cases.push({
+        name: "template invalid Unicode key",
+        fixture: {
+          ...fixture,
+          template: { ...fixture.template, limits: { "\ud800": 1 } },
+        },
+      });
+    }
+    {
+      const fixture = validFixture();
+      const malformedResponse = { ...fixture.request.response } as Record<string, unknown>;
+      malformedResponse["\udfff"] = "value";
+      cases.push({
+        name: "response invalid Unicode key",
+        fixture: {
+          ...fixture,
+          request: {
+            ...fixture.request,
+            response: malformedResponse as unknown as InviteResponseInput,
+          },
+        },
+      });
+    }
+
+    for (const testCase of cases) {
+      let revocationLoads = 0;
+      const authority = createControlInvitePreauthorizationAuthority(inviteConfig({
+        load_revocation: async () => {
+          revocationLoads += 1;
+          return { revision: 7, state: "active" };
+        },
+      }));
+      await expect(verifyControlInvitePreauthorization(
+        authority,
+        testCase.fixture.envelope,
+        testCase.fixture.template,
+        testCase.fixture.request,
+      ), testCase.name).resolves.toEqual(reject);
+      expect(revocationLoads, testCase.name).toBe(0);
+    }
+  });
+
   it("BLUE TEAM VALIDATION: synthetic/local captures constructor callbacks once", async () => {
     const template = inviteTemplate();
     const envelope = signedInviteEnvelope({}, template);

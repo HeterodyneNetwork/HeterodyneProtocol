@@ -122,6 +122,20 @@ const REJECT = Object.freeze({
   reason_code: "invite-preauthorization-invalid" as const,
 });
 
+function isUnicodeScalarSequence(value: string): boolean {
+  for (let index = 0; index < value.length; index += 1) {
+    const codeUnit = value.charCodeAt(index);
+    if (codeUnit >= 0xd800 && codeUnit <= 0xdbff) {
+      const next = value.charCodeAt(index + 1);
+      if (!(next >= 0xdc00 && next <= 0xdfff)) return false;
+      index += 1;
+    } else if (codeUnit >= 0xdc00 && codeUnit <= 0xdfff) {
+      return false;
+    }
+  }
+  return true;
+}
+
 function boundedClosedPreflight(value: unknown): boolean {
   const active = new Set<object>();
   let nodes = 0;
@@ -132,6 +146,7 @@ function boundedClosedPreflight(value: unknown): boolean {
     if (current === null || typeof current === "boolean") return true;
     if (typeof current === "number") return Number.isFinite(current);
     if (typeof current === "string") {
+      if (!isUnicodeScalarSequence(current)) return false;
       const bytes = Buffer.byteLength(current, "utf8");
       totalStringBytes += bytes;
       return bytes <= MAX_STRING_BYTES && totalStringBytes <= MAX_TOTAL_STRING_BYTES;
@@ -181,7 +196,7 @@ function exactKeys(value: Readonly<Record<string, unknown>>, expected: readonly 
 }
 
 function boundedString(value: unknown): value is string {
-  return typeof value === "string" && value.length > 0
+  return typeof value === "string" && value.length > 0 && isUnicodeScalarSequence(value)
     && Buffer.byteLength(value, "utf8") <= MAX_STRING_BYTES;
 }
 
@@ -436,51 +451,55 @@ export async function verifyControlInvitePreauthorization(
 >> {
   const authorityRecord = AUTHORITIES.get(authority);
   if (authorityRecord === undefined) return REJECT;
-  const input = captureInputs(envelope, template, request);
-  if (input === null || !validTemplate(input.template)
-    || !validEnvelope(input.envelope, input.template)
-    || !validRequest(input.envelope, input.template, input.request)
-    || !validTime(authorityRecord, input.envelope.descriptor)) return REJECT;
+  try {
+    const input = captureInputs(envelope, template, request);
+    if (input === null || !validTemplate(input.template)
+      || !validEnvelope(input.envelope, input.template)
+      || !validRequest(input.envelope, input.template, input.request)
+      || !validTime(authorityRecord, input.envelope.descriptor)) return REJECT;
 
-  const initial = await loadRevocation(authorityRecord, input.envelope.descriptor.invite_id);
-  if (initial === null || initial.state !== "active"
-    || !validTime(authorityRecord, input.envelope.descriptor)) return REJECT;
-  const current = await loadRevocation(authorityRecord, input.envelope.descriptor.invite_id);
-  if (current === null || current.state !== "active" || current.revision !== initial.revision
-    || !validTime(authorityRecord, input.envelope.descriptor)) return REJECT;
+    const initial = await loadRevocation(authorityRecord, input.envelope.descriptor.invite_id);
+    if (initial === null || initial.state !== "active"
+      || !validTime(authorityRecord, input.envelope.descriptor)) return REJECT;
+    const current = await loadRevocation(authorityRecord, input.envelope.descriptor.invite_id);
+    if (current === null || current.state !== "active" || current.revision !== initial.revision
+      || !validTime(authorityRecord, input.envelope.descriptor)) return REJECT;
 
-  const envelopeBytes = jcsCanonicalize(input.envelope);
-  const descriptorDigestHex = Buffer.from(descriptorDigest(input.envelope.descriptor)).toString("hex");
-  const templateDigest = createHash("sha256").update(jcsCanonicalize(input.template)).digest("hex");
-  const requestDigest = createHash("sha256").update(jcsCanonicalize(input.request)).digest("hex");
-  const bindingDigest = authorityBindingDigest("heterodyne.control-invite-preauthorization/v1", {
-    authority_id: authorityRecord.authority_id,
-    envelope_bytes: envelopeBytes,
-    descriptor_digest: descriptorDigestHex,
-    template_digest: templateDigest,
-    request_digest: requestDigest,
-    revocation_revision: current.revision,
-  });
-  const output = Object.freeze({});
-  VERIFIED.set(output, Object.freeze({
-    authority: authorityRecord,
-    envelope_bytes: envelopeBytes,
-    descriptor_digest: descriptorDigestHex,
-    template_digest: templateDigest,
-    request_digest: requestDigest,
-    invite_id: input.envelope.descriptor.invite_id,
-    purpose: "control-enrollment",
-    persona: input.template.persona,
-    audience: input.template.audience,
-    client_key: input.template.client_key,
-    client_class: input.template.client_class,
-    signer: input.template.signer,
-    methods: input.template.methods,
-    event_kinds: input.template.event_kinds,
-    limits: input.template.limits,
-    expires_at: input.template.expires_at,
-    revocation_revision: current.revision,
-    binding_digest: bindingDigest,
-  }));
-  return Object.freeze({ verdict: "accept", output });
+    const envelopeBytes = jcsCanonicalize(input.envelope);
+    const descriptorDigestHex = Buffer.from(descriptorDigest(input.envelope.descriptor)).toString("hex");
+    const templateDigest = createHash("sha256").update(jcsCanonicalize(input.template)).digest("hex");
+    const requestDigest = createHash("sha256").update(jcsCanonicalize(input.request)).digest("hex");
+    const bindingDigest = authorityBindingDigest("heterodyne.control-invite-preauthorization/v1", {
+      authority_id: authorityRecord.authority_id,
+      envelope_bytes: envelopeBytes,
+      descriptor_digest: descriptorDigestHex,
+      template_digest: templateDigest,
+      request_digest: requestDigest,
+      revocation_revision: current.revision,
+    });
+    const output = Object.freeze({});
+    VERIFIED.set(output, Object.freeze({
+      authority: authorityRecord,
+      envelope_bytes: envelopeBytes,
+      descriptor_digest: descriptorDigestHex,
+      template_digest: templateDigest,
+      request_digest: requestDigest,
+      invite_id: input.envelope.descriptor.invite_id,
+      purpose: "control-enrollment",
+      persona: input.template.persona,
+      audience: input.template.audience,
+      client_key: input.template.client_key,
+      client_class: input.template.client_class,
+      signer: input.template.signer,
+      methods: input.template.methods,
+      event_kinds: input.template.event_kinds,
+      limits: input.template.limits,
+      expires_at: input.template.expires_at,
+      revocation_revision: current.revision,
+      binding_digest: bindingDigest,
+    }));
+    return Object.freeze({ verdict: "accept", output });
+  } catch {
+    return REJECT;
+  }
 }
