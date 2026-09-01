@@ -8,9 +8,11 @@ import {
   isCanonicalCoreRepositoryRid,
 } from "./core-policy.js";
 import {
+  inspectRepositoryWriterBinding,
   revalidateCurrentRepositoryWriterBinding,
   type CoreRepositoryWriterAuthority,
   type CurrentRepositoryWriterBinding,
+  type InspectedRepositoryWriterBinding,
 } from "./core-writer-binding.js";
 import { bytesToHex, utf8Bytes } from "./hex.js";
 import {
@@ -41,41 +43,6 @@ export type CanonicalProfileSelectionAuthorityConfig = Readonly<{
     rid: string,
     ref: string,
   ) => Promise<CurrentRepositoryWriterBinding | null>;
-  inspect_repository_candidate: (
-    binding: CurrentRepositoryWriterBinding,
-    event: NostrSignedEvent,
-    rid: string,
-    ref: string,
-  ) => RepositoryCandidateBindingInspection | null;
-}>;
-
-export type RepositoryWriterBindingTuple = Readonly<{
-  profile: "heterodyne.core.repository-writer-binding.v1";
-  spec_version: "heterodyne/0.6.0";
-  owner_active_key: string;
-  repository_rid: string;
-  writer_nid: string;
-  ref_namespace: string;
-  operations: readonly string[];
-  issued_at: number;
-  expires_at: number;
-  owner_signature: string;
-  nid_signature: string;
-  writer_ref: string;
-  operation: "claim-ledger-write";
-  source_identity: string;
-  proof_identity: string;
-  policy_revision: number;
-  policy_checkpoint: string;
-  policy_predecessor: string | null;
-}>;
-
-export type RepositoryCandidateBindingInspection = Readonly<{
-  candidate_event_id: string;
-  /** Tuple resolved independently from the candidate's current repository location. */
-  expected: RepositoryWriterBindingTuple;
-  /** Tuple inspected from the returned opaque Task 4 binding and its source. */
-  binding: RepositoryWriterBindingTuple;
 }>;
 
 export type CanonicalProfileSelectionInput = Readonly<{
@@ -100,8 +67,6 @@ type CapturedAuthority = Readonly<{
   repository_writer_authority: CoreRepositoryWriterAuthority;
   authenticate_repository_candidate:
     CanonicalProfileSelectionAuthorityConfig["authenticate_repository_candidate"];
-  inspect_repository_candidate:
-    CanonicalProfileSelectionAuthorityConfig["inspect_repository_candidate"];
 }>;
 
 type RepositoryCandidate = Readonly<{
@@ -117,7 +82,7 @@ type ViewRecord = Readonly<{
   selected: VerifiedNostrEvent;
   repository_rid: string | null;
   repository_binding: CurrentRepositoryWriterBinding | null;
-  repository_inspection: RepositoryCandidateBindingInspection | null;
+  repository_inspection: InspectedRepositoryWriterBinding | null;
   binding_digest: string;
 }>;
 
@@ -161,7 +126,6 @@ export function createCanonicalProfileSelectionAuthority(
       "replaceable_selection",
       "repository_writer_authority",
       "authenticate_repository_candidate",
-      "inspect_repository_candidate",
     ]], "Canonical profile selection authority config");
     if (
       typeof captured.authority_id !== "string"
@@ -177,8 +141,6 @@ export function createCanonicalProfileSelectionAuthority(
       || utilTypes.isProxy(captured.repository_writer_authority)
       || typeof captured.authenticate_repository_candidate !== "function"
       || utilTypes.isProxy(captured.authenticate_repository_candidate)
-      || typeof captured.inspect_repository_candidate !== "function"
-      || utilTypes.isProxy(captured.inspect_repository_candidate)
     ) throw invalid();
     const observedAt = (captured.trusted_now as () => number)();
     if (!Number.isSafeInteger(observedAt) || observedAt < 0) throw invalid();
@@ -196,10 +158,6 @@ export function createCanonicalProfileSelectionAuthority(
       authenticate_repository_candidate:
         captured.authenticate_repository_candidate as CapturedAuthority[
           "authenticate_repository_candidate"
-        ],
-      inspect_repository_candidate:
-        captured.inspect_repository_candidate as CapturedAuthority[
-          "inspect_repository_candidate"
         ],
     }));
     return authority;
@@ -249,15 +207,13 @@ export async function selectCanonicalProfile(
     const inspected: Array<Readonly<{
       candidate: RepositoryCandidate;
       binding: CurrentRepositoryWriterBinding;
-      inspection: RepositoryCandidateBindingInspection;
+      inspection: InspectedRepositoryWriterBinding;
     }>> = [];
     for (const result of pending) {
       const inspection = captureRepositoryInspection(
-        authority.inspect_repository_candidate(
+        inspectRepositoryWriterBinding(
+          authority.repository_writer_authority,
           result.binding,
-          result.candidate.event,
-          result.candidate.repository_rid,
-          result.candidate.ref,
         ),
         result.candidate,
         authority.observed_at,
@@ -309,9 +265,9 @@ export async function selectCanonicalProfile(
       repository_rid: requiredRepositoryRid,
       repository_ref: authenticatedSelection?.candidate.ref ?? null,
       repository_source_identity:
-        authenticatedSelection?.inspection.binding.source_identity ?? null,
+        authenticatedSelection?.inspection.source_identity ?? null,
       repository_checkpoint:
-        authenticatedSelection?.inspection.binding.policy_checkpoint ?? null,
+        authenticatedSelection?.inspection.policy_checkpoint ?? null,
     }))));
     VIEWS.set(view, Object.freeze({
       authority: authorityValue,
@@ -405,37 +361,7 @@ function captureRepositoryInspection(
   value: unknown,
   candidate: RepositoryCandidate,
   observedAt: number,
-): RepositoryCandidateBindingInspection | null {
-  try {
-    const captured = captureExactDataObject(value, [[
-      "candidate_event_id",
-      "expected",
-      "binding",
-    ]], "Canonical repository candidate inspection");
-    const expected = captureRepositoryTuple(captured.expected);
-    const binding = captureRepositoryTuple(captured.binding);
-    if (
-      captured.candidate_event_id !== candidate.event.id
-      || expected === null
-      || binding === null
-      || expected.owner_active_key !== candidate.event.pubkey
-      || expected.repository_rid !== candidate.repository_rid
-      || expected.writer_ref !== candidate.ref
-      || observedAt < expected.issued_at
-      || observedAt >= expected.expires_at
-      || JSON.stringify(expected) !== JSON.stringify(binding)
-    ) return null;
-    return Object.freeze({
-      candidate_event_id: captured.candidate_event_id,
-      expected,
-      binding,
-    });
-  } catch {
-    return null;
-  }
-}
-
-function captureRepositoryTuple(value: unknown): RepositoryWriterBindingTuple | null {
+): InspectedRepositoryWriterBinding | null {
   try {
     const captured = captureExactDataObject(value, [[
       "profile",
@@ -463,7 +389,9 @@ function captureRepositoryTuple(value: unknown): RepositoryWriterBindingTuple | 
       || captured.spec_version !== "heterodyne/0.6.0"
       || typeof captured.owner_active_key !== "string"
       || !HEX_32.test(captured.owner_active_key)
+      || captured.owner_active_key !== candidate.event.pubkey
       || !isCanonicalCoreRepositoryRid(captured.repository_rid)
+      || captured.repository_rid !== candidate.repository_rid
       || typeof captured.writer_nid !== "string"
       || !WRITER_NID.test(captured.writer_nid)
       || !isCanonicalCoreGitRefNamespace(captured.ref_namespace)
@@ -484,12 +412,15 @@ function captureRepositoryTuple(value: unknown): RepositoryWriterBindingTuple | 
       || typeof captured.nid_signature !== "string"
       || !HEX_64.test(captured.nid_signature)
       || !isCanonicalCoreGitRef(captured.writer_ref)
+      || captured.writer_ref !== candidate.ref
       || typeof captured.ref_namespace !== "string"
       || typeof captured.writer_ref !== "string"
       || !captured.writer_ref.startsWith(captured.ref_namespace)
       || captured.writer_ref.length <= captured.ref_namespace.length
       || captured.operation !== "claim-ledger-write"
       || !(operations as string[]).includes(captured.operation)
+      || observedAt < (captured.issued_at as number)
+      || observedAt >= (captured.expires_at as number)
       || typeof captured.source_identity !== "string"
       || !HEX_32.test(captured.source_identity)
       || typeof captured.proof_identity !== "string"
