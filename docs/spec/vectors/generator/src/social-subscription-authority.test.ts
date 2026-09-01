@@ -1060,4 +1060,90 @@ describe("signed subscriber-local Social policy", () => {
       expect(loadCalls).toBe(0);
     }
   });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects oversized apply candidates before semantic verification while preserving bounded application", async () => {
+    const module = await loadModule();
+    const target = await signedTarget();
+    const receipt = await signedReceipt({ target });
+    const list = await signedList({
+      created_at: 1_200,
+      entries: [{ author: DEVICE_KEY, receipt }],
+    });
+    const authority = module.createSocialSubscriptionAuthority?.(config(subscribed))
+      ?? MISSING_AUTHORITY;
+    const view = await module.resolveSubscribedAgentPolicy?.(authority, inputOf({
+      list_candidates: [list],
+      receipt_events: [receipt],
+      target_events: [target],
+    })) ?? null;
+    const oversizedContent = await signedTarget({ content: "x".repeat(65_537) });
+    const oversizedTags = await signEvent({
+      secretKey: DEVICE_SECRET,
+      created_at: 1_300,
+      kind: 1,
+      tags: Array.from({ length: 257 }, () => ["x"]),
+      content: "",
+      auxRand: AUX_RAND,
+    });
+    const oversizedEvent = await signEvent({
+      secretKey: DEVICE_SECRET,
+      created_at: 1_300,
+      kind: 1,
+      tags: Array.from({ length: 128 }, () => ["x", "y".repeat(1_024)]),
+      content: "x".repeat(65_536),
+      auxRand: AUX_RAND,
+    });
+
+    expect(module.applySubscribedAgentPolicy?.(view, target)?.muted).toBe(true);
+    for (const candidate of [oversizedContent, oversizedTags, oversizedEvent]) {
+      expect(module.applySubscribedAgentPolicy?.(view, candidate))
+        .toEqual({ visible: true, muted: false });
+    }
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local rejects hostile apply candidate containers without executing traps", async () => {
+    const module = await loadModule();
+    const target = await signedTarget();
+    const receipt = await signedReceipt({ target });
+    const list = await signedList({
+      created_at: 1_200,
+      entries: [{ author: DEVICE_KEY, receipt }],
+    });
+    const authority = module.createSocialSubscriptionAuthority?.(config(subscribed))
+      ?? MISSING_AUTHORITY;
+    const view = await module.resolveSubscribedAgentPolicy?.(authority, inputOf({
+      list_candidates: [list],
+      receipt_events: [receipt],
+      target_events: [target],
+    })) ?? null;
+    let trapCalls = 0;
+    let getterCalls = 0;
+    const sparseTags = new Array<string[]>(2);
+    sparseTags[0] = ["x"];
+    const candidates = [
+      new Proxy(structuredClone(target), {
+        get() {
+          trapCalls += 1;
+          throw new Error("apply candidate trap must not execute");
+        },
+      }),
+      Object.defineProperty({ ...target }, "content", {
+        enumerable: true,
+        get() {
+          getterCalls += 1;
+          return target.content;
+        },
+      }),
+      { ...target, injected: true },
+      { ...target, [Symbol("synthetic-local-apply")]: true },
+      { ...target, tags: sparseTags },
+    ] as NostrSignedEvent[];
+
+    for (const candidate of candidates) {
+      expect(module.applySubscribedAgentPolicy?.(view, candidate))
+        .toEqual({ visible: true, muted: false });
+    }
+    expect(trapCalls).toBe(0);
+    expect(getterCalls).toBe(0);
+  });
 });

@@ -300,7 +300,7 @@ export function applySubscribedAgentPolicy(
     || !subscription.default_visible
   ) return visible();
 
-  const event = snapshotAgentPolicyEvent(eventValue);
+  const event = snapshotBoundedEvent(eventValue);
   if (event === null) return visible();
   const muted = view.muted.some((binding) => binding.event_author === event.pubkey);
   return muted
@@ -491,6 +491,11 @@ function captureBoundedEvent(
   } catch {
     return null;
   }
+}
+
+function snapshotBoundedEvent(value: unknown): VerifiedNostrEvent | null {
+  const captured = captureBoundedEvent(value, { bytes: 0 });
+  return captured === null ? null : snapshotAgentPolicyEvent(captured);
 }
 
 function captureBoundedTags(value: unknown): string[][] | null {

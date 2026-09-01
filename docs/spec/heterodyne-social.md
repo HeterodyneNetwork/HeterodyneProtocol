@@ -612,9 +612,10 @@ selected exact list event, verified receipts and targets, and the exact muted
 event-author keys. Clones, artifacts from another authority, accessor-bearing
 or proxy containers, post-verification mutation, and malformed signed events
 MUST fail closed without creating moderation authority. Applying a valid view
-MUST reverify the candidate event and mute only when its actual signing
-`pubkey` is one of those bound keys; it MUST identify the subscribed policy
-persona as the decision source.
+MUST apply the same exact-container and per-event work-bound preflight to the
+candidate before hashing, reverify only that captured bounded snapshot, and
+mute only when its actual signing `pubkey` is one of those bound keys; it MUST
+identify the subscribed policy persona as the decision source.
 
 Enforcement mutes exactly the listed event author. It MUST NOT mute an
 associated persona, organization, moderator, hosting NID, or different agent
