@@ -6,6 +6,7 @@ import {
   type ControlEnrollmentAdmissionRequest,
   type ControlEnrollmentReservationInput,
   type ControlEnrollmentReservationRecord,
+  type ControlEnrollmentReservationState,
   type ControlEnrollmentReservationStore,
 } from "./control-enrollment-admission.js";
 
@@ -33,6 +34,11 @@ class EnrollmentStore implements ControlEnrollmentReservationStore {
   holdReserve: Promise<void> | null = null;
   reserveEntered = 0;
   beforeReserve: (() => void) | null = null;
+  acquiredReadbackFault:
+    "null" | "malformed" | "mismatched" | "capacity" | "throw" | null = null;
+  private pendingAcquiredReadbackFault:
+    "null" | "malformed" | "mismatched" | "capacity" | "throw" | null = null;
+  corruptCommittedReservation = false;
 
   get effectCalls(): number {
     return this.calls.commit;
@@ -40,6 +46,27 @@ class EnrollmentStore implements ControlEnrollmentReservationStore {
 
   async load(key: string): Promise<ControlEnrollmentReservationRecord | null> {
     this.calls.load += 1;
+    if (this.pendingAcquiredReadbackFault !== null) {
+      const fault = this.pendingAcquiredReadbackFault;
+      this.pendingAcquiredReadbackFault = null;
+      if (fault === "throw") throw new Error("synthetic local acquired readback failure");
+      if (fault === "null") return null;
+      if (fault === "malformed") {
+        return { state: "executing" } as unknown as ControlEnrollmentReservationRecord;
+      }
+      const current = this.records.get(key);
+      if (fault === "capacity") return current === undefined ? null : {
+        ...current,
+        reservation: {
+          ...current.reservation,
+          global_pending_cap: current.reservation.global_pending_cap + 1,
+        },
+      };
+      return current === undefined ? null : {
+        ...current,
+        execution_token: "0".repeat(64),
+      };
+    }
     return this.records.get(key) ?? null;
   }
 
@@ -49,6 +76,14 @@ class EnrollmentStore implements ControlEnrollmentReservationStore {
 
   private currentPending(account: string): number {
     return this.accountPending.get(account) ?? this.inventoryState.pending_for_account;
+  }
+
+  private reservationFromInput(
+    input: ControlEnrollmentReservationInput,
+  ): ControlEnrollmentReservationState {
+    const { key: _key, binding_digest: _binding, reservation_digest: _digest,
+      execution_token: _token, ...reservation } = input;
+    return Object.freeze(reservation);
   }
 
   snapshotInventory(account = "synthetic-local-account-A"): Inventory {
@@ -121,9 +156,11 @@ class EnrollmentStore implements ControlEnrollmentReservationStore {
     this.records.set(input.key, Object.freeze({
       state: "executing" as const,
       revision: 0,
+      key: input.key,
       binding_digest: input.binding_digest,
       reservation_digest: input.reservation_digest,
       execution_token: input.execution_token,
+      reservation: this.reservationFromInput(input),
     }));
     const reservedSlots = input.reserved_slot === null ? state.reserved_slots
       : state.reserved_slots.filter((slot) => slot !== input.reserved_slot);
@@ -142,6 +179,7 @@ class EnrollmentStore implements ControlEnrollmentReservationStore {
       revision: currentInvite.revision + 1,
       state: "consumed",
     }));
+    this.pendingAcquiredReadbackFault = this.acquiredReadbackFault;
     if (this.nextReserve !== null) {
       const result = this.nextReserve;
       this.nextReserve = null;
@@ -155,6 +193,7 @@ class EnrollmentStore implements ControlEnrollmentReservationStore {
     binding_digest: string;
     reservation_digest: string;
     execution_token: string;
+    reservation: ControlEnrollmentReservationState;
     output_digest: string;
     output: EnrollmentOutput;
   }>): Promise<"committed" | "conflict" | "unknown"> {
@@ -168,9 +207,14 @@ class EnrollmentStore implements ControlEnrollmentReservationStore {
     const terminal = Object.freeze({
       state: "committed" as const,
       revision: current.revision + 1,
+      key: input.key,
       binding_digest: input.binding_digest,
       reservation_digest: input.reservation_digest,
       execution_token: input.execution_token,
+      reservation: this.corruptCommittedReservation ? Object.freeze({
+        ...input.reservation,
+        attempts_in_window: input.reservation.attempts_in_window + 1,
+      }) : input.reservation,
       output_digest: input.output_digest,
       output: input.output,
     });
@@ -191,6 +235,7 @@ class EnrollmentStore implements ControlEnrollmentReservationStore {
     binding_digest: string;
     reservation_digest: string;
     execution_token: string;
+    reservation: ControlEnrollmentReservationState;
     reconciliation_digest: string;
   }>): Promise<"indeterminate" | "conflict" | "unknown"> {
     this.calls.mark += 1;
@@ -207,9 +252,11 @@ class EnrollmentStore implements ControlEnrollmentReservationStore {
     this.records.set(input.key, Object.freeze({
       state: "indeterminate" as const,
       revision: current.revision + 1,
+      key: input.key,
       binding_digest: input.binding_digest,
       reservation_digest: input.reservation_digest,
       execution_token: input.execution_token,
+      reservation: input.reservation,
       reconciliation_digest: input.reconciliation_digest,
     }));
     return "indeterminate";
@@ -635,6 +682,45 @@ describe("Control enrollment admission authority", () => {
     expect(fixture.store.effectCalls).toBe(0);
   });
 
+  it.each(["null", "malformed", "mismatched", "capacity", "throw"] as const)(
+    "BLUE TEAM VALIDATION: synthetic/local makes %s acquired-record readback absorbing before effect",
+    async (fault) => {
+      const fixture = setup();
+      fixture.store.acquiredReadbackFault = fault;
+      const first = await admitControlEnrollment(fixture.authority, request());
+      expect(first).toEqual({
+        verdict: "indeterminate",
+        reconciliation_digest: expect.stringMatching(/^[0-9a-f]{64}$/),
+      });
+      expect(fixture.store.calls.reserve).toBe(1);
+      expect(fixture.store.calls.commit).toBe(0);
+      expect(fixture.store.effectCalls).toBe(0);
+
+      const retry = await admitControlEnrollment(fixture.authority, request());
+      const reconstructed = createControlEnrollmentAdmissionAuthority(fixture.config);
+      const reconstructedRetry = await admitControlEnrollment(reconstructed, request());
+      expect(retry).toEqual(first);
+      expect(reconstructedRetry).toEqual(first);
+      expect(fixture.store.calls.reserve).toBe(1);
+      expect(fixture.store.calls.commit).toBe(0);
+      expect(fixture.store.effectCalls).toBe(0);
+    },
+  );
+
+  it("BLUE TEAM VALIDATION: synthetic/local requires exact committed reservation-state readback", async () => {
+    const fixture = setup();
+    fixture.store.corruptCommittedReservation = true;
+    await expect(admitControlEnrollment(fixture.authority, request())).resolves.toMatchObject({
+      verdict: "indeterminate",
+    });
+    expect(fixture.store.calls.reserve).toBe(1);
+    expect(fixture.store.calls.commit).toBe(1);
+    const retry = await admitControlEnrollment(fixture.authority, request());
+    expect(retry.verdict).toBe("indeterminate");
+    expect(fixture.store.calls.reserve).toBe(1);
+    expect(fixture.store.calls.commit).toBe(1);
+  });
+
   it("BLUE TEAM VALIDATION: synthetic/local makes effect uncertainty absorbing and retry-stable", async () => {
     const fixture = setup();
     fixture.store.nextCommit = "unknown";
@@ -727,6 +813,27 @@ describe("Control enrollment admission authority", () => {
     expect(fixture.verifyCalls()).toBe(0);
     expect(fixture.store.calls.load).toBe(0);
   });
+
+  it.each(["length", "extra", "symbol"] as const)(
+    "BLUE TEAM VALIDATION: synthetic/local rejects KeyPackage bytes with own %s metadata with zero traps",
+    async (kind) => {
+      const fixture = setup();
+      let traps = 0;
+      const bytes = Uint8Array.from([1, 2, 3, 4]);
+      const key: PropertyKey = kind === "symbol" ? Symbol("synthetic-local") : kind;
+      Object.defineProperty(bytes, key, {
+        enumerable: true,
+        configurable: true,
+        get: () => { traps += 1; throw new Error("synthetic local byte metadata trap"); },
+      });
+      await expect(admitControlEnrollment(fixture.authority, request({
+        key_package_bytes: bytes,
+      }))).resolves.toEqual(INVALID_KEY_PACKAGE);
+      expect(traps).toBe(0);
+      expect(fixture.verifyCalls()).toBe(0);
+      expect(fixture.store.calls.load).toBe(0);
+    },
+  );
 
   it("BLUE TEAM VALIDATION: synthetic/local bounds authenticated callback lists and aggregates", async () => {
     const tooMany = setup();

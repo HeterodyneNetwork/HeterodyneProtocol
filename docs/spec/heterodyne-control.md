@@ -213,16 +213,24 @@ process-local precheck is reservation authority. Different invite keys that
 contend for any account, global, named-slot, or rate resource therefore cannot
 both acquire it.
 
-The durable record carries separate request and exact reservation-state
-bindings. A binding-equal `executing`, `committed`, or `indeterminate` record
-is readable before any further action. After atomic acquisition the store
-commits the exact state-derived enrollment identifier and group. A committed
-retry returns that cached result without another reservation or effect. A
-conflicting or unavailable reservation grants nothing. An unknown atomic
-reservation or uncertain effect is reconciled only from an exact committed
-readback or becomes an absorbing `indeterminate` record with an
-authority-derived reconciliation digest; `executing`, malformed, conflicting,
-or uncertain state MUST NOT reopen or repeat either reservation or effect.
+The durable record carries its reservation key, separate request and exact
+reservation-state bindings, execution token, and the complete closed capacity,
+slot, rate, inventory, invite, trusted-time, and KeyPackage-expiry snapshot. A
+binding-equal `executing`, `committed`, or `indeterminate` record is readable
+before any further action. After atomic acquisition and before any admission
+effect, the authority MUST reload the record and exactly validate its key,
+bindings, execution token, state, and complete snapshot. Missing, malformed,
+unreadable, or unequal readback commits nothing and is fenced as absorbing
+`indeterminate`; it MUST NOT repeat reservation or effect on an exact retry.
+Only a proven exact `executing` record permits the store to commit the exact
+state-derived enrollment identifier and group, and success is returned only
+after an equally exact terminal `committed` readback. A committed retry returns
+that cached result without another reservation or effect. A conflicting or
+unavailable reservation grants nothing. An unknown atomic reservation or
+uncertain effect is reconciled only from an exact committed readback or becomes
+an absorbing `indeterminate` record with an authority-derived reconciliation
+digest; `executing`, malformed, conflicting, or uncertain state MUST NOT reopen
+or repeat either reservation or effect.
 
 <a id="control-one-time-invites"></a>
 Purpose-bound invites use the provider-independent Comms one-time-invite

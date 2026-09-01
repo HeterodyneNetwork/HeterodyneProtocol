@@ -6,39 +6,8 @@ import {
 
 type EnrollmentOutput = Readonly<{ enrollment_id: string; group_id: string }>;
 
-export type ControlEnrollmentReservationRecord = Readonly<
-  | {
-    state: "executing";
-    revision: number;
-    binding_digest: string;
-    reservation_digest: string;
-    execution_token: string;
-  }
-  | {
-    state: "committed";
-    revision: number;
-    binding_digest: string;
-    reservation_digest: string;
-    execution_token: string;
-    output_digest: string;
-    output: EnrollmentOutput;
-  }
-  | {
-    state: "indeterminate";
-    revision: number;
-    binding_digest: string;
-    reservation_digest: string;
-    execution_token: string;
-    reconciliation_digest: string;
-  }
->;
-
-export type ControlEnrollmentReservationInput = Readonly<{
-  key: string;
+export type ControlEnrollmentReservationState = Readonly<{
   authority_id: string;
-  binding_digest: string;
-  reservation_digest: string;
-  execution_token: string;
   persona: string;
   account: string;
   device_id: string;
@@ -68,6 +37,46 @@ export type ControlEnrollmentReservationInput = Readonly<{
   invite_expires_at: number;
 }>;
 
+export type ControlEnrollmentReservationRecord = Readonly<
+  | {
+    state: "executing";
+    revision: number;
+    key: string;
+    binding_digest: string;
+    reservation_digest: string;
+    execution_token: string;
+    reservation: ControlEnrollmentReservationState;
+  }
+  | {
+    state: "committed";
+    revision: number;
+    key: string;
+    binding_digest: string;
+    reservation_digest: string;
+    execution_token: string;
+    reservation: ControlEnrollmentReservationState;
+    output_digest: string;
+    output: EnrollmentOutput;
+  }
+  | {
+    state: "indeterminate";
+    revision: number;
+    key: string;
+    binding_digest: string;
+    reservation_digest: string;
+    execution_token: string;
+    reservation: ControlEnrollmentReservationState;
+    reconciliation_digest: string;
+  }
+>;
+
+export type ControlEnrollmentReservationInput = Readonly<{
+  key: string;
+  binding_digest: string;
+  reservation_digest: string;
+  execution_token: string;
+}> & ControlEnrollmentReservationState;
+
 export interface ControlEnrollmentReservationStore {
   load(key: string): Promise<ControlEnrollmentReservationRecord | null>;
   reserve(input: ControlEnrollmentReservationInput): Promise<
@@ -84,6 +93,7 @@ export interface ControlEnrollmentReservationStore {
     binding_digest: string;
     reservation_digest: string;
     execution_token: string;
+    reservation: ControlEnrollmentReservationState;
     output_digest: string;
     output: EnrollmentOutput;
   }>): Promise<"committed" | "conflict" | "unknown">;
@@ -92,6 +102,7 @@ export interface ControlEnrollmentReservationStore {
     binding_digest: string;
     reservation_digest: string;
     execution_token: string;
+    reservation: ControlEnrollmentReservationState;
     reconciliation_digest: string;
   }>): Promise<"indeterminate" | "conflict" | "unknown">;
 }
@@ -172,6 +183,7 @@ type CurrentState = Readonly<{ inventory: Inventory; invite: Invite }>;
 type DurableBase = Readonly<{
   key: string;
   binding_digest: string;
+  key_package_expires_at: number;
 }>;
 type DurableRequest = DurableBase & Readonly<{
   reservation_digest: string;
@@ -188,6 +200,11 @@ const MAX_KEY_PACKAGE_BYTES = 65_536;
 const MAX_LIST_ITEMS = 256;
 const MAX_LIST_AGGREGATE_CHARS = 65_536;
 const MAX_PUBLIC_AGGREGATE = 73_728;
+const UINT8_ARRAY_SLICE = Uint8Array.prototype.slice;
+const TYPED_ARRAY_BYTE_LENGTH = Object.getOwnPropertyDescriptor(
+  Object.getPrototypeOf(Uint8Array.prototype),
+  "byteLength",
+)?.get;
 const REQUEST_KEYS = [
   "account",
   "client_key",
@@ -223,6 +240,15 @@ const INVITE_KEYS = [
   "state",
 ] as const;
 const KEY_PACKAGE_KEYS = ["account", "expires_at", "reference"] as const;
+const RESERVATION_STATE_KEYS = [
+  "account", "attempt_budget", "attempts_in_window", "authority_id", "client_key",
+  "current_clients", "device_id", "enrolled_accounts", "enrolled_devices", "global_pending",
+  "global_pending_cap", "group_id", "inventory_revision", "invite_account",
+  "invite_client_key", "invite_expires_at", "invite_id", "invite_purpose", "invite_revision",
+  "invite_state", "key_package_expires_at", "pending_for_account", "persona",
+  "rate_window_started_at", "replenishment_state", "reserved_slot", "reserved_slots",
+  "trusted_now",
+] as const;
 
 const INVALID_KEY_PACKAGE = Object.freeze({
   verdict: "reject" as const,
@@ -275,14 +301,25 @@ function shallowRecord(
 
 function boundedBytes(value: unknown): Uint8Array | null {
   if (value === null || typeof value !== "object" || utilTypes.isProxy(value)
-    || !(value instanceof Uint8Array)
-    || Object.getPrototypeOf(value) !== Uint8Array.prototype
-    || value.length === 0 || value.length > MAX_KEY_PACKAGE_BYTES) return null;
+    || !utilTypes.isUint8Array(value)
+    || Object.getPrototypeOf(value) !== Uint8Array.prototype) return null;
   const descriptors = Object.getOwnPropertyDescriptors(value);
   const keys = Reflect.ownKeys(descriptors);
-  if (keys.length !== value.length || keys.some((key) => typeof key !== "string"
-    || !/^(0|[1-9][0-9]*)$/.test(key))) return null;
-  return new Uint8Array(value);
+  if (keys.some((key) => typeof key !== "string" || !/^(0|[1-9][0-9]*)$/.test(key))) {
+    return null;
+  }
+  for (const key of keys as string[]) {
+    const descriptor = descriptors[key];
+    if (descriptor === undefined || !("value" in descriptor) || descriptor.enumerable !== true) {
+      return null;
+    }
+  }
+  if (TYPED_ARRAY_BYTE_LENGTH === undefined) return null;
+  const byteLength = Reflect.apply(TYPED_ARRAY_BYTE_LENGTH, value, []) as unknown;
+  if (!Number.isSafeInteger(byteLength) || (byteLength as number) === 0
+    || (byteLength as number) > MAX_KEY_PACKAGE_BYTES
+    || keys.length !== byteLength) return null;
+  return Reflect.apply(UINT8_ARRAY_SLICE, value, []) as Uint8Array;
 }
 
 function boundedStringList(value: unknown): readonly string[] | null {
@@ -562,7 +599,11 @@ function durableBase(
     "heterodyne.control-enrollment.reservation-binding/v1",
     { authority_id: authority.authority_id, key, request_digest: requestDigest },
   );
-  return Object.freeze({ key, binding_digest: bindingDigest });
+  return Object.freeze({
+    key,
+    binding_digest: bindingDigest,
+    key_package_expires_at: keyPackage.expires_at,
+  });
 }
 
 function durableRequest(
@@ -642,27 +683,99 @@ function captureOutput(value: unknown): EnrollmentOutput | null {
     }) : null;
 }
 
+function captureReservationState(value: unknown): ControlEnrollmentReservationState | null {
+  const captured = shallowRecord(value, RESERVATION_STATE_KEYS);
+  if (captured === null || !boundedString(captured.authority_id)
+    || !boundedString(captured.persona) || !boundedString(captured.account)
+    || !boundedString(captured.device_id) || !boundedString(captured.client_key)
+    || !boundedString(captured.group_id) || !boundedString(captured.invite_id)
+    || (captured.reserved_slot !== null && !boundedString(captured.reserved_slot))
+    || !Number.isSafeInteger(captured.trusted_now) || (captured.trusted_now as number) < 0
+    || !Number.isSafeInteger(captured.key_package_expires_at)
+    || (captured.key_package_expires_at as number) < 0) return null;
+  const inventoryState = captureInventory({
+    revision: captured.inventory_revision,
+    pending_for_account: captured.pending_for_account,
+    global_pending: captured.global_pending,
+    global_pending_cap: captured.global_pending_cap,
+    reserved_slots: captured.reserved_slots,
+    replenishment_state: captured.replenishment_state,
+    current_clients: captured.current_clients,
+    enrolled_accounts: captured.enrolled_accounts,
+    enrolled_devices: captured.enrolled_devices,
+    rate_window_started_at: captured.rate_window_started_at,
+    attempts_in_window: captured.attempts_in_window,
+    attempt_budget: captured.attempt_budget,
+  });
+  const inviteState = captureInvite({
+    revision: captured.invite_revision,
+    purpose: captured.invite_purpose,
+    state: captured.invite_state,
+    account: captured.invite_account,
+    client_key: captured.invite_client_key,
+    expires_at: captured.invite_expires_at,
+  });
+  if (inventoryState === null || inviteState === null) return null;
+  return Object.freeze({
+    authority_id: captured.authority_id,
+    persona: captured.persona,
+    account: captured.account,
+    device_id: captured.device_id,
+    client_key: captured.client_key,
+    group_id: captured.group_id,
+    invite_id: captured.invite_id,
+    reserved_slot: captured.reserved_slot,
+    trusted_now: captured.trusted_now as number,
+    key_package_expires_at: captured.key_package_expires_at as number,
+    inventory_revision: inventoryState.revision,
+    pending_for_account: inventoryState.pending_for_account,
+    global_pending: inventoryState.global_pending,
+    global_pending_cap: inventoryState.global_pending_cap,
+    reserved_slots: inventoryState.reserved_slots,
+    replenishment_state: inventoryState.replenishment_state,
+    current_clients: inventoryState.current_clients,
+    enrolled_accounts: inventoryState.enrolled_accounts,
+    enrolled_devices: inventoryState.enrolled_devices,
+    rate_window_started_at: inventoryState.rate_window_started_at,
+    attempts_in_window: inventoryState.attempts_in_window,
+    attempt_budget: inventoryState.attempt_budget,
+    invite_revision: inviteState.revision,
+    invite_purpose: inviteState.purpose,
+    invite_state: inviteState.state,
+    invite_account: inviteState.account,
+    invite_client_key: inviteState.client_key,
+    invite_expires_at: inviteState.expires_at,
+  });
+}
+
 function captureDurableRecord(value: unknown): ControlEnrollmentReservationRecord | null {
   if (value === null) return null;
-  const captured = shallowRecord(value, null, 8);
+  const captured = shallowRecord(value, null, 10);
   if (captured === null || !Number.isSafeInteger(captured.revision)
     || (captured.revision as number) < 0
+    || typeof captured.key !== "string" || !HEX_32.test(captured.key)
     || typeof captured.binding_digest !== "string" || !HEX_32.test(captured.binding_digest)
     || typeof captured.reservation_digest !== "string" || !HEX_32.test(captured.reservation_digest)
     || typeof captured.execution_token !== "string" || !HEX_32.test(captured.execution_token)) {
     throw new TypeError("invalid durable record");
   }
+  const reservation = captureReservationState(captured.reservation);
+  if (reservation === null || reservationDigest(reservation) !== captured.reservation_digest) {
+    throw new TypeError("invalid durable reservation state");
+  }
   const common = {
     revision: captured.revision as number,
+    key: captured.key,
     binding_digest: captured.binding_digest,
     reservation_digest: captured.reservation_digest,
     execution_token: captured.execution_token,
+    reservation,
   };
   if (captured.state === "executing" && exactKeys(captured, [
-    "binding_digest", "execution_token", "reservation_digest", "revision", "state",
+    "binding_digest", "execution_token", "key", "reservation", "reservation_digest", "revision", "state",
   ])) return Object.freeze({ state: "executing" as const, ...common });
   if (captured.state === "committed" && exactKeys(captured, [
-    "binding_digest", "execution_token", "output", "output_digest", "reservation_digest",
+    "binding_digest", "execution_token", "key", "output", "output_digest", "reservation", "reservation_digest",
     "revision", "state",
   ]) && typeof captured.output_digest === "string" && HEX_32.test(captured.output_digest)) {
     const output = captureOutput(captured.output);
@@ -674,7 +787,7 @@ function captureDurableRecord(value: unknown): ControlEnrollmentReservationRecor
     });
   }
   if (captured.state === "indeterminate" && exactKeys(captured, [
-    "binding_digest", "execution_token", "reconciliation_digest", "reservation_digest",
+    "binding_digest", "execution_token", "key", "reconciliation_digest", "reservation", "reservation_digest",
     "revision", "state",
   ]) && typeof captured.reconciliation_digest === "string"
     && HEX_32.test(captured.reconciliation_digest)) return Object.freeze({
@@ -689,13 +802,38 @@ function exactOutput(left: EnrollmentOutput, right: EnrollmentOutput): boolean {
   return left.enrollment_id === right.enrollment_id && left.group_id === right.group_id;
 }
 
+function exactReservationState(
+  left: ControlEnrollmentReservationState,
+  right: ControlEnrollmentReservationState,
+): boolean {
+  const leftRecord = left as Readonly<Record<string, unknown>>;
+  const rightRecord = right as Readonly<Record<string, unknown>>;
+  return RESERVATION_STATE_KEYS.every((key) => {
+    const leftValue = leftRecord[key];
+    const rightValue = rightRecord[key];
+    return Array.isArray(leftValue) && Array.isArray(rightValue)
+      ? leftValue.length === rightValue.length
+        && leftValue.every((item, index) => item === rightValue[index])
+      : leftValue === rightValue;
+  });
+}
+
 function durableDecision(
   authority: AuthorityRecord,
   request: ControlEnrollmentAdmissionRequest,
   record: ControlEnrollmentReservationRecord | null,
   base: DurableBase,
 ): ControlEnrollmentAdmissionDecision | null {
-  if (record === null || record.binding_digest !== base.binding_digest) return null;
+  if (record === null || record.key !== base.key || record.binding_digest !== base.binding_digest
+    || record.reservation.authority_id !== authority.authority_id
+    || record.reservation.persona !== request.persona
+    || record.reservation.account !== request.account
+    || record.reservation.device_id !== request.device_id
+    || record.reservation.client_key !== request.client_key
+    || record.reservation.group_id !== request.group_id
+    || record.reservation.invite_id !== request.invite_id
+    || record.reservation.reserved_slot !== request.reserved_slot
+    || record.reservation.key_package_expires_at !== base.key_package_expires_at) return null;
   const expected = durableRequest(authority, request, base, record.reservation_digest);
   if (record.execution_token !== expected.execution_token) return null;
   if (record.state === "committed") {
@@ -789,43 +927,15 @@ function currentDecision(
   return inventoryDecision(current.inventory, request, now);
 }
 
-function reservationDigest(
+function reservationState(
   authority: AuthorityRecord,
   request: ControlEnrollmentAdmissionRequest,
   keyPackage: VerifiedKeyPackage,
   current: CurrentState,
   now: number,
-): string {
-  return authorityBindingDigest("heterodyne.control-enrollment.atomic-state/v1", {
-    authority_id: authority.authority_id,
-    persona: request.persona,
-    account: request.account,
-    device_id: request.device_id,
-    client_key: request.client_key,
-    group_id: request.group_id,
-    invite_id: request.invite_id,
-    reserved_slot: request.reserved_slot,
-    trusted_now: now,
-    key_package_expires_at: keyPackage.expires_at,
-    inventory: current.inventory,
-    invite: current.invite,
-  });
-}
-
-function reservationInput(
-  authority: AuthorityRecord,
-  request: ControlEnrollmentAdmissionRequest,
-  keyPackage: VerifiedKeyPackage,
-  current: CurrentState,
-  now: number,
-  expected: DurableRequest,
-): ControlEnrollmentReservationInput {
+): ControlEnrollmentReservationState {
   return Object.freeze({
-    key: expected.key,
     authority_id: authority.authority_id,
-    binding_digest: expected.binding_digest,
-    reservation_digest: expected.reservation_digest,
-    execution_token: expected.execution_token,
     persona: request.persona,
     account: request.account,
     device_id: request.device_id,
@@ -856,11 +966,34 @@ function reservationInput(
   });
 }
 
+function reservationDigest(reservation: ControlEnrollmentReservationState): string {
+  return authorityBindingDigest("heterodyne.control-enrollment.atomic-state/v1", reservation);
+}
+
+function reservationInput(
+  authority: AuthorityRecord,
+  request: ControlEnrollmentAdmissionRequest,
+  keyPackage: VerifiedKeyPackage,
+  current: CurrentState,
+  now: number,
+  expected: DurableRequest,
+): ControlEnrollmentReservationInput {
+  const reservation = reservationState(authority, request, keyPackage, current, now);
+  return Object.freeze({
+    key: expected.key,
+    binding_digest: expected.binding_digest,
+    reservation_digest: expected.reservation_digest,
+    execution_token: expected.execution_token,
+    ...reservation,
+  });
+}
+
 async function reconcileAfterEffect(
   authority: AuthorityRecord,
   request: ControlEnrollmentAdmissionRequest,
   base: DurableBase,
   expected: DurableRequest,
+  reservation: ControlEnrollmentReservationState,
 ): Promise<ControlEnrollmentAdmissionDecision> {
   let observed = await loadDurable(authority, expected.key);
   if (observed !== undefined) {
@@ -873,6 +1006,7 @@ async function reconcileAfterEffect(
       binding_digest: expected.binding_digest,
       reservation_digest: expected.reservation_digest,
       execution_token: expected.execution_token,
+      reservation,
       reconciliation_digest: expected.reconciliation_digest,
     });
   } catch {
@@ -933,11 +1067,18 @@ export async function admitControlEnrollment(
   const effectDecision = currentDecision(effectCurrent, request, effectNow);
   if (effectDecision !== null) return effectDecision;
   if (effectCurrent === null) return UNAVAILABLE;
+  const effectReservation = reservationState(
+    authorityRecord,
+    request,
+    keyPackage,
+    effectCurrent,
+    effectNow,
+  );
   const expected = durableRequest(
     authorityRecord,
     request,
     base,
-    reservationDigest(authorityRecord, request, keyPackage, effectCurrent, effectNow),
+    reservationDigest(effectReservation),
   );
 
   let acquired: Awaited<ReturnType<StoreCallbacks["reserve"]>>;
@@ -962,7 +1103,17 @@ export async function admitControlEnrollment(
     if (acquired === "keypackage-invalid") return INVALID_KEY_PACKAGE;
     if (acquired === "replenishment-paused") return REPLENISHMENT_PAUSED;
     if (acquired === "unavailable" || acquired === "conflict") return UNAVAILABLE;
-    return reconcileAfterEffect(authorityRecord, request, base, expected);
+    return reconcileAfterEffect(authorityRecord, request, base, expected, effectReservation);
+  }
+
+  const executing = await loadDurable(authorityRecord, expected.key);
+  if (executing === undefined || executing === null || executing.state !== "executing"
+    || executing.key !== expected.key
+    || executing.binding_digest !== expected.binding_digest
+    || executing.reservation_digest !== expected.reservation_digest
+    || executing.execution_token !== expected.execution_token
+    || !exactReservationState(executing.reservation, effectReservation)) {
+    return reconcileAfterEffect(authorityRecord, request, base, expected, effectReservation);
   }
 
   let committed: "committed" | "conflict" | "unknown";
@@ -972,6 +1123,7 @@ export async function admitControlEnrollment(
       binding_digest: expected.binding_digest,
       reservation_digest: expected.reservation_digest,
       execution_token: expected.execution_token,
+      reservation: effectReservation,
       output_digest: expected.output_digest,
       output: expected.output,
     });
@@ -985,5 +1137,5 @@ export async function admitControlEnrollment(
       if (terminal !== null && observed?.state === "committed") return terminal;
     }
   }
-  return reconcileAfterEffect(authorityRecord, request, base, expected);
+  return reconcileAfterEffect(authorityRecord, request, base, expected, effectReservation);
 }
