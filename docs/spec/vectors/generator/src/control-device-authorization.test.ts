@@ -5,9 +5,12 @@ import {
   pollControlDeviceAuthorization,
   type ControlDeviceAuthorizationAuthorityConfig,
   type ControlDeviceTransactionRequest,
+} from "./control-device-authorization.js";
+import {
+  authorityBindingDigest,
   type DurableAuthorityRecord,
   type DurableAuthorityStore,
-} from "./control-device-authorization.js";
+} from "./security-authority-support.js";
 
 type DeviceState = Readonly<{
   transaction_id: string;
@@ -26,6 +29,17 @@ class DeviceStore implements DurableAuthorityStore<DeviceState> {
   nextAcquire: "acquired" | "replay" | "conflict" | "unavailable" | null = null;
   nextCommit: "committed" | "conflict" | "unknown" | null = null;
   nextMark: "indeterminate" | "conflict" | "unknown" | null = null;
+  persistUnknownCompare = false;
+  failReadbackAfterCompare = false;
+  loadFailures = 0;
+  commitOverride: ((input: Readonly<{
+    key: string;
+    binding_digest: string;
+    execution_token: string;
+    output_digest: string;
+    output: DeviceState;
+  }>, current: Extract<DurableAuthorityRecord<DeviceState>, { state: "executing" }>) =>
+    DurableAuthorityRecord<DeviceState>) | null = null;
 
   get output(): DeviceState {
     const record = [...this.records.values()].at(-1);
@@ -35,6 +49,10 @@ class DeviceStore implements DurableAuthorityStore<DeviceState> {
 
   async load(key: string): Promise<DurableAuthorityRecord<DeviceState> | null> {
     this.calls.load += 1;
+    if (this.loadFailures > 0) {
+      this.loadFailures -= 1;
+      throw new Error("synthetic local durable readback unavailable");
+    }
     return this.records.get(key) ?? null;
   }
 
@@ -74,11 +92,18 @@ class DeviceStore implements DurableAuthorityStore<DeviceState> {
     if (this.nextCompare !== null) {
       const result = this.nextCompare;
       this.nextCompare = null;
+      if (result === "unknown" && this.persistUnknownCompare) {
+        this.records.set(input.key, input.next);
+      }
       return result;
     }
     const current = this.records.get(input.key);
     if ((current?.revision ?? null) !== input.expected_revision) return "conflict";
     this.records.set(input.key, input.next);
+    if (this.failReadbackAfterCompare) {
+      this.failReadbackAfterCompare = false;
+      this.loadFailures += 1;
+    }
     return "committed";
   }
 
@@ -99,6 +124,10 @@ class DeviceStore implements DurableAuthorityStore<DeviceState> {
     if (current?.state !== "executing"
       || current.binding_digest !== input.binding_digest
       || current.execution_token !== input.execution_token) return "conflict";
+    if (this.commitOverride !== null) {
+      this.records.set(input.key, this.commitOverride(input, current));
+      return "committed";
+    }
     this.records.set(input.key, Object.freeze({
       state: "committed" as const,
       revision: current.revision + 1,
@@ -139,17 +168,34 @@ class DeviceStore implements DurableAuthorityStore<DeviceState> {
   async approve(transactionId: string): Promise<void> {
     const current = this.records.get(transactionId);
     if (current?.state !== "available") throw new Error("synthetic transaction unavailable");
+    const output = Object.freeze({ ...current.output, state: "approved" as const });
     const result = await this.compareAndSwap({
       key: transactionId,
       expected_revision: current.revision,
       next: Object.freeze({
         ...current,
         revision: current.revision + 1,
-        output: Object.freeze({ ...current.output, state: "approved" as const }),
+        binding_digest: authorityBindingDigest(
+          "heterodyne-control-device-state-v1",
+          output as Readonly<Record<string, unknown>>,
+        ),
+        output,
       }),
     });
     if (result !== "committed") throw new Error("synthetic approval failed");
   }
+}
+
+function testPollDigest(
+  authorityId: string,
+  poll: Readonly<{ device_code: string; user_code: string; displayed_fingerprint: string }>,
+): string {
+  return authorityBindingDigest("heterodyne-control-device-poll-v1", {
+    authority_id: authorityId,
+    device_code: poll.device_code,
+    displayed_fingerprint: poll.displayed_fingerprint,
+    user_code: poll.user_code,
+  });
 }
 
 function sequenceRandom(): (length: number) => Uint8Array {
@@ -233,6 +279,7 @@ describe("Control device authorization authority", () => {
     expect(JSON.stringify(created.store.output)).not.toContain(created.tx.device_code);
     expect(JSON.stringify(created.store.output)).not.toContain(created.tx.user_code);
 
+    value.setNow(value.now() + 5);
     await expect(pollControlDeviceAuthorization(
       created.authority,
       correctPoll(created.tx),
@@ -283,6 +330,7 @@ describe("Control device authorization authority", () => {
 
   it("BLUE TEAM VALIDATION: synthetic/local atomically denies a display mismatch", async () => {
     const value = await transaction();
+    value.setNow(value.now() + 5);
     const poll = { ...correctPoll(value.tx), displayed_fingerprint: "OTHER-DISPLAY" };
     await expect(pollControlDeviceAuthorization(value.authority, poll)).resolves.toEqual({
       verdict: "reject",
@@ -300,8 +348,6 @@ describe("Control device authorization authority", () => {
 
   it("BLUE TEAM VALIDATION: synthetic/local applies RFC 8628 interval and slow-down state atomically", async () => {
     const value = await transaction();
-    expect((await pollControlDeviceAuthorization(value.authority, correctPoll(value.tx))).verdict)
-      .toBe("accept");
     await expect(pollControlDeviceAuthorization(value.authority, correctPoll(value.tx)))
       .resolves.toEqual({
         verdict: "reject",
@@ -311,6 +357,22 @@ describe("Control device authorization authority", () => {
     value.setNow(value.now() + 10);
     await expect(pollControlDeviceAuthorization(value.authority, correctPoll(value.tx)))
       .resolves.toMatchObject({ verdict: "accept", output: { state: "pending" } });
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local enforces the stored interval before exposing approval", async () => {
+    const value = await transaction();
+    value.setNow(value.now() + 5);
+    await expect(pollControlDeviceAuthorization(value.authority, correctPoll(value.tx)))
+      .resolves.toMatchObject({ verdict: "accept", output: { state: "pending" } });
+    await value.store.approve(value.tx.transaction_id);
+    await expect(pollControlDeviceAuthorization(value.authority, correctPoll(value.tx)))
+      .resolves.toEqual({
+        verdict: "reject",
+        reason_code: "control-device-code-rate-limited",
+      });
+    value.setNow(value.now() + 10);
+    await expect(pollControlDeviceAuthorization(value.authority, correctPoll(value.tx)))
+      .resolves.toMatchObject({ verdict: "accept", output: { state: "approved" } });
   });
 
   it("BLUE TEAM VALIDATION: synthetic/local atomically invalidates the fifth bad code", async () => {
@@ -348,6 +410,7 @@ describe("Control device authorization authority", () => {
   it("returns the exact committed approval on retry without another transition", async () => {
     const value = await transaction();
     await value.store.approve(value.tx.transaction_id);
+    value.setNow(value.now() + 5);
     const first = await pollControlDeviceAuthorization(value.authority, correctPoll(value.tx));
     const transitions = { ...value.store.calls };
     const retry = await pollControlDeviceAuthorization(value.authority, correctPoll(value.tx));
@@ -355,6 +418,51 @@ describe("Control device authorization authority", () => {
     expect(value.store.calls.acquire).toBe(transitions.acquire);
     expect(value.store.calls.commit).toBe(transitions.commit);
     expect(value.store.calls.compareAndSwap).toBe(transitions.compareAndSwap);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local never exposes approval from a substituted denied terminal readback", async () => {
+    const value = await transaction();
+    await value.store.approve(value.tx.transaction_id);
+    value.setNow(value.now() + 5);
+    value.store.commitOverride = (input, executing) => {
+      const attempted = input.output as DeviceState & Readonly<Record<string, unknown>>;
+      const denied = Object.freeze({
+        ...attempted,
+        state: "denied" as const,
+        terminal_reason: "control-device-code-display-mismatch",
+      });
+      const outputDigest = authorityBindingDigest(
+        "heterodyne-control-device-output-v1",
+        denied,
+      );
+      return Object.freeze({
+        state: "committed" as const,
+        revision: executing.revision + 1,
+        binding_digest: input.binding_digest,
+        execution_token: authorityBindingDigest(
+          "heterodyne-control-device-execution-v1",
+          {
+            authority_id: "synthetic-local-control-device-authority-A",
+            transaction_id: value.tx.transaction_id,
+            expected_revision: executing.revision - 1,
+            prior_binding_digest: input.binding_digest,
+            next_output_digest: outputDigest,
+            terminal_state: "denied",
+            terminal_reason: "control-device-code-display-mismatch",
+            terminal_poll_digest:
+              (denied as Readonly<Record<string, unknown>>).terminal_poll_digest,
+          },
+        ),
+        output_digest: outputDigest,
+        output: denied,
+      });
+    };
+    const decision = await pollControlDeviceAuthorization(value.authority, correctPoll(value.tx));
+    expect(decision).toEqual({
+      verdict: "indeterminate",
+      reconciliation_digest: expect.stringMatching(/^[0-9a-f]{64}$/),
+    });
+    expect(value.store.output.state).toBe("denied");
   });
 
   it("BLUE TEAM VALIDATION: synthetic/local fails closed on a concurrent CAS conflict", async () => {
@@ -365,13 +473,60 @@ describe("Control device authorization authority", () => {
       verdict: "indeterminate",
       reconciliation_digest: expect.stringMatching(/^[0-9a-f]{64}$/),
     });
-    expect(value.store.output.state).toBe("pending");
+    expect((await value.store.load(value.tx.transaction_id))?.state).toBe("indeterminate");
     expect(value.store.calls.compareAndSwap).toBe(2);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local absorbs an ambiguous nonterminal CAS without repeating it", async () => {
+    const value = await transaction();
+    value.setNow(value.now() + 5);
+    value.store.nextCompare = "unknown";
+    const first = await pollControlDeviceAuthorization(value.authority, correctPoll(value.tx));
+    expect(first).toEqual({
+      verdict: "indeterminate",
+      reconciliation_digest: expect.stringMatching(/^[0-9a-f]{64}$/),
+    });
+    expect((await value.store.load(value.tx.transaction_id))?.state)
+      .toMatch(/^(executing|indeterminate)$/);
+    const compareCalls = value.store.calls.compareAndSwap;
+    const retry = await pollControlDeviceAuthorization(value.authority, correctPoll(value.tx));
+    expect(retry).toEqual(first);
+    expect(value.store.calls.compareAndSwap).toBe(compareCalls);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local accepts only an exact proposed nonterminal CAS after unknown", async () => {
+    const value = await transaction();
+    value.setNow(value.now() + 5);
+    value.store.persistUnknownCompare = true;
+    value.store.nextCompare = "unknown";
+    await expect(pollControlDeviceAuthorization(value.authority, correctPoll(value.tx)))
+      .resolves.toEqual({
+        verdict: "accept",
+        output: { transaction_id: value.tx.transaction_id, state: "pending" },
+      });
+    expect((await value.store.load(value.tx.transaction_id))?.state).toBe("available");
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local absorbs an unreadable nonterminal CAS readback", async () => {
+    const value = await transaction();
+    value.setNow(value.now() + 5);
+    value.store.failReadbackAfterCompare = true;
+    const first = await pollControlDeviceAuthorization(value.authority, correctPoll(value.tx));
+    expect(first).toEqual({
+      verdict: "indeterminate",
+      reconciliation_digest: expect.stringMatching(/^[0-9a-f]{64}$/),
+    });
+    expect((await value.store.load(value.tx.transaction_id))?.state).toBe("indeterminate");
+    const compareCalls = value.store.calls.compareAndSwap;
+    const retry = await pollControlDeviceAuthorization(value.authority, correctPoll(value.tx));
+    expect(retry).toEqual(first);
+    expect(value.store.calls.compareAndSwap).toBe(compareCalls);
   });
 
   it("BLUE TEAM VALIDATION: synthetic/local burns unknown and executing terminal outcomes without repeat", async () => {
     const value = await transaction();
     await value.store.approve(value.tx.transaction_id);
+    value.setNow(value.now() + 5);
     value.store.nextCommit = "unknown";
     const first = await pollControlDeviceAuthorization(value.authority, correctPoll(value.tx));
     expect(first).toEqual({
@@ -397,10 +552,10 @@ describe("Control device authorization authority", () => {
     if (created.verdict !== "accept") throw new Error("synthetic transaction rejected");
     const stored = value.store.output as DeviceState & {
       client_id: string;
-      display_fingerprint: string;
+      client_fingerprint: string;
     };
     expect(stored.client_id).toBe("synthetic-local-nip46-client");
-    expect(stored.display_fingerprint).toBe("SYNTHETIC-CLIENT-FINGERPRINT");
+    expect(stored.client_fingerprint).toBe("SYNTHETIC-CLIENT-FINGERPRINT");
   });
 
   it("BLUE TEAM VALIDATION: synthetic/local rejects proxy and accessor inputs without traps", async () => {
@@ -502,14 +657,136 @@ describe("Control device authorization authority", () => {
     const value = await transaction();
     const current = value.store.records.get(value.tx.transaction_id);
     if (current?.state !== "available") throw new Error("synthetic record unavailable");
+    const malformed = {
+      ...current.output as DeviceState & Readonly<Record<string, unknown>>,
+      client_id: 7,
+    };
     value.store.records.set(value.tx.transaction_id, {
       ...current,
-      output: { ...current.output, injected: true } as DeviceState,
+      binding_digest: authorityBindingDigest(
+        "heterodyne-control-device-state-v1",
+        malformed,
+      ),
+      output: malformed as unknown as DeviceState,
     });
     await expect(pollControlDeviceAuthorization(value.authority, correctPoll(value.tx)))
       .resolves.toEqual({
         verdict: "indeterminate",
         reconciliation_digest: expect.stringMatching(/^[0-9a-f]{64}$/),
       });
+
+    const invalidUri = {
+      ...current.output as DeviceState & Readonly<Record<string, unknown>>,
+      verification_uri: "not-an-https-verification-uri",
+    };
+    value.store.records.set(value.tx.transaction_id, {
+      ...current,
+      binding_digest: authorityBindingDigest(
+        "heterodyne-control-device-state-v1",
+        invalidUri,
+      ),
+      output: invalidUri as unknown as DeviceState,
+    });
+    await expect(pollControlDeviceAuthorization(value.authority, correctPoll(value.tx)))
+      .resolves.toMatchObject({ verdict: "indeterminate" });
+
+    const earlyInitialPoll = {
+      ...current.output as DeviceState & Readonly<Record<string, unknown>>,
+      next_poll_at:
+        (current.output as DeviceState & Readonly<Record<string, unknown>>).issued_at,
+    };
+    value.store.records.set(value.tx.transaction_id, {
+      ...current,
+      binding_digest: authorityBindingDigest(
+        "heterodyne-control-device-state-v1",
+        earlyInitialPoll,
+      ),
+      output: earlyInitialPoll as unknown as DeviceState,
+    });
+    await expect(pollControlDeviceAuthorization(value.authority, correctPoll(value.tx)))
+      .resolves.toMatchObject({ verdict: "indeterminate" });
+
+    const nullPrototype = Object.assign(Object.create(null), current.output) as DeviceState;
+    value.store.records.set(value.tx.transaction_id, { ...current, output: nullPrototype });
+    await expect(pollControlDeviceAuthorization(value.authority, correctPoll(value.tx)))
+      .resolves.toMatchObject({ verdict: "indeterminate" });
+
+    const poll = correctPoll(value.tx);
+    const pendingTerminal = Object.freeze({
+      ...current.output as DeviceState & Readonly<Record<string, unknown>>,
+      terminal_poll_digest: testPollDigest(
+        "synthetic-local-control-device-authority-A",
+        poll,
+      ),
+    });
+    const pendingOutputDigest = authorityBindingDigest(
+      "heterodyne-control-device-output-v1",
+      pendingTerminal,
+    );
+    value.store.records.set(value.tx.transaction_id, Object.freeze({
+      state: "committed" as const,
+      revision: 2,
+      binding_digest: current.binding_digest,
+      execution_token: authorityBindingDigest(
+        "heterodyne-control-device-execution-v1",
+        {
+          authority_id: "synthetic-local-control-device-authority-A",
+          transaction_id: value.tx.transaction_id,
+          expected_revision: 0,
+          prior_binding_digest: current.binding_digest,
+          next_output_digest: pendingOutputDigest,
+          terminal_state: "pending",
+          terminal_reason: null,
+          terminal_poll_digest:
+            (pendingTerminal as Readonly<Record<string, unknown>>).terminal_poll_digest,
+        },
+      ),
+      output_digest: pendingOutputDigest,
+      output: pendingTerminal,
+    }));
+    await expect(pollControlDeviceAuthorization(value.authority, poll)).resolves.toEqual({
+      verdict: "indeterminate",
+      reconciliation_digest: expect.stringMatching(/^[0-9a-f]{64}$/),
+    });
+
+    value.store.records.set(value.tx.transaction_id, Object.freeze({
+      state: "indeterminate" as const,
+      revision: 1,
+      binding_digest: current.binding_digest,
+      execution_token: "a".repeat(64),
+      reconciliation_digest: "b".repeat(64),
+    }));
+    const malformedIndeterminate = await pollControlDeviceAuthorization(
+      value.authority,
+      poll,
+    );
+    expect(malformedIndeterminate).toMatchObject({ verdict: "indeterminate" });
+    if (malformedIndeterminate.verdict !== "indeterminate") {
+      throw new Error("synthetic malformed record did not fail closed");
+    }
+    expect(malformedIndeterminate.reconciliation_digest).not.toBe("b".repeat(64));
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local persists the RFC transaction projection with shared authority binding", async () => {
+    const value = await transaction();
+    const record = await value.store.load(value.tx.transaction_id);
+    if (record?.state !== "available") throw new Error("synthetic record unavailable");
+    const output = record.output as DeviceState & Readonly<Record<string, unknown>>;
+    expect(output).toMatchObject({
+      device_code_sha256: expect.stringMatching(/^[0-9a-f]{64}$/),
+      user_code_sha256: expect.stringMatching(/^[0-9a-f]{64}$/),
+      device_code_entropy_bits: 128,
+      user_code_entropy_bits: 40,
+      normalization: "uppercase-ascii-remove-hyphen",
+      client_fingerprint: "SYNTHETIC-CLIENT-FINGERPRINT",
+      failed_guesses: 0,
+      max_failed_guesses: 5,
+    });
+    expect(Object.hasOwn(output, "device_code_hash")).toBe(false);
+    expect(Object.hasOwn(output, "user_code_hash")).toBe(false);
+    expect(record.binding_digest).toBe(authorityBindingDigest(
+      "heterodyne-control-device-state-v1",
+      output,
+    ));
   });
 });

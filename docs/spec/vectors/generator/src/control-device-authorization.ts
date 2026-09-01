@@ -1,49 +1,13 @@
 import { createHash } from "node:crypto";
 import { types as utilTypes } from "node:util";
-import { captureExactDataObject, snapshotClosedDataTree } from "./closed-data.js";
-
-// Structurally identical to the shared Task 2 authority support contract. This
-// isolated lane replaces these declarations with type-only imports when the
-// prerequisite commit is composed.
-export type IndeterminateDecision<I extends string = never> = Readonly<
-  [I] extends [never]
-    ? { verdict: "indeterminate"; reconciliation_digest: string }
-    : { verdict: "indeterminate"; reason_code: I; reconciliation_digest: string }
->;
-
-export type AuthorityDecision<R extends string, O, I extends string = never> = Readonly<
-  | { verdict: "accept"; output: O }
-  | { verdict: "reject"; reason_code: R }
-  | IndeterminateDecision<I>
->;
-
-export type DurableAuthorityRecord<O> = Readonly<
-  | { state: "available"; revision: number; binding_digest: string; output: O }
-  | { state: "executing"; revision: number; binding_digest: string; execution_token: string }
-  | { state: "committed"; revision: number; binding_digest: string; execution_token: string;
-      output_digest: string; output: O }
-  | { state: "indeterminate"; revision: number; binding_digest: string; execution_token: string;
-      reconciliation_digest: string }
->;
-
-export interface DurableAuthorityStore<O> {
-  load(key: string): Promise<DurableAuthorityRecord<O> | null>;
-  acquire(input: Readonly<{
-    key: string; expected_revision: number | null;
-    binding_digest: string; execution_token: string;
-  }>): Promise<"acquired" | "replay" | "conflict" | "unavailable">;
-  compareAndSwap(input: Readonly<{
-    key: string; expected_revision: number | null; next: DurableAuthorityRecord<O>;
-  }>): Promise<"committed" | "conflict" | "unknown">;
-  commit(input: Readonly<{
-    key: string; binding_digest: string; execution_token: string;
-    output_digest: string; output: O;
-  }>): Promise<"committed" | "conflict" | "unknown">;
-  markIndeterminate(input: Readonly<{
-    key: string; binding_digest: string; execution_token: string;
-    reconciliation_digest: string;
-  }>): Promise<"indeterminate" | "conflict" | "unknown">;
-}
+import {
+  authorityBindingDigest,
+  captureAuthorityInput,
+  type AuthorityDecision,
+  type DurableAuthorityRecord,
+  type DurableAuthorityStore,
+  type IndeterminateDecision,
+} from "./security-authority-support.js";
 
 type PublicDeviceState = Readonly<{
   transaction_id: string;
@@ -108,6 +72,11 @@ type AuthorityRecord = Readonly<{
 
 type TerminalReason = "control-device-code-invalid" | "control-device-code-display-mismatch";
 
+/**
+ * Private RFC 8628 transaction projection. It is not the later, schema-bound
+ * OIDC/NIP-46 authorization record described by
+ * control-device-authorization-state-v1.schema.json.
+ */
 type StoredTransaction = Readonly<{
   transaction_id: string;
   state: "pending" | "approved" | "denied" | "expired";
@@ -115,24 +84,27 @@ type StoredTransaction = Readonly<{
   client_id: string;
   persona: string;
   verification_uri: string;
-  display_fingerprint: string;
-  device_code_hash: string;
-  user_code_hash: string;
-  device_entropy_bits: 128;
+  client_fingerprint: string;
+  device_code_sha256: string;
+  user_code_sha256: string;
+  device_code_entropy_bits: 128;
   user_code_entropy_bits: 40;
+  normalization: "uppercase-ascii-remove-hyphen";
   issued_at: number;
   expires_at: number;
   initial_interval_seconds: number;
   interval_seconds: number;
   next_poll_at: number;
-  failed_attempts: number;
-  failure_budget: 5;
-  rate_violations: number;
+  failed_guesses: number;
+  max_failed_guesses: 5;
+  slow_down_count: number;
   terminal_reason: TerminalReason | null;
   terminal_poll_digest: string | null;
 }>;
 
 type CapturedRecord = DurableAuthorityRecord<StoredTransaction>;
+type AvailableRecord = Extract<CapturedRecord, { state: "available" }>;
+type CommittedRecord = Extract<CapturedRecord, { state: "committed" }>;
 
 const AUTHORITIES = new WeakMap<object, AuthorityRecord>();
 const DEVICE_BYTES = 16;
@@ -142,11 +114,12 @@ const HEX_32 = /^[0-9a-f]{64}$/;
 const DEVICE_CODE = /^[A-Za-z0-9_-]{22}$/;
 const USER_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 const STORED_KEYS = [
-  "authority_id", "client_id", "device_code_hash", "device_entropy_bits",
-  "display_fingerprint", "expires_at", "failed_attempts", "failure_budget",
-  "initial_interval_seconds", "interval_seconds", "issued_at", "next_poll_at",
-  "persona", "rate_violations", "state", "terminal_poll_digest", "terminal_reason",
-  "transaction_id", "user_code_entropy_bits", "user_code_hash", "verification_uri",
+  "authority_id", "client_fingerprint", "client_id", "device_code_entropy_bits",
+  "device_code_sha256", "expires_at", "failed_guesses", "initial_interval_seconds",
+  "interval_seconds", "issued_at", "max_failed_guesses", "next_poll_at",
+  "normalization", "persona", "slow_down_count", "state", "terminal_poll_digest",
+  "terminal_reason", "transaction_id", "user_code_entropy_bits", "user_code_sha256",
+  "verification_uri",
 ] as const;
 
 const INVALID = Object.freeze({
@@ -162,26 +135,70 @@ const DISPLAY_MISMATCH = Object.freeze({
   reason_code: "control-device-code-display-mismatch" as const,
 });
 
-function sha256(domain: string, ...parts: readonly string[]): string {
-  const hash = createHash("sha256").update(domain, "utf8");
-  for (const part of parts) hash.update("\0", "utf8").update(part, "utf8");
-  return hash.digest("hex");
+function exactKeys(value: Readonly<Record<string, unknown>>, keys: readonly string[]): boolean {
+  const actual = Object.keys(value).sort();
+  return actual.length === keys.length
+    && [...keys].sort().every((key, index) => actual[index] === key);
 }
 
-function canonical(value: unknown): string {
-  if (value === null) return "null";
-  if (typeof value === "string") return `s:${JSON.stringify(value)}`;
-  if (typeof value === "number") return `n:${String(value)}`;
-  if (typeof value === "boolean") return value ? "true" : "false";
-  if (Array.isArray(value)) return `a:[${value.map(canonical).join(",")}]`;
-  const object = value as Readonly<Record<string, unknown>>;
-  return `o:{${Object.keys(object).sort().map((key) =>
-    `${JSON.stringify(key)}:${canonical(object[key])}`
-  ).join(",")}}`;
+function rawHash(domain: string, value: string): string {
+  return createHash("sha256")
+    .update(domain, "utf8")
+    .update("\0", "utf8")
+    .update(value, "utf8")
+    .digest("hex");
 }
 
-function digestClosed(domain: string, value: Readonly<Record<string, unknown>>): string {
-  return sha256(domain, canonical(value));
+function stateBinding(output: StoredTransaction): string {
+  return authorityBindingDigest(
+    "heterodyne-control-device-state-v1",
+    output as unknown as Readonly<Record<string, unknown>>,
+  );
+}
+
+function storedOutputDigest(output: StoredTransaction): string {
+  return authorityBindingDigest(
+    "heterodyne-control-device-output-v1",
+    output as unknown as Readonly<Record<string, unknown>>,
+  );
+}
+
+function pollBinding(authority: AuthorityRecord, request: ControlDevicePollRequest): string {
+  return authorityBindingDigest("heterodyne-control-device-poll-v1", {
+    authority_id: authority.authority_id,
+    device_code: request.device_code,
+    displayed_fingerprint: request.displayed_fingerprint,
+    user_code: request.user_code,
+  });
+}
+
+function executionToken(
+  authority: Readonly<{ authority_id: string }>,
+  record: Readonly<{ revision: number; binding_digest: string }>,
+  nextOutput: StoredTransaction,
+): string {
+  return authorityBindingDigest("heterodyne-control-device-execution-v1", {
+    authority_id: authority.authority_id,
+    transaction_id: nextOutput.transaction_id,
+    expected_revision: record.revision,
+    prior_binding_digest: record.binding_digest,
+    next_output_digest: storedOutputDigest(nextOutput),
+    terminal_state: nextOutput.state,
+    terminal_reason: nextOutput.terminal_reason,
+    terminal_poll_digest: nextOutput.terminal_poll_digest,
+  });
+}
+
+function reconciliationDigest(
+  authority: AuthorityRecord,
+  key: string,
+  token: string,
+): string {
+  return authorityBindingDigest("heterodyne-control-device-reconciliation-v1", {
+    authority_id: authority.authority_id,
+    transaction_id: key,
+    execution_token: token,
+  });
 }
 
 function indeterminate(
@@ -189,15 +206,19 @@ function indeterminate(
   key: string,
   phase: string,
   bindingDigest = "unavailable",
+  token = "unavailable",
 ): IndeterminateDecision {
   return Object.freeze({
     verdict: "indeterminate" as const,
-    reconciliation_digest: sha256(
-      "heterodyne-control-device-reconciliation-v1",
-      authority.authority_id,
-      key,
-      phase,
-      bindingDigest,
+    reconciliation_digest: authorityBindingDigest(
+      "heterodyne-control-device-failure-v1",
+      {
+        authority_id: authority.authority_id,
+        transaction_id: key,
+        phase,
+        binding_digest: bindingDigest,
+        execution_token: token,
+      },
     ),
   });
 }
@@ -210,20 +231,15 @@ function ownDataProperty(object: object, name: string, label: string): unknown {
   return descriptor.value;
 }
 
-function boundMethod<T extends (...args: never[]) => unknown>(
-  object: object,
-  name: string,
-): T {
+function boundMethod<T extends (...args: never[]) => unknown>(object: object, name: string): T {
   let owner: object | null = object;
   while (owner !== null) {
     if (utilTypes.isProxy(owner)) throw new TypeError("Control device store cannot be a proxy");
     const descriptor = Object.getOwnPropertyDescriptor(owner, name);
     if (descriptor !== undefined) {
-      if (!("value" in descriptor) || typeof descriptor.value !== "function") {
+      if (!("value" in descriptor) || typeof descriptor.value !== "function"
+        || utilTypes.isProxy(descriptor.value)) {
         throw new TypeError(`Control device store requires data method ${name}`);
-      }
-      if (utilTypes.isProxy(descriptor.value)) {
-        throw new TypeError(`Control device store method ${name} cannot be a proxy`);
       }
       return descriptor.value.bind(object) as T;
     }
@@ -314,112 +330,143 @@ function normalizeDeviceCode(value: string): string | null {
   if (!DEVICE_CODE.test(value)) return null;
   try {
     const decoded = Buffer.from(value, "base64url");
-    if (decoded.length !== DEVICE_BYTES || decoded.toString("base64url") !== value) return null;
-    return value;
+    return decoded.length === DEVICE_BYTES && decoded.toString("base64url") === value ? value : null;
   } catch {
     return null;
   }
 }
 
 function normalizeUserCode(value: string): string | null {
-  if (!/^[0-9A-Za-z -]+$/.test(value)) return null;
-  const normalized = value.replace(/[ -]/g, "").toUpperCase();
-  return normalized.length === 8
-    && [...normalized].every((character) => USER_ALPHABET.includes(character))
-    ? normalized
-    : null;
+  if (!/^[0-9A-HJKMNP-TV-Z]{4}-?[0-9A-HJKMNP-TV-Z]{4}$/.test(value)) return null;
+  return value.replace("-", "");
 }
 
-function transactionId(authority: AuthorityRecord, deviceCode: string): string {
-  return sha256(
-    "heterodyne-control-device-transaction-v1",
-    authority.authority_id,
-    sha256("heterodyne-control-device-code-v1", deviceCode),
-  );
-}
-
-function staticBinding(output: StoredTransaction): Readonly<Record<string, unknown>> {
-  return {
-    authority_id: output.authority_id,
-    client_id: output.client_id,
-    device_code_hash: output.device_code_hash,
-    device_entropy_bits: output.device_entropy_bits,
-    display_fingerprint: output.display_fingerprint,
-    expires_at: output.expires_at,
-    failure_budget: output.failure_budget,
-    initial_interval_seconds: output.initial_interval_seconds,
-    issued_at: output.issued_at,
-    persona: output.persona,
-    transaction_id: output.transaction_id,
-    user_code_entropy_bits: output.user_code_entropy_bits,
-    user_code_hash: output.user_code_hash,
-    verification_uri: output.verification_uri,
-  };
-}
-
-function bindingDigest(output: StoredTransaction): string {
-  return digestClosed("heterodyne-control-device-binding-v1", staticBinding(output));
-}
-
-function outputDigest(output: StoredTransaction): string {
-  return digestClosed(
-    "heterodyne-control-device-output-v1",
-    output as unknown as Readonly<Record<string, unknown>>,
-  );
-}
-
-function pollDigest(authority: AuthorityRecord, request: ControlDevicePollRequest): string {
-  return digestClosed("heterodyne-control-device-poll-v1", {
+function transactionId(authority: AuthorityRecord, deviceCodeHash: string): string {
+  return authorityBindingDigest("heterodyne-control-device-transaction-v1", {
     authority_id: authority.authority_id,
-    device_code: request.device_code,
-    displayed_fingerprint: request.displayed_fingerprint,
-    user_code: request.user_code,
+    device_code_sha256: deviceCodeHash,
   });
 }
 
-function exactKeys(value: Readonly<Record<string, unknown>>, keys: readonly string[]): boolean {
-  const actual = Object.keys(value).sort();
-  return actual.length === keys.length
-    && [...keys].sort().every((key, index) => actual[index] === key);
-}
-
-function captureStored(value: unknown): StoredTransaction | null {
+function captureTransactionRequest(value: ControlDeviceTransactionRequest):
+ControlDeviceTransactionRequest | null {
   try {
-    const captured = snapshotClosedDataTree(value, "Control device durable output");
+    const captured = captureAuthorityInput(value);
     if (captured === null || typeof captured !== "object" || Array.isArray(captured)
-      || !exactKeys(captured as Readonly<Record<string, unknown>>, STORED_KEYS)) return null;
-    const output = captured as StoredTransaction;
-    if (!HEX_32.test(output.transaction_id) || output.authority_id.length === 0
-      || output.client_id.length === 0 || output.persona.length === 0
-      || output.verification_uri.length === 0 || output.display_fingerprint.length === 0
-      || !HEX_32.test(output.device_code_hash) || !HEX_32.test(output.user_code_hash)
-      || output.device_entropy_bits !== 128 || output.user_code_entropy_bits !== 40
-      || !Number.isSafeInteger(output.issued_at) || output.issued_at < 0
-      || !Number.isSafeInteger(output.expires_at) || output.expires_at <= output.issued_at
-      || !Number.isSafeInteger(output.initial_interval_seconds)
-      || output.initial_interval_seconds < 1
-      || !Number.isSafeInteger(output.interval_seconds)
-      || output.interval_seconds < output.initial_interval_seconds
-      || !Number.isSafeInteger(output.next_poll_at) || output.next_poll_at < output.issued_at
-      || !Number.isSafeInteger(output.failed_attempts) || output.failed_attempts < 0
-      || output.failed_attempts > output.failure_budget || output.failure_budget !== 5
-      || !Number.isSafeInteger(output.rate_violations) || output.rate_violations < 0
-      || !["pending", "approved", "denied", "expired"].includes(output.state)
-      || (output.terminal_reason !== null
-        && output.terminal_reason !== "control-device-code-invalid"
-        && output.terminal_reason !== "control-device-code-display-mismatch")
-      || (output.terminal_poll_digest !== null && !HEX_32.test(output.terminal_poll_digest))) {
-      return null;
-    }
-    return output;
+      || !exactKeys(captured as Readonly<Record<string, unknown>>, [
+        "client_id", "display_fingerprint", "expires_in_seconds", "failure_budget", "persona",
+        "polling_interval_seconds", "verification_uri",
+      ])) return null;
+    const request = captured as ControlDeviceTransactionRequest;
+    if (typeof request.client_id !== "string" || request.client_id.length === 0
+      || typeof request.persona !== "string" || request.persona.length === 0
+      || typeof request.verification_uri !== "string" || request.verification_uri.length === 0
+      || typeof request.display_fingerprint !== "string"
+      || request.display_fingerprint.length === 0 || request.display_fingerprint.length > 256
+      || !Number.isSafeInteger(request.polling_interval_seconds)
+      || request.polling_interval_seconds < 1
+      || !Number.isSafeInteger(request.expires_in_seconds)
+      || request.expires_in_seconds < request.polling_interval_seconds
+      || request.failure_budget !== 5) return null;
+    if (!validVerificationUri(request.verification_uri)) return null;
+    return request;
   } catch {
     return null;
   }
 }
 
+function capturePollRequest(value: ControlDevicePollRequest): ControlDevicePollRequest | null {
+  try {
+    const captured = captureAuthorityInput(value);
+    if (captured === null || typeof captured !== "object" || Array.isArray(captured)
+      || !exactKeys(captured as Readonly<Record<string, unknown>>, [
+        "device_code", "displayed_fingerprint", "user_code",
+      ])) return null;
+    const request = captured as ControlDevicePollRequest;
+    return typeof request.device_code === "string" && typeof request.user_code === "string"
+      && typeof request.displayed_fingerprint === "string" ? request : null;
+  } catch {
+    return null;
+  }
+}
+
+function validVerificationUri(value: string): boolean {
+  try {
+    const uri = new URL(value);
+    return uri.protocol === "https:" && uri.username === "" && uri.password === ""
+      && uri.search === "" && uri.hash === "";
+  } catch {
+    return false;
+  }
+}
+
+function validStoredScalars(output: StoredTransaction): boolean {
+  return typeof output.transaction_id === "string" && HEX_32.test(output.transaction_id)
+    && typeof output.state === "string"
+    && ["pending", "approved", "denied", "expired"].includes(output.state)
+    && typeof output.authority_id === "string" && output.authority_id.length > 0
+    && typeof output.client_id === "string" && output.client_id.length > 0
+    && typeof output.persona === "string" && output.persona.length > 0
+    && typeof output.verification_uri === "string" && validVerificationUri(output.verification_uri)
+    && typeof output.client_fingerprint === "string"
+    && output.client_fingerprint.length > 0 && output.client_fingerprint.length <= 256
+    && typeof output.device_code_sha256 === "string" && HEX_32.test(output.device_code_sha256)
+    && typeof output.user_code_sha256 === "string" && HEX_32.test(output.user_code_sha256)
+    && output.device_code_entropy_bits === 128 && output.user_code_entropy_bits === 40
+    && output.normalization === "uppercase-ascii-remove-hyphen"
+    && Number.isSafeInteger(output.issued_at) && output.issued_at >= 0
+    && Number.isSafeInteger(output.expires_at) && output.expires_at > output.issued_at
+    && Number.isSafeInteger(output.initial_interval_seconds)
+    && output.initial_interval_seconds >= 1
+    && Number.isSafeInteger(output.interval_seconds)
+    && output.interval_seconds >= output.initial_interval_seconds
+    && Number.isSafeInteger(output.next_poll_at)
+    && output.next_poll_at >= output.issued_at + output.initial_interval_seconds
+    && Number.isSafeInteger(output.failed_guesses) && output.failed_guesses >= 0
+    && output.failed_guesses <= output.max_failed_guesses
+    && output.max_failed_guesses === 5
+    && Number.isSafeInteger(output.slow_down_count) && output.slow_down_count >= 0
+    && output.interval_seconds
+      === output.initial_interval_seconds + (output.slow_down_count * 5)
+    && (output.terminal_reason === null
+      || output.terminal_reason === "control-device-code-invalid"
+      || output.terminal_reason === "control-device-code-display-mismatch")
+    && (output.terminal_poll_digest === null
+      || (typeof output.terminal_poll_digest === "string"
+        && HEX_32.test(output.terminal_poll_digest)));
+}
+
+function captureStored(value: unknown): StoredTransaction | null {
+  try {
+    const captured = captureAuthorityInput(value);
+    if (captured === null || typeof captured !== "object" || Array.isArray(captured)
+      || !exactKeys(captured as Readonly<Record<string, unknown>>, STORED_KEYS)) return null;
+    const output = captured as StoredTransaction;
+    return validStoredScalars(output) ? output : null;
+  } catch {
+    return null;
+  }
+}
+
+function liveOutput(output: StoredTransaction): boolean {
+  return (output.state === "pending" || output.state === "approved")
+    && output.failed_guesses < output.max_failed_guesses
+    && output.terminal_reason === null && output.terminal_poll_digest === null;
+}
+
+function terminalOutput(output: StoredTransaction): boolean {
+  if (output.terminal_poll_digest === null) return false;
+  if (output.state === "approved") return output.terminal_reason === null;
+  if (output.state === "expired") return output.terminal_reason === "control-device-code-invalid";
+  if (output.state !== "denied" || output.terminal_reason === null) return false;
+  return output.terminal_reason === "control-device-code-display-mismatch"
+    || (output.terminal_reason === "control-device-code-invalid"
+      && output.failed_guesses === output.max_failed_guesses);
+}
+
 function captureRecord(value: unknown): CapturedRecord | null {
   try {
-    const captured = snapshotClosedDataTree(value, "Control device durable record");
+    const captured = captureAuthorityInput(value);
     if (captured === null || typeof captured !== "object" || Array.isArray(captured)) return null;
     const record = captured as Readonly<Record<string, unknown>>;
     if (typeof record.state !== "string" || !Number.isSafeInteger(record.revision)
@@ -428,11 +475,22 @@ function captureRecord(value: unknown): CapturedRecord | null {
     if (record.state === "available") {
       if (!exactKeys(record, ["binding_digest", "output", "revision", "state"])) return null;
       const output = captureStored(record.output);
-      return output === null ? null : { ...record, output } as CapturedRecord;
+      if (output === null || !liveOutput(output) || record.binding_digest !== stateBinding(output)) {
+        return null;
+      }
+      return Object.freeze({ ...record, output }) as CapturedRecord;
     }
     if (record.state === "executing") {
       return exactKeys(record, ["binding_digest", "execution_token", "revision", "state"])
         && typeof record.execution_token === "string" && HEX_32.test(record.execution_token)
+        ? record as CapturedRecord : null;
+    }
+    if (record.state === "indeterminate") {
+      return exactKeys(record, [
+        "binding_digest", "execution_token", "reconciliation_digest", "revision", "state",
+      ]) && typeof record.execution_token === "string" && HEX_32.test(record.execution_token)
+        && typeof record.reconciliation_digest === "string"
+        && HEX_32.test(record.reconciliation_digest)
         ? record as CapturedRecord : null;
     }
     if (record.state === "committed") {
@@ -443,15 +501,15 @@ function captureRecord(value: unknown): CapturedRecord | null {
         return null;
       }
       const output = captureStored(record.output);
-      return output === null ? null : { ...record, output } as CapturedRecord;
-    }
-    if (record.state === "indeterminate") {
-      return exactKeys(record, [
-        "binding_digest", "execution_token", "reconciliation_digest", "revision", "state",
-      ]) && typeof record.execution_token === "string" && HEX_32.test(record.execution_token)
-        && typeof record.reconciliation_digest === "string"
-        && HEX_32.test(record.reconciliation_digest)
-        ? record as CapturedRecord : null;
+      if (output === null || !terminalOutput(output)
+        || record.output_digest !== storedOutputDigest(output)) return null;
+      const prior = { revision: (record.revision as number) - 2, binding_digest: record.binding_digest };
+      if (prior.revision < 0 || record.execution_token !== executionToken(
+        { authority_id: output.authority_id },
+        prior,
+        output,
+      )) return null;
+      return Object.freeze({ ...record, output }) as CapturedRecord;
     }
     return null;
   } catch {
@@ -459,41 +517,24 @@ function captureRecord(value: unknown): CapturedRecord | null {
   }
 }
 
-function captureTransactionRequest(value: ControlDeviceTransactionRequest): ControlDeviceTransactionRequest {
-  return captureExactDataObject(value, [[
-    "client_id", "display_fingerprint", "expires_in_seconds", "failure_budget", "persona",
-    "polling_interval_seconds", "verification_uri",
-  ]], "Control device transaction request") as ControlDeviceTransactionRequest;
+function sameOutput(left: StoredTransaction, right: StoredTransaction): boolean {
+  return storedOutputDigest(left) === storedOutputDigest(right);
 }
 
-function validTransactionRequest(value: ControlDeviceTransactionRequest): boolean {
-  if (typeof value.client_id !== "string" || value.client_id.length === 0
-    || typeof value.persona !== "string" || value.persona.length === 0
-    || typeof value.verification_uri !== "string" || value.verification_uri.length === 0
-    || typeof value.display_fingerprint !== "string" || value.display_fingerprint.length === 0
-    || !Number.isSafeInteger(value.polling_interval_seconds)
-    || value.polling_interval_seconds < 1
-    || !Number.isSafeInteger(value.expires_in_seconds)
-    || value.expires_in_seconds < value.polling_interval_seconds
-    || value.failure_budget !== 5) return false;
-  try {
-    const uri = new URL(value.verification_uri);
-    return uri.protocol === "https:" && uri.username === "" && uri.password === ""
-      && uri.search === "" && uri.hash === "";
-  } catch {
-    return false;
-  }
+function exactAvailable(record: CapturedRecord | null, expected: AvailableRecord):
+record is AvailableRecord {
+  return record?.state === "available" && record.revision === expected.revision
+    && record.binding_digest === expected.binding_digest
+    && sameOutput(record.output, expected.output);
 }
 
-function capturePollRequest(value: ControlDevicePollRequest): ControlDevicePollRequest {
-  return captureExactDataObject(value, [[
-    "device_code", "displayed_fingerprint", "user_code",
-  ]], "Control device poll request") as ControlDevicePollRequest;
-}
-
-function validPollStrings(value: ControlDevicePollRequest): boolean {
-  return typeof value.device_code === "string" && typeof value.user_code === "string"
-    && typeof value.displayed_fingerprint === "string";
+function exactCommitted(record: CapturedRecord | null, expected: CommittedRecord):
+record is CommittedRecord {
+  return record?.state === "committed" && record.revision === expected.revision
+    && record.binding_digest === expected.binding_digest
+    && record.execution_token === expected.execution_token
+    && record.output_digest === expected.output_digest
+    && sameOutput(record.output, expected.output);
 }
 
 async function loadRecord(authority: AuthorityRecord, key: string): Promise<CapturedRecord | null> {
@@ -515,27 +556,43 @@ function publicTransaction(
   });
 }
 
+function outputMatches(
+  authority: AuthorityRecord,
+  key: string,
+  output: StoredTransaction,
+  deviceCode: string,
+): boolean {
+  return output.authority_id === authority.authority_id
+    && output.transaction_id === key
+    && output.device_code_sha256 === rawHash("heterodyne-control-device-code-v1", deviceCode);
+}
+
+function acceptedOutput(output: StoredTransaction): Readonly<{
+  transaction_id: string;
+  state: "pending" | "approved";
+}> {
+  if (output.state !== "pending" && output.state !== "approved") {
+    throw new Error("Control device state is not accepting");
+  }
+  return Object.freeze({ transaction_id: output.transaction_id, state: output.state });
+}
+
 export async function createControlDeviceTransaction(
   authority: ControlDeviceAuthorizationAuthority,
   request: ControlDeviceTransactionRequest,
 ): Promise<AuthorityDecision<"control-device-code-invalid", ControlDeviceTransaction>> {
   const retained = AUTHORITIES.get(authority);
   if (retained === undefined) return INVALID;
-  let captured: ControlDeviceTransactionRequest;
-  try {
-    captured = captureTransactionRequest(request);
-  } catch {
-    return INVALID;
-  }
-  if (!validTransactionRequest(captured)) return INVALID;
-
+  const captured = captureTransactionRequest(request);
+  if (captured === null) return INVALID;
   let now: number;
   try {
     now = trustedNow(retained);
   } catch {
     return indeterminate(retained, "creation", "trusted-time");
   }
-  if (now + captured.expires_in_seconds > Number.MAX_SAFE_INTEGER) return INVALID;
+  if (now + captured.expires_in_seconds > Number.MAX_SAFE_INTEGER
+    || now + captured.polling_interval_seconds > Number.MAX_SAFE_INTEGER) return INVALID;
 
   for (let attempt = 0; attempt < COLLISION_ATTEMPTS; attempt += 1) {
     let deviceBytes: Uint8Array;
@@ -550,7 +607,8 @@ export async function createControlDeviceTransaction(
     const userCode = encodeUserCode(userBytes);
     const normalizedUserCode = normalizeUserCode(userCode);
     if (normalizedUserCode === null) return INVALID;
-    const id = transactionId(retained, deviceCode);
+    const deviceCodeHash = rawHash("heterodyne-control-device-code-v1", deviceCode);
+    const id = transactionId(retained, deviceCodeHash);
     const output: StoredTransaction = Object.freeze({
       transaction_id: id,
       state: "pending",
@@ -558,27 +616,27 @@ export async function createControlDeviceTransaction(
       client_id: captured.client_id,
       persona: captured.persona,
       verification_uri: captured.verification_uri,
-      display_fingerprint: captured.display_fingerprint,
-      device_code_hash: sha256("heterodyne-control-device-code-v1", deviceCode),
-      user_code_hash: sha256("heterodyne-control-user-code-v1", normalizedUserCode),
-      device_entropy_bits: 128,
+      client_fingerprint: captured.display_fingerprint,
+      device_code_sha256: deviceCodeHash,
+      user_code_sha256: rawHash("heterodyne-control-user-code-v1", normalizedUserCode),
+      device_code_entropy_bits: 128,
       user_code_entropy_bits: 40,
+      normalization: "uppercase-ascii-remove-hyphen",
       issued_at: now,
       expires_at: now + captured.expires_in_seconds,
       initial_interval_seconds: captured.polling_interval_seconds,
       interval_seconds: captured.polling_interval_seconds,
-      next_poll_at: now,
-      failed_attempts: 0,
-      failure_budget: 5,
-      rate_violations: 0,
+      next_poll_at: now + captured.polling_interval_seconds,
+      failed_guesses: 0,
+      max_failed_guesses: 5,
+      slow_down_count: 0,
       terminal_reason: null,
       terminal_poll_digest: null,
     });
-    const binding = bindingDigest(output);
-    const next: DurableAuthorityRecord<PublicDeviceState> = Object.freeze({
+    const expected: AvailableRecord = Object.freeze({
       state: "available",
       revision: 0,
-      binding_digest: binding,
+      binding_digest: stateBinding(output),
       output,
     });
     let result: "committed" | "conflict" | "unknown";
@@ -586,224 +644,282 @@ export async function createControlDeviceTransaction(
       result = await retained.store.compareAndSwap({
         key: id,
         expected_revision: null,
-        next,
+        next: expected,
       });
     } catch {
-      return indeterminate(retained, id, "creation-store", binding);
+      return indeterminate(retained, id, "creation-store", expected.binding_digest);
     }
     if (result === "conflict") continue;
     if (result !== "committed" && result !== "unknown") {
-      return indeterminate(retained, id, "creation-response", binding);
+      return indeterminate(retained, id, "creation-response", expected.binding_digest);
     }
     try {
       const durable = await loadRecord(retained, id);
-      if (durable?.state === "available" && durable.revision === 0
-        && durable.binding_digest === binding && outputDigest(durable.output) === outputDigest(output)) {
-        return Object.freeze({ verdict: "accept" as const, output: publicTransaction(
-          output,
-          deviceCode,
-          userCode,
-        ) });
+      if (exactAvailable(durable, expected)) {
+        return Object.freeze({
+          verdict: "accept" as const,
+          output: publicTransaction(output, deviceCode, userCode),
+        });
       }
     } catch {
-      // The fail-closed result below deliberately does not try another code.
+      // Do not generate another transaction after an ambiguous write.
     }
-    return indeterminate(retained, id, "creation-readback", binding);
+    return indeterminate(retained, id, "creation-readback", expected.binding_digest);
   }
   return INVALID;
 }
 
-function outputMatches(
-  authority: AuthorityRecord,
-  key: string,
-  output: StoredTransaction,
-  deviceCode: string,
-): boolean {
-  return output.authority_id === authority.authority_id
-    && output.transaction_id === key
-    && output.device_code_hash === sha256("heterodyne-control-device-code-v1", deviceCode);
-}
-
-function acceptedOutput(output: StoredTransaction): Readonly<{
-  transaction_id: string;
-  state: "pending" | "approved";
-}> {
-  if (output.state !== "pending" && output.state !== "approved") {
-    throw new Error("Control device state is not accepting");
-  }
-  return Object.freeze({ transaction_id: output.transaction_id, state: output.state });
-}
-
 function committedDecision(
   authority: AuthorityRecord,
-  record: Extract<CapturedRecord, { state: "committed" }>,
+  record: CommittedRecord,
   request: ControlDevicePollRequest,
   normalizedUserCode: string | null,
   requestDigest: string,
 ): ControlDeviceDecision {
   const output = record.output;
-  if (record.binding_digest !== bindingDigest(output)
-    || record.output_digest !== outputDigest(output)
-    || record.execution_token !== sha256(
-      "heterodyne-control-device-execution-v1",
-      authority.authority_id,
-      output.transaction_id,
-      String(record.revision - 2),
-      output.state,
-      output.terminal_reason ?? "approved",
-      output.terminal_poll_digest ?? "missing",
-    )) return indeterminate(authority, output.transaction_id, "committed-binding", record.binding_digest);
-  if (output.terminal_poll_digest !== requestDigest) return INVALID;
-  if (normalizedUserCode === null || output.user_code_hash
-    !== sha256("heterodyne-control-user-code-v1", normalizedUserCode)) return INVALID;
-  if (output.state === "approved" && output.terminal_reason === null
-    && request.displayed_fingerprint === output.display_fingerprint) {
+  if (output.authority_id !== authority.authority_id
+    || output.terminal_poll_digest !== requestDigest
+    || normalizedUserCode === null
+    || output.user_code_sha256 !== rawHash(
+      "heterodyne-control-user-code-v1",
+      normalizedUserCode,
+    )) return INVALID;
+  if (output.state === "approved" && request.displayed_fingerprint === output.client_fingerprint) {
     return Object.freeze({ verdict: "accept" as const, output: acceptedOutput(output) });
   }
   if (output.state === "denied"
     && output.terminal_reason === "control-device-code-display-mismatch"
-    && request.displayed_fingerprint !== output.display_fingerprint) return DISPLAY_MISMATCH;
+    && request.displayed_fingerprint !== output.client_fingerprint) return DISPLAY_MISMATCH;
   return INVALID;
 }
 
-async function terminalTransition(
+async function markTransitionIndeterminate(
   authority: AuthorityRecord,
-  record: Extract<CapturedRecord, { state: "available" }>,
-  request: ControlDevicePollRequest,
-  state: "approved" | "denied" | "expired",
-  reason: TerminalReason | null,
-  terminalDecision: ControlDeviceDecision,
-): Promise<ControlDeviceDecision> {
-  const requestDigest = pollDigest(authority, request);
-  const output: StoredTransaction = Object.freeze({
-    ...record.output,
-    state,
-    terminal_reason: reason,
-    terminal_poll_digest: requestDigest,
-  });
-  const token = sha256(
-    "heterodyne-control-device-execution-v1",
-    authority.authority_id,
-    output.transaction_id,
-    String(record.revision),
-    state,
-    reason ?? "approved",
-    requestDigest,
-  );
-  const reconciliation = sha256(
-    "heterodyne-control-device-reconciliation-v1",
-    authority.authority_id,
-    output.transaction_id,
-    token,
-    outputDigest(output),
-  );
-  let acquired: "acquired" | "replay" | "conflict" | "unavailable";
+  key: string,
+  bindingDigest: string,
+  token: string,
+): Promise<IndeterminateDecision> {
+  const reconciliation = reconciliationDigest(authority, key, token);
   try {
-    acquired = await authority.store.acquire({
-      key: output.transaction_id,
+    await authority.store.markIndeterminate({
+      key,
+      binding_digest: bindingDigest,
+      execution_token: token,
+      reconciliation_digest: reconciliation,
+    });
+    const durable = await loadRecord(authority, key);
+    if (durable?.state === "indeterminate" && durable.binding_digest === bindingDigest
+      && durable.execution_token === token) {
+      return Object.freeze({
+        verdict: "indeterminate" as const,
+        reconciliation_digest: durable.reconciliation_digest,
+      });
+    }
+  } catch {
+    // The executing record remains an absorbing no-repeat fence.
+  }
+  return Object.freeze({ verdict: "indeterminate" as const, reconciliation_digest: reconciliation });
+}
+
+async function acquireTransition(
+  authority: AuthorityRecord,
+  record: AvailableRecord,
+  token: string,
+): Promise<"acquired" | IndeterminateDecision> {
+  let result: "acquired" | "replay" | "conflict" | "unavailable";
+  try {
+    result = await authority.store.acquire({
+      key: record.output.transaction_id,
       expected_revision: record.revision,
       binding_digest: record.binding_digest,
       execution_token: token,
     });
   } catch {
-    return indeterminate(authority, output.transaction_id, "terminal-acquire", record.binding_digest);
+    return indeterminate(
+      authority,
+      record.output.transaction_id,
+      "transition-acquire",
+      record.binding_digest,
+      token,
+    );
   }
-  if (acquired !== "acquired") {
-    if (acquired === "replay") {
-      try {
-        const replay = await loadRecord(authority, output.transaction_id);
-        if (replay?.state === "committed") {
-          return committedDecision(authority, replay, request, normalizeUserCode(request.user_code), requestDigest);
-        }
-        if (replay?.state === "indeterminate") {
-          return Object.freeze({
-            verdict: "indeterminate" as const,
-            reconciliation_digest: replay.reconciliation_digest,
-          });
-        }
-      } catch {
-        // Return the deterministic fail-closed decision below.
-      }
-    }
-    return indeterminate(authority, output.transaction_id, `terminal-${acquired}`, record.binding_digest);
-  }
-  let committed: "committed" | "conflict" | "unknown";
-  try {
-    committed = await authority.store.commit({
-      key: output.transaction_id,
-      binding_digest: record.binding_digest,
-      execution_token: token,
-      output_digest: outputDigest(output),
-      output,
-    });
-  } catch {
-    committed = "unknown";
-  }
-  if (committed !== "committed") {
+  if (result === "acquired") return "acquired";
+  if (result === "replay") {
     try {
-      await authority.store.markIndeterminate({
-        key: output.transaction_id,
-        binding_digest: record.binding_digest,
-        execution_token: token,
-        reconciliation_digest: reconciliation,
-      });
+      const durable = await loadRecord(authority, record.output.transaction_id);
+      if (durable?.state === "indeterminate" && durable.binding_digest === record.binding_digest
+        && durable.execution_token === token) {
+        return Object.freeze({
+          verdict: "indeterminate" as const,
+          reconciliation_digest: durable.reconciliation_digest,
+        });
+      }
+      if (durable?.state === "executing" && durable.binding_digest === record.binding_digest
+        && durable.execution_token === token) {
+        return Object.freeze({
+          verdict: "indeterminate" as const,
+          reconciliation_digest: reconciliationDigest(
+            authority,
+            record.output.transaction_id,
+            token,
+          ),
+        });
+      }
     } catch {
-      // The acquired/executing record remains a durable no-repeat fence.
+      // Return the fail-closed decision below.
     }
-    return Object.freeze({ verdict: "indeterminate" as const, reconciliation_digest: reconciliation });
   }
-  try {
-    const durable = await loadRecord(authority, output.transaction_id);
-    if (durable?.state === "committed") {
-      const decision = committedDecision(
-        authority,
-        durable,
-        request,
-        normalizeUserCode(request.user_code),
-        requestDigest,
-      );
-      return decision.verdict === "indeterminate" ? decision : terminalDecision;
-    }
-  } catch {
-    // Fall through to fail closed.
-  }
-  return indeterminate(authority, output.transaction_id, "terminal-readback", record.binding_digest);
+  return indeterminate(
+    authority,
+    record.output.transaction_id,
+    `transition-${result}`,
+    record.binding_digest,
+    token,
+  );
 }
 
-async function casAvailable(
+async function nonterminalTransition(
   authority: AuthorityRecord,
-  record: Extract<CapturedRecord, { state: "available" }>,
-  output: StoredTransaction,
+  record: AvailableRecord,
+  nextOutput: StoredTransaction,
   decision: ControlDeviceDecision,
 ): Promise<ControlDeviceDecision> {
-  const next: DurableAuthorityRecord<PublicDeviceState> = Object.freeze({
+  const token = executionToken(authority, record, nextOutput);
+  const acquired = await acquireTransition(authority, record, token);
+  if (acquired !== "acquired") return acquired;
+  const expected: AvailableRecord = Object.freeze({
     state: "available",
-    revision: record.revision + 1,
-    binding_digest: record.binding_digest,
-    output,
+    revision: record.revision + 2,
+    binding_digest: stateBinding(nextOutput),
+    output: nextOutput,
   });
   let result: "committed" | "conflict" | "unknown";
   try {
     result = await authority.store.compareAndSwap({
-      key: output.transaction_id,
-      expected_revision: record.revision,
-      next,
+      key: nextOutput.transaction_id,
+      expected_revision: record.revision + 1,
+      next: expected,
     });
   } catch {
-    return indeterminate(authority, output.transaction_id, "poll-cas", record.binding_digest);
-  }
-  if (result !== "committed") {
-    return indeterminate(authority, output.transaction_id, `poll-${result}`, record.binding_digest);
+    result = "unknown";
   }
   try {
-    const durable = await loadRecord(authority, output.transaction_id);
-    if (durable?.state === "available" && durable.revision === next.revision
-      && durable.binding_digest === record.binding_digest
-      && outputDigest(durable.output) === outputDigest(output)) return decision;
+    const durable = await loadRecord(authority, nextOutput.transaction_id);
+    if (exactAvailable(durable, expected)) return decision;
+    if (durable?.state === "indeterminate" && durable.binding_digest === record.binding_digest
+      && durable.execution_token === token) {
+      return Object.freeze({
+        verdict: "indeterminate" as const,
+        reconciliation_digest: durable.reconciliation_digest,
+      });
+    }
+    if (durable?.state === "executing" && durable.binding_digest === record.binding_digest
+      && durable.execution_token === token) {
+      return markTransitionIndeterminate(
+        authority,
+        nextOutput.transaction_id,
+        record.binding_digest,
+        token,
+      );
+    }
   } catch {
-    // Fall through to fail closed.
+    // Recover the exact reopened record into an absorbing fence below.
   }
-  return indeterminate(authority, output.transaction_id, "poll-readback", record.binding_digest);
+  const recoveryToken = authorityBindingDigest(
+    "heterodyne-control-device-readback-recovery-v1",
+    {
+      authority_id: authority.authority_id,
+      transaction_id: nextOutput.transaction_id,
+      transition_token: token,
+      expected_revision: expected.revision,
+      expected_binding_digest: expected.binding_digest,
+    },
+  );
+  try {
+    const recovery = await authority.store.acquire({
+      key: nextOutput.transaction_id,
+      expected_revision: expected.revision,
+      binding_digest: expected.binding_digest,
+      execution_token: recoveryToken,
+    });
+    if (recovery === "acquired" || recovery === "replay") {
+      return markTransitionIndeterminate(
+        authority,
+        nextOutput.transaction_id,
+        expected.binding_digest,
+        recoveryToken,
+      );
+    }
+  } catch {
+    // A different durable record cannot authorize this transition.
+  }
+  return indeterminate(
+    authority,
+    nextOutput.transaction_id,
+    `nonterminal-${result}`,
+    record.binding_digest,
+    token,
+  );
+}
+
+async function terminalTransition(
+  authority: AuthorityRecord,
+  record: AvailableRecord,
+  nextOutput: StoredTransaction,
+  request: ControlDevicePollRequest,
+): Promise<ControlDeviceDecision> {
+  const token = executionToken(authority, record, nextOutput);
+  const acquired = await acquireTransition(authority, record, token);
+  if (acquired !== "acquired") return acquired;
+  const expected: CommittedRecord = Object.freeze({
+    state: "committed",
+    revision: record.revision + 2,
+    binding_digest: record.binding_digest,
+    execution_token: token,
+    output_digest: storedOutputDigest(nextOutput),
+    output: nextOutput,
+  });
+  let result: "committed" | "conflict" | "unknown";
+  try {
+    result = await authority.store.commit({
+      key: nextOutput.transaction_id,
+      binding_digest: record.binding_digest,
+      execution_token: token,
+      output_digest: expected.output_digest,
+      output: nextOutput,
+    });
+  } catch {
+    result = "unknown";
+  }
+  if (result !== "committed") {
+    return markTransitionIndeterminate(
+      authority,
+      nextOutput.transaction_id,
+      record.binding_digest,
+      token,
+    );
+  }
+  try {
+    const durable = await loadRecord(authority, nextOutput.transaction_id);
+    if (exactCommitted(durable, expected)) {
+      return committedDecision(
+        authority,
+        durable,
+        request,
+        normalizeUserCode(request.user_code),
+        pollBinding(authority, request),
+      );
+    }
+  } catch {
+    // Fall through to a stable fail-closed result.
+  }
+  return indeterminate(
+    authority,
+    nextOutput.transaction_id,
+    "terminal-readback",
+    record.binding_digest,
+    token,
+  );
 }
 
 export async function pollControlDeviceAuthorization(
@@ -812,16 +928,12 @@ export async function pollControlDeviceAuthorization(
 ): Promise<ControlDeviceDecision> {
   const retained = AUTHORITIES.get(authority);
   if (retained === undefined) return INVALID;
-  let captured: ControlDevicePollRequest;
-  try {
-    captured = capturePollRequest(request);
-  } catch {
-    return INVALID;
-  }
-  if (!validPollStrings(captured)) return INVALID;
+  const captured = capturePollRequest(request);
+  if (captured === null) return INVALID;
   const deviceCode = normalizeDeviceCode(captured.device_code);
   if (deviceCode === null) return INVALID;
-  const key = transactionId(retained, deviceCode);
+  const deviceCodeHash = rawHash("heterodyne-control-device-code-v1", deviceCode);
+  const key = transactionId(retained, deviceCodeHash);
   let record: CapturedRecord | null;
   try {
     const raw = await retained.store.load(key);
@@ -832,16 +944,29 @@ export async function pollControlDeviceAuthorization(
   }
   if (record === null) return indeterminate(retained, key, "poll-record");
   if (record.state === "executing") {
-    return indeterminate(retained, key, "poll-executing", record.binding_digest);
+    return Object.freeze({
+      verdict: "indeterminate" as const,
+      reconciliation_digest: reconciliationDigest(retained, key, record.execution_token),
+    });
   }
   if (record.state === "indeterminate") {
+    const expectedReconciliation = reconciliationDigest(retained, key, record.execution_token);
+    if (record.reconciliation_digest !== expectedReconciliation) {
+      return indeterminate(
+        retained,
+        key,
+        "indeterminate-record",
+        record.binding_digest,
+        record.execution_token,
+      );
+    }
     return Object.freeze({
       verdict: "indeterminate" as const,
       reconciliation_digest: record.reconciliation_digest,
     });
   }
   const normalizedUserCode = normalizeUserCode(captured.user_code);
-  const requestDigest = pollDigest(retained, captured);
+  const requestDigest = pollBinding(retained, captured);
   if (record.state === "committed") {
     if (!outputMatches(retained, key, record.output, deviceCode)) {
       return indeterminate(retained, key, "committed-output", record.binding_digest);
@@ -849,10 +974,7 @@ export async function pollControlDeviceAuthorization(
     return committedDecision(retained, record, captured, normalizedUserCode, requestDigest);
   }
   const output = record.output;
-  if (!outputMatches(retained, key, output, deviceCode)
-    || record.binding_digest !== bindingDigest(output)
-    || (output.state !== "pending" && output.state !== "approved")
-    || output.terminal_reason !== null || output.terminal_poll_digest !== null) {
+  if (!outputMatches(retained, key, output, deviceCode)) {
     return indeterminate(retained, key, "available-output", record.binding_digest);
   }
   let now: number;
@@ -862,61 +984,57 @@ export async function pollControlDeviceAuthorization(
     return indeterminate(retained, key, "poll-time", record.binding_digest);
   }
   if (now >= output.expires_at) {
-    return terminalTransition(retained, record, captured, "expired", "control-device-code-invalid", INVALID);
-  }
-  if (normalizedUserCode === null
-    || output.user_code_hash !== sha256("heterodyne-control-user-code-v1", normalizedUserCode)) {
-    const failedAttempts = output.failed_attempts + 1;
-    if (failedAttempts >= output.failure_budget) {
-      const failed = Object.freeze({ ...record, output: Object.freeze({
-        ...output,
-        failed_attempts: failedAttempts,
-      }) }) as Extract<CapturedRecord, { state: "available" }>;
-      return terminalTransition(
-        retained,
-        failed,
-        captured,
-        "denied",
-        "control-device-code-invalid",
-        INVALID,
-      );
-    }
-    return casAvailable(retained, record, Object.freeze({
+    return terminalTransition(retained, record, Object.freeze({
       ...output,
-      failed_attempts: failedAttempts,
+      state: "expired",
+      terminal_reason: "control-device-code-invalid",
+      terminal_poll_digest: requestDigest,
+    }), captured);
+  }
+  if (normalizedUserCode === null || output.user_code_sha256 !== rawHash(
+    "heterodyne-control-user-code-v1",
+    normalizedUserCode,
+  )) {
+    const failedGuesses = output.failed_guesses + 1;
+    if (failedGuesses >= output.max_failed_guesses) {
+      return terminalTransition(retained, record, Object.freeze({
+        ...output,
+        state: "denied",
+        failed_guesses: failedGuesses,
+        terminal_reason: "control-device-code-invalid",
+        terminal_poll_digest: requestDigest,
+      }), captured);
+    }
+    return nonterminalTransition(retained, record, Object.freeze({
+      ...output,
+      failed_guesses: failedGuesses,
     }), INVALID);
-  }
-  if (captured.displayed_fingerprint !== output.display_fingerprint) {
-    return terminalTransition(
-      retained,
-      record,
-      captured,
-      "denied",
-      "control-device-code-display-mismatch",
-      DISPLAY_MISMATCH,
-    );
-  }
-  if (output.state === "approved") {
-    return terminalTransition(
-      retained,
-      record,
-      captured,
-      "approved",
-      null,
-      Object.freeze({ verdict: "accept" as const, output: acceptedOutput(output) }),
-    );
   }
   if (now < output.next_poll_at) {
     const interval = output.interval_seconds + 5;
     if (!Number.isSafeInteger(interval) || now + interval > Number.MAX_SAFE_INTEGER) {
       return indeterminate(retained, key, "rate-overflow", record.binding_digest);
     }
-    return casAvailable(retained, record, Object.freeze({
+    return nonterminalTransition(retained, record, Object.freeze({
       ...output,
       interval_seconds: interval,
       next_poll_at: now + interval,
-      rate_violations: output.rate_violations + 1,
+      slow_down_count: output.slow_down_count + 1,
     }), RATE_LIMITED);
+  }
+  if (captured.displayed_fingerprint !== output.client_fingerprint) {
+    return terminalTransition(retained, record, Object.freeze({
+      ...output,
+      state: "denied",
+      terminal_reason: "control-device-code-display-mismatch",
+      terminal_poll_digest: requestDigest,
+    }), captured);
+  }
+  if (output.state === "approved") {
+    return terminalTransition(retained, record, Object.freeze({
+      ...output,
+      terminal_poll_digest: requestDigest,
+    }), captured);
   }
   if (now + output.interval_seconds > Number.MAX_SAFE_INTEGER) {
     return indeterminate(retained, key, "interval-overflow", record.binding_digest);
@@ -925,7 +1043,7 @@ export async function pollControlDeviceAuthorization(
     ...output,
     next_poll_at: now + output.interval_seconds,
   });
-  return casAvailable(retained, record, nextOutput, Object.freeze({
+  return nonterminalTransition(retained, record, nextOutput, Object.freeze({
     verdict: "accept" as const,
     output: acceptedOutput(nextOutput),
   }));

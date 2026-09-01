@@ -218,15 +218,23 @@ event kinds, finite limits, issue time, and exclusive expiry. Persona-key
 signing requires an explicit approval; agent-key signing is the preferred
 automation default.
 
-Pending state conforms to
-`docs/spec/schemas/control/control-device-authorization-state-v1.schema.json`.
-It is node-local and contains only hashes of device codes, user codes, and the
-NIP-46 connection secret together with their non-secret entropy,
-normalization, display-fingerprint, retry, and lifetime controls. Device codes
-provide at least 128 bits of entropy; normalized user codes provide at least
-34.5 bits, allow at most five failed guesses, and use rate-limited polling.
-The record MUST NOT be placed in a public event, URL query, portable backup,
-or replicated credential.
+The complete OIDC/NIP-46 authorization state conforms to
+`docs/spec/schemas/control/control-device-authorization-state-v1.schema.json`
+and is materialized only when all of that schema's grant, authorization,
+signer, requested-capability, connection-secret, and revision members are
+available. Before then, Device Authorization uses a distinct private RFC 8628
+transaction projection. That projection is not the schema object and MUST NOT
+fabricate placeholder grant, signer, authorization, capability, or connection-
+secret members. Where the two states overlap, it uses the schema's
+`device_code_sha256`, `user_code_sha256`, entropy, normalization,
+`client_fingerprint`, failed-guess, interval, issue, and expiry meanings.
+
+Both states are node-local and contain only hashes of device codes, user
+codes, and, once present, the NIP-46 connection secret. Device codes provide
+at least 128 bits of entropy; normalized user codes provide at least 34.5 bits,
+allow at most five failed guesses, and use rate-limited polling. Neither state
+may be placed in a public event, URL query, portable backup, or replicated
+credential.
 
 The device-authorization authority fixes its authority identifier, trusted
 clock, cryptographic entropy source, and all durable-store method identities
@@ -237,36 +245,50 @@ validity boolean, callback, or persistence result. Accessor-backed, proxied,
 extended, malformed, or post-capture-mutated inputs grant no authority.
 
 Transaction creation draws at least 128 independent device-code bits and 40
-independent user-code bits. It derives the transaction identifier from the
-authority and normalized device-code hash, and atomically creates the durable
-record with hashes rather than either plaintext code. The record binds the
-authority, transaction, client, persona, verification URI, displayed client
-fingerprint, issue and exclusive expiry times, initial and current poll
-intervals, next permitted poll time, failure budget and count, rate/slow-down
-state, and terminal state. A code collision retries with fresh entropy a
-bounded number of times; exhaustion or invalid entropy creates no transaction.
+independent user-code bits. User-code normalization is exactly uppercase ASCII
+with hyphens removed; lowercase, spaces, and other substitutions are not
+equivalent inputs. The authority derives the transaction identifier from its
+identity and the device-code hash, then atomically creates the private RFC 8628
+projection with hashes rather than either plaintext code. The projection binds
+the authority, transaction, client, persona, verification URI, displayed
+client fingerprint, issue and exclusive expiry times, initial and current poll
+intervals, first and next permitted poll times, failure budget and count,
+slow-down count, and terminal status. A separate outer durable-authority record
+is only an execution fence; its `available`, `executing`, `committed`, and
+`indeterminate` states are not protocol or schema authorization states. A code
+collision retries with fresh entropy a bounded number of times; exhaustion or
+invalid entropy creates no transaction.
 
 A poll derives the durable lookup key from the normalized device code and
-loads that record as the only current-state authority. A malformed or unknown
-device code is `control-device-code-invalid`. A wrong or malformed user code
-increments the durable failure count by compare-and-swap; the fifth failed
-guess atomically commits a denied terminal before returning the same reason.
-A correct poll before the stored interval atomically increases the interval by
-five seconds for that transaction, records its next permitted time, and is
+loads that projection as the only current transaction authority. A malformed
+or unknown device code is `control-device-code-invalid`. A wrong or malformed
+user code increments the durable failure count; the fifth failed guess
+atomically commits a denied terminal before returning the same reason. The
+first permitted poll time is `issued_at + interval_seconds`. Every correct-
+code poll, including one observing locally approved state, enforces the stored
+interval before exposing state. An early poll atomically increases the interval
+by exactly five seconds for that transaction, increments its slow-down count,
+records its next permitted time, and is
 `control-device-code-rate-limited`. A correct code shown with a different
-client fingerprint atomically commits denial and is
+client fingerprint after the permitted time atomically commits denial and is
 `control-device-code-display-mismatch`. Reaching the stored expiry atomically
 commits an expired terminal and is `control-device-code-invalid`.
 
-Only the locally approved stored state can produce an `approved` result. A
-pending or approved result is exposed only after the corresponding atomic
-transition is read back with the exact authority, binding, revision, and
-output. A terminal transition uses durable acquire and commit; an exact
-binding-equal committed retry returns the cached result without repeating the
-transition. A conflicting or unknown store result, malformed record, or an
-`executing` or `indeterminate` record fails closed with a stable reconciliation
-digest and MUST NOT repeat or reopen the transition. These internal failures
-do not mint any additional public `control-device-code-*` reason.
+Only the locally approved stored state can produce an `approved` result. Every
+poll mutation first acquires the exact complete pre-transition projection and
+request binding. A nonterminal transition reopens `available` only through an
+exact compare-and-swap and binding-equal readback; a terminal transition uses
+commit and requires exact key, prior binding, execution token, terminal state,
+reason, poll digest, output digest, revision, and complete output on readback.
+The decision is derived from that durable terminal, never from the attempted
+transition. An exact binding-equal committed retry returns the cached result
+without repeating the transition. An ambiguous nonterminal result returns its
+decision only when the exact proposed `available` record can be read back;
+otherwise the acquired record becomes an absorbing `indeterminate` fence. A
+conflicting or unknown store result, malformed record, or `executing` or
+`indeterminate` record fails closed with a stable reconciliation digest and
+MUST NOT repeat or reopen the transition. These internal failures do not mint
+any additional public `control-device-code-*` reason.
 
 Approval binds the pending record's `transaction_id`, `grant_id`,
 `oidc_authorization_id`, persona, NIP-46 client, audience, selected signer and
