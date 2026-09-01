@@ -483,9 +483,16 @@ type DefensiveValidationBinding = {
   scope: ts.Node;
 };
 
+type DefensiveValidationAssignment = {
+  name: string;
+  node: ts.Identifier;
+  scope: ts.Node;
+  binding: DefensiveValidationBinding | undefined;
+};
+
 type DefensiveValidationExpectContext = {
   bindings: readonly DefensiveValidationBinding[];
-  reassignments: readonly Omit<DefensiveValidationBinding, "declaration">[];
+  reassignments: readonly DefensiveValidationAssignment[];
   source: ts.SourceFile;
   vitestOrigins: ReadonlyMap<string, ts.ImportSpecifier>;
   ambiguousVitestOrigins: ReadonlySet<string>;
@@ -524,18 +531,29 @@ function defensiveValidationVariableScope(node: ts.VariableDeclaration): ts.Node
   );
 }
 
-function defensiveValidationAssignedNames(expression: ts.Expression): string[] {
-  if (ts.isIdentifier(expression)) return [expression.text];
+function defensiveValidationAssignedIdentifiers(expression: ts.Expression): ts.Identifier[] {
+  if (ts.isIdentifier(expression)) return [expression];
+  if (ts.isParenthesizedExpression(expression)
+    || ts.isSpreadElement(expression)) {
+    return defensiveValidationAssignedIdentifiers(expression.expression);
+  }
+  if (ts.isBinaryExpression(expression)
+    && expression.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
+    return defensiveValidationAssignedIdentifiers(expression.left);
+  }
   if (ts.isArrayLiteralExpression(expression)) {
     return expression.elements.flatMap((element) =>
-      ts.isExpression(element) ? defensiveValidationAssignedNames(element) : []
+      ts.isExpression(element) ? defensiveValidationAssignedIdentifiers(element) : []
     );
   }
   if (ts.isObjectLiteralExpression(expression)) {
     return expression.properties.flatMap((property) => {
-      if (ts.isShorthandPropertyAssignment(property)) return [property.name.text];
+      if (ts.isShorthandPropertyAssignment(property)) return [property.name];
       if (ts.isPropertyAssignment(property)) {
-        return defensiveValidationAssignedNames(property.initializer);
+        return defensiveValidationAssignedIdentifiers(property.initializer);
+      }
+      if (ts.isSpreadAssignment(property)) {
+        return defensiveValidationAssignedIdentifiers(property.expression);
       }
       return [];
     });
@@ -543,11 +561,42 @@ function defensiveValidationAssignedNames(expression: ts.Expression): string[] {
   return [];
 }
 
+function defensiveValidationVisibleBindings(
+  name: string,
+  node: ts.Node,
+  bindings: readonly DefensiveValidationBinding[],
+): DefensiveValidationBinding[] {
+  const visible = bindings.filter((binding) =>
+    binding.name === name && defensiveValidationNodeContains(binding.scope, node)
+  );
+  if (visible.length < 2) return visible;
+  const innermostWidth = Math.min(
+    ...visible.map((binding) => binding.scope.end - binding.scope.pos),
+  );
+  return visible.filter((binding) =>
+    binding.scope.end - binding.scope.pos === innermostWidth
+  );
+}
+
+function defensiveValidationResolvedBinding(
+  name: string,
+  node: ts.Node,
+  bindings: readonly DefensiveValidationBinding[],
+): DefensiveValidationBinding | undefined | null {
+  const visible = defensiveValidationVisibleBindings(name, node, bindings);
+  if (visible.length === 0) return undefined;
+  return visible.length === 1 ? visible[0] : null;
+}
+
 function defensiveValidationExpectContext(
   source: ts.SourceFile,
 ): DefensiveValidationExpectContext {
   const bindings: DefensiveValidationBinding[] = [];
-  const reassignments: Omit<DefensiveValidationBinding, "declaration">[] = [];
+  const pendingReassignments: Array<{
+    name: string;
+    node: ts.Identifier;
+    scope: ts.Node;
+  }> = [];
   const vitestOrigins = new Map<string, ts.ImportSpecifier>();
   const ambiguousVitestOrigins = new Set<string>();
   const addBinding = (name: string, declaration: ts.Node, scope: ts.Node): void => {
@@ -606,15 +655,16 @@ function defensiveValidationExpectContext(
         node,
         (candidate) => ts.isFunctionLike(candidate) || ts.isSourceFile(candidate),
       );
-      for (const name of defensiveValidationAssignedNames(node.left)) {
-        reassignments.push({ name, scope });
+      for (const identifier of defensiveValidationAssignedIdentifiers(node.left)) {
+        pendingReassignments.push({ name: identifier.text, node: identifier, scope });
       }
     } else if ((ts.isPrefixUnaryExpression(node) || ts.isPostfixUnaryExpression(node))
       && (node.operator === ts.SyntaxKind.PlusPlusToken
         || node.operator === ts.SyntaxKind.MinusMinusToken)
       && ts.isIdentifier(node.operand)) {
-      reassignments.push({
+      pendingReassignments.push({
         name: node.operand.text,
+        node: node.operand,
         scope: defensiveValidationFindScope(
           node,
           (candidate) => ts.isFunctionLike(candidate) || ts.isSourceFile(candidate),
@@ -624,6 +674,14 @@ function defensiveValidationExpectContext(
     ts.forEachChild(node, visit);
   };
   visit(source);
+  const reassignments = pendingReassignments.flatMap((reassignment) => {
+    const binding = defensiveValidationResolvedBinding(
+      reassignment.name,
+      reassignment.node,
+      bindings,
+    );
+    return binding === null ? [] : [{ ...reassignment, binding }];
+  });
   return {
     bindings,
     reassignments,
@@ -643,15 +701,20 @@ function defensiveValidationRootIsVitestExpect(
 ): boolean {
   const origin = context.vitestOrigins.get(root.text);
   if (root.text !== "expect" && origin === undefined) return false;
-  if (context.ambiguousVitestOrigins.has(root.text)
-    || context.reassignments.some((reassignment) =>
-      reassignment.name === root.text
-      && defensiveValidationNodeContains(reassignment.scope, root)
-    )) return false;
-  return !context.bindings.some((binding) =>
-    binding.name === root.text
-    && binding.declaration !== origin
-    && defensiveValidationNodeContains(binding.scope, root)
+  if (context.ambiguousVitestOrigins.has(root.text)) return false;
+  const binding = defensiveValidationResolvedBinding(
+    root.text,
+    root,
+    context.bindings,
+  );
+  if (binding === null || (binding !== undefined && binding.declaration !== origin)) {
+    return false;
+  }
+  return !context.reassignments.some((reassignment) =>
+    reassignment.name === root.text
+    && reassignment.binding === binding
+    && reassignment.node.getStart(context.source) < root.getStart(context.source)
+    && defensiveValidationNodeContains(reassignment.scope, root)
   );
 }
 

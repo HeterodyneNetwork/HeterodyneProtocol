@@ -589,6 +589,49 @@ assertThat.poll(() => actual).resolves.toEqual(${relay});\n`);
   });
 
   it.each([
+    `{
+  let expect = fakeExpect;
+  expect = fakeExpect;
+}
+expect.soft("local relay").toBe(RESTRICTED);`,
+    `try { throw new Error("local"); } catch (expect) {
+  expect = fakeExpect;
+}
+expect.soft("local relay").toBe(RESTRICTED);`,
+    `{
+  const helpers = { expect: fakeExpect };
+  let { expect } = helpers;
+  {
+    ({ expect } = helpers);
+  }
+}
+expect.soft("local relay").toBe(RESTRICTED);`,
+  ])("BLUE TEAM VALIDATION: synthetic/local — keeps writes to inner expect bindings separate after scope exit", (fixture) => {
+    const relay = JSON.stringify(restrictedFixtureText("live", "relay"));
+    const root = defensiveReviewRoot(`${fixture.replace("RESTRICTED", relay)}\n`);
+    expect(lintDefensiveValidationRepositoryTests(root)).toEqual([]);
+  });
+
+  it.each([
+    `expect = fakeExpect;
+expect.soft("local relay").toBe(RESTRICTED);`,
+    `{
+  expect = fakeExpect;
+}
+expect.soft("local relay").toBe(RESTRICTED);`,
+    `{
+  ({ expect } = helpers);
+}
+expect.soft("local relay").toBe(RESTRICTED);`,
+  ])("BLUE TEAM VALIDATION: synthetic/local — rejects writes to the outer global expect binding", (fixture) => {
+    const relay = JSON.stringify(restrictedFixtureText("live", "relay"));
+    const root = defensiveReviewRoot(`${fixture.replace("RESTRICTED", relay)}\n`);
+    expect(lintDefensiveValidationRepositoryTests(root)).toEqual([
+      expect.objectContaining({ code: "defensive-validation-target" }),
+    ]);
+  });
+
+  it.each([
     `expect.soft(configure(${JSON.stringify(restrictedFixtureText("live", "relay"))})).toBeDefined();`,
     `expect.soft({ relay: ${JSON.stringify(restrictedFixtureText("live", "relay"))} }).toBeDefined();`,
     `expect.poll(() => configure(${JSON.stringify(restrictedFixtureText("live", "relay"))})).resolves.toBeDefined();`,
