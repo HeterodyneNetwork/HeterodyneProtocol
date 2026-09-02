@@ -366,6 +366,73 @@ suite.concurrent("attacker aliased suite", () => {});`,
     ]);
   });
 
+  it("BLUE TEAM VALIDATION: synthetic/local — recognizes Vitest namespace declarations and value aliases independently", () => {
+    const issues = lintDefensiveValidationTestDeclarations(
+      `import * as v from "vitest";
+import { it } from "vitest";
+it("BLUE TEAM VALIDATION: synthetic/local — marked control", () => {});
+v.it("hostile namespace test", () => {});
+v.test.concurrent("adversarial namespace modifier", () => {});
+v.describe.each([{ attackFixture: true }])("attacker namespace suite", () => {});
+const caseIt = it;
+const transitiveCase = caseIt;
+transitiveCase("hostile transitive value alias", () => {});
+const namespaceCase = v.it;
+namespaceCase.fails("attack namespace value alias", () => {});`,
+      "synthetic-boundary.test.ts",
+    );
+    expect(issues).toEqual([
+      expect.objectContaining({ line: 4, code: "defensive-validation-scope" }),
+      expect.objectContaining({ line: 5, code: "defensive-validation-scope" }),
+      expect.objectContaining({ line: 6, code: "defensive-validation-scope" }),
+      expect.objectContaining({ line: 9, code: "defensive-validation-scope" }),
+      expect.objectContaining({ line: 11, code: "defensive-validation-scope" }),
+    ]);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local — accepts exact framing through namespace and value aliases", () => {
+    expect(lintDefensiveValidationTestDeclarations(
+      `import * as v from "vitest";
+const caseIt = v.it;
+caseIt.concurrent(
+  "BLUE TEAM VALIDATION: synthetic/local — hostile namespace alias",
+  () => {},
+);`,
+      "synthetic-boundary.test.ts",
+    )).toEqual([]);
+  });
+
+  it.each([
+    `import * as v from "vitest";
+{
+  const v = fakeVitest;
+  v.it("hostile shadowed namespace", () => {});
+}`,
+    `import * as v from "vitest";
+v = fakeVitest;
+v.it("hostile reassigned namespace", () => {});`,
+    `import { it } from "vitest";
+const caseIt = it;
+{
+  const caseIt = fakeIt;
+  caseIt("hostile shadowed value alias", () => {});
+}`,
+    `import { it } from "vitest";
+const caseIt = it;
+caseIt = fakeIt;
+caseIt("hostile reassigned value alias", () => {});`,
+    `const caseIt = otherIt;
+const otherIt = caseIt;
+caseIt("hostile cyclic value alias", () => {});`,
+    `const caseIt = fakeIt;
+caseIt("hostile unknown value alias", () => {});`,
+  ])("BLUE TEAM VALIDATION: synthetic/local — leaves shadowed, reassigned, cyclic, and unknown declaration origins untrusted", (source) => {
+    expect(lintDefensiveValidationTestDeclarations(
+      source,
+      "synthetic-boundary.test.ts",
+    )).toEqual([]);
+  });
+
   it.each([
     `import { it as caseIt } from "vitest";
 {
@@ -513,7 +580,8 @@ it("reports an ordinary diagnostic", () => {
       "BLUE TEAM VALIDATION: synthetic/local hostile case uses a live",
       "relay",
     ));
-    const root = defensiveReviewRoot(`it(
+    const root = defensiveReviewRoot(`import { lintDefensiveValidationText } from "./docs-lint.js";
+it(
   "BLUE TEAM VALIDATION: synthetic/local — checks a hostile lint diagnostic",
   () => {
     const issue = { message: "local relay" };
@@ -577,7 +645,11 @@ it("BLUE TEAM VALIDATION: synthetic/local — rejects a hostile shared fixture",
       "BLUE TEAM VALIDATION: synthetic/local hostile case uses a live",
       "relay",
     ));
-    const root = defensiveReviewRoot(`it(
+    const root = defensiveReviewRoot(`import {
+  lintDefensiveValidationText,
+  lintMaintainedGuides,
+} from "./docs-lint.js";
+it(
   "BLUE TEAM VALIDATION: synthetic/local — checks a hostile lint fixture",
   () => {
     expect("local relay").toBe(${relay});
@@ -593,6 +665,43 @@ it("BLUE TEAM VALIDATION: synthetic/local — rejects a hostile shared fixture",
 );\n`);
 
     expect(lintDefensiveValidationRepositoryTests(root)).toEqual([]);
+  });
+
+  const lintHelperRestrictedTarget = JSON.stringify(
+    restrictedFixtureText("live", "relay"),
+  );
+
+  it.each([
+    `function lintDefensiveValidationText() {}
+lintDefensiveValidationText(${lintHelperRestrictedTarget}, "synthetic-boundary.test.ts");`,
+    `import { lintDefensiveValidationText } from "./docs-lint.js";
+{
+  const lintDefensiveValidationText = fakeLint;
+  lintDefensiveValidationText(${lintHelperRestrictedTarget}, "synthetic-boundary.test.ts");
+}`,
+    `import { lintDefensiveValidationText } from "./docs-lint.js";
+lintDefensiveValidationText = fakeLint;
+lintDefensiveValidationText(${lintHelperRestrictedTarget}, "synthetic-boundary.test.ts");`,
+    `import { lintDefensiveValidationText as checkDefensiveText } from "./docs-lint.js";
+{
+  const checkDefensiveText = fakeLint;
+  checkDefensiveText(${lintHelperRestrictedTarget}, "synthetic-boundary.test.ts");
+}`,
+    `import { lintDefensiveValidationText as checkDefensiveText } from "./docs-lint.js";
+checkDefensiveText = fakeLint;
+checkDefensiveText(${lintHelperRestrictedTarget}, "synthetic-boundary.test.ts");`,
+  ])("BLUE TEAM VALIDATION: synthetic/local — rejects unsafe literals passed to lint-helper lookalikes", (source) => {
+    expect(lintDefensiveValidationRepositoryTests(defensiveReviewRoot(source)))
+      .toContainEqual(expect.objectContaining({ code: "defensive-validation-target" }));
+  });
+
+  it.each([
+    `import { lintDefensiveValidationText } from "./docs-lint.js";
+lintDefensiveValidationText(${lintHelperRestrictedTarget}, "synthetic-boundary.test.ts");`,
+    `import { lintDefensiveValidationText as checkDefensiveText } from "./docs-lint.js";
+checkDefensiveText(${lintHelperRestrictedTarget}, "synthetic-boundary.test.ts");`,
+  ])("BLUE TEAM VALIDATION: synthetic/local — exempts exact docs-lint imports and aliases used as fixture consumers", (source) => {
+    expect(lintDefensiveValidationRepositoryTests(defensiveReviewRoot(source))).toEqual([]);
   });
 
   it.each([
