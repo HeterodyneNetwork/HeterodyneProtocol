@@ -278,15 +278,27 @@ const DEFENSIVE_VALIDATION_SUITE_MODIFIERS = new Set([
 const DEFENSIVE_VALIDATION_CONDITIONAL_MODIFIERS = new Set(["runIf", "skipIf"]);
 const DEFENSIVE_VALIDATION_TABLE_MODIFIERS = new Set(["each", "for"]);
 
+function defensiveValidationLiteralElementName(
+  expression: ts.Expression | undefined,
+): string | undefined {
+  return expression !== undefined && ts.isStringLiteralLike(expression)
+    ? expression.text
+    : undefined;
+}
+
 function defensiveValidationTestApiChain(
   expression: ts.Expression,
 ): DefensiveValidationTestApiChain | undefined {
   if (ts.isIdentifier(expression)) return { root: expression, steps: [] };
-  if (ts.isPropertyAccessExpression(expression)) {
+  if (ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression)) {
+    const propertyName = ts.isPropertyAccessExpression(expression)
+      ? expression.name.text
+      : defensiveValidationLiteralElementName(expression.argumentExpression);
+    if (propertyName === undefined) return undefined;
     const chain = defensiveValidationTestApiChain(expression.expression);
     return chain === undefined
       ? undefined
-      : { ...chain, steps: [...chain.steps, { name: expression.name.text, invoked: false }] };
+      : { ...chain, steps: [...chain.steps, { name: propertyName, invoked: false }] };
   }
   if (ts.isCallExpression(expression)) {
     const chain = defensiveValidationTestApiChain(expression.expression);
@@ -825,6 +837,26 @@ function defensiveValidationBindingWasReassigned(
   );
 }
 
+function defensiveValidationObjectBindingProperty(
+  binding: DefensiveValidationBinding,
+): string | undefined {
+  if (!ts.isVariableDeclaration(binding.declaration)
+    || !ts.isObjectBindingPattern(binding.declaration.name)) return undefined;
+  const element = binding.declaration.name.elements.find((candidate) =>
+    candidate.dotDotDotToken === undefined
+    && ts.isIdentifier(candidate.name)
+    && candidate.name.text === binding.name
+  );
+  if (element === undefined || !ts.isIdentifier(element.name)) return undefined;
+  if (element.propertyName === undefined) return element.name.text;
+  if (ts.isIdentifier(element.propertyName)
+    || ts.isStringLiteralLike(element.propertyName)) return element.propertyName.text;
+  if (ts.isComputedPropertyName(element.propertyName)) {
+    return defensiveValidationLiteralElementName(element.propertyName.expression);
+  }
+  return undefined;
+}
+
 function defensiveValidationResolveVitestOrigin(
   expression: ts.Expression,
   context: DefensiveValidationAstContext,
@@ -837,14 +869,18 @@ function defensiveValidationResolveVitestOrigin(
     || ts.isSatisfiesExpression(expression)) {
     return defensiveValidationResolveVitestOrigin(expression.expression, context, resolving);
   }
-  if (ts.isPropertyAccessExpression(expression)) {
+  if (ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression)) {
+    const propertyName = ts.isPropertyAccessExpression(expression)
+      ? expression.name.text
+      : defensiveValidationLiteralElementName(expression.argumentExpression);
+    if (propertyName === undefined) return undefined;
     const owner = defensiveValidationResolveVitestOrigin(
       expression.expression,
       context,
       resolving,
     );
     return owner?.kind === "namespace"
-      ? { kind: "name", name: expression.name.text }
+      ? { kind: "name", name: propertyName }
       : undefined;
   }
   if (!ts.isIdentifier(expression)) return undefined;
@@ -876,11 +912,16 @@ function defensiveValidationResolveVitestOrigin(
     || resolving.has(binding)) return undefined;
   const next = new Set(resolving);
   next.add(binding);
-  return defensiveValidationResolveVitestOrigin(
+  const initializerOrigin = defensiveValidationResolveVitestOrigin(
     binding.declaration.initializer,
     context,
     next,
   );
+  if (ts.isIdentifier(binding.declaration.name)) return initializerOrigin;
+  const propertyName = defensiveValidationObjectBindingProperty(binding);
+  return initializerOrigin?.kind === "namespace" && propertyName !== undefined
+    ? { kind: "name", name: propertyName }
+    : undefined;
 }
 
 function defensiveValidationTestApiFromOrigin(

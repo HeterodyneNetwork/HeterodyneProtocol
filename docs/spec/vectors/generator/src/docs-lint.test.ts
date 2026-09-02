@@ -403,6 +403,97 @@ caseIt.concurrent(
   });
 
   it.each([
+    [
+      `import * as v from "vitest";
+v["it"]("hostile element-access test", () => {});`,
+      2,
+    ],
+    [
+      `import * as v from "vitest";
+const caseIt = v["it"];
+caseIt("adversarial element-access alias", () => {});`,
+      3,
+    ],
+    [
+      `import * as v from "vitest";
+v.it["concurrent"]("attacker element-access modifier", () => {});`,
+      2,
+    ],
+    [
+      `import * as v from "vitest";
+const { it } = v;
+it("attack destructured test", () => {});`,
+      3,
+    ],
+    [
+      `import * as v from "vitest";
+const { test: caseTest } = v;
+caseTest("hostile renamed destructured test", () => {});`,
+      3,
+    ],
+  ])("BLUE TEAM VALIDATION: synthetic/local — recognizes closed literal element access and namespace destructuring", (source, line) => {
+    expect(lintDefensiveValidationTestDeclarations(
+      source,
+      "synthetic-boundary.test.ts",
+    )).toEqual([
+      expect.objectContaining({ line, code: "defensive-validation-scope" }),
+    ]);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local — accepts exact framing through closed element-access chains", () => {
+    expect(lintDefensiveValidationTestDeclarations(
+      `import * as v from "vitest";
+const { describe: suite } = v;
+suite["concurrent"](
+  "BLUE TEAM VALIDATION: synthetic/local — hostile destructured suite",
+  () => {},
+);`,
+      "synthetic-boundary.test.ts",
+    )).toEqual([]);
+  });
+
+  it.each([
+    `import * as v from "vitest";
+const api = "it";
+v[api]("hostile computed namespace key", () => {});`,
+    `import * as v from "vitest";
+const modifier = "concurrent";
+v.it[modifier]("hostile computed modifier key", () => {});`,
+    `import * as v from "vitest";
+const api = "it";
+const { [api]: caseIt } = v;
+caseIt("hostile computed destructuring key", () => {});`,
+    `import * as v from "vitest";
+{
+  const v = fakeVitest;
+  v["it"]("hostile shadowed namespace element", () => {});
+}`,
+    `import * as v from "vitest";
+v = fakeVitest;
+v["it"]("hostile reassigned namespace element", () => {});`,
+    `import * as v from "vitest";
+const { it: caseIt } = v;
+{
+  const caseIt = fakeIt;
+  caseIt("hostile shadowed destructured alias", () => {});
+}`,
+    `import * as v from "vitest";
+let { it: caseIt } = v;
+caseIt = fakeIt;
+caseIt("hostile reassigned destructured alias", () => {});`,
+    `const first = second;
+const { it: second } = first;
+second("hostile cyclic destructured alias", () => {});`,
+    `const { it: caseIt } = fakeVitest;
+caseIt("hostile unknown destructured origin", () => {});`,
+  ])("BLUE TEAM VALIDATION: synthetic/local — leaves computed, shadowed, reassigned, cyclic, and unknown element origins untrusted", (source) => {
+    expect(lintDefensiveValidationTestDeclarations(
+      source,
+      "synthetic-boundary.test.ts",
+    )).toEqual([]);
+  });
+
+  it.each([
     `import * as v from "vitest";
 {
   const v = fakeVitest;
