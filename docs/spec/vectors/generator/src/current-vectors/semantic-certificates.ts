@@ -1700,7 +1700,6 @@ function verifyPostcondition(
   fixture: CurrentCaseFixture,
   execution: CurrentBoundaryExecutionRecord,
 ): boolean {
-  if (allocation.postcondition === "terminal-output-only") return true;
   if (allocation.postcondition === `semantic:${allocation.boundary_id}`) {
     return boundaryContractPostcondition(allocation.boundary_id, fixture, execution);
   }

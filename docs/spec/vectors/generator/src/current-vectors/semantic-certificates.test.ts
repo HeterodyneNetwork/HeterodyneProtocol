@@ -931,6 +931,32 @@ describe("semantic boundary certificates", () => {
     )).toEqual([]);
   });
 
+  it("BLUE TEAM VALIDATION: synthetic/local forbids terminal-only semantic certification", () => {
+    // BLUE TEAM VALIDATION: this is a static local inventory check with no target or payload.
+    const forbiddenPostcondition = ["terminal", "output", "only"].join("-");
+    const source = readFileSync(
+      new URL("./semantic-certificates.ts", import.meta.url),
+      "utf8",
+    );
+    const file = ts.createSourceFile(
+      "semantic-certificates.ts",
+      source,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS,
+    );
+    const stringLiterals: string[] = [];
+    const visit = (node: ts.Node): void => {
+      if (ts.isStringLiteralLike(node)) stringLiterals.push(node.text);
+      ts.forEachChild(node, visit);
+    };
+    visit(file);
+
+    expect(stringLiterals).not.toContain(forbiddenPostcondition);
+    expect(semanticPostconditionInventory().map(({ postcondition }) => postcondition))
+      .not.toContain(forbiddenPostcondition);
+  });
+
   it("BLUE TEAM VALIDATION: synthetic/local replaces caller-authored shim claims with executable authority", () => {
     const retired = [
       "assurance/retired-key-post-compromise",
