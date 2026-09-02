@@ -286,9 +286,24 @@ function defensiveValidationLiteralElementName(
     : undefined;
 }
 
+function defensiveValidationUnwrapTransparentExpression(
+  expression: ts.Expression,
+): ts.Expression {
+  let current = expression;
+  while (ts.isParenthesizedExpression(current)
+    || ts.isAsExpression(current)
+    || ts.isTypeAssertionExpression(current)
+    || ts.isNonNullExpression(current)
+    || ts.isSatisfiesExpression(current)) {
+    current = current.expression;
+  }
+  return current;
+}
+
 function defensiveValidationTestApiChain(
   expression: ts.Expression,
 ): DefensiveValidationTestApiChain | undefined {
+  expression = defensiveValidationUnwrapTransparentExpression(expression);
   if (ts.isIdentifier(expression)) return { root: expression, steps: [] };
   if (ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression)) {
     const propertyName = ts.isPropertyAccessExpression(expression)
@@ -862,13 +877,7 @@ function defensiveValidationResolveVitestOrigin(
   context: DefensiveValidationAstContext,
   resolving = new Set<DefensiveValidationBinding>(),
 ): DefensiveValidationResolvedVitestOrigin | undefined {
-  if (ts.isParenthesizedExpression(expression)
-    || ts.isAsExpression(expression)
-    || ts.isTypeAssertionExpression(expression)
-    || ts.isNonNullExpression(expression)
-    || ts.isSatisfiesExpression(expression)) {
-    return defensiveValidationResolveVitestOrigin(expression.expression, context, resolving);
-  }
+  expression = defensiveValidationUnwrapTransparentExpression(expression);
   if (ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression)) {
     const propertyName = ts.isPropertyAccessExpression(expression)
       ? expression.name.text

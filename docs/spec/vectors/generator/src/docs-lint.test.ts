@@ -453,6 +453,74 @@ suite["concurrent"](
   });
 
   it.each([
+    [`(it)("hostile parenthesized test", () => {});`, 1],
+    [`(it as typeof it)("adversarial asserted test", () => {});`, 1],
+    [`(<typeof it>it)("attacker type-asserted test", () => {});`, 1],
+    [`(it!)("attack non-null test", () => {});`, 1],
+    [`(it satisfies typeof it)("hostile satisfies test", () => {});`, 1],
+    [
+      `import * as v from "vitest";
+(v["it"])("adversarial wrapped namespace element", () => {});`,
+      2,
+    ],
+    [
+      `import * as v from "vitest";
+((v.it) as typeof v.it)["concurrent"]("attacker wrapped namespace modifier", () => {});`,
+      2,
+    ],
+    [
+      `import * as v from "vitest";
+const caseIt = v["it"];
+(caseIt!)("hostile wrapped value alias", () => {});`,
+      3,
+    ],
+  ])("BLUE TEAM VALIDATION: synthetic/local — recognizes transparent TypeScript wrappers in declaration chains", (source, line) => {
+    expect(lintDefensiveValidationTestDeclarations(
+      source,
+      "synthetic-boundary.test.ts",
+    )).toEqual([
+      expect.objectContaining({ line, code: "defensive-validation-scope" }),
+    ]);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local — accepts exact framing through nested transparent wrappers", () => {
+    expect(lintDefensiveValidationTestDeclarations(
+      `import * as v from "vitest";
+const caseIt = v["it"];
+(((caseIt as typeof v.it)!) satisfies typeof v.it)(
+  "BLUE TEAM VALIDATION: synthetic/local — hostile wrapped alias",
+  () => {},
+);`,
+      "synthetic-boundary.test.ts",
+    )).toEqual([]);
+  });
+
+  it.each([
+    `const it = fakeIt;
+(it as typeof fakeIt)("hostile shadowed wrapped test", () => {});`,
+    `import { it } from "vitest";
+it = fakeIt;
+(it!)("hostile reassigned wrapped test", () => {});`,
+    `import * as v from "vitest";
+{
+  const v = fakeVitest;
+  (v["it"] as typeof fakeIt)("hostile shadowed wrapped namespace", () => {});
+}`,
+    `import * as v from "vitest";
+v = fakeVitest;
+(v["it"]!)("hostile reassigned wrapped namespace", () => {});`,
+    `import * as v from "vitest";
+let caseIt = v.it;
+caseIt = fakeIt;
+(caseIt satisfies typeof fakeIt)("hostile reassigned wrapped alias", () => {});`,
+  ])("BLUE TEAM VALIDATION: synthetic/local — keeps wrapped shadows and reassignments untrusted", (source) => {
+    expect(lintDefensiveValidationTestDeclarations(
+      source,
+      "synthetic-boundary.test.ts",
+    )).toEqual([]);
+  });
+
+  it.each([
     `import * as v from "vitest";
 const api = "it";
 v[api]("hostile computed namespace key", () => {});`,
