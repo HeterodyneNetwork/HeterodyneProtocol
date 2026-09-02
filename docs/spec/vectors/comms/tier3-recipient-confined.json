@@ -1,0 +1,42 @@
+{
+  "vector_id": "comms/tier3-recipient-confined",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-tier3-confinement"
+  ],
+  "invariants": [
+    "COMMS-I-TIER3-CONFINED"
+  ],
+  "reason_codes": [
+    "tier3-recipient-not-active-device"
+  ],
+  "description": "Tier-3 delivery rejects a selected inactive device even when its persona remains a member.",
+  "direction": "produce",
+  "input": {
+    "memberPersonas": [
+      "1111111111111111111111111111111111111111111111111111111111111111"
+    ],
+    "devices": [
+      {
+        "persona": "1111111111111111111111111111111111111111111111111111111111111111",
+        "pubkey": "2222222222222222222222222222222222222222222222222222222222222222",
+        "active": true,
+        "role": "human-device"
+      },
+      {
+        "persona": "1111111111111111111111111111111111111111111111111111111111111111",
+        "pubkey": "3333333333333333333333333333333333333333333333333333333333333333",
+        "active": false,
+        "role": "human-device"
+      }
+    ],
+    "selected": [
+      "3333333333333333333333333333333333333333333333333333333333333333"
+    ]
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "tier3-recipient-not-active-device"
+  }
+}

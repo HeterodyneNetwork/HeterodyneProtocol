@@ -51,11 +51,11 @@ describe("findAnchorResolutionFailures", () => {
   it("uses the referenced document instead of inferring ownership from the anchor", () => {
     const input = corpus([
       vector("sample/wrong-document", ["heterodyne:comms#core-present"]),
-      vector("sample/legacy", ["heterodyne:0.5.0#core-present"]),
+      vector("sample/legacy", ["heterodyne:0.6.0#core-present"]),
     ]);
 
     expect(findAnchorResolutionFailures(input)).toEqual([
-      "sample/legacy :: heterodyne:0.5.0#core-present",
+      "sample/legacy :: heterodyne:0.6.0#core-present",
       "sample/wrong-document :: heterodyne:comms#core-present",
     ]);
   });

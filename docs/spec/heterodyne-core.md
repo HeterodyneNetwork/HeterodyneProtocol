@@ -33,7 +33,7 @@ implementations require no Heterodyne-specific changes.
 These conventions govern every document in the family.
 
 **Family version.** The live draft family uses the single qualified version
-`heterodyne/0.5.0`. Core, Assurance, Comms, Control, Social, and Workspace are
+`heterodyne/0.6.0`. Core, Assurance, Comms, Control, Social, and Workspace are
 sections of that family rather than independent version lineages. Assurance
 is optional; its absence does not reduce baseline Core conformance.
 
@@ -53,13 +53,13 @@ or `workspace-`. Generated heading IDs are not stable protocol references.
 
 **Qualified references.** A normative cross-document reference is
 `heterodyne:<semver>#<anchor>`, for example
-[`heterodyne:0.5.0#core-active-key-persona`](#core-active-key-persona).
+[`heterodyne:0.6.0#core-active-key-persona`](#core-active-key-persona).
 
 **Layering.** Core depends on nothing. Assurance and Comms depend on Core.
 Control and Social depend on Core and Comms. Workspace depends on Core and
-Comms and may optionally compose Control and Social. Comms, Control, Social,
-and Workspace MAY optionally compose Assurance but MUST NOT require Assurance
-for their baseline behavior. The graph MUST remain acyclic.
+Comms and may optionally compose Control and Social. Assurance is an optional
+Core extension; the active key remains sufficient for baseline behavior. The
+graph MUST remain acyclic.
 
 <a id="core-terminology"></a>
 ## 2. Shared terminology
@@ -136,7 +136,7 @@ selects a different Nostr signature or author.
 1. Heterodyne-defined JSON `content` MUST carry the exact family
    `spec_version` required by its registered schema.
 2. A Heterodyne-allocated kind with empty or non-JSON content MUST carry
-   exactly `['spec_version', 'heterodyne/0.5.0']` when its registry entry
+   exactly `['spec_version', 'heterodyne/0.6.0']` when its registry entry
    requires stamping.
 3. An adopted upstream kind is unstamped unless an immutable registered
    stamping profile opts it in.
@@ -346,7 +346,13 @@ uses ordinary Nostr state:
 5. optionally fetch the advertised profile repository or an Assurance chain.
 
 Repository and Assurance steps are optional. Failure of either leaves valid
-relay-derived Nostr state usable.
+relay-derived Nostr state usable as ordinary upstream Nostr state. When the
+selected kind `0` contains a valid `heterodyne.profile` RID, however, a client
+MUST NOT mint a repository-bound canonical Heterodyne profile view until the
+exact selected event is also observed on that RID through a currently
+authorized writer ref. This does not invalidate the signed relay event; it
+prevents an unauthenticated carrier from standing in for the advertised
+repository state.
 
 <a id="core-persona-profile"></a>
 ### 5.1 Kind `0` profile and the closed extension
@@ -372,6 +378,26 @@ or previously pinned Assurance state. Every extension value is a hint signed
 by the active key, not independent authority. A client MUST semantically
 validate canonical RID and `naddr` encodings in addition to the schema's
 structural boundary.
+
+A canonical-profile selection authority MUST capture bounded, closed
+candidate descriptors; verify every candidate's exact NIP-01 ID and signature;
+authenticate every repository candidate against its exact event author, RID,
+ref, and a current Core repository-writer binding. Its current-location
+inspection MUST match the candidate event ID and author and the binding's
+writer NID, RID, ref namespace and exact ref, profile, operations,
+issuance/expiry, dual signatures and proof identity, and current policy
+revision, checkpoint, and predecessor. The authority revalidates the complete
+bounded batch of those inspected opaque bindings against current writer policy
+immediately before selection; then it unions relay and authenticated-repository
+candidates without carrier priority; and apply the NIP-01 replacement rule to
+that union. Candidate descriptors are fully captured before repository
+authentication begins, and one constructor-captured trusted-time observation
+governs both the view and premature-candidate selection. It derives the
+repository requirement solely from the selected signed profile's valid extension. A
+request boolean, repository label, cache entry, clone, or object mutation MUST
+NOT assert that requirement or satisfy it. If the selected profile advertises
+a repository but its exact event lacks current authenticated repository
+carriage, selection fails with `profile-repository-selection-required`.
 
 <a id="core-nip05-discovery"></a>
 ### 5.2 NIP-05
@@ -441,11 +467,41 @@ Only events with valid structure, identifier, and signature enter the union.
 The rule is identical whether a candidate arrived from an ordinary relay, a
 repo relay, or native repository access.
 
+<a id="core-created-at-bound"></a>
+Selection additionally applies a premature-candidate bound. A candidate whose
+`created_at` exceeds the verifier's trusted current time by more than 900
+seconds MUST NOT enter the selection union. The candidate is quarantined, not
+invalidated: the verifier retains it, reports `core-created-at-premature`, and
+the candidate re-enters selection automatically once its `created_at` is
+within bound, if it is still a candidate then. A verifier whose known clock
+uncertainty exceeds 900 seconds fails closed for selection that this bound
+would decide. Quarantine changes candidate admission only; it does not alter
+NIP-01 cryptographic validity, and the kind `0`/`10002` seven-day refresh duty
+is unchanged and caps the residual effect of a later-activating quarantined
+candidate at one refresh interval.
+
 When reachable, a repository is the preferred durable reconciliation target,
 not a priority override. A newer valid relay event missing from the repository
 wins immediately and makes the repository stale until an authorized writer
 ingests the exact event. Repository unavailability never makes valid relay
 state unusable.
+
+<a id="core-nip03-advisory"></a>
+### 6.1 Advisory NIP-03 interoperability
+
+An independent NIP-03 implementation MAY display evidence that a commitment
+to an unsigned NIP-01 event existed no later than a confirmed block.
+Heterodyne defines no timestamp-authority feature or kind `1040` profile and
+assigns that evidence no protocol authority. It MUST NOT decide replaceable
+selection, Assurance enrollment or continuity, permanent event rejection,
+when an event was signed, published, or observed, whether its `created_at` is
+truthful, whether competing events are complete, or a precise wall-clock time
+derived from a block header. Heterodyne selection and Assurance ignore it.
+
+The non-absorbing 900-second quarantine in
+[`heterodyne:0.6.0#core-created-at-bound`](#core-created-at-bound) depends only
+on the verifier's trusted current time and remains the sole Core
+future-candidate bound.
 
 <a id="core-publication-retry"></a>
 ## 7. Exact-byte publication, retrieval, and retry
@@ -473,7 +529,10 @@ ref proves storage only; it never proves authorship.
 ## 8. Radicle event repositories
 
 A logical Nostr event repository belongs to one persona or higher-layer
-group. Its RID is a stable storage locator, not an identity. Its accepted
+group. Its RID is a stable storage locator, not an identity. A persona holding
+repository-owner policy authority SHOULD attach a window-complete Assurance
+enrollment; a client MUST surface an unenrolled high-authority persona
+distinctly. Its accepted
 logical contents are the union of currently authorized Radicle writer refs:
 
 - every native writer uses its own NID and signed ref;
@@ -499,11 +558,86 @@ Making a repository private does not by itself encrypt its Git objects.
 <a id="core-nid-delegation"></a>
 ### 8.1 Writer-NID authorization
 
-An authorized writer binding MUST name the exact repository RID, writer NID,
-permitted ref namespace, operations, issuance time, optional expiry, and owner
-authority. The NID MUST prove possession with strict Ed25519 over the
-registered [§3.6](#core-proof-bytes) claim, and the owner MUST authenticate the
-same binding. Both proofs are required before the ref enters the union.
+The authority-file object `heterodyne.core.repository-writer-binding.v1`
+MUST validate against
+[`schemas/core/repository-writer-binding-v1.schema.json`](schemas/core/repository-writer-binding-v1.schema.json).
+It is the closed object with exactly these members:
+
+```json
+{
+  "profile": "heterodyne.core.repository-writer-binding.v1",
+  "spec_version": "heterodyne/0.6.0",
+  "owner_active_key": "<64-lowercase-hex x-only key>",
+  "repository_rid": "<canonical rad:z RID>",
+  "writer_nid": "<canonical Ed25519 did:key NID>",
+  "ref_namespace": "refs/<canonical permitted namespace>/",
+  "operations": ["claim-ledger-write"],
+  "issued_at": 0,
+  "expires_at": 1,
+  "owner_signature": "<128-lowercase-hex BIP-340 signature>",
+  "nid_signature": "<128-lowercase-hex Ed25519 signature>"
+}
+```
+
+`operations` MUST be non-empty, strictly lexicographically sorted, and unique.
+Both times MUST be nonnegative safe integers and `expires_at` MUST be greater
+than `issued_at`. `repository_rid` MUST use the `rad:z` prefix; its Base58btc
+payload MUST decode to exactly 20 bytes and re-encode byte-for-byte to the
+presented payload. Alphabet membership alone is insufficient.
+
+`ref_namespace` is a canonical vanilla Git ref namespace prefix. It MUST begin
+`refs/`, end in `/`, contain valid UTF-8, and contain at least one complete
+component after `refs`. Every complete component is nonempty, is neither `.`
+nor `..`, does not begin or end with `.`, and does not end with `.lock`.
+The namespace MUST NOT contain `..`, `@{`, duplicate `/`, backslash, a control
+or space character, or any of `~^:?*[`. A requested writer ref MUST satisfy
+the same vanilla Git component rules without a trailing `/` and MUST be a
+strict descendant of the namespace, not the namespace itself.
+
+The unsigned body is the exact closed object above with
+`owner_signature` and `nid_signature` deleted. The registered proof domain
+`heterodyne-core-repository-writer-binding-v1` applies [§3.6](#core-proof-bytes)
+to that body. The active repository owner makes `owner_signature` with
+BIP-340 over SHA-256 of those proof bytes. The Ed25519 key that derives the
+exact canonical `writer_nid` makes `nid_signature` over the identical proof
+bytes. Both proofs are required before the ref enters the union; a proof over
+a reserialized, partial, additional-member, differently ordered-operation, or
+different-domain body grants nothing.
+
+Resolution is repository-local. A verifier captures the presented object and
+request once as closed ordinary data, verifies both proofs from that immutable
+capture, and obtains the current authenticated repository-owner policy from a
+locally configured resolver. The caller supplies only the exact active owner
+key, RID, writer NID, writer ref, and requested operation. It MUST NOT supply
+or assert policy activity, writer activity, conflict or revocation booleans,
+policy revision, predecessor, or checkpoint.
+
+The resolver result MUST bind the same active owner and RID, a non-revoked and
+non-conflicted policy state, an exact revision, predecessor, and checkpoint,
+and exactly one active inclusion of the writer NID, ref namespace, and
+operation. The verifier's trusted current time MUST satisfy
+`issued_at <= trusted_now < expires_at`. A successful resolution produces an
+opaque, authority-instance-bound current binding that privately retains the
+exact wire digest, request, and complete policy fingerprint. Before replay or
+another authority effect, the same authority instance MUST recapture the
+source, reload the current policy, and reject a changed source, owner, RID,
+writer, ref, operation, revision, predecessor, checkpoint, inclusion,
+revocation, conflict, or policy fingerprint. A clone or binding from another
+authority instance is invalid.
+
+Any closed-object, proof, NID derivation, time, request, current-policy, clone,
+or revalidation failure returns the coarse registered reason
+`repository-writer-binding-invalid`. Implementations MAY retain more specific
+detail in a privileged local audit, but MUST NOT expose it as additional wire
+authority.
+
+This binding authorizes only the named writer NID, repository RID, ref
+namespace, and operations while the exact current policy remains active. It
+does not grant Nostr authorship, persona or repository ownership, Workspace or
+group governance, content-decryption authority, Assurance authority, hosting
+trust, or directory status. The resolver is not a network trust or discovery
+service, and vanilla Nostr relays and standard Radicle nodes require no
+Heterodyne-specific change.
 
 Legacy epoch-authorized kind `31001` delegation is not a Core baseline
 prerequisite. A higher-layer or Assurance profile MAY define additional
@@ -868,9 +1002,58 @@ Core's current invariant meanings are:
   grants, and sensitive cached state use the Core keys-repository protection
   profile, including NIP-49 wrapping where applicable.
 
-RID and Git object identifiers use SHA-1 in the applicable Radicle version,
-but Nostr event integrity independently uses SHA-256/BIP-340 and Radicle refs
-use Ed25519. A RID collision cannot authorize a forged event or writer ref.
+<a id="core-operational-authority-views"></a>
+### 12.1 Local operational authority views
+
+Security-sensitive operational checks consume verifier-minted local views,
+not caller-supplied booleans. Every public cache/carrier boundary first
+descriptor-captures its complete bounded input, including nested event fields
+and retained bytes, before reading trusted time or interpreting event
+semantics. A friend-cache candidate is usable only after its captured NIP-01
+event verifies and its author equals the expected persona;
+otherwise the boundary returns `unauthorized_cache_content`. A relay profile
+carrier is conforming only when bounded retained UTF-8 event bytes pass a
+duplicate-aware JSON decode before event semantics and parse to the exact same
+kind `0` fields, ID, author, and signature as the independently captured
+event; otherwise it returns `relay_profile_mutation`.
+
+The client captures its role, strict-profile selection, and effective route
+once at the local authority boundary. A strict profile over clearnet returns
+`strict_mode_tor_disabled`. Clearnet remains conforming for a disclosed
+non-strict reduced-assurance role. These views are frozen, opaque, and bound
+privately to the authority instance and captured evidence. Lookalikes, clones,
+proxies, accessors, post-capture mutation, cross-authority use, and callback
+substitution fail closed. This is client conformance over standard NIP-01 and
+Tor behavior; it defines neither a relay extension nor a new transport.
+
+<a id="core-retired-member-kel-and-role-delegation"></a>
+### Retired member-KEL and role-delegation semantics
+
+The pre-1.0 member-KEL organization-add rule and boolean role-delegation rules
+are historical only. They grant no current Core authority, are not Workspace
+roles, and MUST NOT be executed or counted as current conformance behavior.
+Their retained reason-code registrations provide audit continuity only; Git
+history, not the current evaluator graph, preserves the retired behavior.
+
+<a id="core-sha1-bindings"></a>
+SHA-1 appears in exactly three places, each analyzed individually rather than
+dismissed wholesale. The Comms genesis-manifest digest is already SHA-256 and
+is not in this list.
+
+| Value | Where | Classification | Analysis |
+|---|---|---|---|
+| RID (20-byte Git object ID) | `rad:z…` repository identifier | locator | a collision yields two repositories claiming one name; neither gains event authorship (SHA-256/BIP-340) or ref authority (Ed25519) |
+| `repo_head` | kind `31010` seed advert, Ed25519-bound | possession snapshot | signature-bound but grants nothing; advert expiry of at most 86,400 seconds limits exposure |
+| `repository_head` | every signed Workspace object | carrier context | signature-bound but explicitly non-authority; a head not reachable from the accepted authority branch is rejected |
+
+For each signature-bound SHA-1 value the concrete attack requires both a
+chosen-prefix collision against repository state the attacker can influence
+and a consumer that treats the digest as more than a locator; the rules above
+remove the second half. Two requirements follow. No Heterodyne document may
+bind authority, policy, or key material to a SHA-1 digest; authority bindings
+require SHA-256 or stronger. Implementations SHOULD prefer the Radicle
+`sha256` object format where the substrate supports it; the credential-ledger
+schemas already accept both formats.
 
 <a id="core-conformance"></a>
 ## 13. Conformance and validation
@@ -906,17 +1089,16 @@ trust, NIP-42, protected storage, version negotiation, and Core invariants.
 ### 13.1 Rolling pre-1.0 validation snapshot
 
 Vector JSON under `docs/spec/vectors/` is the single non-normative rolling
-pre-1.0 validation snapshot. The closed `snapshot.json` pins an exact
-path/digest inventory. The current historical bootstrap remains bound to
-source commit `2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43`; it contains 482 vectors
-among 493 manifest-listed artifacts and declares zero reference-checker cases.
+pre-1.0 validation snapshot. The closed
+`docs/spec/vectors/snapshot.json` manifest is the exact source of its mutable
+facts: `source_commit`, `vector_schema_version`, `vector_count`, and every
+artifact path and digest.
 
-The snapshot lane derives its snapshot commit from the last commit that
-changed `snapshot.json`; it does not trust uncommitted metadata. Its historical
-source root contains the five documents that existed at that pinned commit.
-The current-draft lane independently validates the live six-document family.
-Optional Assurance discovery MUST NOT rewrite or add authority to the
-historical snapshot.
+`snapshot-check` derives snapshot identity from the last commit that changed
+that manifest; it does not trust uncommitted metadata. The pinned source root
+supplies the family that exists at `source_commit`. The current-draft lane and
+history-bound snapshot lane remain independent. Optional Assurance discovery
+MUST NOT rewrite or add authority to the historical snapshot.
 
 Ordinary 0.x authoring does not update snapshot payloads, fixtures, coverage,
 topics, or metadata. A dedicated reconciliation selects a stable full source
@@ -933,7 +1115,9 @@ decision rather than an internal condition. Where a requester is not
 authorized to distinguish causes, one coarse code MUST cover the refusal and
 privileged detail stays only in the owning encrypted audit record. A document
 MUST NOT allocate a finer code when an existing code intentionally covers the
-same indistinguishable refusal.
+same indistinguishable refusal. The registry marks such codes
+`intentionally_coarse`; a document MUST NOT allocate a finer code where a
+flagged code covers the refusal.
 
 <a id="core-marmot-role-attribution"></a>
 ### 13.3 Superseded Core role attribution
@@ -942,3 +1126,12 @@ Core no longer defines KERI attribution of Marmot account roles. The active
 persona key is the baseline Marmot account identity. Agent keys are separate
 accounts, device leaves remain independent, and higher documents define their
 own explicit grants without changing Marmot account or MLS semantics.
+
+<a id="core-retired-semantics"></a>
+### 13.4 Retired diagnostic semantics
+
+`retired-key-authority-window-invalid` is retained as non-wire history, not
+current executable authority. It MUST NOT provide normative executable
+evidence or a current protocol refusal. This retirement does not relax the
+live Core NIP-01 verification, active-key persona, or source-neutral
+selection boundaries specified in this document.

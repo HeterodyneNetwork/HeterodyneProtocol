@@ -29,18 +29,35 @@ function corpus(
 
 describe("findInvariantCompletenessFailures", () => {
   it("accepts an Assurance strict-profile closure for an Assurance invariant", () => {
-    const input = corpus({ "docs/spec/heterodyne-assurance.md": `
+    const input = corpus({
+      "docs/spec/heterodyne-core.md": `
+<!-- fixture:core-strict-profile -->
+\`\`\`json
+{
+  "profile_id": "heterodyne-core-strict-v1",
+  "conformance_class": "Core",
+  "state": "active",
+  "requires_profiles": [],
+  "adds_invariants": ["CORE-I-IDENTITY"]
+}
+\`\`\`
+`,
+      "docs/spec/heterodyne-assurance.md": `
 <!-- fixture:assurance-strict-profile -->
 \`\`\`json
 {
   "profile_id": "heterodyne-assurance-strict-v1",
   "conformance_class": "Core+Assurance",
   "state": "active",
-  "requires_profiles": [],
-  "adds_invariants": ["ASSURANCE-I-CONTINUITY"]
+  "requires_profiles": ["heterodyne-core-strict-v1"],
+  "adds_invariants": ["ASSURANCE-I-ENROLLMENT-WINDOWED"]
 }
 \`\`\`
-` }, [{ id: "ASSURANCE-I-CONTINUITY", owner: "assurance" }]);
+`,
+    }, [
+      { id: "CORE-I-IDENTITY", owner: "core" },
+      { id: "ASSURANCE-I-ENROLLMENT-WINDOWED", owner: "assurance" },
+    ]);
 
     expect(findInvariantCompletenessFailures(input)).toEqual([]);
   });

@@ -1,0 +1,28 @@
+{
+  "vector_id": "comms/oidc-client-unregistered",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-oidc-authorization"
+  ],
+  "invariants": [
+    "COMMS-I-CLAIM-RELEASE"
+  ],
+  "reason_codes": [
+    "oidc-client-unregistered"
+  ],
+  "description": "The live OIDC boundary rejects oidc client unregistered.",
+  "direction": "consume",
+  "input": {
+    "client_id": "unregistered-client"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "oidc-client-unregistered",
+    "evaluator_output": {
+      "allowed": false,
+      "state": "invalid",
+      "reason_code": "oidc-client-unregistered"
+    }
+  }
+}

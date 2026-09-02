@@ -1,0 +1,39 @@
+{
+  "vector_id": "comms/claim-chain-depth-exceeded",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-conformance"
+  ],
+  "invariants": [
+    "COMMS-I-CLAIM-ATTENUATION"
+  ],
+  "reason_codes": [
+    "claim-chain-depth-exceeded"
+  ],
+  "description": "An issuance chain longer than eight edges is rejected before authority use.",
+  "direction": "consume",
+  "input": {
+    "chain_claim_ids": [
+      "ad47df49d87e3390ca4653be89a5f4120f8d76c2b6fbc08be4b09c5c8ec09ea0",
+      "ad47df49d87e3390ca4653be89a5f4120f8d76c2b6fbc08be4b09c5c8ec09ea0",
+      "ad47df49d87e3390ca4653be89a5f4120f8d76c2b6fbc08be4b09c5c8ec09ea0",
+      "ad47df49d87e3390ca4653be89a5f4120f8d76c2b6fbc08be4b09c5c8ec09ea0",
+      "ad47df49d87e3390ca4653be89a5f4120f8d76c2b6fbc08be4b09c5c8ec09ea0",
+      "ad47df49d87e3390ca4653be89a5f4120f8d76c2b6fbc08be4b09c5c8ec09ea0",
+      "ad47df49d87e3390ca4653be89a5f4120f8d76c2b6fbc08be4b09c5c8ec09ea0",
+      "ad47df49d87e3390ca4653be89a5f4120f8d76c2b6fbc08be4b09c5c8ec09ea0",
+      "ad47df49d87e3390ca4653be89a5f4120f8d76c2b6fbc08be4b09c5c8ec09ea0",
+      "ad47df49d87e3390ca4653be89a5f4120f8d76c2b6fbc08be4b09c5c8ec09ea0"
+    ]
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "claim-chain-depth-exceeded",
+    "evaluator_output": {
+      "allowed": false,
+      "state": "invalid",
+      "reason_code": "claim-chain-depth-exceeded"
+    }
+  }
+}

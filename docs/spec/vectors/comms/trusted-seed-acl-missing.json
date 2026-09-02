@@ -1,0 +1,23 @@
+{
+  "vector_id": "comms/trusted-seed-acl-missing",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-trusted-seed-private-relay"
+  ],
+  "invariants": [
+    "COMMS-I-TRUSTED-SEED-CONFINEMENT"
+  ],
+  "reason_codes": [
+    "trusted-seed-acl-missing"
+  ],
+  "description": "The trusted-seed authority rejects trusted seed acl missing from authenticated current state.",
+  "direction": "consume",
+  "input": {
+    "acl_candidates": []
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "trusted-seed-acl-missing"
+  }
+}

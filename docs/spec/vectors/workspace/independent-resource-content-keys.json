@@ -1,0 +1,37 @@
+{
+  "vector_id": "workspace/independent-resource-content-keys",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "workspace",
+  "spec_refs": [
+    "heterodyne:workspace#workspace-key-delivery"
+  ],
+  "invariants": [
+    "WORKSPACE-I-INDEPENDENT-RESOURCE-KEYS"
+  ],
+  "reason_codes": [],
+  "description": "Each resource uses a distinct content-key identifier and the role MLS epoch key is not reused as a universal content key.",
+  "direction": "consume",
+  "input": {
+    "role_epoch_key_id": "role-epoch-7",
+    "resources": [
+      {
+        "resource_id": "resource-a",
+        "content_key_id": "resource-a-4"
+      },
+      {
+        "resource_id": "resource-b",
+        "content_key_id": "resource-b-2"
+      }
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "resource_key_ids": [
+        "resource-a-4",
+        "resource-b-2"
+      ],
+      "role_key_used_as_content_key": false
+    }
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://heterodyne.network/schemas/core/repository-writer-binding-v1.schema.json",
+  "title": "Heterodyne Core repository writer binding v1",
+  "description": "A closed repository-local dual-proof authorization from an active owner key to one Radicle writer NID.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "profile",
+    "spec_version",
+    "owner_active_key",
+    "repository_rid",
+    "writer_nid",
+    "ref_namespace",
+    "operations",
+    "issued_at",
+    "expires_at",
+    "owner_signature",
+    "nid_signature"
+  ],
+  "properties": {
+    "profile": {
+      "const": "heterodyne.core.repository-writer-binding.v1"
+    },
+    "spec_version": {
+      "const": "heterodyne/0.6.0"
+    },
+    "owner_active_key": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "repository_rid": {
+      "type": "string",
+      "pattern": "^rad:z[1-9A-HJ-NP-Za-km-z]{20,28}$"
+    },
+    "writer_nid": {
+      "type": "string",
+      "pattern": "^did:key:z[1-9A-HJ-NP-Za-km-z]+$"
+    },
+    "ref_namespace": {
+      "type": "string",
+      "minLength": 7,
+      "maxLength": 1024,
+      "pattern": "^refs/[^\\u0000-\\u0020\\u007f~^:?*\\[\\\\]+/$"
+    },
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+      }
+    },
+    "issued_at": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "expires_at": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "owner_signature": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{128}$"
+    },
+    "nid_signature": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{128}$"
+    }
+  }
+}

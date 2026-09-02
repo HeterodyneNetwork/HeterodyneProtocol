@@ -1,0 +1,30 @@
+{
+  "vector_id": "comms/oidc-consent-required",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-oidc-authorization"
+  ],
+  "invariants": [
+    "COMMS-I-CLAIM-RELEASE"
+  ],
+  "reason_codes": [
+    "oidc-consent-required"
+  ],
+  "description": "The live OIDC boundary rejects oidc consent required.",
+  "direction": "consume",
+  "input": {
+    "requested_scopes": [
+      "profile"
+    ]
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "oidc-consent-required",
+    "evaluator_output": {
+      "allowed": false,
+      "state": "invalid",
+      "reason_code": "oidc-consent-required"
+    }
+  }
+}

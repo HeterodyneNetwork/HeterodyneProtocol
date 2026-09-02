@@ -18,7 +18,7 @@ type Reject = { verdict: "reject"; reason_code: string };
 
 export type SigningGrant = {
   profile: "heterodyne.control.signer-grant.v1";
-  spec_version: "heterodyne/0.5.0";
+  spec_version: "heterodyne/0.6.0";
   grant_id: string;
   vault_id: string;
   persona_active_key: string;
@@ -845,7 +845,7 @@ function grantUsageStateIsValid(
 
 export type Nip46ConnectionState = {
   profile: "heterodyne.control.device-authorization-state.v1";
-  spec_version: "heterodyne/0.5.0";
+  spec_version: "heterodyne/0.6.0";
   transaction_id: string;
   grant_id: string;
   oidc_authorization_id: string;
@@ -986,7 +986,7 @@ export function consumeNip46ConnectionSecret(
 
 export type AutomatedPublication = {
   profile: "heterodyne.control.agent-publish-intent.v1";
-  spec_version: "heterodyne/0.5.0";
+  spec_version: "heterodyne/0.6.0";
   grant_id: string;
   vault_id: string;
   persona_active_key: string;
@@ -1454,13 +1454,17 @@ export function prepareAutomatedExecution(input: {
   };
 }
 
-export function executePersistedAutomatedSigning<
+export type PersistedAutomatedSigningInput<
   T extends UnsignedEvent & { id: string; sig: string },
->(input: {
+> = Readonly<{
   authorization: Nip46AuthorizationInput;
   publication: AutomatedPublication;
   signer_execution: DurableSignerExecutionCapability<T>;
-}):
+}>;
+
+export function executePersistedAutomatedSigning<
+  T extends UnsignedEvent & { id: string; sig: string },
+>(input: PersistedAutomatedSigningInput<T>):
   | {
       verdict: "accept";
       event: T;
@@ -1604,7 +1608,7 @@ export function executePersistedAutomatedSigning<
 
 export type CompromiseResetGrant = {
   profile: "heterodyne.control.compromise-reset-grant.v1";
-  spec_version: "heterodyne/0.5.0";
+  spec_version: "heterodyne/0.6.0";
   recovery_id: string;
   persona_active_key: string;
   successor_active_key: string;
@@ -1637,7 +1641,7 @@ export type CompromiseResetGrant = {
 
 export type CompromiseResetCompletion = {
   profile: "heterodyne.control.compromise-reset-completion.v1";
-  spec_version: "heterodyne/0.5.0";
+  spec_version: "heterodyne/0.6.0";
   recovery_id: string;
   persona_active_key: string;
   successor_active_key: string;
@@ -1859,14 +1863,16 @@ export function compromiseResetEvidenceBundleDigest(
     .digest("hex");
 }
 
-export function validateCompromiseReset(input: {
+export type CompromiseResetValidationInput = Readonly<{
   grant: CompromiseResetGrant;
   completion: CompromiseResetCompletion;
   authoritative_inventory: CompromiseResetInventory;
   authoritative_evidence: CompromiseResetEvidence;
   pinned_assurance_authority: PinnedAssuranceAuthority | null;
   now: number;
-}): {
+}>;
+
+export function validateCompromiseReset(input: CompromiseResetValidationInput): {
   verdict: "accept";
   reset_transition: {
     inventory_id: string;

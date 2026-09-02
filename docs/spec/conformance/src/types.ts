@@ -13,16 +13,28 @@ export type ConformanceCheckDocument = {
   expected_terminal_stage: ExpectedTerminalStage;
 };
 
-export type VectorDocument = {
+type VectorDocumentBase = {
   vector_id: string;
-  vector_schema_version: "2.0.0";
   owner_document: "core" | "assurance" | "comms" | "control" | "social" | "workspace";
+  profile?: string;
   spec_refs: string[];
   direction: "consume" | "produce" | "round-trip";
   input: Record<string, unknown>;
   expected_output: Record<string, unknown>;
   conformance_checks?: ConformanceCheckDocument[];
 };
+
+export type HistoricalVectorDocument = VectorDocumentBase & {
+  vector_schema_version: "2.0.0";
+};
+
+export type CurrentVectorDocument = VectorDocumentBase & {
+  vector_schema_version: "3.0.0";
+  invariants: string[];
+  reason_codes: string[];
+};
+
+export type VectorDocument = HistoricalVectorDocument | CurrentVectorDocument;
 
 export type RegistryDocument = {
   manifest: { revision: number; schema_version: string; entry_set_sha256: string };

@@ -84,15 +84,15 @@ describe("registry-author CLI", () => {
         resolve(copiedGeneratorRoot, "src/current-cli.ts"),
         "registry-author",
         repositoryRoot,
-        "14",
+        "15",
       ],
       { cwd: copiedGeneratorRoot, encoding: "utf8" },
     );
 
     expect(result.status, result.stderr).toBe(0);
-    expect(result.stdout).toMatch(/authored registry revision 14 \([0-9a-f]{64}\)/);
+    expect(result.stdout).toMatch(/authored registry revision 15 \([0-9a-f]{64}\)/);
     const authored = loadRegistry(repositoryRoot);
-    expect(authored.manifest.revision).toBe(14);
+    expect(authored.manifest.revision).toBe(15);
     expect(authored.manifest.entry_set_sha256).toBe(computeRegistryDigest(authored));
   });
 });

@@ -1,0 +1,28 @@
+{
+  "vector_id": "comms/oidc-grant-prohibited",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-oidc-authorization"
+  ],
+  "invariants": [
+    "COMMS-I-CLAIM-RELEASE"
+  ],
+  "reason_codes": [
+    "oidc-grant-prohibited"
+  ],
+  "description": "The live OIDC boundary rejects oidc grant prohibited.",
+  "direction": "consume",
+  "input": {
+    "grant_type": "client_credentials"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "oidc-grant-prohibited",
+    "evaluator_output": {
+      "allowed": false,
+      "state": "invalid",
+      "reason_code": "oidc-grant-prohibited"
+    }
+  }
+}

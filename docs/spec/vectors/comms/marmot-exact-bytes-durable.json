@@ -1,0 +1,23 @@
+{
+  "vector_id": "comms/marmot-exact-bytes-durable",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-marmot-exact-bytes"
+  ],
+  "invariants": [
+    "COMMS-I-MARMOT-EXACT-BYTES"
+  ],
+  "reason_codes": [],
+  "description": "A publisher acknowledges only after exact signed-event and encrypted-media bytes are durable locally and on a configured host.",
+  "direction": "round-trip",
+  "input": {
+    "repository_rid": "rad:z3gqcJUoA1n9HaHKufZs5FCSGazv5",
+    "ref": "refs/xyz.heterodyne.marmot/writers/synthetic-current",
+    "source_kind": "signed-event"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "output": {}
+  }
+}

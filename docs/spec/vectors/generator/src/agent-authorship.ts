@@ -10,6 +10,8 @@ import {
   type NostrUnsignedEvent,
 } from "./nostr.js";
 
+export type { NostrSignedEvent, NostrUnsignedEvent } from "./nostr.js";
+
 export type WorkloadRegistration = {
   persona_key?: string;
   client_id: string;
@@ -163,6 +165,21 @@ export type AgentPublicationResult =
       verdict: "reject";
       reason_code: string;
     };
+
+export function snapshotAndVerifyAgentPublication(
+  value: unknown,
+  expected?: NostrUnsignedEvent,
+): NostrSignedEvent | null {
+  const event = snapshotAndVerifyNostrEvent(value);
+  if (event === null || expected === undefined) return event;
+  return event.pubkey === expected.pubkey
+    && event.created_at === expected.created_at
+    && event.kind === expected.kind
+    && event.content === expected.content
+    && stableJson(event.tags) === stableJson(expected.tags)
+    ? event
+    : null;
+}
 
 const ajv = new Ajv2020({ allErrors: true, strict: false });
 const validateRegistration = ajv.compile<WorkloadRegistration>(
@@ -409,7 +426,7 @@ export function injectAgentAttribution(
   if (association === null) return denied("agent-attribution-invalid");
 
   const preserved = input.tags.filter((tag) => !isReservedAttributionTag(tag));
-  const tags = [
+  const tags = freezeAgentAttributionTags([
     ...preserved,
     ["L", "network.heterodyne.agent"],
     ["l", input.agent_class, "network.heterodyne.agent"],
@@ -418,7 +435,7 @@ export function injectAgentAttribution(
     ...(input.agent_review !== undefined && input.agent_review_verified === true
       ? [["agent_review", input.agent_review]]
       : []),
-  ];
+  ]);
   if (input.tier === 3) {
     return {
       verdict: "accept",
@@ -434,6 +451,10 @@ export function injectAgentAttribution(
     placement: input.tier === 1 ? "public" : "private-repository",
     author: input.signer,
   };
+}
+
+function freezeAgentAttributionTags(tags: string[][]): string[][] {
+  return Object.freeze(tags.map((tag) => Object.freeze([...tag]) as string[])) as string[][];
 }
 
 export function createCommsSocialPublicationAuthority(input: {

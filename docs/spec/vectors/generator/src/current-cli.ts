@@ -19,7 +19,7 @@ if (command === "family-check") {
   }
 } else if (command === "registry-author") {
   const { authorRegistryRevision } = await import("./registry.js");
-  const revision = Number.parseInt(process.argv[4] ?? "14", 10);
+  const revision = Number.parseInt(process.argv[4] ?? "15", 10);
   const digest = authorRegistryRevision(repositoryRoot, revision);
   console.log(`authored registry revision ${revision} (${digest})`);
 } else {

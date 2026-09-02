@@ -37,7 +37,7 @@ const closed = (
 });
 
 const baseProperties = (objectType: string): Record<string, unknown> => ({
-  spec_version: { const: "heterodyne/0.5.0" },
+  spec_version: { const: "heterodyne/0.6.0" },
   object_type: { const: objectType },
   workspace_key: h64,
   policy_head: h64,
@@ -119,6 +119,14 @@ export const WORKSPACE_SCHEMAS: Record<string, Schema> = {
       default_host_ids: { ...identifierArray, minItems: 1 },
       ordinary_write_max_age: { type: "integer", minimum: 0, maximum: 86_400 },
       authority_mutation_max_age: { type: "integer", minimum: 0, maximum: 300 },
+      assurance: closed(
+        ["profile", "inception_event_id", "required_state"],
+        {
+          profile: { const: "heterodyne.workspace.assurance.v1" },
+          inception_event_id: h64,
+          required_state: { const: "verified" },
+        },
+      ),
     },
   ),
   "role-manifest-v1": workspaceSchema(

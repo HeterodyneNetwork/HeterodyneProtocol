@@ -13,7 +13,7 @@ import {
 import { AUX_RAND } from "./vector-helpers.js";
 
 type Binding = {
-  spec_version: "heterodyne/0.5.0";
+  spec_version: "heterodyne/0.6.0";
   did: string;
   did_signing_key_id: string;
   pubkey: string;
@@ -25,7 +25,7 @@ type Binding = {
 };
 
 type Revocation = {
-  spec_version: "heterodyne/0.5.0";
+  spec_version: "heterodyne/0.6.0";
   record_type: "atproto_link_revocation";
   did: string;
   pubkey: string;
@@ -89,7 +89,7 @@ const resolverAuthority = createAtprotoResolverAuthority({
   max_ttl: 600,
 });
 const binding: Binding = {
-  spec_version: "heterodyne/0.5.0",
+  spec_version: "heterodyne/0.6.0",
   did: "did:web:alice.example",
   did_signing_key_id: "did:web:alice.example#atproto",
   pubkey,
@@ -191,6 +191,29 @@ describe("ATProto active-key binding", () => {
       verdict: "accept",
       binding: expected.binding,
       selected_event_id: expected.event.id,
+    });
+  });
+
+  it("quarantines a future binding candidate before selecting current state", async () => {
+    const atproto = await loadAtproto();
+    const premature = {
+      ...binding,
+      established_at: 2_151,
+      nonce: "32".repeat(32),
+    };
+    const prematureEvent = await bindingNostrEvent(
+      premature,
+      secret,
+      premature.established_at,
+    );
+
+    expect(atproto.validateAtprotoBinding?.(bindingInput([
+      bindingEvidence(binding, bindingEvent),
+      bindingEvidence(premature, prematureEvent),
+    ]))).toEqual({
+      verdict: "accept",
+      binding,
+      selected_event_id: bindingEvent.id,
     });
   });
 
@@ -766,7 +789,7 @@ describe("ATProto active-key binding", () => {
 
 function revocationFor(value: Binding, revoked_at: number): Revocation {
   return {
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     record_type: "atproto_link_revocation",
     did: value.did,
     pubkey: value.pubkey,

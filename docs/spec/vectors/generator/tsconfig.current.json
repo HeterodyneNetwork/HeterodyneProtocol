@@ -14,8 +14,7 @@
     "src/author.ts",
     "src/author.test.ts",
     "src/cli.ts",
-    "src/coverage.ts",
-    "src/coverage.test.ts",
+    "src/current-package.test.ts",
     "src/verify.ts",
     "src/verify.test.ts",
     "src/versioning.test.ts"

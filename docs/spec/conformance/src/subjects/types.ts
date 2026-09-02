@@ -72,7 +72,7 @@ export type CoreVerificationContextV1 = {
     };
   version_policy: {
     mode: "required" | "optional" | "forbidden";
-    value: "heterodyne/0.5.0";
+    value: "heterodyne/0.6.0";
   };
   kel_head_policy: { mode: "required" | "optional" | "forbidden" };
   subtype_policy:

@@ -1,0 +1,127 @@
+{
+  "vector_id": "assurance/witness-threshold-fail",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "assurance",
+  "spec_refs": [
+    "heterodyne:assurance#assurance-enrollment-window"
+  ],
+  "invariants": [
+    "ASSURANCE-I-ENROLLMENT-WINDOWED"
+  ],
+  "reason_codes": [
+    "assurance-enrollment-pending-window"
+  ],
+  "description": "Insufficient configured witness weight leaves enrollment pending.",
+  "direction": "consume",
+  "input": {
+    "inception": {
+      "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "created_at": 1785000000,
+      "kind": 31002,
+      "tags": [
+        [
+          "d",
+          "assurance-inception:c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+        ],
+        [
+          "profile",
+          "heterodyne.assurance.enrollment-inception.v1"
+        ],
+        [
+          "p",
+          "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+        ]
+      ],
+      "content": "{\"active_key\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",\"associated_key_policy\":{\"active_key\":[{\"role\":\"agent\",\"scope\":[\"nostr:kind:1\"]}],\"epoch_threshold\":[{\"role\":\"client\",\"scope\":[\"repository:read\"]}]},\"cold_root\":\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",\"created_at\":1785000000,\"epoch_policy\":{\"current_keys\":[\"e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13\"],\"mode\":\"pre-rotation\",\"next_key_commitments\":[\"cd9177582b93ca2144ee27a0ecf19741ebab70464aafe6686843d8c4f08d9c8f\"]},\"predecessor\":null,\"profile\":\"heterodyne.assurance.enrollment-inception.v1\",\"spec_version\":\"heterodyne/0.6.0\",\"succession_authority\":\"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\",\"thresholds\":{\"epoch\":1,\"witness\":2},\"witnesses\":[{\"key\":\"2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4\",\"weight\":1},{\"key\":\"774ae7f858a9411e5ef4246b70c65aac5649980be5c17891bbec17895da008cb\",\"weight\":1}]}",
+      "id": "89c18e506f70e3925dbe9cb0ec821cbf299afffbabe200f49cf927b47180a39f",
+      "sig": "13dc4781cc3bef49db2958531fd4ddbaaf2b795fa4471e6c9eb726f8b8325942e7eef3649c01b6a55620148bbe427ba1538cab5deec6b188303c61e39d6b0ef8"
+    },
+    "acceptance": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1785000001,
+      "kind": 31000,
+      "tags": [
+        [
+          "d",
+          "assurance-head"
+        ],
+        [
+          "profile",
+          "heterodyne.assurance.active-key-acceptance.v1"
+        ]
+      ],
+      "content": "{\"active_key\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",\"assurance_head\":\"89c18e506f70e3925dbe9cb0ec821cbf299afffbabe200f49cf927b47180a39f\",\"cold_root\":\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",\"cold_root_signature\":\"13dc4781cc3bef49db2958531fd4ddbaaf2b795fa4471e6c9eb726f8b8325942e7eef3649c01b6a55620148bbe427ba1538cab5deec6b188303c61e39d6b0ef8\",\"created_at\":1785000001,\"inception_event_id\":\"89c18e506f70e3925dbe9cb0ec821cbf299afffbabe200f49cf927b47180a39f\",\"predecessor\":\"89c18e506f70e3925dbe9cb0ec821cbf299afffbabe200f49cf927b47180a39f\",\"profile\":\"heterodyne.assurance.active-key-acceptance.v1\",\"spec_version\":\"heterodyne/0.6.0\",\"state\":\"assured\"}",
+      "id": "46f07c8885cae4e4c5a3c8566f264d2948248da4e7afebaae601ceb72104f904",
+      "sig": "508c448d80aeda690ce7a59ad0ec285c2db67a5d6efd6a1cccd121e71dee0c96cc09d14ac366f21aa2aee4bcdef8ab7e4ec4f8da5b72e0b584bceb3fae97d3bb"
+    },
+    "authority_id": "current-vector-assurance-observer",
+    "journal_integrity_key": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "witness_policy": {
+      "policy_digest": "cadc7f6ec14e01b06faa8ced604e104c9d619d8e96688f0e9f8a9197b9e92937",
+      "minimum_weight": 2,
+      "witnesses": [
+        [
+          "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+          1
+        ],
+        [
+          "774ae7f858a9411e5ef4246b70c65aac5649980be5c17891bbec17895da008cb",
+          1
+        ]
+      ]
+    },
+    "steps": [
+      {
+        "at": 1785095201,
+        "evidence": {
+          "witness_receipts": [
+            {
+              "profile": "heterodyne.assurance.enrollment-observation-receipt.v1",
+              "spec_version": "heterodyne/0.6.0",
+              "inception_event_id": "89c18e506f70e3925dbe9cb0ec821cbf299afffbabe200f49cf927b47180a39f",
+              "active_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+              "cold_root": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+              "accepted_head": "46f07c8885cae4e4c5a3c8566f264d2948248da4e7afebaae601ceb72104f904",
+              "first_observed_at": 1,
+              "last_observed_at": 1785095201,
+              "conflict_free": true,
+              "witness_key": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+              "signature": "1b153f90934c65ed9621b46bb388eb3ea39450ef1c3fe770527eb3e5fcbac2b8e02e9b6ef9e0350e8f600256c4efc9a8ae8aa37384e9d2943a822c72d3fdffbc"
+            }
+          ],
+          "contests": [],
+          "competing_enrollments": []
+        }
+      },
+      {
+        "at": 1785700000,
+        "evidence": {
+          "witness_receipts": [
+            {
+              "profile": "heterodyne.assurance.enrollment-observation-receipt.v1",
+              "spec_version": "heterodyne/0.6.0",
+              "inception_event_id": "89c18e506f70e3925dbe9cb0ec821cbf299afffbabe200f49cf927b47180a39f",
+              "active_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+              "cold_root": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+              "accepted_head": "46f07c8885cae4e4c5a3c8566f264d2948248da4e7afebaae601ceb72104f904",
+              "first_observed_at": 1,
+              "last_observed_at": 1785095201,
+              "conflict_free": true,
+              "witness_key": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+              "signature": "1b153f90934c65ed9621b46bb388eb3ea39450ef1c3fe770527eb3e5fcbac2b8e02e9b6ef9e0350e8f600256c4efc9a8ae8aa37384e9d2943a822c72d3fdffbc"
+            }
+          ],
+          "contests": [],
+          "competing_enrollments": []
+        }
+      }
+    ]
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "assurance-enrollment-pending-window",
+    "state": "pending",
+    "warnings": [],
+    "assurance_head": "46f07c8885cae4e4c5a3c8566f264d2948248da4e7afebaae601ceb72104f904"
+  }
+}

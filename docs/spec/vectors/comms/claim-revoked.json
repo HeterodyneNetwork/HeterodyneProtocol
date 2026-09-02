@@ -1,0 +1,42 @@
+{
+  "vector_id": "comms/claim-revoked",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-conformance"
+  ],
+  "invariants": [
+    "COMMS-I-CLAIM-REVOCATION"
+  ],
+  "reason_codes": [
+    "claim-revoked"
+  ],
+  "description": "An authenticated direct-issuer revocation irreversibly removes claim authority.",
+  "direction": "consume",
+  "input": {
+    "claim_id": "ad47df49d87e3390ca4653be89a5f4120f8d76c2b6fbc08be4b09c5c8ec09ea0",
+    "revocation_event": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767245630,
+      "kind": 31014,
+      "tags": [
+        [
+          "d",
+          "ad47df49d87e3390ca4653be89a5f4120f8d76c2b6fbc08be4b09c5c8ec09ea0"
+        ]
+      ],
+      "content": "{\"claim_id\":\"ad47df49d87e3390ca4653be89a5f4120f8d76c2b6fbc08be4b09c5c8ec09ea0\",\"profile_revision\":2,\"reason_code\":\"claim-revoked\",\"revoked_at\":1767245630,\"revoker\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"},\"spec_version\":\"heterodyne/0.6.0\"}",
+      "id": "a25843a8566fe54d625c60694c6c71fd0110ef7e88e3bfdaff1558f78e3f930f",
+      "sig": "b26fcc5aae0f99c8ca97e15ed5d8d86f9845456f6aac38d2e363ba4a88e4effc2115cbf2edca7d5de5cfa22c8da969b168b4bb1191e7ef0d107f7e0212488a8a"
+    }
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "claim-revoked",
+    "evaluator_output": {
+      "allowed": false,
+      "state": "revoked",
+      "reason_code": "claim-revoked"
+    }
+  }
+}

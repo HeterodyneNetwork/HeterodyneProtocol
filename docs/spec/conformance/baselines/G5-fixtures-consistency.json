@@ -1,8 +1,8 @@
 {
-  "source_commit": "2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43",
-  "artifact_set_sha256": "61305c2468f8ff68c5b6fab1704d702f971aa756db9935002a8e4436e13ac2a7",
+  "source_commit": "c72f5ccdf855069550511d8e3e837dae55ed299c",
+  "artifact_set_sha256": "eed284ef5e49baef32d30be677125c6a10290597005b0c32dbee329233ac6813",
   "gate": "G5",
   "failures": [
-    "/registry_sha256"
+    "/kel"
   ]
 }

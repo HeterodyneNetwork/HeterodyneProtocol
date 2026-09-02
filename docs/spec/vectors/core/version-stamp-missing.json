@@ -1,0 +1,33 @@
+{
+  "vector_id": "core/version-stamp-missing",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "core",
+  "spec_refs": [
+    "heterodyne:core#core-verification"
+  ],
+  "invariants": [
+    "CORE-I-VERIFY-BEFORE-USE"
+  ],
+  "reason_codes": [
+    "version_stamp_invalid"
+  ],
+  "description": "A current event class requiring a family version stamp rejects an absent stamp.",
+  "direction": "consume",
+  "input": {
+    "event": {
+      "pubkey": "e4d24944ed947bc34ed14ea4b2e063aa27ebd8da658577a263f55a631c7f656a",
+      "created_at": 1800000000,
+      "kind": 1,
+      "tags": [],
+      "content": "unstamped current Core fixture",
+      "id": "fd0ee688e69ca306d6ebb32420a01698aa77071bb62baa1b7d66670a222311eb",
+      "sig": "0adb2c928267a9c93c0304e9286651c900d5eef3a23a67c067d8872e32c7e38ae56772678a1360808608d815096322eb0ac026aa0a0380874d9fb8823f2b546e"
+    },
+    "nip01_raw": "[0,\"e4d24944ed947bc34ed14ea4b2e063aa27ebd8da658577a263f55a631c7f656a\",1800000000,1,[],\"unstamped current Core fixture\"]",
+    "stamp_policy": "required"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "version_stamp_invalid"
+  }
+}

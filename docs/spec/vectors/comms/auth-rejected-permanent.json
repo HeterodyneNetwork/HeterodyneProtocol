@@ -1,0 +1,25 @@
+{
+  "vector_id": "comms/auth-rejected-permanent",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-publishing"
+  ],
+  "invariants": [
+    "COMMS-I-MARMOT-UPSTREAM-AUTHORITY"
+  ],
+  "reason_codes": [
+    "auth_rejected_permanent"
+  ],
+  "description": "The current Comms policy boundary rejects auth rejected permanent.",
+  "direction": "consume",
+  "input": {
+    "authenticated": true,
+    "response_prefix": "auth-required:"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "permanence": "permanent",
+    "reason_code": "auth_rejected_permanent"
+  }
+}

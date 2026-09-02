@@ -1,0 +1,27 @@
+{
+  "vector_id": "comms/tier3-client-side-encryption",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-tier-three-profile"
+  ],
+  "invariants": [
+    "COMMS-I-CLIENT-SIDE-DELIVERY",
+    "COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY",
+    "COMMS-I-TIER3-BLIND-CARRIER"
+  ],
+  "reason_codes": [],
+  "description": "A Tier-3 audience object is encrypted and recovered locally from an audience-derived key without a delivery-directory lookup.",
+  "direction": "round-trip",
+  "input": {
+    "audience_key": "4040404040404040404040404040404040404040404040404040404040404040",
+    "key_id": "current-tier3-key",
+    "plaintext": "{\"audience\":\"opaque\",\"payload\":\"protected\"}"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "derived_key": "e63111b42ae50e38ce0db2171f326ded709cd204e3c7c280ed4847aeacd7ecfa",
+    "ciphertext": "AmFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhUW4KWs60x4wLQEtvD2/BQiMrgZ8WNw5aDr9fYR+74LEmG4P8Ra1QTzQ4Rvt3QUvGOYZaYLrH1JOXgv7dhSNjlPhGgtAzTqR4N/0qh4nqBQ8VbS2osPG5L9QLq6hIlCoygZk=",
+    "recovered_plaintext": "{\"audience\":\"opaque\",\"payload\":\"protected\"}"
+  }
+}

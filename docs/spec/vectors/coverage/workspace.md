@@ -2,44 +2,32 @@
 
 Generated from [manifest.json](manifest.json); do not edit by hand.
 
-| Vector | Owner | Profile | Spec references |
-|---|---|---|---|
-| `workspace-device/independent-leaf-removal` | workspace | — | `heterodyne:workspace#workspace-role-control` |
-| `workspace-device/persona-removes-all-leaves` | workspace | — | `heterodyne:workspace#workspace-role-control` |
-| `workspace-events/exact-bytes` | workspace | — | `heterodyne:workspace#workspace-role-repositories` |
-| `workspace-events/mls-epoch-rotation` | workspace | — | `heterodyne:workspace#workspace-role-repositories` |
-| `workspace-events/mutated-bytes-rejected` | workspace | — | `heterodyne:workspace#workspace-role-repositories` |
-| `workspace-events/nostr-radicle-equivalent` | workspace | — | `heterodyne:workspace#workspace-role-repositories` |
-| `workspace-events/size-rotation` | workspace | — | `heterodyne:workspace#workspace-role-repositories` |
-| `workspace-freshness/authority-boundary` | workspace | — | `heterodyne:workspace#workspace-freshness` |
-| `workspace-freshness/authority-stale` | workspace | — | `heterodyne:workspace#workspace-freshness` |
-| `workspace-freshness/ordinary-boundary` | workspace | — | `heterodyne:workspace#workspace-freshness` |
-| `workspace-freshness/ordinary-stale` | workspace | — | `heterodyne:workspace#workspace-freshness` |
-| `workspace-grant/admin-no-governance` | workspace | — | `heterodyne:workspace#workspace-grants` |
-| `workspace-grant/invite-replay-rejected` | workspace | — | `heterodyne:workspace#workspace-grants` |
-| `workspace-grant/multi-approval-insufficient` | workspace | — | `heterodyne:workspace#workspace-grants` |
-| `workspace-grant/single-actor-active` | workspace | — | `heterodyne:workspace#workspace-grants` |
-| `workspace-host/inherited-failover` | workspace | — | `heterodyne:workspace#workspace-advertisements` |
-| `workspace-host/no-backstop-rejected` | workspace | — | `heterodyne:workspace#workspace-advertisements` |
-| `workspace-host/replace-retains-backstop` | workspace | — | `heterodyne:workspace#workspace-advertisements` |
-| `workspace-joint/host-not-authority` | workspace | — | `heterodyne:workspace#workspace-relationships` |
-| `workspace-joint/threshold-valid` | workspace | — | `heterodyne:workspace#workspace-relationships` |
-| `workspace-key/from-admission-denied` | workspace | — | `heterodyne:workspace#workspace-key-delivery` |
-| `workspace-key/full-history` | workspace | — | `heterodyne:workspace#workspace-key-delivery` |
-| `workspace-key/keypackage-readmission` | workspace | — | `heterodyne:workspace#workspace-key-delivery` |
-| `workspace-key/revoked-device` | workspace | — | `heterodyne:workspace#workspace-key-delivery` |
-| `workspace-key/selected-snapshot` | workspace | — | `heterodyne:workspace#workspace-key-delivery` |
-| `workspace-key/unauthorized-host` | workspace | — | `heterodyne:workspace#workspace-key-delivery` |
-| `workspace-object/canonical-valid` | workspace | — | `heterodyne:workspace#workspace-object-types` |
-| `workspace-object/signature-invalid` | workspace | — | `heterodyne:workspace#workspace-object-types` |
-| `workspace-object/unknown-member-rejected` | workspace | — | `heterodyne:workspace#workspace-object-types` |
-| `workspace-policy/conflict-rejected` | workspace | — | `heterodyne:workspace#workspace-role-policy` |
-| `workspace-policy/denial-wins` | workspace | — | `heterodyne:workspace#workspace-role-policy` |
-| `workspace-policy/escalation-rejected` | workspace | — | `heterodyne:workspace#workspace-role-policy` |
-| `workspace-policy/intersection-valid` | workspace | — | `heterodyne:workspace#workspace-role-policy` |
-| `workspace-privacy/concealed-correlation-rejected` | workspace | — | `heterodyne:workspace#workspace-privacy` |
-| `workspace-privacy/public-clean` | workspace | — | `heterodyne:workspace#workspace-privacy` |
-| `workspace-relationship/bilateral-valid` | workspace | — | `heterodyne:workspace#workspace-relationships` |
-| `workspace-relationship/grace-boundary` | workspace | — | `heterodyne:workspace#workspace-relationships` |
-| `workspace-relationship/mismatched-signatures` | workspace | — | `heterodyne:workspace#workspace-relationships` |
-| `workspace-relationship/stale-rejected` | workspace | — | `heterodyne:workspace#workspace-relationships` |
+| Vector | Owner | Profile | Invariants | Reason codes | Spec references |
+|---|---|---|---|---|---|
+| `workspace/affiliation-stale` | workspace | — | `WORKSPACE-I-FRESHNESS-BOUNDED` | `affiliation_stale` | `heterodyne:workspace#workspace-relationships` |
+| `workspace/assurance-dual-removal` | workspace | — | `WORKSPACE-I-OPTIONAL-ASSURANCE` | — | `heterodyne:workspace#workspace-optional-assurance` |
+| `workspace/assurance-history-mutation-revalidated` | workspace | — | `WORKSPACE-I-OPTIONAL-ASSURANCE` | `workspace-assurance-state-required` | `heterodyne:workspace#workspace-optional-assurance` |
+| `workspace/assurance-pending-activation` | workspace | — | `WORKSPACE-I-OPTIONAL-ASSURANCE` | `workspace-assurance-state-required` | `heterodyne:workspace#workspace-optional-assurance` |
+| `workspace/assurance-unilateral-removal` | workspace | — | `WORKSPACE-I-OPTIONAL-ASSURANCE` | `workspace-assurance-state-required` | `heterodyne:workspace#workspace-optional-assurance` |
+| `workspace/assurance-verified-activation` | workspace | — | `WORKSPACE-I-OPTIONAL-ASSURANCE` | — | `heterodyne:workspace#workspace-optional-assurance` |
+| `workspace/authority-checkpoint-stale` | workspace | — | `WORKSPACE-I-AUTHENTICATED-CURRENT-STATE`<br>`WORKSPACE-I-FRESHNESS-BOUNDED` | `checkpoint_stale` | `heterodyne:workspace#workspace-freshness` |
+| `workspace/authority-conflict` | workspace | — | `WORKSPACE-I-AUTHENTICATED-CURRENT-STATE` | `authority_conflict` | `heterodyne:workspace#workspace-role-repositories` |
+| `workspace/authority-freshness-boundary` | workspace | — | `WORKSPACE-I-FRESHNESS-BOUNDED` | — | `heterodyne:workspace#workspace-freshness` |
+| `workspace/bare-key-baseline` | workspace | — | `WORKSPACE-I-OPTIONAL-ASSURANCE` | — | `heterodyne:workspace#workspace-optional-assurance` |
+| `workspace/carrier-not-ambient-authority` | workspace | — | `WORKSPACE-I-CARRIER-NOT-AUTHORITY`<br>`WORKSPACE-I-NO-AMBIENT-AUTHORITY` | `policy_denied` | `heterodyne:workspace#workspace-security` |
+| `workspace/current-capability-intersection` | workspace | — | `WORKSPACE-I-AUTHENTICATED-CURRENT-STATE`<br>`WORKSPACE-I-INHERITANCE-NARROWS`<br>`WORKSPACE-I-NO-AMBIENT-AUTHORITY` | — | `heterodyne:workspace#workspace-role-policy` |
+| `workspace/device-revoked` | workspace | — | `WORKSPACE-I-DEVICE-LEAF-SEPARATION` | `device_revoked` | `heterodyne:workspace#workspace-role-control` |
+| `workspace/history-denied` | workspace | — | `WORKSPACE-I-REVOCATION-FUTURE-ONLY` | `history_denied` | `heterodyne:workspace#workspace-key-delivery` |
+| `workspace/host-unauthorized` | workspace | — | `WORKSPACE-I-HOST-AUTHORITY-SEPARATION` | `host_unauthorized` | `heterodyne:workspace#workspace-key-delivery` |
+| `workspace/independent-device-leaf-removal` | workspace | — | `WORKSPACE-I-DEVICE-LEAF-SEPARATION`<br>`WORKSPACE-I-REVOCATION-FUTURE-ONLY` | — | `heterodyne:workspace#workspace-role-control` |
+| `workspace/independent-resource-content-keys` | workspace | — | `WORKSPACE-I-INDEPENDENT-RESOURCE-KEYS` | — | `heterodyne:workspace#workspace-key-delivery` |
+| `workspace/inheritance-escalation-rejected` | workspace | — | `WORKSPACE-I-INHERITANCE-NARROWS` | `capability_escalation` | `heterodyne:workspace#workspace-role-policy` |
+| `workspace/invitation-replay` | workspace | — | `WORKSPACE-I-NO-AMBIENT-AUTHORITY` | `workspace_replay` | `heterodyne:workspace#workspace-grants` |
+| `workspace/private-topology-clean` | workspace | — | `WORKSPACE-I-PRIVATE-TOPOLOGY` | — | `heterodyne:workspace#workspace-privacy` |
+| `workspace/private-topology-disclosed` | workspace | — | `WORKSPACE-I-PRIVATE-TOPOLOGY` | `private_topology_disclosed` | `heterodyne:workspace#workspace-privacy` |
+| `workspace/radicle-backed-hosts` | workspace | — | `WORKSPACE-I-HOST-AUTHORITY-SEPARATION`<br>`WORKSPACE-I-RADICLE-BACKSTOP` | — | `heterodyne:workspace#workspace-advertisements` |
+| `workspace/repository-invalid` | workspace | — | `WORKSPACE-I-AUTHENTICATED-CURRENT-STATE` | `workspace_repository_invalid` | `heterodyne:workspace#workspace-role-repositories` |
+| `workspace/resource-unknown` | workspace | — | `WORKSPACE-I-INDEPENDENT-RESOURCE-KEYS` | `resource_unknown` | `heterodyne:workspace#workspace-key-delivery` |
+| `workspace/revocation-blocks-future-effect` | workspace | — | `WORKSPACE-I-REVOCATION-FUTURE-ONLY` | `policy_denied` | `heterodyne:workspace#workspace-grants` |
+| `workspace/schema-invalid` | workspace | — | `WORKSPACE-I-AUTHENTICATED-CURRENT-STATE` | `workspace_schema_invalid` | `heterodyne:workspace#workspace-object-types` |
+| `workspace/signature-invalid` | workspace | — | `WORKSPACE-I-AUTHENTICATED-CURRENT-STATE` | `workspace_signature_invalid` | `heterodyne:workspace#workspace-object-types` |

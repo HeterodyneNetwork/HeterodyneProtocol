@@ -1,0 +1,27 @@
+{
+  "vector_id": "assurance/compromise-subordinate-continuation-forbidden",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "assurance",
+  "spec_refs": [
+    "heterodyne:assurance#assurance-compromise"
+  ],
+  "invariants": [
+    "ASSURANCE-I-COMPROMISE-CUTOFF",
+    "ASSURANCE-I-NO-IMPLICIT-CONTINUATION"
+  ],
+  "reason_codes": [
+    "assurance-subordinate-continuation-forbidden"
+  ],
+  "description": "A compromise recovery transition cannot carry an existing subordinate authorization forward.",
+  "direction": "consume",
+  "input": {
+    "transition_class": "compromise",
+    "subordinate_reauthorization_ids": [
+      "acd484e2f0c7f65309ad178a9f559abde09796974c57e714c35f110dfc27ccbe"
+    ]
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "assurance-subordinate-continuation-forbidden"
+  }
+}

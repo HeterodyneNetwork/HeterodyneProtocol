@@ -1,0 +1,23 @@
+{
+  "vector_id": "comms/invite-authentication-invalid",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-one-time-invites"
+  ],
+  "invariants": [
+    "COMMS-I-MARMOT-UPSTREAM-AUTHORITY"
+  ],
+  "reason_codes": [
+    "invite-authentication-invalid"
+  ],
+  "description": "The current Comms policy boundary rejects invite authentication invalid.",
+  "direction": "consume",
+  "input": {
+    "evidence": "exact signed invite response proof rejects before reservation"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "invite-authentication-invalid"
+  }
+}

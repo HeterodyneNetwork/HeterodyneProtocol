@@ -1,0 +1,39 @@
+{
+  "vector_id": "comms/marmot-routing-binding-valid",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-marmot-routing-generation"
+  ],
+  "invariants": [
+    "COMMS-I-RADICLE-ROUTING-AUTHORITY"
+  ],
+  "reason_codes": [],
+  "description": "One canonical active-account administrator commit binds the same routing generation, private RID, repository genesis, and authorized writer ref.",
+  "direction": "consume",
+  "input": {
+    "active_administrator": "1111111111111111111111111111111111111111111111111111111111111111",
+    "commit_author": "1111111111111111111111111111111111111111111111111111111111111111",
+    "canonical_h": "routing-generation-current",
+    "binding_h": "routing-generation-current",
+    "canonical_rid": "rad:zCurrentMarmotRoute",
+    "binding_rid": "rad:zCurrentMarmotRoute",
+    "canonical_genesis_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+    "binding_genesis_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+    "binding_digests": [
+      "3333333333333333333333333333333333333333333333333333333333333333"
+    ],
+    "requested_writer_ref": "refs/xyz.heterodyne.marmot/writers/current",
+    "authorized_writer_refs": [
+      "refs/xyz.heterodyne.marmot/writers/current"
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "h": "routing-generation-current",
+      "private_rid": "rad:zCurrentMarmotRoute",
+      "writer_ref": "refs/xyz.heterodyne.marmot/writers/current"
+    }
+  }
+}

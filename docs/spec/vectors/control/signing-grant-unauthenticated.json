@@ -1,0 +1,55 @@
+{
+  "vector_id": "control/signing-grant-unauthenticated",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "control",
+  "spec_refs": [
+    "heterodyne:control#control-signer-grants"
+  ],
+  "invariants": [
+    "CONTROL-I-EXACT-SIGNER-GRANT"
+  ],
+  "reason_codes": [
+    "control-signing-grant-unauthenticated"
+  ],
+  "description": "The live Control authorization boundary rejects signing grant unauthenticated.",
+  "direction": "consume",
+  "input": {
+    "grant": {
+      "profile": "heterodyne.control.signer-grant.v1",
+      "spec_version": "heterodyne/0.6.0",
+      "grant_id": "7777777777777777777777777777777777777777777777777777777777777777",
+      "vault_id": "6666666666666666666666666666666666666666666666666666666666666666",
+      "persona_active_key": "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f",
+      "nip46_client_pubkey": "3333333333333333333333333333333333333333333333333333333333333333",
+      "signer_audience": "https://node.example/nip46/current-persona",
+      "selected_signing_pubkey": "462779ad4aad39514614751a71085f2f10e1c7a593e4e030efb5b8721ce55b0b",
+      "key_class": "agent",
+      "persona_signing_authorized": false,
+      "allowed_methods": [
+        "sign_event"
+      ],
+      "allowed_event_kinds": [
+        1
+      ],
+      "limits": {
+        "request_window_seconds": 60,
+        "request_count": 20,
+        "max_event_bytes": 4096,
+        "max_value_msats": 0
+      },
+      "oidc_authorization_id": "8888888888888888888888888888888888888888888888888888888888888888",
+      "connection_secret_sha256": "8c0cc17a04942cc4f8e0fe0b302606d3108860c126428ba2ceeb5f9ed41c2b05",
+      "issued_at": 100,
+      "expires_at": 200,
+      "predecessor": null,
+      "state": "active",
+      "revoked_at": null,
+      "authorizing_pubkey": "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f",
+      "signature": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "control-signing-grant-unauthenticated"
+  }
+}

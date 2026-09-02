@@ -1,0 +1,34 @@
+{
+  "vector_id": "workspace/history-denied",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "workspace",
+  "spec_refs": [
+    "heterodyne:workspace#workspace-key-delivery"
+  ],
+  "invariants": [
+    "WORKSPACE-I-REVOCATION-FUTURE-ONLY"
+  ],
+  "reason_codes": [
+    "history_denied"
+  ],
+  "description": "The current Workspace semantic boundary rejects history denied.",
+  "direction": "consume",
+  "input": {
+    "resource_id": "resource-a",
+    "known_resource_ids": [
+      "resource-a"
+    ],
+    "custody_host_id": "host-a",
+    "authorized_custody_host_ids": [
+      "host-a"
+    ],
+    "requested_epoch": 2,
+    "current_epoch": 4,
+    "admission_epoch": 3,
+    "history_mode": "from-admission"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "history_denied"
+  }
+}

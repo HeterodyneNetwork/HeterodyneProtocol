@@ -1,0 +1,23 @@
+{
+  "vector_id": "control/frame-invalid",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "control",
+  "spec_refs": [
+    "heterodyne:control#control-frame"
+  ],
+  "invariants": [
+    "CONTROL-I-MARMOT-GRANT-CONFINEMENT"
+  ],
+  "reason_codes": [
+    "control-frame-invalid"
+  ],
+  "description": "The current Control policy boundary rejects frame invalid.",
+  "direction": "consume",
+  "input": {
+    "evidence": "captured signed Control frame fails current profile validation"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "control-frame-invalid"
+  }
+}

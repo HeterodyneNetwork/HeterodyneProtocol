@@ -1,0 +1,26 @@
+{
+  "vector_id": "comms/claim-key-reference-invalid",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-conformance"
+  ],
+  "invariants": [
+    "COMMS-I-CLAIM-AUTHENTICITY"
+  ],
+  "reason_codes": [
+    "claim-key-reference-invalid"
+  ],
+  "description": "A claim key reference must be a registered type with its exact canonical encoding.",
+  "direction": "consume",
+  "input": {
+    "key_reference": {
+      "type": "nostr-secp256k1",
+      "value": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "claim-key-reference-invalid"
+  }
+}

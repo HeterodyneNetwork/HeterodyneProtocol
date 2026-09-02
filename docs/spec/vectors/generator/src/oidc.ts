@@ -1,6 +1,23 @@
 import { createHash, createHmac, createPrivateKey, createPublicKey, sign, verify, type JsonWebKey } from "node:crypto";
+import { types as utilTypes } from "node:util";
 import { nip19 } from "nostr-tools";
-import type { AuthorizationDecision, ClaimVerificationContext, JsonValue } from "./claims.js";
+import {
+  claimArtifactBindingDigest,
+  claimRevocationArtifactBindingDigest,
+  inspectVerifiedClaim,
+  type AuthorizationDecision,
+  type ClaimVerificationContext,
+  type JsonValue,
+} from "./claims.js";
+import {
+  authorizeClaimEffect,
+  revalidateAcceptedClaimEffect,
+  type ClaimAuthorizationAuthority,
+  type ClaimEffectAuthorizationResult,
+  type ClaimEffectOutcome,
+  type CurrentClaimEffectBindingView,
+} from "./claim-authorization.js";
+import { captureExactDataObject, snapshotClosedDataTree } from "./closed-data.js";
 import { jcsCanonicalize } from "./jcs.js";
 import {
   activeCanonicalClaimSemanticsAt,
@@ -57,7 +74,7 @@ export type StatusMirror = {
   sha256: string;
 };
 
-export type JwtProjectionInput = {
+export type JwtProjectionRequest = {
   issuer: string;
   client_id: string;
   audience: string[];
@@ -67,12 +84,16 @@ export type JwtProjectionInput = {
   expires_at: number;
   issuance_record_id: string;
   state: LedgerMergeResult;
-  authorization_request: OidcAuthorizationRequest;
   issuer_envelope: IssuerKeyEnvelope;
   issuer_audience_key: Uint8Array;
   issuer_writer_nid: string;
   identity: PersonaIdentityState;
   status_mirror: StatusMirror;
+};
+
+export type JwtProjectionInput = {
+  authorization_authority: ClaimAuthorizationAuthority;
+  authorization: OidcAuthorizedRelease;
 };
 
 export type ProjectedJwt = {
@@ -120,6 +141,84 @@ export type OidcAuthorizationDecision = AuthorizationDecision & {
   cnf?: Record<string, JsonValue>;
   sender_constraint?: "none" | "dpop" | "mtls";
 };
+
+declare const oidcAuthorizedReleaseBrand: unique symbol;
+
+export type OidcAuthorizationPurpose =
+  | "authorization_code"
+  | "device_authorization"
+  | "jwt_projection";
+
+export type OidcProjectionSubtype = "id_token" | "access_token" | "jwt_assertion";
+
+export type OidcAuthorizedRelease = Readonly<{
+  readonly [oidcAuthorizedReleaseBrand]: true;
+}>;
+
+type AuthorizedReleaseRecord = {
+  authority: ClaimAuthorizationAuthority;
+  effect_result: ClaimEffectAuthorizationResult<unknown>;
+  purpose: OidcAuthorizationPurpose;
+  projection_subtype: OidcProjectionSubtype | null;
+  assertion_profile: string | null;
+  idempotency_key: string;
+  authorized_at: number;
+  expires_at: number;
+  view_fingerprint: string;
+  consumed: boolean;
+  request: OidcAuthorizationRequest;
+  release: CompleteOidcAuthorizationRelease;
+  projection_output: ProjectedJwt | null;
+};
+
+type CompleteOidcAuthorizationRelease = OidcAuthorizationDecision & Required<Pick<
+  OidcAuthorizationDecision,
+  | "pairwise_sub"
+  | "scopes"
+  | "audience"
+  | "released_claims"
+  | "source_claim_ids"
+  | "checkpoint"
+  | "request_digest"
+  | "release_digest"
+>>;
+
+type CapturedAuthorizationEffectInput<T> = Readonly<{
+  request: OidcAuthorizationRequest;
+  idempotency_key: string;
+  purpose: OidcAuthorizationPurpose;
+  projection_subtype: OidcProjectionSubtype | null;
+  assertion_profile: string | null;
+  projection_request: JwtProjectionRequest | null;
+  authorization_validity_seconds: number;
+  effect(
+    release: OidcAuthorizationDecision,
+    executionToken: string,
+  ): ClaimEffectOutcome<T> | Promise<ClaimEffectOutcome<T>>;
+}>;
+
+type OidcAuthorizationSession = {
+  exact_input_digest: string;
+  authorized_at?: number;
+  expires_at?: number;
+  view_fingerprint?: string;
+  projection_output?: ProjectedJwt;
+};
+
+const AUTHORIZED_RELEASES = new WeakMap<object, AuthorizedReleaseRecord>();
+const ISSUED_GRANTS = new WeakMap<object, Map<string, unknown>>();
+const AUTHORIZATION_SESSIONS = new WeakMap<object, Map<string, OidcAuthorizationSession>>();
+
+export type OidcAuthorizationEffectResult<T> =
+  | (Extract<ClaimEffectAuthorizationResult<T>, { verdict: "accept" }> & Readonly<{
+      authorization: OidcAuthorizedRelease;
+    }>)
+  | Exclude<ClaimEffectAuthorizationResult<T>, { verdict: "accept" }>;
+
+type OidcDurableEffectResult<T> = Readonly<{
+  effect_result: T;
+  projection_output: ProjectedJwt | null;
+}>;
 
 export type OidcClaimEvidence = {
   claim_record_id: string;
@@ -171,12 +270,18 @@ export type DeviceAuthorizationRecord = CredentialLedgerBinding & {
 };
 
 export function issueAuthorizationCode(
-  request: OidcAuthorizationRequest,
-  now: number,
+  authority: ClaimAuthorizationAuthority,
+  authorization: OidcAuthorizedRelease,
   lifetimeSeconds = 300,
 ): AuthorizationCodeRecord {
-  const decision = validateAuthorizationRequest(request);
-  if (!decision.allowed || decision.release_digest === undefined || request.flow !== "authorization_code" ||
+  const { retained } = consumeAuthorizedRelease(
+    authority,
+    authorization,
+    "authorization_code",
+  );
+  const now = retained.authorized_at;
+  const { request, release: decision } = retained;
+  if (decision.release_digest === undefined || request.flow !== "authorization_code" ||
       request.redirect_uri === undefined || !canonicalPkceValue(request.code_challenge) ||
       !Number.isSafeInteger(now) || !Number.isSafeInteger(lifetimeSeconds) || lifetimeSeconds < 1 || lifetimeSeconds > 600) {
     throw new Error("oidc-grant-prohibited: authorization code prerequisites failed");
@@ -185,7 +290,10 @@ export function issueAuthorizationCode(
     client_id: request.client_id, redirect_uri: request.redirect_uri,
     code_challenge: request.code_challenge, issued_at: now, expires_at: now + lifetimeSeconds,
     release_digest: decision.release_digest };
-  return { code: createHash("sha256").update(`heterodyne-authorization-code-v1\0${jcsCanonicalize(core)}`).digest("base64url"), ...core };
+  return issuedGrant(retained, "authorization-code", jsonDigest(core), () => ({
+    code: createHash("sha256").update(`heterodyne-authorization-code-v1\0${jcsCanonicalize(core)}`).digest("base64url"),
+    ...core,
+  }));
 }
 
 export function redeemAuthorizationCode(
@@ -220,21 +328,32 @@ export function redeemAuthorizationCode(
 }
 
 export function issueDeviceAuthorization(
-  request: OidcAuthorizationRequest,
-  now: number,
+  authority: ClaimAuthorizationAuthority,
+  authorization: OidcAuthorizedRelease,
   lifetimeSeconds = 600,
   interval = 5,
 ): DeviceAuthorizationRecord {
-  const decision = validateAuthorizationRequest(request);
-  if (!decision.allowed || decision.release_digest === undefined || request.flow !== "device_authorization" ||
+  const { retained } = consumeAuthorizedRelease(
+    authority,
+    authorization,
+    "device_authorization",
+  );
+  const now = retained.authorized_at;
+  const { request, release: decision } = retained;
+  if (decision.release_digest === undefined || request.flow !== "device_authorization" ||
       !Number.isSafeInteger(now) || !Number.isSafeInteger(lifetimeSeconds) || lifetimeSeconds < 1 ||
       !Number.isSafeInteger(interval) || interval < 1) throw new Error("oidc-grant-prohibited: device authorization prerequisites failed");
   const core = { ...request.state.credential_ledger,
     client_id: request.client_id, scopes: uniqueSorted(decision.scopes ?? []), issued_at: now,
     expires_at: now + lifetimeSeconds, interval, release_digest: decision.release_digest };
   const digest = createHash("sha256").update(`heterodyne-device-code-v1\0${jcsCanonicalize(core)}`).digest();
-  return { device_code: digest.toString("base64url"), user_code: digest.subarray(0, 5).toString("hex").toUpperCase(),
-    ...core, last_poll_at: null, status: "pending" };
+  return issuedGrant(retained, "device-authorization", jsonDigest(core), () => ({
+    device_code: digest.toString("base64url"),
+    user_code: digest.subarray(0, 5).toString("hex").toUpperCase(),
+    ...core,
+    last_poll_at: null,
+    status: "pending" as const,
+  }));
 }
 
 export function decideDeviceAuthorization(
@@ -480,7 +599,8 @@ export function validateAuthorizationRequest(input: OidcAuthorizationRequest): O
       state: input.state, claim_record_id: input.consent.claim_record_id,
       verification_context: input.consent.verification_context,
     });
-    if (!registrationReplay.decision.allowed || !consentReplay.decision.allowed ||
+    if (registrationReplay.decision.state !== "active" ||
+        consentReplay.decision.state !== "active" ||
         registrationReplay.semantic.namespace !== "heterodyne.oidc" ||
         registrationReplay.semantic.name !== "client-registration" ||
         consentReplay.semantic.namespace !== "heterodyne.oidc" || consentReplay.semantic.name !== "consent" ||
@@ -549,7 +669,7 @@ export function validateAuthorizationRequest(input: OidcAuthorizationRequest): O
         verification_context: evidence.verification_context,
       });
       const semantic = replay.semantic;
-      if (!replay.decision.allowed || semantic.visibility !== "repository-private" ||
+      if (replay.decision.state !== "active" || semantic.visibility !== "repository-private" ||
           jcsCanonicalize(semantic.subject) !== jcsCanonicalize(registrationReplay.semantic.subject) ||
           evidence.verification_context.audience !== registrationReplay.record.persona ||
           evidence.verification_context.requested_namespace !== semantic.namespace ||
@@ -586,19 +706,277 @@ export function validateAuthorizationRequest(input: OidcAuthorizationRequest): O
   }
 }
 
+export async function authorizeAuthorizationRequestEffect<T>(
+  authority: ClaimAuthorizationAuthority,
+  input: Readonly<{
+    request: OidcAuthorizationRequest;
+    idempotency_key: string;
+    purpose: OidcAuthorizationPurpose;
+    projection_subtype: OidcProjectionSubtype | null;
+    assertion_profile: string | null;
+    projection_request: JwtProjectionRequest | null;
+    authorization_validity_seconds: number;
+    effect(
+      release: OidcAuthorizationDecision,
+      executionToken: string,
+    ): ClaimEffectOutcome<T> | Promise<ClaimEffectOutcome<T>>;
+  }>,
+): Promise<OidcAuthorizationEffectResult<T>> {
+  let captured: CapturedAuthorizationEffectInput<T>;
+  try {
+    captured = captureAuthorizationEffectInput(input);
+  } catch {
+    return Object.freeze({
+      verdict: "reject" as const,
+      allowed: false as const,
+      state: "invalid" as const,
+      reason_code: "oidc-claim-release-denied",
+    });
+  }
+  const preparedRelease = validateAuthorizationRequest(captured.request);
+  if (!completeAuthorizedRelease(preparedRelease) ||
+      !purposeMatchesRequest(captured.purpose, captured.request)) return Object.freeze({
+    verdict: "reject" as const,
+    allowed: false as const,
+    state: "invalid" as const,
+    reason_code: preparedRelease.reason_code ?? "oidc-claim-release-denied",
+  });
+  let session: OidcAuthorizationSession;
+  try {
+    session = authorizationSession(authority, captured, preparedRelease);
+  } catch {
+    return Object.freeze({
+      verdict: "reject" as const,
+      allowed: false as const,
+      state: "invalid" as const,
+      reason_code: "oidc-claim-release-denied",
+    });
+  }
+  let consent: ReturnType<typeof replayConfirmedClaimForAuthorization>;
+  try {
+    consent = replayConfirmedClaimForAuthorization({
+      state: captured.request.state,
+      claim_record_id: captured.request.consent.claim_record_id,
+      verification_context: captured.request.consent.verification_context,
+    });
+  } catch {
+    return Object.freeze({
+      verdict: "reject" as const,
+      allowed: false as const,
+      state: "invalid" as const,
+      reason_code: "oidc-claim-release-denied",
+    });
+  }
+  if (consent.decision.state !== "active") {
+    return Object.freeze({
+      verdict: "reject" as const,
+      allowed: false as const,
+      state: consent.decision.state,
+      reason_code: consent.decision.reason_code ?? "oidc-claim-release-denied",
+    });
+  }
+  const verification = captured.request.consent.verification_context;
+  let effectTime: AuthorizedReleaseRecord | undefined;
+  const result = await authorizeClaimEffect<OidcDurableEffectResult<T>>(authority, {
+    leaf: consent.verified_claim,
+    chain: consent.chain,
+    audience: verification.audience,
+    resource: verification.resource,
+    requested_namespace: verification.requested_namespace,
+    operation: verification.requested_operation,
+    nonce: verification.expected_nonce,
+    subject_proof: verification.subject_proof,
+    idempotency_key: captured.idempotency_key,
+    effect_digest: jsonDigest({
+      domain: "heterodyne-oidc-durable-release-effect-v1",
+      request_digest: preparedRelease.request_digest,
+      release_digest: preparedRelease.release_digest,
+      purpose: captured.purpose,
+      projection_subtype: captured.projection_subtype,
+      assertion_profile: captured.assertion_profile,
+      projection_request_digest: projectionRequestBindingDigest(captured.projection_request),
+      complete_projection_input_digest: completeProjectionInputDigest(
+        captured.projection_request,
+        preparedRelease,
+        captured.projection_subtype,
+        captured.assertion_profile,
+      ),
+      authorization_validity_seconds: captured.authorization_validity_seconds,
+    }),
+    current_effect_binding: (view) => {
+      const currentRequest = authorizationRequestAtView(captured.request, view);
+      const release = validateAuthorizationRequest(currentRequest);
+      if (!completeAuthorizedRelease(release) || !releaseSourcesAreCurrent(release, view)) {
+        throw new Error("oidc-claim-release-denied: current release evidence is incomplete");
+      }
+      const currentFingerprint = oidcCurrentViewFingerprint(view);
+      if (session.authorized_at === undefined) {
+        session.authorized_at = view.trusted_now;
+        session.expires_at = view.trusted_now + captured.authorization_validity_seconds;
+        session.view_fingerprint = currentFingerprint;
+      }
+      if (session.authorized_at === undefined || session.expires_at === undefined ||
+          session.view_fingerprint === undefined ||
+          view.trusted_now < session.authorized_at || view.trusted_now >= session.expires_at ||
+          currentFingerprint !== session.view_fingerprint) {
+        throw new Error("oidc-claim-release-denied: durable authorization is stale");
+      }
+      effectTime = {
+        authority,
+        effect_result: undefined as never,
+        purpose: captured.purpose,
+        projection_subtype: captured.projection_subtype,
+        assertion_profile: captured.assertion_profile,
+        idempotency_key: captured.idempotency_key,
+        authorized_at: session.authorized_at,
+        expires_at: session.expires_at,
+        view_fingerprint: session.view_fingerprint,
+        consumed: false,
+        request: currentRequest,
+        release: snapshotClosedDataTree(release, "OIDC effect-time release"),
+        projection_output: null,
+      };
+      return Object.freeze({
+        request_digest: release.request_digest,
+        release_digest: release.release_digest,
+        purpose: captured.purpose,
+        projection_subtype: captured.projection_subtype,
+        assertion_profile: captured.assertion_profile,
+        projection_request_digest: projectionRequestBindingDigest(captured.projection_request),
+        complete_projection_input_digest: completeProjectionInputDigest(
+          captured.projection_request,
+          release,
+          captured.projection_subtype,
+          captured.assertion_profile,
+        ),
+        authorized_at: session.authorized_at,
+        expires_at: session.expires_at,
+        current_view_fingerprint: session.view_fingerprint,
+      });
+    },
+    effect: (executionToken) => {
+      if (effectTime === undefined) {
+        throw new Error("oidc-claim-release-denied: effect-time release was not captured");
+      }
+      const projectionOutput = captured.projection_request === null
+        ? null
+        : createProjectedJwt(
+            captured.projection_request,
+            effectTime.request,
+            effectTime.release,
+            captured.projection_subtype as OidcProjectionSubtype,
+            captured.assertion_profile,
+          );
+      const returned = captured.effect(effectTime.release, executionToken);
+      if (utilTypes.isProxy(returned)) {
+        throw new Error("oidc-claim-release-denied: proxy effect outcome");
+      }
+      if (utilTypes.isPromise(returned)) {
+        if (Object.getPrototypeOf(returned) !== Promise.prototype) {
+          throw new Error("oidc-claim-release-denied: nonordinary effect promise");
+        }
+        return returned.then((outcome) => wrapOidcEffectOutcome(outcome, projectionOutput));
+      }
+      return wrapOidcEffectOutcome(returned, projectionOutput);
+    },
+  });
+  if (result.verdict !== "accept") {
+    if (result.verdict === "reject" &&
+        (result.reason_code === "claim-release-denied" ||
+          result.reason_code === "claim-issuer-authority-invalid")) {
+      return Object.freeze({
+        ...result,
+        reason_code: "oidc-claim-release-denied",
+      });
+    }
+    return result;
+  }
+  if (effectTime === undefined) return Object.freeze({
+    verdict: "reject" as const,
+    allowed: false as const,
+    state: "invalid" as const,
+    reason_code: "oidc-claim-release-denied",
+  });
+  const internalResult = captureExactDataObject(result.result, [[
+    "effect_result", "projection_output",
+  ]], "OIDC durable effect result");
+  const projectionOutput = internalResult.projection_output === null
+    ? null
+    : snapshotClosedDataTree(internalResult.projection_output, "OIDC cached projection output") as ProjectedJwt;
+  if ((captured.purpose === "jwt_projection") !== (projectionOutput !== null)) {
+    return Object.freeze({
+      verdict: "reject" as const,
+      allowed: false as const,
+      state: "invalid" as const,
+      reason_code: "oidc-claim-release-denied",
+    });
+  }
+  if (projectionOutput !== null) {
+    if (session.projection_output === undefined) {
+      session.projection_output = projectionOutput;
+    } else if (jsonDigest(session.projection_output) !== jsonDigest(projectionOutput)) {
+      return Object.freeze({
+        verdict: "reject" as const,
+        allowed: false as const,
+        state: "invalid" as const,
+        reason_code: "oidc-claim-release-denied",
+      });
+    }
+  }
+  const authorization = Object.freeze({}) as OidcAuthorizedRelease;
+  effectTime.projection_output = session.projection_output ?? null;
+  effectTime.effect_result = result as ClaimEffectAuthorizationResult<unknown>;
+  AUTHORIZED_RELEASES.set(authorization, effectTime);
+  return Object.freeze({
+    ...result,
+    result: internalResult.effect_result as T,
+    authorization,
+  });
+}
+
+export function inspectOidcAuthorizedRelease(
+  authorization: OidcAuthorizedRelease,
+): OidcAuthorizationDecision {
+  return snapshotClosedDataTree(
+    requireAuthorizedRelease(authorization).release,
+    "OIDC authorized release inspection",
+  );
+}
+
 export function projectIdToken(input: JwtProjectionInput): ProjectedJwt {
-  return project(input, "JWT", {});
+  return retrieveProjectedJwt(input, "id_token");
 }
 
 export function projectAccessToken(input: JwtProjectionInput): ProjectedJwt {
-  return project(input, "at+jwt", {});
+  return retrieveProjectedJwt(input, "access_token");
 }
 
 export function projectJwtAssertion(
   input: JwtProjectionInput,
-  assertionProfile: string,
 ): ProjectedJwt {
-  return project(input, "heterodyne-assertion+jwt", { assertion_profile: assertionProfile });
+  return retrieveProjectedJwt(input, "jwt_assertion");
+}
+
+function retrieveProjectedJwt(
+  input: JwtProjectionInput,
+  projectionSubtype: OidcProjectionSubtype,
+): ProjectedJwt {
+  const handle = captureExactDataObject(input, [[
+    "authorization_authority", "authorization",
+  ]], "OIDC projected JWT handle");
+  const { retained } = consumeAuthorizedRelease(
+    handle.authorization_authority as ClaimAuthorizationAuthority,
+    handle.authorization as OidcAuthorizedRelease,
+    "jwt_projection",
+    projectionSubtype,
+    projectionSubtype === "jwt_assertion"
+      ? requireAuthorizedRelease(handle.authorization).assertion_profile
+      : null,
+  );
+  if (retained.projection_output === null) {
+    throw new Error("oidc-grant-prohibited: durable projection output is unavailable");
+  }
+  return retained.projection_output;
 }
 
 export function validateProjectedJwt(
@@ -762,12 +1140,26 @@ function validatedContextFingerprint(context: ValidatedProjectedJwtContext): str
   })).digest("hex");
 }
 
-function project(
-  input: JwtProjectionInput,
-  typ: "JWT" | "at+jwt" | "heterodyne-assertion+jwt",
-  extraClaims: Record<string, JsonValue>,
+function createProjectedJwt(
+  input: JwtProjectionRequest,
+  authorizationRequest: OidcAuthorizationRequest,
+  release: CompleteOidcAuthorizationRelease,
+  projectionSubtype: OidcProjectionSubtype,
+  assertionProfile: string | null,
 ): ProjectedJwt {
-  const { issuance, release, private_jwk } = validateProjectionInput(input);
+  const typ = projectionSubtype === "id_token"
+    ? "JWT"
+    : projectionSubtype === "access_token"
+      ? "at+jwt"
+      : "heterodyne-assertion+jwt";
+  let extraClaims: Record<string, JsonValue> = assertionProfile === null
+    ? {}
+    : { assertion_profile: assertionProfile };
+  const { issuance, private_jwk } = validateProjectionInput(
+    input,
+    authorizationRequest,
+    release,
+  );
   if (typ === "JWT") {
     if (typeof release.nonce !== "string" || release.nonce.length === 0) {
       throw new Error("oidc-token-type-invalid: signed authorization request nonce is required");
@@ -818,16 +1210,23 @@ function project(
     throw new Error("RS256 signing key must have a modulus of at least 2048 bits");
   }
   const signature = sign("RSA-SHA256", Buffer.from(signingInput), key);
-  return { protected_header, claims, compact: `${signingInput}.${base64url(signature)}` };
+  return snapshotClosedDataTree({
+    protected_header,
+    claims,
+    compact: `${signingInput}.${base64url(signature)}`,
+  }, "OIDC projected JWT");
 }
 
-function validateProjectionInput(input: JwtProjectionInput): {
+function validateProjectionInput(
+  input: JwtProjectionRequest,
+  authorizationRequest: OidcAuthorizationRequest,
+  release: CompleteOidcAuthorizationRelease,
+): {
   issuance: IssuanceRecord;
-  release: OidcAuthorizationDecision & Required<Pick<OidcAuthorizationDecision, "pairwise_sub" | "scopes" | "audience" | "released_claims" | "source_claim_ids" | "checkpoint">>;
   private_jwk: JsonValue;
 } {
   const currentCheckpoint = canonicalValidatedCheckpoint(input.state);
-  const releaseCheckpoint = canonicalValidatedCheckpoint(input.authorization_request.state);
+  const releaseCheckpoint = canonicalValidatedCheckpoint(authorizationRequest.state);
   const record = input.state.records.find(({ record_id }) => record_id === input.issuance_record_id);
   if (record?.record_type !== "issuance-reservation" ||
       !(input.state.repository_confirmed_record_ids ?? []).includes(input.issuance_record_id)) {
@@ -835,9 +1234,8 @@ function validateProjectionInput(input: JwtProjectionInput): {
   }
   const issuance = record.payload as unknown as IssuanceRecord;
   validateIssuanceRecordOrThrow(issuance, input.state.credential_ledger);
-  const release = validateAuthorizationRequest(input.authorization_request);
   const mint = evaluateMintingAttempt({ now: input.now, manifest_max_age_seconds: issuance.manifest_max_age_seconds,
-    writer_nid: input.issuer_writer_nid, state: input.authorization_request.state, envelope: input.issuer_envelope,
+    writer_nid: input.issuer_writer_nid, state: authorizationRequest.state, envelope: input.issuer_envelope,
     audience_key: input.issuer_audience_key });
   const currentReturn = canReturnToken(
     input.issuance_record_id, input.state, input.issuer_envelope, input.issuer_audience_key,
@@ -853,7 +1251,7 @@ function validateProjectionInput(input: JwtProjectionInput): {
       input.now !== issuance.issued_at || input.expires_at !== issuance.expires_at ||
       input.expires_at <= input.now || input.audience.length === 0 || input.scopes.length === 0 ||
       !input.scopes.every(nonempty) || !input.audience.every(exactHttpsResource) ||
-      !nonempty(input.client_id) || input.client_id !== input.authorization_request.client_id ||
+      !nonempty(input.client_id) || input.client_id !== authorizationRequest.client_id ||
       !/^[A-Za-z0-9._~-]{16,255}$/.test(input.pairwise_sub) ||
       !validStatusMirror(input.status_mirror) || input.status_mirror.repository_rid !== issuance.checkpoint.repository_rid ||
       releaseCheckpoint.repository_rid !== issuance.checkpoint.repository_rid ||
@@ -881,7 +1279,7 @@ function validateProjectionInput(input: JwtProjectionInput): {
       !validatePersonaBinding(root, input.identity).allowed ||
       issuerUrl(parsed.origin, root, input.identity) !== input.issuer || rootPersona !== input.issuer_envelope.persona ||
       input.state.records.some(({ persona }) => persona !== rootPersona) ||
-      input.authorization_request.state.records.some(({ persona }) => persona !== rootPersona)) {
+      authorizationRequest.state.records.some(({ persona }) => persona !== rootPersona)) {
     throw new Error("oidc-issuer-mismatch: exact HTTPS issuer is required");
   }
   const expectedStatusPath = `.well-known/${root}/${issuance.reservation.uri}`;
@@ -900,7 +1298,7 @@ function validateProjectionInput(input: JwtProjectionInput): {
   if (Object.values(release.released_claims).some((value) => containsForbiddenField(value, reserved))) {
     throw new Error("oidc-claim-release-denied: private claim provenance cannot be projected");
   }
-  return { issuance, release: release as never, private_jwk };
+  return { issuance, private_jwk };
 }
 
 function exactHttpsOrigin(origin: string): string {
@@ -945,6 +1343,522 @@ function canonicalPkceValue(value: unknown): value is string {
   if (typeof value !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(value)) return false;
   const decoded = Buffer.from(value, "base64url");
   return decoded.length === 32 && decoded.toString("base64url") === value;
+}
+
+function captureAuthorizationEffectInput<T>(
+  value: unknown,
+): CapturedAuthorizationEffectInput<T> {
+  const members = captureExactDataObject(value, [[
+    "request",
+    "idempotency_key",
+    "purpose",
+    "projection_subtype",
+    "assertion_profile",
+    "projection_request",
+    "authorization_validity_seconds",
+    "effect",
+  ]], "OIDC authorization effect request");
+  const idempotencyKey = members.idempotency_key;
+  if (typeof idempotencyKey !== "string" || idempotencyKey.length === 0 || idempotencyKey.length > 4_096) {
+    throw new Error("oidc-claim-release-denied: invalid idempotency key");
+  }
+  const effect = members.effect;
+  if (typeof effect !== "function" || utilTypes.isProxy(effect)) {
+    throw new Error("oidc-claim-release-denied: invalid effect callback");
+  }
+  if ((members.purpose !== "authorization_code" &&
+      members.purpose !== "device_authorization" &&
+      members.purpose !== "jwt_projection") ||
+      !Number.isSafeInteger(members.authorization_validity_seconds) ||
+      (members.authorization_validity_seconds as number) < 1 ||
+      (members.authorization_validity_seconds as number) > 600) {
+    throw new Error("oidc-claim-release-denied: invalid durable authorization purpose or validity");
+  }
+  const projectionSubtype = members.projection_subtype;
+  const assertionProfile = members.assertion_profile;
+  const projectionRequest = members.projection_request;
+  if ((projectionSubtype !== null && projectionSubtype !== "id_token" &&
+      projectionSubtype !== "access_token" && projectionSubtype !== "jwt_assertion") ||
+      (assertionProfile !== null && (typeof assertionProfile !== "string" || assertionProfile.length === 0 ||
+        assertionProfile.length > 4_096)) ||
+      (members.purpose === "jwt_projection") !== (projectionSubtype !== null) ||
+      (members.purpose === "jwt_projection") !== (projectionRequest !== null) ||
+      (projectionSubtype === "jwt_assertion") !== (assertionProfile !== null)) {
+    throw new Error("oidc-claim-release-denied: invalid durable projection subtype");
+  }
+  return Object.freeze({
+    request: captureAuthorizationRequest(members.request),
+    idempotency_key: idempotencyKey,
+    purpose: members.purpose,
+    projection_subtype: projectionSubtype as OidcProjectionSubtype | null,
+    assertion_profile: assertionProfile as string | null,
+    projection_request: projectionRequest === null
+      ? null
+      : captureJwtProjectionRequest(projectionRequest),
+    authorization_validity_seconds: members.authorization_validity_seconds as number,
+    effect: effect as CapturedAuthorizationEffectInput<T>["effect"],
+  });
+}
+
+function captureAuthorizationRequest(value: unknown): OidcAuthorizationRequest {
+  const required = [
+    "flow", "grant_type", "client_id", "requested_scopes", "requested_audiences",
+    "requested_claims", "pairwise_secret", "state", "registration", "consent",
+    "source_claims", "nonce", "sender_constraint",
+  ];
+  const optional = ["response_type", "redirect_uri", "code_challenge", "code_challenge_method", "cnf"];
+  const keySets = Array.from({ length: 1 << optional.length }, (_, mask) => [
+    ...required,
+    ...optional.filter((_, index) => (mask & (1 << index)) !== 0),
+  ]);
+  const members = captureExactDataObject(value, keySets, "OIDC authorization request");
+  if (members.state === null || typeof members.state !== "object" || utilTypes.isProxy(members.state)) {
+    throw new Error("OIDC authorization state must be an opaque local ledger result");
+  }
+  const registration = captureClaimEvidence(members.registration, "OIDC registration evidence");
+  const consent = captureClaimEvidence(members.consent, "OIDC consent evidence");
+  const sources = captureOrdinaryArray(members.source_claims, "OIDC source claims", 256)
+    .map((entry, index) => captureClaimEvidence(entry, `OIDC source claim ${index}`));
+  const stringArray = (member: unknown, label: string): string[] =>
+    captureOrdinaryArray(member, label, 256).map((entry) => {
+      if (typeof entry !== "string" || entry.length > 4_096) {
+        throw new Error(`${label} must contain bounded strings`);
+      }
+      return entry;
+    });
+  return Object.freeze({
+    flow: members.flow as OidcAuthorizationRequest["flow"],
+    grant_type: members.grant_type as OidcAuthorizationRequest["grant_type"],
+    ...(members.response_type === undefined ? {} : { response_type: members.response_type as "code" }),
+    client_id: members.client_id as string,
+    ...(members.redirect_uri === undefined ? {} : { redirect_uri: members.redirect_uri as string }),
+    ...(members.code_challenge === undefined ? {} : { code_challenge: members.code_challenge as string }),
+    ...(members.code_challenge_method === undefined ? {} : {
+      code_challenge_method: members.code_challenge_method as "S256",
+    }),
+    requested_scopes: Object.freeze(stringArray(members.requested_scopes, "OIDC requested scopes")) as string[],
+    requested_audiences: Object.freeze(stringArray(members.requested_audiences, "OIDC requested audiences")) as string[],
+    requested_claims: Object.freeze(stringArray(members.requested_claims, "OIDC requested claims")) as string[],
+    pairwise_secret: members.pairwise_secret as string,
+    state: members.state as LedgerMergeResult,
+    registration,
+    consent,
+    source_claims: Object.freeze(sources) as OidcClaimEvidence[],
+    nonce: members.nonce as string,
+    ...(members.cnf === undefined ? {} : {
+      cnf: snapshotClosedDataTree(members.cnf, "OIDC confirmation") as Record<string, JsonValue>,
+    }),
+    sender_constraint: members.sender_constraint as OidcAuthorizationRequest["sender_constraint"],
+  });
+}
+
+function captureJwtProjectionRequest(value: unknown): JwtProjectionRequest {
+  const members = captureExactDataObject(value, [[
+    "issuer", "client_id", "audience", "pairwise_sub", "scopes", "now",
+    "expires_at", "issuance_record_id", "state", "issuer_envelope",
+    "issuer_audience_key", "issuer_writer_nid", "identity", "status_mirror",
+  ]], "OIDC JWT projection request");
+  if (members.state === null || typeof members.state !== "object" || utilTypes.isProxy(members.state)) {
+    throw new Error("OIDC JWT projection state must be an opaque local ledger result");
+  }
+  const audienceKey = members.issuer_audience_key;
+  if (audienceKey === null || typeof audienceKey !== "object" || utilTypes.isProxy(audienceKey) ||
+      !(audienceKey instanceof Uint8Array) || Object.getPrototypeOf(audienceKey) !== Uint8Array.prototype ||
+      audienceKey.byteLength === 0 || audienceKey.byteLength > 4_096) {
+    throw new Error("OIDC JWT projection audience key must be a bounded ordinary byte array");
+  }
+  const captureStrings = (member: unknown, label: string): string[] => Object.freeze(
+    captureOrdinaryArray(member, label, 256).map((entry) => {
+      if (typeof entry !== "string" || entry.length === 0 || entry.length > 4_096) {
+        throw new Error(`${label} must contain bounded nonempty strings`);
+      }
+      return entry;
+    }),
+  ) as string[];
+  return Object.freeze({
+    issuer: members.issuer as string,
+    client_id: members.client_id as string,
+    audience: captureStrings(members.audience, "OIDC JWT projection audiences"),
+    pairwise_sub: members.pairwise_sub as string,
+    scopes: captureStrings(members.scopes, "OIDC JWT projection scopes"),
+    now: members.now as number,
+    expires_at: members.expires_at as number,
+    issuance_record_id: members.issuance_record_id as string,
+    state: members.state as LedgerMergeResult,
+    issuer_envelope: snapshotClosedDataTree(
+      members.issuer_envelope,
+      "OIDC JWT projection issuer envelope",
+    ) as IssuerKeyEnvelope,
+    issuer_audience_key: Uint8Array.prototype.slice.call(audienceKey) as Uint8Array,
+    issuer_writer_nid: members.issuer_writer_nid as string,
+    identity: snapshotClosedDataTree(
+      members.identity,
+      "OIDC JWT projection identity",
+    ) as PersonaIdentityState,
+    status_mirror: snapshotClosedDataTree(
+      members.status_mirror,
+      "OIDC JWT projection status mirror",
+    ) as StatusMirror,
+  });
+}
+
+function captureClaimEvidence(value: unknown, label: string): OidcClaimEvidence {
+  const members = captureExactDataObject(value, [[
+    "claim_record_id",
+    "verification_context",
+  ]], label);
+  if (typeof members.claim_record_id !== "string" || !/^[0-9a-f]{64}$/u.test(members.claim_record_id)) {
+    throw new Error(`${label} has an invalid record ID`);
+  }
+  return Object.freeze({
+    claim_record_id: members.claim_record_id,
+    verification_context: captureClaimVerificationContext(members.verification_context),
+  });
+}
+
+function captureClaimVerificationContext(value: unknown): ClaimVerificationContext {
+  const members = captureExactDataObject(value, [[
+    "now", "audience", "resource", "requested_namespace", "requested_operation",
+    "expected_nonce", "used_nonces", "trusted_issuers", "credential_ledger",
+    "repository_confirmed", "repository_conflicted", "revocations", "subject_proof",
+  ]], "OIDC claim verification context");
+  return Object.freeze({
+    now: members.now as number,
+    audience: members.audience as string,
+    resource: members.resource as string,
+    requested_namespace: members.requested_namespace as string,
+    requested_operation: members.requested_operation as string,
+    expected_nonce: members.expected_nonce as string,
+    used_nonces: captureStringSet(members.used_nonces, "OIDC used nonces"),
+    trusted_issuers: snapshotClosedDataTree(
+      members.trusted_issuers,
+      "OIDC trusted issuers",
+    ) as ClaimVerificationContext["trusted_issuers"],
+    credential_ledger: snapshotClosedDataTree(
+      members.credential_ledger,
+      "OIDC credential ledger",
+    ) as ClaimVerificationContext["credential_ledger"],
+    repository_confirmed: captureStringSet(
+      members.repository_confirmed,
+      "OIDC confirmed claims",
+    ),
+    repository_conflicted: captureStringSet(
+      members.repository_conflicted,
+      "OIDC conflicted claims",
+    ),
+    revocations: Object.freeze(captureOrdinaryArray(
+      members.revocations,
+      "OIDC revocations",
+      256,
+    )),
+    subject_proof: members.subject_proof === null
+      ? null
+      : snapshotClosedDataTree(members.subject_proof, "OIDC subject proof") as NonNullable<
+          ClaimVerificationContext["subject_proof"]
+        >,
+  });
+}
+
+function captureOrdinaryArray(value: unknown, label: string, maximum: number): unknown[] {
+  if (!Array.isArray(value) || utilTypes.isProxy(value) || Object.getPrototypeOf(value) !== Array.prototype) {
+    throw new Error(`${label} must be an ordinary array`);
+  }
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const lengthDescriptor = Reflect.get(descriptors, "length") as PropertyDescriptor | undefined;
+  const length = lengthDescriptor?.value;
+  if (!Number.isSafeInteger(length) || length < 0 || length > maximum ||
+      Reflect.ownKeys(descriptors).map(String).sort().join("\0") !==
+        ["length", ...Array.from({ length }, (_, index) => String(index))].sort().join("\0")) {
+    throw new Error(`${label} must be a bounded dense array`);
+  }
+  return Array.from({ length }, (_, index) => {
+    const descriptor = descriptors[String(index)];
+    if (descriptor === undefined || descriptor.enumerable !== true || !("value" in descriptor)) {
+      throw new Error(`${label} must use data descriptors`);
+    }
+    return descriptor.value;
+  });
+}
+
+function captureStringSet(value: unknown, label: string): Set<string> {
+  if (value === null || typeof value !== "object" || utilTypes.isProxy(value) ||
+      !(value instanceof Set) || Object.getPrototypeOf(value) !== Set.prototype || value.size > 256) {
+    throw new Error(`${label} must be an ordinary bounded set`);
+  }
+  const captured = new Set<string>();
+  for (const entry of Set.prototype.values.call(value) as SetIterator<unknown>) {
+    if (typeof entry !== "string" || entry.length > 4_096) throw new Error(`${label} contains an invalid member`);
+    captured.add(entry);
+  }
+  return captured;
+}
+
+function completeAuthorizedRelease(
+  release: OidcAuthorizationDecision,
+): release is CompleteOidcAuthorizationRelease {
+  return release.allowed === true && release.state === "active" &&
+    typeof release.pairwise_sub === "string" && Array.isArray(release.scopes) &&
+    Array.isArray(release.audience) && release.released_claims !== undefined &&
+    Array.isArray(release.source_claim_ids) && release.checkpoint !== undefined &&
+    typeof release.request_digest === "string" && typeof release.release_digest === "string";
+}
+
+function releaseSourcesAreCurrent(
+  release: CompleteOidcAuthorizationRelease,
+  view: CurrentClaimEffectBindingView,
+): boolean {
+  const current = new Set(view.claims.map((artifact) => inspectVerifiedClaim(artifact).claim_id));
+  return release.source_claim_ids.every((claimId) => current.has(claimId));
+}
+
+function authorizationRequestAtView(
+  request: OidcAuthorizationRequest,
+  view: CurrentClaimEffectBindingView,
+): OidcAuthorizationRequest {
+  const evidenceAtCurrentTime = (evidence: OidcClaimEvidence): OidcClaimEvidence => Object.freeze({
+    claim_record_id: evidence.claim_record_id,
+    verification_context: Object.freeze({
+      ...evidence.verification_context,
+      now: view.trusted_now,
+    }),
+  });
+  return Object.freeze({
+    ...request,
+    state: view.ledger_state,
+    registration: evidenceAtCurrentTime(request.registration),
+    consent: evidenceAtCurrentTime(request.consent),
+    source_claims: Object.freeze(request.source_claims.map(evidenceAtCurrentTime)) as OidcClaimEvidence[],
+  });
+}
+
+function purposeMatchesRequest(
+  purpose: OidcAuthorizationPurpose,
+  request: OidcAuthorizationRequest,
+): boolean {
+  return purpose === "jwt_projection" ||
+    (purpose === "authorization_code" && request.flow === "authorization_code") ||
+    (purpose === "device_authorization" && request.flow === "device_authorization");
+}
+
+function authorizationSession<T>(
+  authority: ClaimAuthorizationAuthority,
+  input: CapturedAuthorizationEffectInput<T>,
+  release: CompleteOidcAuthorizationRelease,
+): OidcAuthorizationSession {
+  let sessions = AUTHORIZATION_SESSIONS.get(authority);
+  if (sessions === undefined) {
+    sessions = new Map<string, OidcAuthorizationSession>();
+    AUTHORIZATION_SESSIONS.set(authority, sessions);
+  }
+  const exactInputDigest = jsonDigest({
+    purpose: input.purpose,
+    projection_subtype: input.projection_subtype,
+    assertion_profile: input.assertion_profile,
+    projection_request_digest: projectionRequestBindingDigest(input.projection_request),
+    complete_projection_input_digest: completeProjectionInputDigest(
+      input.projection_request,
+      release,
+      input.projection_subtype,
+      input.assertion_profile,
+    ),
+    authorization_validity_seconds: input.authorization_validity_seconds,
+    request_digest: release.request_digest,
+    release_digest: release.release_digest,
+  });
+  const existing = sessions.get(input.idempotency_key);
+  if (existing !== undefined) {
+    if (existing.exact_input_digest !== exactInputDigest) {
+      throw new Error("oidc-claim-release-denied: idempotency binding conflict");
+    }
+    return existing;
+  }
+  const created: OidcAuthorizationSession = { exact_input_digest: exactInputDigest };
+  sessions.set(input.idempotency_key, created);
+  return created;
+}
+
+function oidcCurrentViewFingerprint(view: CurrentClaimEffectBindingView): string {
+  return jsonDigest({
+    credential_ledger: view.credential_ledger,
+    checkpoint_digest: view.checkpoint_digest,
+    repository_revision: view.repository_revision,
+    claims: view.claims.map((artifact) => Object.freeze({
+      claim_id: inspectVerifiedClaim(artifact).claim_id,
+      binding_digest: claimArtifactBindingDigest(artifact),
+    })).sort((left, right) => left.claim_id.localeCompare(right.claim_id)),
+    revocations: view.revocations.map(claimRevocationArtifactBindingDigest).sort(),
+    conflicted_claim_ids: [...view.conflicted_claim_ids].sort(),
+  });
+}
+
+function exactProjectionInputDigest(
+  input: JwtProjectionRequest,
+  issuance: IssuanceRecord,
+  release: CompleteOidcAuthorizationRelease,
+  projectionSubtype: OidcProjectionSubtype,
+  assertionProfile: string | null,
+): string {
+  return jsonDigest({
+    projection_subtype: projectionSubtype,
+    assertion_profile: assertionProfile,
+    issuer: input.issuer,
+    client_id: input.client_id,
+    audience: input.audience,
+    pairwise_sub: input.pairwise_sub,
+    scopes: input.scopes,
+    now: input.now,
+    expires_at: input.expires_at,
+    issuance_record_id: input.issuance_record_id,
+    current_checkpoint: canonicalValidatedCheckpoint(input.state),
+    current_credential_ledger: input.state.credential_ledger,
+    issuance,
+    release,
+    issuer_envelope: input.issuer_envelope,
+    issuer_audience_key_digest: createHash("sha256")
+      .update(input.issuer_audience_key)
+      .digest("hex"),
+    issuer_writer_nid: input.issuer_writer_nid,
+    identity: input.identity,
+    status_mirror: input.status_mirror,
+  });
+}
+
+function completeProjectionInputDigest(
+  input: JwtProjectionRequest | null,
+  release: CompleteOidcAuthorizationRelease,
+  projectionSubtype: OidcProjectionSubtype | null,
+  assertionProfile: string | null,
+): string | null {
+  if (input === null || projectionSubtype === null) return null;
+  const record = input.state.records.find(({ record_id }) => record_id === input.issuance_record_id);
+  if (record?.record_type !== "issuance-reservation") {
+    throw new Error("oidc-token-type-invalid: canonical issuance record is absent");
+  }
+  return exactProjectionInputDigest(
+    input,
+    record.payload as unknown as IssuanceRecord,
+    release,
+    projectionSubtype,
+    assertionProfile,
+  );
+}
+
+function projectionRequestBindingDigest(input: JwtProjectionRequest | null): string | null {
+  if (input === null) return null;
+  return jsonDigest({
+    issuer: input.issuer,
+    client_id: input.client_id,
+    audience: input.audience,
+    pairwise_sub: input.pairwise_sub,
+    scopes: input.scopes,
+    now: input.now,
+    expires_at: input.expires_at,
+    issuance_record_id: input.issuance_record_id,
+    current_checkpoint: canonicalValidatedCheckpoint(input.state),
+    current_credential_ledger: input.state.credential_ledger,
+    issuer_envelope: input.issuer_envelope,
+    issuer_audience_key_digest: createHash("sha256")
+      .update(input.issuer_audience_key)
+      .digest("hex"),
+    issuer_writer_nid: input.issuer_writer_nid,
+    identity: input.identity,
+    status_mirror: input.status_mirror,
+  });
+}
+
+function wrapOidcEffectOutcome<T>(
+  outcome: ClaimEffectOutcome<T>,
+  projectionOutput: ProjectedJwt | null,
+): ClaimEffectOutcome<OidcDurableEffectResult<T>> {
+  const members = captureExactDataObject(outcome, [
+    ["status", "result"],
+    ["status"],
+  ], "OIDC effect outcome");
+  if (members.status === "unknown" && !("result" in members)) {
+    return Object.freeze({ status: "unknown" as const });
+  }
+  if (members.status !== "completed" || !("result" in members)) {
+    throw new Error("oidc-claim-release-denied: invalid effect outcome");
+  }
+  return Object.freeze({
+    status: "completed" as const,
+    result: Object.freeze({
+      effect_result: members.result as T,
+      projection_output: projectionOutput,
+    }),
+  });
+}
+
+function consumeAuthorizedRelease(
+  authority: ClaimAuthorizationAuthority,
+  authorization: OidcAuthorizedRelease,
+  purpose: OidcAuthorizationPurpose,
+  projectionSubtype: OidcProjectionSubtype | null = null,
+  assertionProfile: string | null = null,
+): Readonly<{ retained: AuthorizedReleaseRecord; trusted_now: number }> {
+  const retained = requireAuthorizedRelease(authorization);
+  if (retained.consumed) {
+    throw new Error("oidc-grant-prohibited: durable authorization already consumed");
+  }
+  retained.consumed = true;
+  if (retained.authority !== authority || retained.purpose !== purpose ||
+      retained.projection_subtype !== projectionSubtype ||
+      retained.assertion_profile !== assertionProfile) {
+    throw new Error("oidc-grant-prohibited: durable authorization authority or purpose mismatch");
+  }
+  const revalidated = revalidateAcceptedClaimEffect(authority, retained.effect_result);
+  if (revalidated.verdict !== "accept" ||
+      revalidated.trusted_now < retained.authorized_at ||
+      revalidated.trusted_now >= retained.expires_at) {
+    throw new Error("oidc-grant-prohibited: durable authorization is stale");
+  }
+  return Object.freeze({ retained, trusted_now: revalidated.trusted_now });
+}
+
+function issuedGrant<T>(
+  retained: AuthorizedReleaseRecord,
+  kind: string,
+  exactInputDigest: string,
+  issue: () => T,
+): T {
+  let grants = ISSUED_GRANTS.get(retained.authority);
+  if (grants === undefined) {
+    grants = new Map<string, unknown>();
+    ISSUED_GRANTS.set(retained.authority, grants);
+  }
+  const key = jsonDigest({
+    kind,
+    purpose: retained.purpose,
+    projection_subtype: retained.projection_subtype,
+    assertion_profile: retained.assertion_profile,
+    idempotency_key: retained.idempotency_key,
+    authorized_at: retained.authorized_at,
+    expires_at: retained.expires_at,
+    view_fingerprint: retained.view_fingerprint,
+    request_digest: retained.release.request_digest,
+    release_digest: retained.release.release_digest,
+  });
+  const existing = grants.get(key) as Readonly<{ input_digest: string; output: T }> | undefined;
+  if (existing !== undefined) {
+    if (existing.input_digest !== exactInputDigest) {
+      throw new Error("oidc-grant-prohibited: cached issuance input mismatch");
+    }
+    return existing.output;
+  }
+  const issued = snapshotClosedDataTree(issue(), "OIDC issued output") as T;
+  grants.set(key, Object.freeze({ input_digest: exactInputDigest, output: issued }));
+  return issued;
+}
+
+function requireAuthorizedRelease(authorization: unknown): AuthorizedReleaseRecord {
+  if (authorization === null || typeof authorization !== "object" || utilTypes.isProxy(authorization)) {
+    throw new Error("oidc-grant-prohibited: durable authorization is required");
+  }
+  const retained = AUTHORIZED_RELEASES.get(authorization);
+  if (retained === undefined) {
+    throw new Error("oidc-grant-prohibited: durable authorization is required");
+  }
+  return retained;
 }
 
 function jsonDigest(value: unknown): string {

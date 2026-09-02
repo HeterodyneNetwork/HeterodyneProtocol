@@ -1,0 +1,23 @@
+{
+  "vector_id": "comms/agent-sender-proof-invalid",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-agent-authorship"
+  ],
+  "invariants": [
+    "COMMS-I-WORKLOAD-TOKEN-CONFINEMENT"
+  ],
+  "reason_codes": [
+    "agent-sender-proof-invalid"
+  ],
+  "description": "The current workload boundary rejects agent sender proof invalid.",
+  "direction": "consume",
+  "input": {
+    "evidence": "real JWT accepted and exact DPoP proof rejected before signer effect"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "agent-sender-proof-invalid"
+  }
+}

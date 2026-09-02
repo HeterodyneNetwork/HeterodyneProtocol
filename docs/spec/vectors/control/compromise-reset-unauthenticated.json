@@ -1,0 +1,23 @@
+{
+  "vector_id": "control/compromise-reset-unauthenticated",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "control",
+  "spec_refs": [
+    "heterodyne:control#control-compromise-reset"
+  ],
+  "invariants": [
+    "CONTROL-I-COMPROMISE-RESET"
+  ],
+  "reason_codes": [
+    "control-compromise-reset-unauthenticated"
+  ],
+  "description": "The current Control policy boundary rejects compromise reset unauthenticated.",
+  "direction": "consume",
+  "input": {
+    "evidence": "signed reset grant or completion fails current Assurance binding"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "control-compromise-reset-unauthenticated"
+  }
+}

@@ -48,16 +48,16 @@ live registry and schemas govern when a short definition omits a condition.
 **Strict profile**
 : A conformance profile whose required invariant set is the transitive closure
   of declared prerequisite profiles plus only the invariants it adds. Core,
-  Comms, Control, Social, and Workspace register document-specific strict
-  profiles. Assurance is an optional document claim and currently has no strict
-  profile; there is no singular strict profile for the six-document family.
+  Assurance, Comms, Control, Social, and Workspace register document-specific
+  strict profiles; the Assurance claim itself remains optional. There is no
+  singular strict profile for the six-document family.
 
 **Family registry revision**
 : The authoring revision in `docs/spec/registry/manifest.json` for the current
   registry entry set. It is not a wire member and is not a released version.
 
 **Claim profile revision**
-: The frozen claim schema member `profile_revision` has value `2`, distinct from the current family registry revision 14. It labels the claim-profile
+: The frozen claim schema member `profile_revision` has value `2`, distinct from the current family registry revision 18. It labels the claim-profile
   wire shape and does not track registry authoring changes.
 
 ## Discovery and storage
@@ -106,11 +106,20 @@ live registry and schemas govern when a short definition omits a condition.
 : Public, locally verified signed content.
 
 **Tier 2**
-: Plaintext selectively replicated through private repositories. This is an
-  access boundary, not encryption; every repository reader may observe it.
+: NIP-44-v2-profile audience-encrypted ciphertext carried by public
+  repositories and/or ordinary public relays. Content is blind to carriers;
+  the distribution graph, membership, timing, and volume remain public.
 
 **Tier 3**
-: Audience- or group-encrypted content whose carriers do not receive plaintext.
+: NIP-44-v2-profile audience-encrypted ciphertext confined to authorized
+  private-repository interfaces. Content is blind to carriers, while
+  ciphertext, audience wraps, rosters, and fetch patterns are visible only to
+  allowed nodes.
+
+**Private-repository plaintext**
+: An orthogonal repository-visibility setting, not a confidentiality tier.
+  Every node admitted by `visibility.allow` may read and replicate the
+  plaintext.
 
 **Marmot account**
 : The standard Marmot account identified by the active persona key. The active
@@ -176,7 +185,7 @@ live registry and schemas govern when a short definition omits a condition.
   reference code. It does not execute frozen topic projections.
 
 **Rolling snapshot**
-: The non-normative set of 482 frozen historical vectors authored from source
-  commit `2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43` and bound by snapshot
-  commit `5d4bb5fb58b35c88d8a9db120a09f1087237f35c`. It records a past validation
-  surface and does not define current-draft conformance.
+: Non-normative historical validation whose exact mutable facts come from
+  `docs/spec/vectors/snapshot.json`. `snapshot-check` derives snapshot identity
+  from the last commit that changed that manifest. It records a past validation
+  surface, while current-draft and history-bound checks remain independent.

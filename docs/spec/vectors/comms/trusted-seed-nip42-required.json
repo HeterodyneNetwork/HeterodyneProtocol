@@ -1,0 +1,25 @@
+{
+  "vector_id": "comms/trusted-seed-nip42-required",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-trusted-seed-private-relay"
+  ],
+  "invariants": [
+    "COMMS-I-TRUSTED-SEED-CONFINEMENT"
+  ],
+  "reason_codes": [
+    "trusted-seed-nip42-required"
+  ],
+  "description": "The trusted-seed authority rejects trusted seed nip42 required from authenticated current state.",
+  "direction": "consume",
+  "input": {
+    "authenticated_at": 1799999999,
+    "expires_at": 1800000060,
+    "now": 1800000060
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "trusted-seed-nip42-required"
+  }
+}

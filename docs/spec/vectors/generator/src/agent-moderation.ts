@@ -1,13 +1,23 @@
 import { Ajv2020 } from "ajv/dist/2020.js";
 import receiptSchema from "../../../schemas/social/agent-policy-receipt-v1.schema.json" with { type: "json" };
 import correctionSchema from "../../../schemas/social/agent-policy-correction-v1.schema.json" with { type: "json" };
-import type { AgentAssociation } from "./agent-authorship.js";
-import { snapshotAndVerifyNostrEvent, type NostrSignedEvent } from "./nostr.js";
+import {
+  matchesAgentAttributionProfile,
+  type AgentAssociation,
+} from "./agent-authorship.js";
+import {
+  snapshotAndVerifyNostrEvent,
+  type NostrSignedEvent,
+  type VerifiedNostrEvent,
+} from "./nostr.js";
 
 export type AgentPolicyReason =
   | "agent-attribution-missing"
   | "agent-attribution-falsified"
   | "agent-publication-bypass";
+
+export type AgentPolicyNostrSignedEvent = NostrSignedEvent;
+export type VerifiedAgentPolicyEvent = VerifiedNostrEvent;
 
 export type AgentPolicyReceipt = {
   receipt_id: string;
@@ -29,6 +39,11 @@ export type AgentPolicyTarget = {
   verified_agent_association: AgentAssociation | null;
 };
 
+export type VerifiedAgentPolicyTarget = Readonly<{
+  event: VerifiedNostrEvent;
+  verified_agent_association: AgentAssociation | null;
+}>;
+
 export type AgentPolicyList = {
   policy_persona: string;
   event_id: string;
@@ -39,6 +54,10 @@ export type AgentPolicyList = {
   }>;
 };
 
+/**
+ * @deprecated Frozen current-vector adapter only. Current subscriber-local
+ * evaluation uses the opaque authority in social-subscription-authority.ts.
+ */
 export type AgentPolicyInput = {
   subscribed: boolean;
   policy_persona: string;
@@ -54,6 +73,7 @@ export type AgentPolicyDecision =
   | { visible: true; muted: false }
   | { visible: false; muted: true; source?: string; reason?: string };
 
+/** @deprecated Frozen current-vector adapter only. */
 export type AgentCorrectionInput = {
   correction_valid: boolean;
   current_list_binding_removed: boolean;
@@ -82,6 +102,21 @@ const POLICY_REASONS = new Set<AgentPolicyReason>([
   "agent-publication-bypass",
 ]);
 const HEX_32 = /^[0-9a-f]{64}$/;
+
+export function snapshotAgentPolicyEvent(value: unknown): VerifiedNostrEvent | null {
+  return snapshotAndVerifyNostrEvent(value);
+}
+
+export function snapshotAgentPolicyTarget(
+  value: unknown,
+): VerifiedAgentPolicyTarget | null {
+  const event = snapshotAndVerifyNostrEvent(value);
+  if (event === null) return null;
+  const association = signedAgentAssociation(event);
+  return association === undefined
+    ? null
+    : Object.freeze({ event, verified_agent_association: association });
+}
 
 export function validateAgentPolicyReceipt(
   event: NostrSignedEvent,
@@ -150,11 +185,22 @@ export function validateAgentPolicyList(
     || verified.kind !== 10000
     || verified.content !== ""
     || countExactTag(verified, ["heterodyne", "social-agent-policy-list-v1"]) !== 1
-    || countExactTag(verified, ["spec_version", "heterodyne/0.5.0"]) !== 1
+    || countExactTag(verified, ["spec_version", "heterodyne/0.6.0"]) !== 1
   ) {
     throw new Error("agent-policy-binding-invalid");
   }
-  const entries = tags(verified, "agent_violation").map((tag) => {
+  const violationTags = tags(verified, "agent_violation");
+  const authorReferences = tags(verified, "p");
+  const receiptReferences = tags(verified, "e");
+  if (
+    authorReferences.some((tag) => tag.length !== 2)
+    || receiptReferences.some((tag) => tag.length !== 2)
+    || authorReferences.length !== violationTags.length
+    || receiptReferences.length !== violationTags.length
+  ) throw new Error("agent-policy-binding-invalid");
+  const authorReferenceCounts = countValues(authorReferences.map((tag) => tag[1]));
+  const receiptReferenceCounts = countValues(receiptReferences.map((tag) => tag[1]));
+  const entries = violationTags.map((tag) => {
     if (
       tag.length !== 4
       || !HEX_32.test(tag[1])
@@ -166,10 +212,11 @@ export function validateAgentPolicyList(
     const receipt = receipts.get(tag[2]);
     if (
       receipt === undefined
+      || receipt.issuer !== verified.pubkey
       || receipt.event_author !== tag[1]
       || receipt.reason !== tag[3]
-      || !hasReferenceTag(verified, "p", tag[1])
-      || !hasReferenceTag(verified, "e", tag[2])
+      || !authorReferenceCounts.has(tag[1])
+      || !receiptReferenceCounts.has(tag[2])
     ) {
       throw new Error("agent-policy-binding-invalid");
     }
@@ -179,10 +226,21 @@ export function validateAgentPolicyList(
       reason: tag[3] as AgentPolicyReason,
     };
   });
-  if (entries.length === 0) throw new Error("agent-policy-binding-invalid");
+  if (
+    new Set(entries.map(({ receipt_id }) => receipt_id)).size !== entries.length
+    || !sameMultiset(
+      authorReferences.map((tag) => tag[1]),
+      entries.map(({ event_author }) => event_author),
+    )
+    || !sameMultiset(
+      receiptReferences.map((tag) => tag[1]),
+      entries.map(({ receipt_id }) => receipt_id),
+    )
+  ) throw new Error("agent-policy-binding-invalid");
   return { policy_persona: verified.pubkey, event_id: verified.id, entries };
 }
 
+/** @deprecated Frozen current-vector adapter; not a live authority boundary. */
 export function applySubscribedAgentPolicy(
   input: AgentPolicyInput,
 ): AgentPolicyDecision {
@@ -263,6 +321,7 @@ export function validateAgentPolicyCorrection(
   return value;
 }
 
+/** @deprecated Frozen current-vector adapter; not a live authority boundary. */
 export function applyAgentPolicyCorrection(
   input: AgentCorrectionInput,
 ): AgentPolicyDecision {
@@ -286,8 +345,23 @@ function countExactTag(event: NostrSignedEvent, expected: string[]): number {
     && tag.every((value, index) => value === expected[index])).length;
 }
 
-function hasReferenceTag(event: NostrSignedEvent, name: string, value: string): boolean {
-  return tags(event, name).some((tag) => tag.length >= 2 && tag[1] === value);
+function sameMultiset(left: readonly string[], right: readonly string[]): boolean {
+  if (left.length !== right.length) return false;
+  const counts = new Map<string, number>();
+  for (const value of left) counts.set(value, (counts.get(value) ?? 0) + 1);
+  for (const value of right) {
+    const count = counts.get(value);
+    if (count === undefined) return false;
+    if (count === 1) counts.delete(value);
+    else counts.set(value, count - 1);
+  }
+  return counts.size === 0;
+}
+
+function countValues(values: readonly string[]): ReadonlyMap<string, number> {
+  const counts = new Map<string, number>();
+  for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1);
+  return counts;
 }
 
 function equalAssociation(
@@ -297,6 +371,29 @@ function equalAssociation(
   return left === null || right === null
     ? left === right
     : left.kind === right.kind && left.value === right.value;
+}
+
+function signedAgentAssociation(
+  event: VerifiedNostrEvent,
+): AgentAssociation | null | undefined {
+  const reserved = event.tags.some((tag) =>
+    tag[0] === "heterodyne_agent"
+    || tag[0] === "agent_action"
+    || tag[0] === "L" && tag[1] === "network.heterodyne.agent"
+    || tag[0] === "l" && tag[2] === "network.heterodyne.agent");
+  if (!reserved) return null;
+  if (!matchesAgentAttributionProfile(event.tags)) return undefined;
+  const tags = event.tags.filter((tag) => tag[0] === "heterodyne_agent");
+  if (tags.length === 0) return null;
+  if (tags.length !== 1) return undefined;
+  const association = Object.freeze({
+    kind: tags[0][2] as "key" | "role",
+    value: tags[0][3],
+  });
+  if (association.kind === "key" && association.value !== event.pubkey) {
+    return undefined;
+  }
+  return association;
 }
 
 function parseJson(content: string): unknown {

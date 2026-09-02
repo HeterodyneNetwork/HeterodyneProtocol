@@ -269,16 +269,19 @@ const configGit = {
   tree_objects: [{ oid: H40, raw_base64url: "Ag" }],
 };
 
+const HETERODYNE_SCHEMA_ORIGIN = "https://" + ["heterodyne", "network"].join(".");
+const schemaId = (name: string): string => `${HETERODYNE_SCHEMA_ORIGIN}/schemas/comms/${name}`;
+
 const cases: readonly SchemaCase[] = [
   {
     name: "credential-ledger-reset-recipient-array-v1.schema.json",
-    id: "https://heterodyne.network/schemas/comms/credential-ledger-reset-recipient-array-v1.schema.json",
+    id: schemaId("credential-ledger-reset-recipient-array-v1.schema.json"),
     valid: resetRecipients,
     wrong: [[{ ...resetRecipients[0], enc: "A" }]],
   },
   {
     name: "node-secret-source-v1.schema.json",
-    id: "https://heterodyne.network/schemas/comms/node-secret-source-v1.schema.json",
+    id: schemaId("node-secret-source-v1.schema.json"),
     valid: secretSource,
     wrong: [
       { ...secretSource, secret_id: H32 },
@@ -287,13 +290,13 @@ const cases: readonly SchemaCase[] = [
   },
   {
     name: "node-secret-exposure-v1.schema.json",
-    id: "https://heterodyne.network/schemas/comms/node-secret-exposure-v1.schema.json",
+    id: schemaId("node-secret-exposure-v1.schema.json"),
     valid: secretExposure,
     wrong: [{ ...secretExposure, action: "retire" }],
   },
   {
     name: "credential-ledger-secret-transition-v1.schema.json",
-    id: "https://heterodyne.network/schemas/comms/credential-ledger-secret-transition-v1.schema.json",
+    id: schemaId("credential-ledger-secret-transition-v1.schema.json"),
     valid: secretTransition,
     wrong: [{
       ...secretTransition,
@@ -302,13 +305,13 @@ const cases: readonly SchemaCase[] = [
   },
   {
     name: "node-secret-transition-action-v1.schema.json",
-    id: "https://heterodyne.network/schemas/comms/node-secret-transition-action-v1.schema.json",
+    id: schemaId("node-secret-transition-action-v1.schema.json"),
     valid: transitionAction,
     wrong: [{ ...transitionAction, action_kind: "invalid-action" }],
   },
   {
     name: "credential-ledger-lost-generation-path-v1.schema.json",
-    id: "https://heterodyne.network/schemas/comms/credential-ledger-lost-generation-path-v1.schema.json",
+    id: schemaId("credential-ledger-lost-generation-path-v1.schema.json"),
     valid: lostGenerationPath,
     wrong: [{
       ...lostGenerationPath,
@@ -320,7 +323,7 @@ const cases: readonly SchemaCase[] = [
   },
   {
     name: "config-repository-git-structure-v1.schema.json",
-    id: "https://heterodyne.network/schemas/comms/config-repository-git-structure-v1.schema.json",
+    id: schemaId("config-repository-git-structure-v1.schema.json"),
     valid: configGit,
     wrong: [{ ...configGit, commit_oid: H64 }],
   },

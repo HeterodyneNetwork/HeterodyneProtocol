@@ -31,7 +31,7 @@ or weakened security controls.
 | Nostr event ingestion | Relay, repository, cache, or peer bytes | Verify exact ID and signature, then apply the owning kind/profile rule before use. |
 | Identity discovery | kind `0`, NIP-05, NIP-65, repository and node hints | Preserve active-key authority; treat hints as source-neutral observations. |
 | Repository union | Git objects and NID refs | Admit only authorized refs and locally verified exact objects. |
-| Privacy tiers | Repository readers, relays, seeds, full nodes | Present Tier 2 honestly and encrypt Tier 3 before every carrier. |
+| Privacy tiers | Repository readers, relays, seeds, full nodes | Present private-repository plaintext honestly, encrypt Tier 2 and Tier 3 before every carrier, and confine Tier 3 to authorized private-repository interfaces. |
 | Marmot boundary | Conversation events, routing commits, media | Preserve exact signed/ciphertext bytes and upstream account and device-leaf semantics. |
 | Full-node API | Light-client request and caller metadata | Resolve one persona vault and exact current grant; fail closed on ambiguity. |
 | Signer | Closed intent, grant, request identity, usage state | Attribute and reserve before signing; acquire the execute-once fence before effect. |
@@ -56,10 +56,19 @@ older than seven days raises a warning and refresh attempt rather than becoming
 invalid solely due to age. Every other state retains its applicable freshness
 and expiry rules and fails closed where those rules require.
 
+Pre-enrollment key theft can no longer silently attach an attacker cold root:
+enrollment requires a seven-day observably public, conflict-free window, and
+contested enrollments fail closed to baseline.
+
 ### Confidentiality and topology leakage
 
-Tier 2 is selective replication, not encryption. A UI must not imply otherwise.
-Tier 3 encrypts before any repository, relay, trusted seed, or full node. Private
+A private plaintext repository is selective replication, not encryption. A UI
+must not imply otherwise.
+Tier 2 and Tier 3 encrypt before any repository, relay, trusted seed, or full
+node. Tier 2 ciphertext on public carriers exposes the full distribution graph
+by design. Tier 3 improves membership privacy against global observers but
+concentrates audience metadata at the private repository's allowed nodes; a
+compromised or compelled allowed node yields the audience graph. Private
 workspace identifiers, counts, locators, and correlations remain inside the
 protected boundary. Resource content uses independent keys; role MLS state is
 an authorization channel rather than a universal content key.
@@ -82,6 +91,23 @@ requires explicit narrow OIDC scope; the NIP-01 event public key remains the
 author. Vault selection, grant selection, and signer selection fail closed and
 cannot fall back across personas or key classes.
 
+### Carrier withholding and equivocation
+
+Carriers can withhold revocations and other monotonic state. The defenses are
+multiple independent carriers and the declared authorization-view bound, which
+converts a withheld revocation from indefinite into bounded staleness at any
+honest minting node. Residual exposure for pure-relay reading clients is
+inherited from the Nostr carrier model and accepted. Equivocation during
+Assurance enrollment stalls the candidate and fails closed to the baseline
+active-key identity; timestamp evidence does not select an enrollment winner.
+
+A future-dated replaceable candidate is quarantined only while it exceeds the
+verifier's trusted current time by more than 900 seconds. The candidate is
+reconsidered on later evaluations. Independent NIP-03 evidence can support an
+advisory display that a commitment existed no later than a confirmed block,
+but cannot decide selection, enrollment, permanent rejection, signing or
+publication time, completeness, or precise wall time.
+
 ### Replay, races, and partial failure
 
 Usage state and request reservation precede a key effect. The durable
@@ -89,6 +115,18 @@ signer-side execute-once fence is irreversibly acquired before invocation.
 Exact completed retries can return isolated cached results; ambiguous terminal
 persistence stays poisoned for reconciliation. Claim revocation and authority
 reduction are monotonic, and every authorization effect rechecks current state.
+
+Assurance enrollment serializes every full candidate tuple for one active-key
+and inception-event scope through one durable compare-and-swap record. This
+prevents a restart or second worker from pinning an alternate cold root or
+accepted head in a parallel journal. A private restart-stable embedding key
+seals the complete record; every load verifies the seal and reconstructs its
+policy, receipt chronology, distinct-witness threshold, conflicts, basis, and
+non-future close before returning a retained pin or changing state. Public
+authority IDs and policy digests are not journal-integrity keys. Callback,
+policy, integrity-key, and journal boundaries reject proxies and accessors and
+snapshot accepted values so descriptor traps and later mutation cannot alter
+an authorization decision.
 
 ### Compromise
 
@@ -98,7 +136,9 @@ invalidate subordinate authorities and trusted seeds, remove old leaves,
 advance every reachable group, publish fresh successor KeyPackages, and issue
 fresh distinct authorization for every continuing subordinate capability.
 Optional Assurance can prove continuity to a successor but does not alias the
-new author or preserve subordinate authority implicitly.
+new author or preserve subordinate authority implicitly. A workspace's hot key
+can no longer authorize its own succession; recovery authority rests with the
+cold root bound at inception.
 
 ## Registry-bound invariants
 
@@ -119,8 +159,8 @@ reviewers can trace the threat control to its owner and feature binding.
 - **ASSURANCE-I-NO-IMPLICIT-CONTINUATION:** Succession transfers no succession authority, associated-key issuance policy, subordinate key, repository, group, delegate, financial, or application authority unless the record explicitly reauthorizes it.
 - **ASSURANCE-I-ASSOCIATED-KEY-BOUNDS:** Associated keys are accepted only for their exact head, active-key or epoch-threshold issuance ceiling, narrowed role and scope, issuer, subject, time bounds, active-grant proof requirements, and non-revoked state.
 - **ASSURANCE-I-EXPORT-LOSSLESS:** KERI export either preserves every security-relevant accepted Assurance semantic or fails without emitting a misleading partial identity.
-- **COMMS-I-TIER3-BLIND-CARRIER:** Tier 3 content is audience-key encrypted before reaching any repository, seed, full node, or relay.
-- **COMMS-I-TIER2-HONESTY:** Tier 2 private repositories are selective-replication boundaries, not encryption, and clients present that trust boundary honestly.
+- **COMMS-I-TIER3-BLIND-CARRIER:** Tier 2 and Tier 3 content is audience-key encrypted before reaching any repository, seed, full node, or relay, and Tier 3 objects reach only authorized private-repository interfaces.
+- **COMMS-I-TIER2-HONESTY:** Private plaintext repositories are selective-replication boundaries, not encryption, and clients present that trust boundary honestly.
 - **COMMS-I-CONFIG-AT-REST:** Comms-owned non-key private state and audience or group material are encrypted under the Comms repository-encryption profile.
 - **COMMS-I-CLIENT-SIDE-DELIVERY:** Cross-backend Comms processing runs on user-controlled clients; full nodes, repository relays, routing nodes, and Nostr relays are blind carriers for protected plaintext.
 - **COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY:** Feed, outbox, and delivery discovery do not depend on a centralized delivery directory.
@@ -146,12 +186,12 @@ reviewers can trace the threat control to its owner and feature binding.
 - **COMMS-I-CLAIM-REVOCATION:** A valid revocation or authority reduction is irreversible, monotonic, and wins concurrent repository merges.
 - **COMMS-I-LEDGER-CONFINEMENT:** Private claim-ledger contents and decryption material are available only to active durable NID-bearing ledger readers.
 - **COMMS-I-ISSUER-KEY-CONFINEMENT:** Shared OIDC signing keys are separately encrypted and released only to nodes with active oidc-token-issuer authority.
-- **COMMS-I-MINT-FRESHNESS:** A node mints only from a synchronized canonical checkpoint no older than the manifest bound, which cannot exceed 300 seconds.
+- **COMMS-I-MINT-FRESHNESS:** A node mints only from a synchronized canonical checkpoint no older than the declared authorization_view_max_age bound, which defaults to 300 seconds and cannot exceed 86400 seconds.
 - **COMMS-I-ISSUER-CONTINUITY:** HTTPS issuer metadata and the active-persona-key-scoped Radicle continuity tree agree on the exact active issuer, keys, status digests, and authorized succession.
 - **COMMS-I-CLAIM-RELEASE:** OIDC projection releases only claims allowed by scope, audience, client policy, consent, active repository state, issuer trust, and proof requirements.
 - **COMMS-I-JWT-TYPE-AUDIENCE:** JWT consumers enforce exact issuer, intended audience, time, signature, nonce when applicable, and token-type separation including typ at+jwt for access tokens.
 - **COMMS-I-STATUS-INTEGRITY:** Draft-21 status lists are signed, fresh, digest-bound across HTTPS and Radicle mirrors, writer-namespaced without index reuse, and never let VALID override other token failures.
-- **COMMS-I-PUBLIC-READER-TIER1-ONLY:** A public-reader implementation consumes only verified Tier 1 content and never renders Tier 2 plaintext or interprets Tier 3 ciphertext as public content.
+- **COMMS-I-PUBLIC-READER-TIER1-ONLY:** A public-reader implementation consumes only verified Tier 1 content and never renders private-repository plaintext or interprets Tier 2 or Tier 3 ciphertext as public content.
 - **COMMS-I-AGENT-SIGNER-BINDING:** Every automated event uses the exact registered signer, key class, and optional association kind/value; an agent key is preferred, while a persona key requires the explicit OIDC persona-signing scope, and the event pubkey remains authoritative.
 - **COMMS-I-AGENT-ATTRIBUTION:** Every agent-authored application event carries the canonical automation attribution block at its tier-appropriate protected location.
 - **COMMS-I-WORKLOAD-TOKEN-CONFINEMENT:** Workload tokens, token identifiers, private source claims, and sender proofs remain confined to the protected authorization and audit boundary.
@@ -172,19 +212,33 @@ reviewers can trace the threat control to its owner and feature binding.
 - **WORKSPACE-I-AUTHENTICATED-CURRENT-STATE:** Every Workspace authority effect consumes only its configured resolver instance's latest accepted generation and revalidates complete signed state, exact requested terms, transition times, role paths, exactly one semantic receiving relationship receipt, immutable envelope-ID ancestry, and revocations at effect time.
 - **WORKSPACE-I-INDEPENDENT-RESOURCE-KEYS:** Role MLS state authorizes delivery but never serves as one universal content key for subordinate resources.
 - **WORKSPACE-I-REVOCATION-FUTURE-ONLY:** Revocation blocks future authorization and key delivery, including custody-host delivery from and including the exact effective time, without claiming erasure of data or keys already obtained.
-- **WORKSPACE-I-FRESHNESS-BOUNDED:** Ordinary writes use checkpoints no older than 86400 seconds and authority mutations no older than 300 seconds, with policy able only to shorten those bounds; invitation commit samples trusted time itself, reruns complete activation validation at that time, and releases the reservation on any failure before its atomic transition.
+- **WORKSPACE-I-FRESHNESS-BOUNDED:** Ordinary writes use checkpoints no older than 86400 seconds and authority mutations no older than the declared authorization-view bound (default 300 seconds, ceiling 86400 seconds), with policy able only to shorten those bounds; invitation commit samples trusted time itself, reruns complete activation validation at that time, and releases the reservation on any failure before its atomic transition.
 - **WORKSPACE-I-HOST-AUTHORITY-SEPARATION:** Hosting or trusted-seed availability does not grant governance authority, while explicit key-custody hosts remain confidentiality trust boundaries.
 - **WORKSPACE-I-RADICLE-BACKSTOP:** Every effective role retains an authorized Radicle locator and eligible Radicle-backed relay host independent of optional Nostr relays.
 - **WORKSPACE-I-DEVICE-LEAF-SEPARATION:** Each active account device has an independently revocable Marmot MLS leaf and receives only uniquely identified envelopes bound to that exact grant, single path admission epoch, account, device, leaf, role, resource, checkpoint, and custody host.
+- **WORKSPACE-I-OPTIONAL-ASSURANCE:** A Workspace remains valid under a bare active key with no Assurance profile; once an optional Assurance profile is activated, ordinary active-key governance alone cannot weaken, replace, or remove it, and any transition requires matching current Assurance authorization over the same canonical policy-transition digest.
+- **ASSURANCE-I-ENROLLMENT-WINDOWED:** No enrollment is pin-eligible before 604800 seconds of authenticated observation; a timely active-key contest or fully reciprocal competing enrollment is absorbing, and later initial-enrollment evidence cannot unpin an authoritative verified enrollment.
+
+- **COMMS-I-TIER3-CONFINED:** Tier 3 posts, audience wraps, rosters, and rotation records are carried only via the private repository's authorized interfaces, never ordinary public relays, confining audience membership metadata to allowed nodes.
+
+Assurance chronology boundary testing is **BLUE TEAM VALIDATION:
+synthetic/local** defensive protocol-quality work. Minimal deterministic local
+fixtures verify that backdated declarations, cross-authority receipt replay,
+wrong-head receipts, duplicate witness weight, restart/worker alternate pins,
+forged or future sealed state, policy substitution, proxy descriptor traps,
+and racing pre-pin evidence fail closed. The fixtures use no live targets; no
+production deployments; no real credentials; no external systems; no reusable
+payloads.
 
 ## Current draft versus frozen validation history
 
 The current-draft lane evaluates current specifications, registry entries,
 schemas, and current reference code. It does not execute the frozen historical
-topic projection. The rolling snapshot contains 482 non-normative vectors from
-source commit `2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43`, bound by snapshot
-commit `5d4bb5fb58b35c88d8a9db120a09f1087237f35c`.
+topic projection. The rolling snapshot's exact mutable facts come from
+`docs/spec/vectors/snapshot.json`. `snapshot-check` derives snapshot identity
+from the last commit that changed that manifest. The current-draft and
+history-bound checks remain independent.
 
-The frozen claim schema member `profile_revision` has value `2`, distinct from the current family registry revision 14. Neither that historical wire value nor
+The frozen claim schema member `profile_revision` has value `2`, distinct from the current family registry revision 18. Neither that historical wire value nor
 the snapshot count is a substitute for current registry or specification
 authority.

@@ -6,7 +6,7 @@ and schemas under [`docs/spec/`](spec/).
 
 ## Family shape
 
-All six documents share `heterodyne/0.5.0` and the one registry manifest.
+All six documents share `heterodyne/0.6.0` and the one registry manifest.
 
 ```text
 Core <- Assurance (optional)
@@ -71,13 +71,15 @@ specification says they carry the same exact object. A reader verifies the
 object locally before rendering, storage, or authorization. Invalid bytes from
 one carrier do not taint an independently valid copy from another.
 
-Privacy has three deployment tiers:
+Privacy has three deployment tiers, plus an orthogonal private-repository
+visibility setting for selectively replicated plaintext (every allowed reader
+observes that plaintext):
 
 | Tier | Treatment | Trust boundary |
 |---|---|---|
 | 1 | Public signed Nostr content | Integrity depends on local verification. |
-| 2 | Plaintext in selectively replicated private repositories | Every repository reader can observe plaintext. |
-| 3 | Audience- or group-encrypted content | Repositories, relays, seeds, and full nodes remain blind carriers. |
+| 2 | Audience-encrypted content on public carriers | Content is blind to carriers; the distribution graph, membership, and timing stay public. |
+| 3 | Audience-encrypted content confined to private-repository interfaces | Content blind to carriers, and membership metadata visible only to allowed nodes. |
 
 Marmot owns MLS, account and device-leaf identity, conversation events,
 encrypted media, and Nostr transport semantics. Heterodyne stores and routes
@@ -146,11 +148,12 @@ The draft checker reads current specifications, registry entries, schemas, and
 current generator reference code. It does not execute the historical topic
 projection used to author the rolling snapshot.
 
-The independent snapshot checker instead materializes the snapshot source
-commit `2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43` and checks the 482 frozen
-vectors bound by snapshot commit
-`5d4bb5fb58b35c88d8a9db120a09f1087237f35c`. Those vectors are
-non-normative validation history and do not define the current draft.
+The closed `docs/spec/vectors/snapshot.json` manifest is the exact source of
+the snapshot's mutable facts: source pin, vector-schema version, vector count,
+artifact paths, and digests. `snapshot-check` derives snapshot identity from
+the last commit that changed that manifest, then materializes the pinned source
+and snapshot history. Those vectors are non-normative validation history and
+do not define the current draft.
 
 ```bash
 npm --prefix docs/spec/vectors/generator run draft:check -- "$PWD"

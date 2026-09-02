@@ -1,0 +1,36 @@
+{
+  "vector_id": "workspace/independent-device-leaf-removal",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "workspace",
+  "spec_refs": [
+    "heterodyne:workspace#workspace-role-control"
+  ],
+  "invariants": [
+    "WORKSPACE-I-DEVICE-LEAF-SEPARATION",
+    "WORKSPACE-I-REVOCATION-FUTURE-ONLY"
+  ],
+  "reason_codes": [],
+  "description": "Removing one device advances the role epoch and preserves its sibling device's independent leaf.",
+  "direction": "consume",
+  "input": {
+    "account_removed": false,
+    "removed_device": "1111111111111111111111111111111111111111111111111111111111111111",
+    "active_devices": [
+      "1111111111111111111111111111111111111111111111111111111111111111",
+      "2222222222222222222222222222222222222222222222222222222222222222"
+    ],
+    "current_epoch": 7
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "next_epoch": 8,
+      "remaining_devices": [
+        "2222222222222222222222222222222222222222222222222222222222222222"
+      ],
+      "removed_devices": [
+        "1111111111111111111111111111111111111111111111111111111111111111"
+      ]
+    }
+  }
+}

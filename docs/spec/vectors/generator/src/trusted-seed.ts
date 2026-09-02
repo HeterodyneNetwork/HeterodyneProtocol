@@ -12,7 +12,7 @@ export type TrustedSeedRole = "read" | "write";
 
 export type TrustedSeedAcl = {
   profile: "heterodyne.trusted-seed-acl.v1";
-  spec_version: "heterodyne/0.5.0";
+  spec_version: "heterodyne/0.6.0";
   administrator_account: string;
   accounts: Array<{ account_key: string; roles: TrustedSeedRole[] }>;
   h: string;
@@ -203,6 +203,18 @@ export function evaluateTrustedSeedAdmission(
     return denied("trusted-seed-nip42-required");
   }
   const stateValue = callAndSnapshot(authority.load_current_state);
+  if (
+    isRecord(stateValue)
+    && hasExactMembers(stateValue, [
+      "acl_candidates",
+      "administrator_account",
+      "group_transition",
+      "previous_acl",
+      "revision",
+    ])
+    && Array.isArray(stateValue.acl_candidates)
+    && stateValue.acl_candidates.length === 0
+  ) return denied("trusted-seed-acl-missing");
   const state = parseCurrentState(stateValue);
   if (state === null) return denied("trusted-seed-acl-invalid");
   if (

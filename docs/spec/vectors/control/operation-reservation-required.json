@@ -1,0 +1,23 @@
+{
+  "vector_id": "control/operation-reservation-required",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "control",
+  "spec_refs": [
+    "heterodyne:control#control-request-processing"
+  ],
+  "invariants": [
+    "CONTROL-I-OPERATION-AT-MOST-ONCE"
+  ],
+  "reason_codes": [
+    "control-operation-reservation-required"
+  ],
+  "description": "The live Control authorization boundary rejects operation reservation required.",
+  "direction": "consume",
+  "input": {
+    "reservations": []
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "control-operation-reservation-required"
+  }
+}

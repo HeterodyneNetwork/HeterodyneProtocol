@@ -1,0 +1,25 @@
+{
+  "vector_id": "core/onion-clearnet-resolution",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "core",
+  "spec_refs": [
+    "heterodyne:core#core-conformance"
+  ],
+  "invariants": [
+    "CORE-I-VERIFY-BEFORE-USE"
+  ],
+  "reason_codes": [
+    "onion_dns_leak"
+  ],
+  "description": "The Core operational boundary rejects onion clearnet resolution.",
+  "direction": "consume",
+  "input": {
+    "operation": "resolve-host",
+    "host": "catalogfixture.onion",
+    "resolver": "clearnet"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "onion_dns_leak"
+  }
+}

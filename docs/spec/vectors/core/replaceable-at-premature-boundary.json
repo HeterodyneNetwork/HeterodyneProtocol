@@ -1,0 +1,38 @@
+{
+  "vector_id": "core/replaceable-at-premature-boundary",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "core",
+  "spec_refs": [
+    "heterodyne:core#core-created-at-bound"
+  ],
+  "invariants": [
+    "CORE-I-VERIFY-BEFORE-USE"
+  ],
+  "reason_codes": [],
+  "description": "A replaceable event exactly 900 seconds ahead remains eligible.",
+  "direction": "consume",
+  "input": {
+    "trusted_now": 1800000000,
+    "candidates": [
+      {
+        "pubkey": "e4d24944ed947bc34ed14ea4b2e063aa27ebd8da658577a263f55a631c7f656a",
+        "created_at": 1800000900,
+        "kind": 30000,
+        "tags": [
+          [
+            "d",
+            "current-selection"
+          ]
+        ],
+        "content": "boundary candidate",
+        "id": "977e84e0786b1bb1842702c49bd94e96d8ac491b3435b7c70fb5910a7849f932",
+        "sig": "ca59b3c8217f9a7cd5a1a27824aa0a184cc9cbcefb1102f6795fc1327a96771b4b54346d8c0f44357cfe9229cf85e2c8978551c6db171ab84d1bca04fb049950"
+      }
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "selected_event_id": "977e84e0786b1bb1842702c49bd94e96d8ac491b3435b7c70fb5910a7849f932",
+    "quarantined_event_ids": []
+  }
+}

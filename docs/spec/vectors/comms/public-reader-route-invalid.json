@@ -1,0 +1,24 @@
+{
+  "vector_id": "comms/public-reader-route-invalid",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-public-launcher"
+  ],
+  "invariants": [
+    "COMMS-I-PUBLIC-READER-TIER1-ONLY"
+  ],
+  "reason_codes": [
+    "public-reader-route-invalid"
+  ],
+  "description": "An unknown launcher fragment is rejected before any network activity.",
+  "direction": "consume",
+  "input": {
+    "fragment": "#/v1/unknown"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "public-reader-route-invalid",
+    "network_activity": false
+  }
+}

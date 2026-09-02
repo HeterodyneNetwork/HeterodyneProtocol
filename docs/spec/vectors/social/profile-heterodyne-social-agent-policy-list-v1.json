@@ -1,0 +1,40 @@
+{
+  "vector_id": "social/profile-heterodyne-social-agent-policy-list-v1",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "social",
+  "profile": "heterodyne-social-agent-policy-list-v1",
+  "spec_refs": [
+    "heterodyne:social#social-security"
+  ],
+  "invariants": [
+    "SOCIAL-I-AGENT-AUTHORSHIP-EXACT",
+    "SOCIAL-I-AGENT-POLICY-LOCAL"
+  ],
+  "reason_codes": [],
+  "description": "The fixed heterodyne-social-agent-policy-list-v1 allocation is checked separately from its live semantic boundary.",
+  "direction": "consume",
+  "input": {
+    "kind": 10000,
+    "profile_id": "heterodyne-social-agent-policy-list-v1",
+    "owner": "social",
+    "discriminator": "tag:heterodyne=social-agent-policy-list-v1",
+    "stamping": true,
+    "first_version": "heterodyne/0.5.0",
+    "status": "draft",
+    "wire_probe": {
+      "content_is_heterodyne_json": false,
+      "is_dr_outer": false,
+      "tags": [
+        [
+          "heterodyne",
+          "social-agent-policy-list-v1"
+        ]
+      ]
+    },
+    "evidence": "signed subscribed local agent policy list and receipt resolve before exact application"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "local_policy_applied": true
+  }
+}

@@ -1,0 +1,661 @@
+import { types as utilTypes } from "node:util";
+import { sha256 } from "@noble/hashes/sha2";
+import * as nip19 from "nostr-tools/nip19";
+import { captureExactDataObject } from "./closed-data.js";
+import {
+  isCanonicalCoreGitRef,
+  isCanonicalCoreGitRefNamespace,
+  isCanonicalCoreRepositoryRid,
+} from "./core-policy.js";
+import {
+  inspectRepositoryWriterBinding,
+  revalidateCurrentRepositoryWriterBinding,
+  type CoreRepositoryWriterAuthority,
+  type CurrentRepositoryWriterBinding,
+  type InspectedRepositoryWriterBinding,
+} from "./core-writer-binding.js";
+import { bytesToHex, utf8Bytes } from "./hex.js";
+import {
+  snapshotAndVerifyNostrEvent,
+  type NostrSignedEvent,
+  type VerifiedNostrEvent,
+} from "./nostr.js";
+import {
+  createReplaceableSelectionAuthority,
+  selectCurrentReplaceableEvent,
+  type ReplaceableSelectionAuthority,
+} from "./replaceable-selection.js";
+
+declare const canonicalProfileSelectionAuthorityBrand: unique symbol;
+
+export type AuthorityDecision<Reason extends string, View> = Readonly<
+  | { verdict: "accept"; view: View }
+  | { verdict: "reject"; reason_code: Reason }
+>;
+
+export type CanonicalProfileSelectionAuthorityConfig = Readonly<{
+  authority_id: string;
+  trusted_now: () => number;
+  replaceable_selection: ReplaceableSelectionAuthority;
+  repository_writer_authority: CoreRepositoryWriterAuthority;
+  authenticate_repository_candidate: (
+    event: NostrSignedEvent,
+    rid: string,
+    ref: string,
+  ) => Promise<CurrentRepositoryWriterBinding | null>;
+}>;
+
+export type CanonicalProfileSelectionInput = Readonly<{
+  relay_candidates: readonly NostrSignedEvent[];
+  repository_candidates: readonly Readonly<{
+    event: NostrSignedEvent;
+    repository_rid: string;
+    ref: string;
+  }>[];
+}>;
+
+export type CanonicalProfileSelectionAuthority = Readonly<{
+  readonly [canonicalProfileSelectionAuthorityBrand]: true;
+}>;
+
+export type CanonicalProfileView = Readonly<Record<never, never>>;
+
+type CapturedAuthority = Readonly<{
+  authority_id: string;
+  observed_at: number;
+  selection_authority: ReplaceableSelectionAuthority;
+  repository_writer_authority: CoreRepositoryWriterAuthority;
+  authenticate_repository_candidate:
+    CanonicalProfileSelectionAuthorityConfig["authenticate_repository_candidate"];
+}>;
+
+type RepositoryCandidate = Readonly<{
+  event: VerifiedNostrEvent;
+  repository_rid: string;
+  ref: string;
+}>;
+
+type ViewRecord = Readonly<{
+  authority: CanonicalProfileSelectionAuthority;
+  authority_id: string;
+  observed_at: number;
+  selected: VerifiedNostrEvent;
+  repository_rid: string | null;
+  repository_binding: CurrentRepositoryWriterBinding | null;
+  repository_inspection: InspectedRepositoryWriterBinding | null;
+  binding_digest: string;
+}>;
+
+const AUTHORITIES = new WeakMap<object, CapturedAuthority>();
+const VIEWS = new WeakMap<object, ViewRecord>();
+const UTF8_ENCODER = new TextEncoder();
+const HEX_32 = /^[0-9a-f]{64}$/u;
+const HEX_64 = /^[0-9a-f]{128}$/u;
+const CHECKPOINT = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/u;
+const WRITER_NID = /^did:key:z[1-9A-HJ-NP-Za-km-z]{1,256}$/u;
+const OPERATION = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/u;
+const MAX_CANDIDATES_PER_CARRIER = 64;
+const MAX_TOTAL_CANDIDATES = 128;
+const MAX_EVENT_CONTENT_BYTES = 65_536;
+const MAX_EVENT_TAGS = 256;
+const MAX_TAG_WIDTH = 8;
+const MAX_TAG_MEMBER_BYTES = 1_024;
+const MAX_EVENT_BYTES = 131_072;
+const EVENT_MEMBERS = [
+  "content",
+  "created_at",
+  "id",
+  "kind",
+  "pubkey",
+  "sig",
+  "tags",
+] as const;
+
+const REJECTED = Object.freeze({
+  verdict: "reject" as const,
+  reason_code: "profile-repository-selection-required" as const,
+});
+
+export function createCanonicalProfileSelectionAuthority(
+  config: CanonicalProfileSelectionAuthorityConfig,
+): CanonicalProfileSelectionAuthority {
+  try {
+    const captured = captureExactDataObject(config, [[
+      "authority_id",
+      "trusted_now",
+      "replaceable_selection",
+      "repository_writer_authority",
+      "authenticate_repository_candidate",
+    ]], "Canonical profile selection authority config");
+    if (
+      typeof captured.authority_id !== "string"
+      || captured.authority_id.length === 0
+      || captured.authority_id.length > 256
+      || typeof captured.trusted_now !== "function"
+      || utilTypes.isProxy(captured.trusted_now)
+      || captured.replaceable_selection === null
+      || typeof captured.replaceable_selection !== "object"
+      || utilTypes.isProxy(captured.replaceable_selection)
+      || captured.repository_writer_authority === null
+      || typeof captured.repository_writer_authority !== "object"
+      || utilTypes.isProxy(captured.repository_writer_authority)
+      || typeof captured.authenticate_repository_candidate !== "function"
+      || utilTypes.isProxy(captured.authenticate_repository_candidate)
+    ) throw invalid();
+    const observedAt = (captured.trusted_now as () => number)();
+    if (!Number.isSafeInteger(observedAt) || observedAt < 0) throw invalid();
+    const selectionAuthority = createReplaceableSelectionAuthority({
+      trusted_now: () => observedAt,
+    });
+
+    const authority = Object.freeze({}) as CanonicalProfileSelectionAuthority;
+    AUTHORITIES.set(authority, Object.freeze({
+      authority_id: captured.authority_id,
+      observed_at: observedAt,
+      selection_authority: selectionAuthority,
+      repository_writer_authority:
+        captured.repository_writer_authority as CoreRepositoryWriterAuthority,
+      authenticate_repository_candidate:
+        captured.authenticate_repository_candidate as CapturedAuthority[
+          "authenticate_repository_candidate"
+        ],
+    }));
+    return authority;
+  } catch {
+    throw invalid();
+  }
+}
+
+export async function selectCanonicalProfile(
+  authorityValue: CanonicalProfileSelectionAuthority,
+  inputValue: CanonicalProfileSelectionInput,
+): Promise<AuthorityDecision<
+  "profile-repository-selection-required",
+  CanonicalProfileView
+>> {
+  const authority = opaqueAuthority(authorityValue);
+  if (authority === null) return REJECTED;
+
+  try {
+    const input = captureInput(inputValue);
+    if (input === null) return REJECTED;
+
+    const pending: Array<Readonly<{
+      candidate: RepositoryCandidate;
+      binding: CurrentRepositoryWriterBinding;
+    }>> = [];
+    for (const source of input.repository_candidates) {
+      const repositoryRid = profileContent(source.event.content);
+      if (repositoryRid === undefined) return REJECTED;
+      if (repositoryRid !== null && repositoryRid !== source.repository_rid) continue;
+      const binding = await authority.authenticate_repository_candidate(
+        source.event,
+        source.repository_rid,
+        source.ref,
+      );
+      if (binding === null) continue;
+      if (
+        typeof binding !== "object"
+        || utilTypes.isProxy(binding)
+      ) return REJECTED;
+      pending.push(Object.freeze({
+        candidate: source,
+        binding,
+      }));
+    }
+
+    const inspected: Array<Readonly<{
+      candidate: RepositoryCandidate;
+      binding: CurrentRepositoryWriterBinding;
+      inspection: InspectedRepositoryWriterBinding;
+    }>> = [];
+    for (const result of pending) {
+      const inspection = captureRepositoryInspection(
+        inspectRepositoryWriterBinding(
+          authority.repository_writer_authority,
+          result.binding,
+        ),
+        result.candidate,
+        authority.observed_at,
+      );
+      if (inspection === null) return REJECTED;
+      inspected.push(Object.freeze({ ...result, inspection }));
+    }
+
+    const authenticated = new Map<string, typeof inspected[number]>();
+    for (const result of inspected) {
+      const revalidated = revalidateCurrentRepositoryWriterBinding(
+        authority.repository_writer_authority,
+        result.binding,
+      );
+      if (revalidated !== result.binding) return REJECTED;
+      authenticated.set(result.candidate.event.id, result);
+    }
+
+    const union = new Map<string, VerifiedNostrEvent>();
+    for (const event of input.relay_candidates) union.set(event.id, event);
+    for (const { candidate } of authenticated.values()) {
+      union.set(candidate.event.id, candidate.event);
+    }
+    if (new Set([...union.values()].map(({ pubkey }) => pubkey)).size > 1) {
+      return REJECTED;
+    }
+
+    const selected = selectCurrentReplaceableEvent(
+      authority.selection_authority,
+      [...union.values()],
+    ).selected;
+    if (selected === null || selected.kind !== 0) return REJECTED;
+    const requiredRepositoryRid = profileContent(selected.content);
+    if (requiredRepositoryRid === undefined) return REJECTED;
+    const authenticatedSelection = authenticated.get(selected.id) ?? null;
+    if (
+      requiredRepositoryRid !== null
+      && (
+        authenticatedSelection === null
+        || authenticatedSelection.candidate.repository_rid !== requiredRepositoryRid
+      )
+    ) return REJECTED;
+
+    const view = Object.freeze({}) as CanonicalProfileView;
+    const bindingDigest = bytesToHex(sha256(utf8Bytes(JSON.stringify({
+      authority_id: authority.authority_id,
+      observed_at: authority.observed_at,
+      event_id: selected.id,
+      repository_rid: requiredRepositoryRid,
+      repository_ref: authenticatedSelection?.candidate.ref ?? null,
+      repository_source_identity:
+        authenticatedSelection?.inspection.source_identity ?? null,
+      repository_checkpoint:
+        authenticatedSelection?.inspection.policy_checkpoint ?? null,
+    }))));
+    VIEWS.set(view, Object.freeze({
+      authority: authorityValue,
+      authority_id: authority.authority_id,
+      observed_at: authority.observed_at,
+      selected,
+      repository_rid: requiredRepositoryRid,
+      repository_binding: authenticatedSelection?.binding ?? null,
+      repository_inspection: authenticatedSelection?.inspection ?? null,
+      binding_digest: bindingDigest,
+    }));
+    return Object.freeze({ verdict: "accept", view });
+  } catch {
+    return REJECTED;
+  }
+}
+
+function opaqueAuthority(value: unknown): CapturedAuthority | null {
+  if (value === null || typeof value !== "object" || utilTypes.isProxy(value)) {
+    return null;
+  }
+  return AUTHORITIES.get(value) ?? null;
+}
+
+function captureInput(value: unknown): Readonly<{
+  relay_candidates: readonly VerifiedNostrEvent[];
+  repository_candidates: readonly RepositoryCandidate[];
+}> | null {
+  try {
+    const captured = captureExactDataObject(value, [[
+      "relay_candidates",
+      "repository_candidates",
+    ]], "Canonical profile selection input");
+    const relayCandidates = captureDenseArray(
+      captured.relay_candidates,
+      MAX_CANDIDATES_PER_CARRIER,
+    );
+    const repositorySources = captureDenseArray(
+      captured.repository_candidates,
+      MAX_CANDIDATES_PER_CARRIER,
+    );
+    if (
+      relayCandidates === null
+      || repositorySources === null
+      || relayCandidates.length + repositorySources.length > MAX_TOTAL_CANDIDATES
+    ) return null;
+
+    const relayEvents: VerifiedNostrEvent[] = [];
+    for (const source of relayCandidates) {
+      const event = snapshotBoundedEvent(source);
+      if (
+        event !== null
+        && event.kind === 0
+        && profileContent(event.content) !== undefined
+      ) relayEvents.push(event);
+    }
+
+    const repositoryCandidates: RepositoryCandidate[] = [];
+    for (const source of repositorySources) {
+      const candidate = captureExactDataObject(source, [[
+        "event",
+        "repository_rid",
+        "ref",
+      ]], "Canonical profile repository candidate");
+      if (
+        !isCanonicalCoreRepositoryRid(candidate.repository_rid)
+        || !isCanonicalCoreGitRef(candidate.ref)
+      ) return null;
+      const event = snapshotBoundedEvent(candidate.event);
+      if (
+        event === null
+        || event.kind !== 0
+        || profileContent(event.content) === undefined
+      ) continue;
+      repositoryCandidates.push(Object.freeze({
+        event,
+        repository_rid: candidate.repository_rid,
+        ref: candidate.ref,
+      }));
+    }
+    return Object.freeze({
+      relay_candidates: Object.freeze(relayEvents),
+      repository_candidates: Object.freeze(repositoryCandidates),
+    });
+  } catch {
+    return null;
+  }
+}
+
+function captureRepositoryInspection(
+  value: unknown,
+  candidate: RepositoryCandidate,
+  observedAt: number,
+): InspectedRepositoryWriterBinding | null {
+  try {
+    const captured = captureExactDataObject(value, [[
+      "profile",
+      "spec_version",
+      "owner_active_key",
+      "repository_rid",
+      "writer_nid",
+      "ref_namespace",
+      "operations",
+      "issued_at",
+      "expires_at",
+      "owner_signature",
+      "nid_signature",
+      "writer_ref",
+      "operation",
+      "source_identity",
+      "proof_identity",
+      "policy_revision",
+      "policy_checkpoint",
+      "policy_predecessor",
+    ]], "Canonical repository writer tuple");
+    const operations = captureDenseArray(captured.operations, 32);
+    if (
+      captured.profile !== "heterodyne.core.repository-writer-binding.v1"
+      || captured.spec_version !== "heterodyne/0.6.0"
+      || typeof captured.owner_active_key !== "string"
+      || !HEX_32.test(captured.owner_active_key)
+      || captured.owner_active_key !== candidate.event.pubkey
+      || !isCanonicalCoreRepositoryRid(captured.repository_rid)
+      || captured.repository_rid !== candidate.repository_rid
+      || typeof captured.writer_nid !== "string"
+      || !WRITER_NID.test(captured.writer_nid)
+      || !isCanonicalCoreGitRefNamespace(captured.ref_namespace)
+      || operations === null
+      || operations.length === 0
+      || operations.some((operation) =>
+        typeof operation !== "string"
+        || operation.length > 64
+        || !OPERATION.test(operation)
+      )
+      || !strictlySorted(operations as string[])
+      || !Number.isSafeInteger(captured.issued_at)
+      || (captured.issued_at as number) < 0
+      || !Number.isSafeInteger(captured.expires_at)
+      || (captured.expires_at as number) <= (captured.issued_at as number)
+      || typeof captured.owner_signature !== "string"
+      || !HEX_64.test(captured.owner_signature)
+      || typeof captured.nid_signature !== "string"
+      || !HEX_64.test(captured.nid_signature)
+      || !isCanonicalCoreGitRef(captured.writer_ref)
+      || captured.writer_ref !== candidate.ref
+      || typeof captured.ref_namespace !== "string"
+      || typeof captured.writer_ref !== "string"
+      || !captured.writer_ref.startsWith(captured.ref_namespace)
+      || captured.writer_ref.length <= captured.ref_namespace.length
+      || captured.operation !== "claim-ledger-write"
+      || !(operations as string[]).includes(captured.operation)
+      || observedAt < (captured.issued_at as number)
+      || observedAt >= (captured.expires_at as number)
+      || typeof captured.source_identity !== "string"
+      || !HEX_32.test(captured.source_identity)
+      || typeof captured.proof_identity !== "string"
+      || !HEX_32.test(captured.proof_identity)
+      || !Number.isSafeInteger(captured.policy_revision)
+      || (captured.policy_revision as number) < 0
+      || typeof captured.policy_checkpoint !== "string"
+      || !CHECKPOINT.test(captured.policy_checkpoint)
+      || !(captured.policy_predecessor === null
+        || typeof captured.policy_predecessor === "string"
+          && CHECKPOINT.test(captured.policy_predecessor))
+    ) return null;
+    return Object.freeze({
+      profile: captured.profile,
+      spec_version: captured.spec_version,
+      owner_active_key: captured.owner_active_key,
+      repository_rid: captured.repository_rid,
+      writer_nid: captured.writer_nid,
+      ref_namespace: captured.ref_namespace,
+      operations: Object.freeze(operations as string[]),
+      issued_at: captured.issued_at as number,
+      expires_at: captured.expires_at as number,
+      owner_signature: captured.owner_signature,
+      nid_signature: captured.nid_signature,
+      writer_ref: captured.writer_ref,
+      operation: captured.operation,
+      source_identity: captured.source_identity,
+      proof_identity: captured.proof_identity,
+      policy_revision: captured.policy_revision as number,
+      policy_checkpoint: captured.policy_checkpoint,
+      policy_predecessor: captured.policy_predecessor,
+    });
+  } catch {
+    return null;
+  }
+}
+
+function strictlySorted(values: readonly string[]): boolean {
+  return values.every((value, index) =>
+    index === 0 || values[index - 1]! < value
+  );
+}
+
+function snapshotBoundedEvent(value: unknown): VerifiedNostrEvent | null {
+  if (!eventShapeWithinBounds(value)) return null;
+  return snapshotAndVerifyNostrEvent(value);
+}
+
+function eventShapeWithinBounds(value: unknown): boolean {
+  try {
+    if (
+      value === null
+      || typeof value !== "object"
+      || Array.isArray(value)
+      || utilTypes.isProxy(value)
+      || Object.getPrototypeOf(value) !== Object.prototype
+    ) return false;
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    const keys = Reflect.ownKeys(descriptors);
+    if (
+      keys.some((key) => typeof key !== "string")
+      || keys.length !== EVENT_MEMBERS.length
+      || !EVENT_MEMBERS.every((member) => Object.hasOwn(descriptors, member))
+    ) return false;
+    const content = dataMember(descriptors, "content");
+    const createdAt = dataMember(descriptors, "created_at");
+    const id = dataMember(descriptors, "id");
+    const kind = dataMember(descriptors, "kind");
+    const pubkey = dataMember(descriptors, "pubkey");
+    const sig = dataMember(descriptors, "sig");
+    const tags = dataMember(descriptors, "tags");
+    if (
+      typeof content !== "string"
+      || UTF8_ENCODER.encode(content).byteLength > MAX_EVENT_CONTENT_BYTES
+      || !Number.isSafeInteger(createdAt)
+      || !Number.isSafeInteger(kind)
+      || typeof id !== "string"
+      || id.length !== 64
+      || typeof pubkey !== "string"
+      || pubkey.length !== 64
+      || typeof sig !== "string"
+      || sig.length !== 128
+    ) return false;
+    let totalBytes = UTF8_ENCODER.encode(content).byteLength + 256;
+    const tagValues = captureDenseArray(tags, MAX_EVENT_TAGS);
+    if (tagValues === null) return false;
+    for (const tag of tagValues) {
+      const members = captureDenseArray(tag, MAX_TAG_WIDTH);
+      if (
+        members === null
+        || members.length === 0
+        || members.some((member) =>
+          typeof member !== "string"
+          || UTF8_ENCODER.encode(member).byteLength > MAX_TAG_MEMBER_BYTES
+        )
+      ) return false;
+      for (const member of members as string[]) {
+        totalBytes += UTF8_ENCODER.encode(member).byteLength;
+        if (totalBytes > MAX_EVENT_BYTES) return false;
+      }
+    }
+    return totalBytes <= MAX_EVENT_BYTES;
+  } catch {
+    return false;
+  }
+}
+
+function dataMember(
+  descriptors: PropertyDescriptorMap,
+  member: string,
+): unknown {
+  const descriptor = descriptors[member];
+  return descriptor !== undefined
+    && descriptor.enumerable === true
+    && "value" in descriptor
+    ? descriptor.value
+    : undefined;
+}
+
+function captureDenseArray(value: unknown, maximum: number): unknown[] | null {
+  if (
+    !Array.isArray(value)
+    || utilTypes.isProxy(value)
+    || Object.getPrototypeOf(value) !== Array.prototype
+  ) return null;
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const lengthDescriptor = Reflect.get(
+    descriptors,
+    "length",
+  ) as PropertyDescriptor | undefined;
+  if (
+    lengthDescriptor === undefined
+    || !("value" in lengthDescriptor)
+    || !Number.isSafeInteger(lengthDescriptor.value)
+    || lengthDescriptor.value < 0
+    || lengthDescriptor.value > maximum
+  ) return null;
+  const length = lengthDescriptor.value as number;
+  const keys = Reflect.ownKeys(descriptors);
+  if (
+    keys.some((key) => typeof key !== "string")
+    || keys.length !== length + 1
+  ) return null;
+  const captured: unknown[] = [];
+  for (let index = 0; index < length; index += 1) {
+    const descriptor = descriptors[String(index)];
+    if (
+      descriptor === undefined
+      || descriptor.enumerable !== true
+      || !("value" in descriptor)
+    ) return null;
+    captured.push(descriptor.value);
+  }
+  return captured;
+}
+
+/**
+ * Returns the required repository RID, null for a valid ordinary profile with
+ * no valid extension, and undefined when the kind-0 content itself is invalid.
+ */
+function profileContent(content: string): string | null | undefined {
+  try {
+    const value: unknown = JSON.parse(content);
+    if (
+      value === null
+      || typeof value !== "object"
+      || Array.isArray(value)
+      || Object.getPrototypeOf(value) !== Object.prototype
+    ) return undefined;
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    const heterodyneDescriptor = descriptors.heterodyne;
+    if (heterodyneDescriptor === undefined) return null;
+    if (
+      heterodyneDescriptor.enumerable !== true
+      || !("value" in heterodyneDescriptor)
+      || !validHeterodyneExtension(heterodyneDescriptor.value)
+    ) return null;
+    return (heterodyneDescriptor.value as { profile: string }).profile;
+  } catch {
+    return undefined;
+  }
+}
+
+function validHeterodyneExtension(value: unknown): boolean {
+  if (
+    value === null
+    || typeof value !== "object"
+    || Array.isArray(value)
+    || Object.getPrototypeOf(value) !== Object.prototype
+  ) return false;
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const keys = Reflect.ownKeys(descriptors);
+  const allowed = new Set([
+    "profile",
+    "identity_chain",
+    "cold_root",
+    "succession_authority",
+  ]);
+  if (
+    keys.some((key) => typeof key !== "string" || !allowed.has(key))
+    || !Object.hasOwn(descriptors, "profile")
+  ) return false;
+  for (const key of keys as string[]) {
+    const descriptor = descriptors[key];
+    if (
+      descriptor === undefined
+      || descriptor.enumerable !== true
+      || !("value" in descriptor)
+    ) return false;
+  }
+  const profile = dataMember(descriptors, "profile");
+  const identityChain = dataMember(descriptors, "identity_chain");
+  const coldRoot = dataMember(descriptors, "cold_root");
+  const successionAuthority = dataMember(descriptors, "succession_authority");
+  return isCanonicalCoreRepositoryRid(profile)
+    && (identityChain === undefined || isCanonicalNaddr(identityChain))
+    && (coldRoot === undefined || typeof coldRoot === "string" && HEX_32.test(coldRoot))
+    && (successionAuthority === undefined
+      || typeof successionAuthority === "string" && HEX_32.test(successionAuthority));
+}
+
+function isCanonicalNaddr(value: unknown): boolean {
+  if (
+    typeof value !== "string"
+    || !value.startsWith("naddr1")
+    || value.length > 1_024
+  ) return false;
+  try {
+    const decoded = nip19.decode(value);
+    return decoded.type === "naddr" && nip19.naddrEncode(decoded.data) === value;
+  } catch {
+    return false;
+  }
+}
+
+function invalid(): Error {
+  return new Error("canonical-profile-authority-invalid");
+}

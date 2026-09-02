@@ -18,13 +18,17 @@ export type ConformanceCheck = {
 
 export type RawVector = {
   vector_id: string;
-  vector_schema_version: string;
+  vector_schema_version: "3.0.0";
   /** The document that owns the requirement, for coverage reporting only. */
   owner_document: DocumentId;
   spec_version: string;
   profile?: string;
   conformance_checks?: ConformanceCheck[];
   spec_refs: string[];
+  /** Registered normative invariants exercised by this case. */
+  invariants: string[];
+  /** Registered rejection vocabulary exercised by this case. */
+  reason_codes: string[];
   description: string;
   direction: VectorDirection;
   input: Record<string, unknown>;
@@ -34,13 +38,23 @@ export type RawVector = {
 /** Current draft generator input, retained independently from snapshot output. */
 export type Vector = RawVector;
 
-export type SnapshotVector = Omit<
+export type HistoricalSnapshotVector = Omit<
   RawVector,
-  "vector_schema_version" | "spec_version" | "spec_refs"
+  "vector_schema_version" | "spec_version" | "spec_refs" | "invariants" | "reason_codes"
 > & {
   vector_schema_version: "2.0.0";
   spec_refs: string[];
 };
+
+export type CurrentSnapshotVector = Omit<
+  RawVector,
+  "vector_schema_version" | "spec_version" | "spec_refs"
+> & {
+  vector_schema_version: "3.0.0";
+  spec_refs: string[];
+};
+
+export type SnapshotVector = HistoricalSnapshotVector | CurrentSnapshotVector;
 
 export type AuthoredVector = {
   relativePath: string;

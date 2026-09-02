@@ -1,0 +1,24 @@
+{
+  "vector_id": "comms/marmot-premature-ack",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-marmot-rotation"
+  ],
+  "invariants": [
+    "COMMS-I-MARMOT-EXACT-BYTES"
+  ],
+  "reason_codes": [
+    "marmot-premature-ack"
+  ],
+  "description": "A requested publisher acknowledgement is rejected until its exact bytes cross the configured durability boundary.",
+  "direction": "produce",
+  "input": {
+    "receipt_state": "fresh-unregistered-sentinel",
+    "append_attempted": false
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "marmot-premature-ack"
+  }
+}

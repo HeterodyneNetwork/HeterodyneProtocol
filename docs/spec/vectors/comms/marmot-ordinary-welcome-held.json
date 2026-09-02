@@ -1,0 +1,29 @@
+{
+  "vector_id": "comms/marmot-ordinary-welcome-held",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-ordinary-conversation-admission"
+  ],
+  "invariants": [
+    "COMMS-I-MARMOT-ACCOUNT-IDENTITY",
+    "COMMS-I-MARMOT-SECRET-CONFINEMENT",
+    "COMMS-I-MARMOT-UPSTREAM-AUTHORITY"
+  ],
+  "reason_codes": [],
+  "description": "A cryptographically valid upstream Marmot Welcome from an unrecognized account is held for local policy without any sender-observable signal or secret disclosure.",
+  "direction": "consume",
+  "input": {
+    "welcome_format": "mls_welcome",
+    "admission_decision": "hold",
+    "checkpoint": "conversation:7"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "output": {
+      "group_id": "5555555555555555555555555555555555555555555555555555555555555555",
+      "checkpoint": "conversation:7",
+      "terminal": "held"
+    }
+  }
+}

@@ -34,6 +34,7 @@ function manifestBody(): ContinuityManifestBody {
     sequence: 0,
     predecessor_digest: null,
     max_checkpoint_age_seconds: 300,
+    authorization_view_max_age: 300,
     current_jwks_sha256: sha256(jwksBytes),
     current_signing_key_id: OIDC_RSA_ONE.key_id,
     current_signing_jwk_sha256: sha256(utf8Bytes(jcsCanonicalize(OIDC_RSA_ONE.public_jwk))),

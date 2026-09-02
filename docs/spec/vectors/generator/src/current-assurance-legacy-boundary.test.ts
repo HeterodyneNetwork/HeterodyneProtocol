@@ -48,7 +48,7 @@ async function assuranceEvent(
 async function currentAssuranceState(): Promise<AssuranceHeadState> {
   const inceptionBody = {
     profile: "heterodyne.assurance.enrollment-inception.v1" as const,
-    spec_version: "heterodyne/0.5.0" as const,
+    spec_version: "heterodyne/0.6.0" as const,
     active_key: ACTIVE_KEY,
     created_at: CREATED_AT,
     predecessor: null,
@@ -73,7 +73,7 @@ async function currentAssuranceState(): Promise<AssuranceHeadState> {
   );
   const acceptanceBody = {
     profile: "heterodyne.assurance.active-key-acceptance.v1" as const,
-    spec_version: "heterodyne/0.5.0" as const,
+    spec_version: "heterodyne/0.6.0" as const,
     active_key: ACTIVE_KEY,
     created_at: CREATED_AT + 1,
     predecessor: inception.id,
@@ -114,7 +114,7 @@ describe("current Assurance rejects retired Core KEL wire grammar", () => {
     });
     const acceptanceBody = {
       profile: "heterodyne.assurance.active-key-acceptance.v1" as const,
-      spec_version: "heterodyne/0.5.0" as const,
+      spec_version: "heterodyne/0.6.0" as const,
       active_key: ACTIVE_KEY,
       created_at: CREATED_AT + 1,
       predecessor: inception.id,

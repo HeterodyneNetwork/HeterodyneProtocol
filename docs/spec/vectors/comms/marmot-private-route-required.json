@@ -1,0 +1,25 @@
+{
+  "vector_id": "comms/marmot-private-route-required",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-marmot-groups"
+  ],
+  "invariants": [
+    "COMMS-I-MARMOT-UPSTREAM-AUTHORITY"
+  ],
+  "reason_codes": [
+    "marmot-private-route-required"
+  ],
+  "description": "The current Comms policy boundary rejects marmot private route required.",
+  "direction": "consume",
+  "input": {
+    "requested_repository_rid": "rad:z3CurrentPrivateRepository",
+    "requested_interface_id": "radicle-native-private",
+    "requested_route": "rad:zAbsent"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "marmot-private-route-required"
+  }
+}

@@ -9,6 +9,11 @@
 > clear recipient wrap/roster tags, shared `key_id` linkage, timing, and volume
 > remain visible. Repository tiers, audience-key `kind:31011`, roster/rotation,
 > and encrypted-blob behavior remain accepted.
+>
+> **Tier definitions superseded (2026-08-26, ADR-048).** Tiers were re-cut for
+> heterodyne/0.6.0: Tier 2 is public-carrier ciphertext, Tier 3 is ciphertext
+> confined to private-repository interfaces, and plaintext private
+> repositories became a repository-visibility setting.
 
 ## Context
 

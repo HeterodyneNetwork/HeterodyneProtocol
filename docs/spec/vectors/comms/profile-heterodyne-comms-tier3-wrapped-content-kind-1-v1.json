@@ -1,0 +1,73 @@
+{
+  "vector_id": "comms/profile-heterodyne-comms-tier3-wrapped-content-kind-1-v1",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "profile": "heterodyne-comms-tier3-wrapped-content-kind-1-v1",
+  "spec_refs": [
+    "heterodyne:comms#comms-security"
+  ],
+  "invariants": [
+    "COMMS-I-TIER3-BLIND-CARRIER",
+    "COMMS-I-TIER3-CONFINED"
+  ],
+  "reason_codes": [],
+  "description": "The fixed heterodyne-comms-tier3-wrapped-content-kind-1-v1 allocation is checked separately from its live semantic boundary.",
+  "direction": "consume",
+  "input": {
+    "kind": 1,
+    "profile_id": "heterodyne-comms-tier3-wrapped-content-kind-1-v1",
+    "owner": "comms",
+    "discriminator": "tag:heterodyne_wrap=room_key.v2",
+    "stamping": true,
+    "first_version": "heterodyne/0.5.0",
+    "status": "draft",
+    "wire_probe": {
+      "content_is_heterodyne_json": false,
+      "is_dr_outer": false,
+      "tags": [
+        [
+          "heterodyne_wrap",
+          "room_key.v2"
+        ]
+      ]
+    },
+    "audience_key": "4040404040404040404040404040404040404040404040404040404040404040",
+    "key_id": "current-profile-tier3-kind-1",
+    "plaintext": "{\"kind\":1,\"audience\":\"fixed-current-profile\"}",
+    "memberPersonas": [
+      "1111111111111111111111111111111111111111111111111111111111111111"
+    ],
+    "devices": [
+      {
+        "persona": "1111111111111111111111111111111111111111111111111111111111111111",
+        "pubkey": "2222222222222222222222222222222222222222222222222222222222222222",
+        "active": true,
+        "role": "human-device"
+      }
+    ],
+    "selected": [
+      "2222222222222222222222222222222222222222222222222222222222222222"
+    ],
+    "requested_repository_rid": "rad:z3CurrentPrivateRepository",
+    "requested_interface_id": "radicle-native-private",
+    "requested_route": "rad:z3CurrentPrivateRepository"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "crypto": {
+      "derived_key": "6fa7570d3427e992f477d190ed00651566c107e7160b293915d18381bc359045",
+      "ciphertext": "AmFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhVQ6KnSOygVoxa3/ZRAeGEIYJ7rz+AxybDPWmMEVRYmLHrFWst/eKYMmPN8Nj55m/F0ynKQ1rtZXCQpIHh6HbWQZTv1zqxN3vOgZPnIV8g4p2V5yO0x9yMnHcZdtiUuNEChM=",
+      "recovered_plaintext": "{\"kind\":1,\"audience\":\"fixed-current-profile\"}",
+      "authenticated_round_trip": true
+    },
+    "recipients": {
+      "verdict": "accept",
+      "recipients": [
+        "2222222222222222222222222222222222222222222222222222222222222222"
+      ]
+    },
+    "route": {
+      "verdict": "accept"
+    }
+  }
+}

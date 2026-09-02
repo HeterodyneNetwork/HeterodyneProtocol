@@ -1,0 +1,39 @@
+{
+  "vector_id": "workspace/assurance-pending-activation",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "workspace",
+  "spec_refs": [
+    "heterodyne:workspace#workspace-optional-assurance"
+  ],
+  "invariants": [
+    "WORKSPACE-I-OPTIONAL-ASSURANCE"
+  ],
+  "reason_codes": [
+    "workspace-assurance-state-required"
+  ],
+  "description": "A pending enrollment cannot activate optional Workspace Assurance.",
+  "direction": "consume",
+  "input": {
+    "transition": {
+      "workspace_key": "1111111111111111111111111111111111111111111111111111111111111111",
+      "previous_policy_head": "3333333333333333333333333333333333333333333333333333333333333333",
+      "next_policy_head": "4444444444444444444444444444444444444444444444444444444444444444",
+      "previous_assurance": null,
+      "next_assurance": {
+        "profile": "heterodyne.workspace.assurance.v1",
+        "inception_event_id": "2222222222222222222222222222222222222222222222222222222222222222",
+        "required_state": "verified"
+      }
+    },
+    "enrollment_resolution": {
+      "state": "pending",
+      "active_key": "1111111111111111111111111111111111111111111111111111111111111111",
+      "inception_event_id": "2222222222222222222222222222222222222222222222222222222222222222",
+      "evaluated_at": 1720000400
+    }
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "workspace-assurance-state-required"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "vector_id": "core/config-rid-published",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "core",
+  "spec_refs": [
+    "heterodyne:core#core-conformance"
+  ],
+  "invariants": [
+    "CORE-I-IDENTITY-INTEGRITY"
+  ],
+  "reason_codes": [
+    "config_rid_advertised"
+  ],
+  "description": "The Core operational boundary rejects config rid published.",
+  "direction": "consume",
+  "input": {
+    "operation": "publish-surface",
+    "config_rid": "rad:zCurrentCatalogFixture",
+    "values": [
+      "rad:zCurrentCatalogFixture"
+    ]
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "config_rid_advertised"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "vector_id": "control/invite-preauthorization-invalid",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "control",
+  "spec_refs": [
+    "heterodyne:control#control-one-time-invites"
+  ],
+  "invariants": [
+    "CONTROL-I-MARMOT-GRANT-CONFINEMENT"
+  ],
+  "reason_codes": [
+    "invite-preauthorization-invalid"
+  ],
+  "description": "The current Control policy boundary rejects invite preauthorization invalid.",
+  "direction": "consume",
+  "input": {
+    "evidence": "signed invite template does not bind the current request audience"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "invite-preauthorization-invalid"
+  }
+}

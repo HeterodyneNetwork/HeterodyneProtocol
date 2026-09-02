@@ -111,14 +111,14 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Tier 3 content is audience-key encrypted before reaching any repository, seed, full node, or relay."
+      "description": "Tier 2 and Tier 3 content is audience-key encrypted before reaching any repository, seed, full node, or relay, and Tier 3 objects reach only authorized private-repository interfaces."
     },
     {
       "id": "COMMS-I-TIER2-HONESTY",
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Tier 2 private repositories are selective-replication boundaries, not encryption, and clients present that trust boundary honestly."
+      "description": "Private plaintext repositories are selective-replication boundaries, not encryption, and clients present that trust boundary honestly."
     },
     {
       "id": "COMMS-I-CONFIG-AT-REST",
@@ -316,7 +316,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "feature": "comms.oidc-jwt-projection.v1",
-      "description": "A node mints only from a synchronized canonical checkpoint no older than the manifest bound, which cannot exceed 300 seconds."
+      "description": "A node mints only from a synchronized canonical checkpoint no older than the declared authorization_view_max_age bound, which defaults to 300 seconds and cannot exceed 86400 seconds."
     },
     {
       "id": "COMMS-I-ISSUER-CONTINUITY",
@@ -356,7 +356,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "feature": "comms.public-reader.v1",
-      "description": "A public-reader implementation consumes only verified Tier 1 content and never renders Tier 2 plaintext or interprets Tier 3 ciphertext as public content."
+      "description": "A public-reader implementation consumes only verified Tier 1 content and never renders private-repository plaintext or interprets Tier 2 or Tier 3 ciphertext as public content."
     },
     {
       "id": "COMMS-I-AGENT-SIGNER-BINDING",
@@ -517,7 +517,7 @@
       "owner": "workspace",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Ordinary writes use checkpoints no older than 86400 seconds and authority mutations no older than 300 seconds, with policy able only to shorten those bounds; invitation commit samples trusted time itself, reruns complete activation validation at that time, and releases the reservation on any failure before its atomic transition."
+      "description": "Ordinary writes use checkpoints no older than 86400 seconds and authority mutations no older than the declared authorization-view bound (default 300 seconds, ceiling 86400 seconds), with policy able only to shorten those bounds; invitation commit samples trusted time itself, reruns complete activation validation at that time, and releases the reservation on any failure before its atomic transition."
     },
     {
       "id": "WORKSPACE-I-HOST-AUTHORITY-SEPARATION",
@@ -541,6 +541,27 @@
       "first_version": "heterodyne/0.5.0",
       "feature": "workspace.private-role-control.v1",
       "description": "Each active account device has an independently revocable Marmot MLS leaf and receives only uniquely identified envelopes bound to that exact grant, single path admission epoch, account, device, leaf, role, resource, checkpoint, and custody host."
+    },
+    {
+      "id": "WORKSPACE-I-OPTIONAL-ASSURANCE",
+      "owner": "workspace",
+      "status": "draft",
+      "first_version": "heterodyne/0.6.0",
+      "description": "A Workspace remains valid under a bare active key with no Assurance profile; once an optional Assurance profile is activated, ordinary active-key governance alone cannot weaken, replace, or remove it, and any transition requires matching current Assurance authorization over the same canonical policy-transition digest."
+    },
+    {
+      "id": "ASSURANCE-I-ENROLLMENT-WINDOWED",
+      "owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.6.0",
+      "description": "No enrollment is pin-eligible before 604800 seconds of authenticated observation; a timely active-key contest or fully reciprocal competing enrollment is absorbing, and later initial-enrollment evidence cannot unpin an authoritative verified enrollment."
+    },
+    {
+      "id": "COMMS-I-TIER3-CONFINED",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "heterodyne/0.6.0",
+      "description": "Tier 3 posts, audience wraps, rosters, and rotation records are carried only via the private repository's authorized interfaces, never ordinary public relays, confining audience membership metadata to allowed nodes."
     }
   ]
 }

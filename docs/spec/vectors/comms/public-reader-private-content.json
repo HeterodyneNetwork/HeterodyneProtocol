@@ -1,0 +1,24 @@
+{
+  "vector_id": "comms/public-reader-private-content",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-public-reader"
+  ],
+  "invariants": [
+    "COMMS-I-PUBLIC-READER-TIER1-ONLY"
+  ],
+  "reason_codes": [
+    "public-reader-private-content"
+  ],
+  "description": "The current Comms policy boundary rejects public reader private content.",
+  "direction": "consume",
+  "input": {
+    "tier": 2,
+    "render_as_public": true
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "public-reader-private-content"
+  }
+}

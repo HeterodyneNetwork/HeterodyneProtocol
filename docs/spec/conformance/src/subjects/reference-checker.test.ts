@@ -22,10 +22,10 @@ const LOCAL_FIXTURE_ID = "0ca4d11b4c9a066c9d72929c8048f360f23da62346b33e125f0b01
 const LOCAL_FIXTURE_SIGNATURE =
   "95002c9025721f3d93be71c6e78ea5792ddcf338aa2658846f270b7fbb07447548fb809ca72f0e08ef50ae416c1f3ac626480b648aebc49cb1c496bda0df1a05";
 const ALTERNATE_ESCAPE_RAW =
-  '[0,"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9",100,31008,[["spec_version","heterodyne/0.5.0"],["kel_head","b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0","0"]],"fi\\u0078ture"]';
-const ALTERNATE_ESCAPE_ID = "49ee55f141662471402e659860126cd908ccbfcc52560567715a3c75fb86d2f8";
+  '[0,"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9",100,31008,[["spec_version","heterodyne/0.6.0"],["kel_head","b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0","0"]],"fi\\u0078ture"]';
+const ALTERNATE_ESCAPE_ID = "d692c7c0d06430c9a6e3a554eac6cd02c9342056aa9575eb5c8afb5c0c8147d0";
 const ALTERNATE_ESCAPE_SIGNATURE =
-  "564b09765b0de0fb660d9fafc5b5ab55bed535082ce8b45016bc8c230be46af2518fe3e59385a5e6de75df324e335e828d46e6c5f168b94495640422a8708015";
+  "283cad197c3675df637c7fcc7b63e3042a4752dd75ddd0ec71ce3ffa029d8a03f902bf7dc00a2d7ee2b53188cfcebb2e09c1fa6efc6727154852a743d603236d";
 const CANONICAL_RID = "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1";
 const REGEX_VALID_WRONG_LENGTH_RID = "rad:z111111111111111111111";
 const REGEX_VALID_BAD_CHECKSUM_NADDR =
@@ -198,7 +198,7 @@ describe("active-key Core signed-event checker", () => {
       created_at: 100,
       kind: 31_008,
       tags: [
-        ["spec_version", "heterodyne/0.5.0"],
+        ["spec_version", "heterodyne/0.6.0"],
         ["kel_head", "b0".repeat(32), "0"],
       ],
       content: "fixture",

@@ -1,11 +1,20 @@
 import { createHash, createHmac } from "node:crypto";
+import { types as utilTypes } from "node:util";
 import { schnorr } from "@noble/curves/secp256k1";
 import { hexToBytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
 import { proofBytes } from "./proof-bytes.js";
+import { captureAuthorityInput } from "./security-authority-support.js";
 
 const DESCRIPTOR_DOMAIN = "heterodyne-one-time-invite-v1";
 const RESPONSE_DOMAIN = "heterodyne-one-time-invite-response-v1";
+const MAX_DESCRIPTOR_DEPTH = 8;
+const MAX_DESCRIPTOR_NODES = 1_024;
+const MAX_DESCRIPTOR_PROPERTIES = 64;
+const MAX_DESCRIPTOR_ARRAY = 64;
+const MAX_DESCRIPTOR_RELAY_HINTS = 16;
+const MAX_DESCRIPTOR_STRING_BYTES = 256;
+const MAX_DESCRIPTOR_TOTAL_STRING_BYTES = 65_536;
 
 export type InvitePurpose = "dm" | "control-enrollment" | "device-enrollment";
 
@@ -45,15 +54,82 @@ export function verifyInviteSignature(
   signatureHex: string,
 ): boolean {
   try {
-    if (!hasClosedDescriptorMembers(descriptor)) return false;
+    if (!boundedInviteDescriptorPreflight(descriptor)) return false;
+    const captured = captureAuthorityInput(descriptor) as Readonly<InviteDescriptor>;
+    if (!hasClosedDescriptorMembers(captured)) return false;
     return schnorr.verify(
       hexToBytes(signatureHex),
-      descriptorDigest(descriptor),
-      hexToBytes(descriptor.inviter_account),
+      descriptorDigest(captured),
+      hexToBytes(captured.inviter_account),
     );
   } catch {
     return false;
   }
+}
+
+function boundedInviteDescriptorPreflight(value: unknown): boolean {
+  const active = new Set<object>();
+  let nodes = 0;
+  let totalStringBytes = 0;
+  const addString = (text: string): boolean => {
+    if (text.length > MAX_DESCRIPTOR_STRING_BYTES) return false;
+    const bytes = Buffer.byteLength(text, "utf8");
+    if (bytes > MAX_DESCRIPTOR_STRING_BYTES) return false;
+    totalStringBytes += bytes;
+    return totalStringBytes <= MAX_DESCRIPTOR_TOTAL_STRING_BYTES;
+  };
+  const visit = (current: unknown, depth: number): boolean => {
+    nodes += 1;
+    if (nodes > MAX_DESCRIPTOR_NODES || depth > MAX_DESCRIPTOR_DEPTH) return false;
+    if (current === null || typeof current === "boolean") return true;
+    if (typeof current === "string") return addString(current);
+    if (typeof current === "number") return Number.isFinite(current);
+    if (typeof current !== "object" || utilTypes.isProxy(current) || current instanceof Uint8Array) {
+      return false;
+    }
+    if (active.has(current)) return false;
+    active.add(current);
+    try {
+      if (Array.isArray(current)) {
+        if (Object.getPrototypeOf(current) !== Array.prototype) return false;
+        const lengthDescriptor = Object.getOwnPropertyDescriptor(current, "length");
+        if (lengthDescriptor === undefined || !("value" in lengthDescriptor)
+          || !Number.isSafeInteger(lengthDescriptor.value)
+          || lengthDescriptor.value < 0
+          || lengthDescriptor.value > MAX_DESCRIPTOR_ARRAY) return false;
+        const descriptors = Object.getOwnPropertyDescriptors(current);
+        if (Reflect.ownKeys(descriptors).length !== lengthDescriptor.value + 1) return false;
+        for (let index = 0; index < lengthDescriptor.value; index += 1) {
+          const descriptor = descriptors[String(index)];
+          if (descriptor === undefined || !("value" in descriptor) || descriptor.enumerable !== true
+            || !visit(descriptor.value, depth + 1)) return false;
+        }
+        return true;
+      }
+      if (Object.getPrototypeOf(current) !== Object.prototype) return false;
+      const descriptors = Object.getOwnPropertyDescriptors(current);
+      const keys = Reflect.ownKeys(descriptors);
+      if (keys.length > MAX_DESCRIPTOR_PROPERTIES || keys.some((key) => typeof key !== "string")) {
+        return false;
+      }
+      for (const key of keys as string[]) {
+        const descriptor = descriptors[key];
+        if (descriptor === undefined || !("value" in descriptor) || descriptor.enumerable !== true
+          || !addString(key) || !visit(descriptor.value, depth + 1)) return false;
+      }
+      return true;
+    } finally {
+      active.delete(current);
+    }
+  };
+  if (!visit(value, 0) || value === null || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const relayDescriptor = Object.getOwnPropertyDescriptor(value, "relay_hints");
+  return relayDescriptor !== undefined
+    && "value" in relayDescriptor
+    && Array.isArray(relayDescriptor.value)
+    && relayDescriptor.value.length <= MAX_DESCRIPTOR_RELAY_HINTS;
 }
 
 const INVITE_DESCRIPTOR_MEMBERS = new Set([

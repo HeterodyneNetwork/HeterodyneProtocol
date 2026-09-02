@@ -1,0 +1,23 @@
+{
+  "vector_id": "comms/oidc-status-invalid",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-conformance"
+  ],
+  "invariants": [
+    "COMMS-I-STATUS-INTEGRITY"
+  ],
+  "reason_codes": [
+    "oidc-status-invalid"
+  ],
+  "description": "The live OIDC boundary rejects oidc status invalid.",
+  "direction": "consume",
+  "input": {
+    "statuses": []
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "oidc-status-invalid"
+  }
+}

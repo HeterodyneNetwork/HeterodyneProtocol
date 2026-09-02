@@ -1,0 +1,23 @@
+{
+  "vector_id": "control/keypackage-invalid",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "control",
+  "spec_refs": [
+    "heterodyne:control#control-invitation-policy"
+  ],
+  "invariants": [
+    "CONTROL-I-MARMOT-GRANT-CONFINEMENT"
+  ],
+  "reason_codes": [
+    "control-keypackage-invalid"
+  ],
+  "description": "The current Control policy boundary rejects keypackage invalid.",
+  "direction": "consume",
+  "input": {
+    "evidence": "authenticated KeyPackage verification rejects"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "control-keypackage-invalid"
+  }
+}

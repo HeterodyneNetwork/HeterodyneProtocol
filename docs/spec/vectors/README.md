@@ -14,22 +14,20 @@ comparison surface for `round-trip` input at the pinned source commit. During
 place. Vector-ID immutability, retained historical sets, and release
 compatibility are deferred to the future 1.0 release policy.
 
-## Closed snapshot and bootstrap
+## Closed snapshot
 
-[`snapshot.json`](snapshot.json) is a closed, canonical manifest containing one
-full source commit, one packaged vector-schema version, the vector count, and a
-strictly sorted inventory of every artifact path and SHA-256 digest. It pins
-source commit `2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43`. The bootstrap contains
-482 vectors and 493 manifest-listed artifacts: the vectors plus fixtures, the
-packaged vector-envelope schema, reason-code projections, and coverage
-manifest/projections. The schema-2.0.0 bootstrap is a behavior-neutral package
-of the source commit's schema-1.0.0 output.
+The closed, canonical `docs/spec/vectors/snapshot.json` manifest is the exact
+source of mutable snapshot facts: `source_commit`, `vector_schema_version`,
+`vector_count`, and the strictly sorted inventory of every artifact path and
+SHA-256 digest. `snapshot-check` derives snapshot identity from the last commit
+that changed that manifest. Current-draft checks and the history-bound snapshot
+check remain independent.
 
 The three isolated roots have different authority:
 
 - The **source root**, materialized from the exact source pin, supplies the
-  five specifications, registry, protocol schemas, and all behavioral
-  generator inputs.
+  specification family, registry, protocol schemas, and behavioral generator
+  inputs that exist at that source commit.
 - The **snapshot root** supplies the committed vectors, fixtures, packaged
   vector schema, reason/coverage projections, and closed manifest.
 - The **snapshot-tool root**, materialized from the snapshot commit, supplies
@@ -40,20 +38,20 @@ and prints that runtime identity as the last commit that changed `snapshot.json`
 it may change when commits are squashed. The check requires the working
 manifest bytes to match that commit and passes explicit source/snapshot roots
 and both commit identities to the independent conformance runtime. The pinned
-source predates executable `conformance_checks`, so this bootstrap executes
-zero declared reference-checker cases. Corpus-wide static gates still execute.
+source determines which `conformance_checks` exist and execute. Corpus-wide
+static gates execute independently.
 
 ## Snapshot envelope
 
 Every packaged vector validates against
 [`schema/vector.schema.json`](schema/vector.schema.json) and carries the closed
-schema-2 envelope:
+envelope version named by the manifest:
 
 ```json
 {
   "vector_id": "<topic>/<stable-id>",
-  "vector_schema_version": "2.0.0",
-  "owner_document": "core | comms | control | social | workspace",
+  "vector_schema_version": "<snapshot manifest value>",
+  "owner_document": "core | assurance | comms | control | social | workspace",
   "profile": "<optional immutable profile id>",
   "spec_refs": ["heterodyne:<document>#<permanent-anchor>"],
   "description": "<behavior>",
@@ -65,15 +63,15 @@ schema-2 envelope:
 
 Any `spec_version` inside a tested event's `input` or `expected_output` is part
 of that event's wire format, not snapshot-envelope authority. The current-draft
-generator can author 499 vectors, while this independently pinned snapshot has
-482. Draft count changes do not require or imply a snapshot update.
+generator may produce a different corpus. Draft count changes do not require or
+imply a snapshot update.
 
 ### Explicit checker applicability
 
 A later snapshot vector may carry an optional top-level `conformance_checks`
 array. It is
 non-wire checker evidence: it neither changes nor appears within the protocol
-input or expected output. The bootstrap snapshot declares none.
+input or expected output.
 
 Each declaration is a closed object with this shape:
 
@@ -120,6 +118,7 @@ therefore collapse to one locator.
 Family layering follows this DAG:
 
 ```text
+Core <- Assurance
 Core <- Comms <- Control
 Core <- Comms <- Social
 Core <- Comms <- Workspace
@@ -127,52 +126,34 @@ Control <- Workspace
 Social <- Workspace
 ```
 
-Core vectors stand alone; Comms, Control, Social, and Workspace behaviors obey
-the corresponding family-layering constraints. Optional Control and Social
-composition claims add those documents separately.
-Control vectors cover Marmot group
-admission, enrollment, entitlements, node-scoped tokens, RPC, operation
-reservation, failover, retention, and separately advertised recovery profiles.
+Core vectors stand alone. Assurance vectors exercise the optional Core
+extension for cold-root/KERI continuity, succession, associated keys, and
+downgrade resistance. Comms, Control, Social, and Workspace behaviors obey the
+corresponding family-layering constraints. Optional Assurance, Control, and
+Social composition claims add those documents separately. Control vectors
+cover Marmot group admission, enrollment, entitlements, node-scoped tokens,
+RPC, operation reservation, failover, retention, and separately advertised
+recovery profiles.
 
 ## Coverage authority
 
 [`coverage/manifest.json`](coverage/manifest.json) is the sole coverage source.
-The Core, Comms, Control, Social, Workspace, and family Markdown files in `coverage/` are
-deterministic generated projections. Do not maintain parallel maps by hand.
+The generated projections are [Core](coverage/core.md),
+[Assurance](coverage/assurance.md), [Comms](coverage/comms.md),
+[Control](coverage/control.md), [Social](coverage/social.md),
+[Workspace](coverage/workspace.md), and [family](coverage/family.md). Do not
+maintain parallel maps by hand.
 
 Ownership is declared per vector, never inferred from its directory. In
-particular:
+particular, current vector payloads exist only under `assurance/`, `comms/`,
+`control/`, `core/`, `social/`, and `workspace/`. Supporting snapshot material
+is confined to `coverage/`, `schema/`, `generator/`, `fixtures.json`, and the
+closed snapshot manifest and its schemas. These locations organize the corpus;
+they do not assign protocol ownership.
 
-- new Nostr-native envelope vectors are Comms;
-- `interop/001-003` are Social while `interop/004` is Core;
-- `org/001-003` are Core while `org/004` is Comms;
-- recovery and config-backup vectors split by the behavior each exercises;
-- Core Radicle multi-host redundancy uses new `core-redundancy/` IDs; and
-- acceptance gating is split between Comms hook behavior and Social
-  tighten-only policy behavior; and
-- `marmot-radicle/` covers pinned Marmot interoperability, exact-byte
-  carriage, routing generations, group repositories, persona inboxes,
-  retention, and node-mediated agent operations.
-
-Four Comms-owned claims/OIDC groups retain their profile-specific allocation
-semantics within the pinned source interpretation:
-
-- `claims/` covers canonical IDs and typed keys, issuer/trust decisions,
-  attenuation, proof of possession, visibility, and revocation;
-- `claim-ledger/` covers repository confirmation, rollback, confinement,
-  reader removal, monotonic multi-writer replay, issuer authority, and mint
-  freshness;
-- `oidc/` covers exact discovery, required and prohibited grants, consent,
-  pairwise subjects, ID/access/assertion token separation, and sender
-  constraints; and
-- `token-status/` covers the exact draft-21 profile, writer allocation,
-  freshness, byte-identical HTTPS/Radicle mirrors, key compromise, and issuer
-  succession.
-
-The coverage manifest maps every vector to one permanent Comms anchor. OIDC
-vectors test an interoperable projection; they do not make JWTs or HTTPS the
-canonical authorization source. Private claims, consent records, issuance
-mappings, and audience keys are never public-discovery fixtures.
+For every vector, the coverage manifest records qualified references whose
+anchors resolve in that vector's owning family document. No one family
+document supplies a universal anchor for the corpus.
 
 ## Reason codes
 

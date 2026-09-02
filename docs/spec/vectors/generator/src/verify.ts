@@ -66,6 +66,7 @@ export async function verifyVectorTree(rootDir: string): Promise<VerifyResult> {
       "schema/reason-codes.md",
       "coverage/manifest.json",
       "coverage/core.md",
+      "coverage/assurance.md",
       "coverage/comms.md",
       "coverage/control.md",
       "coverage/social.md",

@@ -79,7 +79,7 @@ async function assuranceEvent(
 async function enrolledPersona(overrides: Partial<EnrollmentInception> = {}) {
   const inceptionBody: EnrollmentInception = {
     profile: "heterodyne.assurance.enrollment-inception.v1",
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     active_key: ACTIVE_KEY,
     created_at: CREATED_AT,
     predecessor: null,
@@ -105,7 +105,7 @@ async function enrolledPersona(overrides: Partial<EnrollmentInception> = {}) {
   );
   const acceptanceBody = {
     profile: "heterodyne.assurance.active-key-acceptance.v1" as const,
-    spec_version: "heterodyne/0.5.0" as const,
+    spec_version: "heterodyne/0.6.0" as const,
     active_key: ACTIVE_KEY,
     created_at: CREATED_AT + 1,
     predecessor: inception.id,
@@ -141,7 +141,7 @@ function successionBody(
 ): SuccessionRecord {
   const base: SuccessionRecord = {
     profile: "heterodyne.assurance.succession.v1",
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     active_key: state.active_key,
     created_at: state.head_created_at + 10,
     predecessor: state.head,
@@ -221,7 +221,7 @@ function associatedBody(
 ): AssociatedKeyRecord {
   const base: AssociatedKeyRecord = {
     profile: "heterodyne.assurance.associated-key.v1",
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     active_key: state.active_key,
     created_at: state.head_created_at + 2,
     predecessor: state.head,
@@ -402,7 +402,7 @@ describe("Assurance succession validation", () => {
     if (pending.verdict !== "accept") throw new Error(pending.reason_code);
     const acceptanceBody = {
       profile: "heterodyne.assurance.active-key-acceptance.v1" as const,
-      spec_version: "heterodyne/0.5.0" as const,
+      spec_version: "heterodyne/0.6.0" as const,
       active_key: body.new_active_key,
       created_at: body.created_at + 1,
       predecessor: succession.id,
@@ -736,3 +736,7 @@ describe("Assurance associated-key evaluation", () => {
     })).toEqual({ verdict: "reject", reason_code: "assurance-head-mismatch" });
   });
 });
+
+
+// BLUE TEAM VALIDATION: synthetic/local enrollment chronology and pin-finality
+// coverage lives in assurance-observation.test.ts at the durable authority boundary.

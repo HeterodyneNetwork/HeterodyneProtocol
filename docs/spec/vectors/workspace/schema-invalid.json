@@ -1,0 +1,25 @@
+{
+  "vector_id": "workspace/schema-invalid",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "workspace",
+  "spec_refs": [
+    "heterodyne:workspace#workspace-object-types"
+  ],
+  "invariants": [
+    "WORKSPACE-I-AUTHENTICATED-CURRENT-STATE"
+  ],
+  "reason_codes": [
+    "workspace_schema_invalid"
+  ],
+  "description": "The current Workspace semantic boundary rejects schema invalid.",
+  "direction": "consume",
+  "input": {
+    "operation_class": "authority",
+    "checkpoint_age": -1,
+    "policy_max_age": 300
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "workspace_schema_invalid"
+  }
+}

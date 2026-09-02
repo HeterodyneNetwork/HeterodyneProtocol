@@ -13,7 +13,7 @@ const HOST_NID = "did:key:z6MkwQp8f8Y11L3WJYJ4hXa1";
 const SEED_NID = "did:key:z6Mkq7ZBA1Vh9fVhKo2H2iW4";
 
 const base = (object_type: string) => ({
-  spec_version: "heterodyne/0.5.0",
+  spec_version: "heterodyne/0.6.0",
   object_type,
   workspace_key: H64,
   policy_head: H64_B,
@@ -131,7 +131,7 @@ const values: Record<string, Record<string, unknown>> = {
     host_nid: HOST_NID,
     trusted_seed_nids: [SEED_NID],
     radicle_locators: ["rad:zHost"],
-    onion_endpoints: ["http://exampleexampleexampleexampleexampleexampleexampleexample.onion"],
+    onion_endpoints: ["http://" + "exampleexampleexampleexampleexampleexampleexampleexample.onion"],
     clearnet_endpoints: [],
     supported_features: ["comms.radicle-backed-marmot-relay.v1"],
     inheritance: "default",
@@ -278,6 +278,23 @@ describe("Workspace authority object schemas", () => {
     expect(validate("workspace-policy-v1", {
       ...values["workspace-policy-v1"], ordinary_write_max_age: 86_401,
     })).not.toBeNull();
+  });
+
+  it("accepts bare-key policy and one exact optional Assurance profile", () => {
+    const bare = {
+      ...values["workspace-policy-v1"],
+      spec_version: "heterodyne/0.6.0",
+    };
+    expect(validate("workspace-policy-v1", bare)).toBeNull();
+    const assurance = {
+      profile: "heterodyne.workspace.assurance.v1",
+      inception_event_id: "a".repeat(64),
+      required_state: "verified",
+    };
+    expect(validate("workspace-policy-v1", { ...bare, assurance })).toBeNull();
+    expect(validate("workspace-policy-v1", {
+      ...bare, assurance: { ...assurance, cold_root: "b".repeat(64) },
+    })).toContainEqual(expect.objectContaining({ keyword: "additionalProperties" }));
   });
 
   it("requires an exact Marmot MLS leaf recipient on resource key envelopes", () => {

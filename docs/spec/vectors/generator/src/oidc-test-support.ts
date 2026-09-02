@@ -15,10 +15,13 @@ import type { Fixtures } from "./fixtures.js";
 import { bytesToHex, hexToBytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
 import {
+  authorizeAuthorizationRequestEffect,
+  inspectOidcAuthorizedRelease,
   issuerMetadata,
-  validateAuthorizationRequest,
   type JwtProjectionInput,
+  type JwtProjectionRequest,
   type OidcAuthorizationRequest,
+  type OidcProjectionSubtype,
   type PersonaIdentityState,
   type RegisteredClient,
 } from "./oidc.js";
@@ -114,10 +117,10 @@ export async function buildLiveOidcScenario(
   });
   const allClaims = new Map([
     ...s.allClaims,
-    [registrationClaim.artifact.semantic.claim_id, registrationClaim.artifact.semantic] as const,
-    [consentClaim.artifact.semantic.claim_id, consentClaim.artifact.semantic] as const,
-    [dataClaim.artifact.semantic.claim_id, dataClaim.artifact.semantic] as const,
-    [keyClaim.artifact.semantic.claim_id, keyClaim.artifact.semantic] as const,
+    [registrationClaim.artifact.semantic.claim_id, registrationClaim.verified_artifact] as const,
+    [consentClaim.artifact.semantic.claim_id, consentClaim.verified_artifact] as const,
+    [dataClaim.artifact.semantic.claim_id, dataClaim.verified_artifact] as const,
+    [keyClaim.artifact.semantic.claim_id, keyClaim.verified_artifact] as const,
   ]);
   const verificationFor = (claim: typeof dataClaim, resource: string) => {
     const verification = s.makeVerification(claim);
@@ -152,14 +155,13 @@ export async function buildLiveOidcScenario(
     record_id: record.record_id,
     payload_digest: record.payload_digest,
     claim_envelope_context: {
-      issuer_authorized: true,
       profile_revision: 2,
       credential_ledger: {
         credential_ledger_persona: s.persona,
         credential_ledger_generation: 0,
       },
     },
-    claims_by_id: new Map(allClaims),
+    claims_by_id: new Map(),
     claim_verification_context: verificationFor(
       claim,
       claim.artifact.semantic.resources![0],
@@ -211,10 +213,31 @@ export async function buildLiveOidcScenario(
     consent: evidence(consentRecord, consentClaim),
     source_claims: [evidence(dataRecord, dataClaim), evidence(keyRecord, keyClaim)],
   };
-  const release = validateAuthorizationRequest(request);
-  if (!release.allowed || release.request_digest === undefined || release.release_digest === undefined) {
-    throw new Error(`OIDC scenario release failed: ${release.reason_code}`);
+  const releaseHarness = s.makeClaimAuthorizationHarness({
+    load_state: () => preMintState,
+    trusted_now: () => s.now + 69,
+  });
+  let releaseEffects = 0;
+  const releaseAuthorization = await authorizeAuthorizationRequestEffect(
+    releaseHarness.authority,
+    {
+      request,
+      idempotency_key: "synthetic-local-oidc-release-0001",
+      purpose: "authorization_code",
+      projection_subtype: null,
+      assertion_profile: null,
+      projection_request: null,
+      authorization_validity_seconds: 300,
+      effect: () => {
+        releaseEffects += 1;
+        return { status: "completed", result: { executed: true } };
+      },
+    },
+  );
+  if (releaseAuthorization.verdict !== "accept") {
+    throw new Error(`OIDC scenario release failed: ${releaseAuthorization.reason_code}`);
   }
+  const release = inspectOidcAuthorizedRelease(releaseAuthorization.authorization);
   const sourceClaimIds = [
     registrationClaim.artifact.semantic.claim_id,
     consentClaim.artifact.semantic.claim_id,
@@ -230,8 +253,8 @@ export async function buildLiveOidcScenario(
     manifest_max_age_seconds: 300,
     signing_key_id: s.issuerKeyEnvelopeOne.signing_key_id,
     client_id: CLIENT.client_id,
-    authorization_request_digest: release.request_digest,
-    release_digest: release.release_digest,
+    authorization_request_digest: release.request_digest!,
+    release_digest: release.release_digest!,
     source_claim_ids: sourceClaimIds,
     issued_at: now,
     expires_at: now + 600,
@@ -274,7 +297,7 @@ export async function buildLiveOidcScenario(
     issuedRepository.checkpoint,
     issuedContext,
   );
-  const projection: JwtProjectionInput = {
+  const projectionContext: JwtProjectionRequest = Object.freeze({
     issuer: metadata.issuer,
     client_id: CLIENT.client_id,
     audience: release.audience!,
@@ -284,17 +307,103 @@ export async function buildLiveOidcScenario(
     expires_at: issuance.expires_at,
     issuance_record_id: issuanceRecord.record_id,
     state: issuedState,
-    authorization_request: request,
     issuer_envelope: s.issuerKeyEnvelopeOne,
     issuer_audience_key: s.issuerAudienceKeyOne,
     issuer_writer_nid: s.writerOne.did_key,
     identity,
     status_mirror: {
       repository_rid: s.rid,
-      branch: "main",
+      branch: "main" as const,
       path: `.well-known/${personaNpub}/${issuance.reservation.uri}`,
       sha256: "33".repeat(32),
     },
+  });
+  const projectionAuthorizations: Array<Readonly<{
+    authority: typeof releaseHarness.authority;
+    authorization: typeof releaseAuthorization.authorization;
+    projection_subtype: OidcProjectionSubtype;
+    assertion_profile: string | null;
+  }>> = [];
+  const projectionProfiles = Array.from({ length: 16 }, () => [
+    { projection_subtype: "id_token" as const, assertion_profile: null },
+    { projection_subtype: "access_token" as const, assertion_profile: null },
+    {
+      projection_subtype: "jwt_assertion" as const,
+      assertion_profile: "urn:example:jwt-assertion:v1",
+    },
+  ]).flat();
+  for (const [index, profile] of projectionProfiles.entries()) {
+    const harness = s.makeClaimAuthorizationHarness({
+      load_state: () => preMintState,
+      trusted_now: () => s.now + 69,
+    });
+    const authorized = await authorizeAuthorizationRequestEffect(harness.authority, {
+      request,
+      idempotency_key: `synthetic-local-oidc-projection-${String(index).padStart(4, "0")}`,
+      purpose: "jwt_projection",
+      projection_subtype: profile.projection_subtype,
+      assertion_profile: profile.assertion_profile,
+      projection_request: projectionContext,
+      authorization_validity_seconds: 300,
+      effect: () => ({ status: "completed", result: { executed: true } }),
+    });
+    if (authorized.verdict !== "accept") {
+      throw new Error(`OIDC projection authorization failed: ${authorized.reason_code}`);
+    }
+    projectionAuthorizations.push(Object.freeze({
+      authority: harness.authority,
+      authorization: authorized.authorization,
+      ...profile,
+    }));
+  }
+  const projection = (
+    projectionSubtype: OidcProjectionSubtype,
+    assertionProfile: string | null = projectionSubtype === "jwt_assertion"
+      ? "urn:example:jwt-assertion:v1"
+      : null,
+  ): JwtProjectionInput => {
+    const selectedIndex = projectionAuthorizations.findIndex((entry) =>
+      entry.projection_subtype === projectionSubtype &&
+      entry.assertion_profile === assertionProfile);
+    if (selectedIndex < 0) {
+      throw new Error("synthetic OIDC projection authorization pool exhausted");
+    }
+    const [selected] = projectionAuthorizations.splice(selectedIndex, 1);
+    return {
+      authorization_authority: selected.authority,
+      authorization: selected.authorization,
+    };
+  };
+  let customProjectionIndex = 0;
+  const authorizeProjection = async (
+    projectionSubtype: OidcProjectionSubtype,
+    projectionRequest: JwtProjectionRequest,
+    assertionProfile: string | null = projectionSubtype === "jwt_assertion"
+      ? "urn:example:jwt-assertion:v1"
+      : null,
+  ): Promise<JwtProjectionInput> => {
+    const harness = s.makeClaimAuthorizationHarness({
+      load_state: () => preMintState,
+      trusted_now: () => s.now + 69,
+    });
+    const authorized = await authorizeAuthorizationRequestEffect(harness.authority, {
+      request,
+      idempotency_key: `synthetic-local-oidc-custom-projection-${String(customProjectionIndex).padStart(4, "0")}`,
+      purpose: "jwt_projection",
+      projection_subtype: projectionSubtype,
+      assertion_profile: assertionProfile,
+      projection_request: projectionRequest,
+      authorization_validity_seconds: 300,
+      effect: () => ({ status: "completed", result: { executed: true } }),
+    });
+    customProjectionIndex += 1;
+    if (authorized.verdict !== "accept") {
+      throw new Error(`OIDC custom projection authorization failed: ${authorized.reason_code}`);
+    }
+    return Object.freeze({
+      authorization_authority: harness.authority,
+      authorization: authorized.authorization,
+    });
   };
   return {
     s,
@@ -318,7 +427,12 @@ export async function buildLiveOidcScenario(
     issuanceRecord,
     request,
     release,
+    releaseAuthorization,
+    releaseHarness,
+    releaseEffects,
     projection,
+    authorizeProjection,
+    projectionContext,
     dataClaim,
     allClaims,
     evidenceFor,

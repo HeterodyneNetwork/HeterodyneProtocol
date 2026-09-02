@@ -1,0 +1,23 @@
+{
+  "vector_id": "control/operation-indeterminate",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "control",
+  "spec_refs": [
+    "heterodyne:control#control-failover"
+  ],
+  "invariants": [
+    "CONTROL-I-OPERATION-AT-MOST-ONCE"
+  ],
+  "reason_codes": [
+    "control-operation-indeterminate"
+  ],
+  "description": "The live Control authorization boundary rejects operation indeterminate.",
+  "direction": "consume",
+  "input": {
+    "reservation_state": "reserved"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "control-operation-indeterminate"
+  }
+}

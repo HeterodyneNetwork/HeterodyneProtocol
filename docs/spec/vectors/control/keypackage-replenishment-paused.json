@@ -1,0 +1,23 @@
+{
+  "vector_id": "control/keypackage-replenishment-paused",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "control",
+  "spec_refs": [
+    "heterodyne:control#control-invitation-policy"
+  ],
+  "invariants": [
+    "CONTROL-I-MARMOT-GRANT-CONFINEMENT"
+  ],
+  "reason_codes": [
+    "control-keypackage-replenishment-paused"
+  ],
+  "description": "The current Control policy boundary rejects keypackage replenishment paused.",
+  "direction": "consume",
+  "input": {
+    "evidence": "authoritative inventory has paused replenishment"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "control-keypackage-replenishment-paused"
+  }
+}

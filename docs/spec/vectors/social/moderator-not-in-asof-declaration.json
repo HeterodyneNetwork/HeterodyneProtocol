@@ -1,0 +1,51 @@
+{
+  "vector_id": "social/moderator-not-in-asof-declaration",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "social",
+  "spec_refs": [
+    "heterodyne:social#social-moderation"
+  ],
+  "invariants": [
+    "SOCIAL-I-AGENT-POLICY-LOCAL"
+  ],
+  "reason_codes": [
+    "moderator_not_in_asof_declaration"
+  ],
+  "description": "The current Social semantic boundary rejects moderator not in asof declaration.",
+  "direction": "consume",
+  "input": {
+    "declaration": {
+      "pubkey": "5c4e0dec7215e26833938730e5e505aa62504da85ba57106a46b5a2404fc9d8e",
+      "created_at": 1800100000,
+      "kind": 34550,
+      "tags": [
+        [
+          "d",
+          "current-community"
+        ],
+        [
+          "p",
+          "5c4e0dec7215e26833938730e5e505aa62504da85ba57106a46b5a2404fc9d8e",
+          "",
+          "moderator"
+        ]
+      ],
+      "content": "",
+      "id": "1aa23d9b85e6f890ae78edb966b72b8383c4023230a9f2423d16bd1b3fd3c7c0",
+      "sig": "294d2eca7c44fa1e9219b3e1071f0f1a1955e3118123a147164cd64bb2cd1008f1978df7f490614dbf5758ce25dba39b2235d59c476bcebd8aa4ed69ceeb1cb5"
+    },
+    "approval": {
+      "pubkey": "bb58b5feca505c74edc000d8282fc556e51a1024fc8e7d7e56c6f887c5c8d5f2",
+      "created_at": 1800100001,
+      "kind": 4550,
+      "tags": [],
+      "content": "",
+      "id": "b2a512e66ceb02fac22ba82567d15b3706e08744c1a5217b0fbb00c3652844ad",
+      "sig": "cfa59938331da9574218f5523a6b3a464a40b13ae463bf1fe2edf7c88f056e5837e9b237b9bb899ec90ec65dce768b717a7ef042c0d9ca708371865585256079"
+    }
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "moderator_not_in_asof_declaration"
+  }
+}

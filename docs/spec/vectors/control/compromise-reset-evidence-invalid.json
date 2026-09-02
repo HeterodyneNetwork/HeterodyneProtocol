@@ -1,0 +1,23 @@
+{
+  "vector_id": "control/compromise-reset-evidence-invalid",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "control",
+  "spec_refs": [
+    "heterodyne:control#control-compromise-reset"
+  ],
+  "invariants": [
+    "CONTROL-I-COMPROMISE-RESET"
+  ],
+  "reason_codes": [
+    "control-compromise-reset-evidence-invalid"
+  ],
+  "description": "The current Control policy boundary rejects compromise reset evidence invalid.",
+  "direction": "consume",
+  "input": {
+    "evidence": "signed grant and completion carry invalid consecutive transition evidence"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "control-compromise-reset-evidence-invalid"
+  }
+}

@@ -1,6 +1,7 @@
 export type WorkspaceVerdict =
   | { verdict: "accept"; normalized: Record<string, unknown> }
-  | { verdict: "reject"; reason_code: string };
+  | { verdict: "reject"; reason_code: string }
+  | { verdict: "indeterminate"; reason_code: string };
 
 const accepted = (normalized: Record<string, unknown>): WorkspaceVerdict => {
   const snapshot = snapshotJsonRecord(normalized);
@@ -9,6 +10,10 @@ const accepted = (normalized: Record<string, unknown>): WorkspaceVerdict => {
 };
 const rejected = (reason_code: string): WorkspaceVerdict => ({
   verdict: "reject",
+  reason_code,
+});
+const indeterminate = (reason_code: string): WorkspaceVerdict => ({
+  verdict: "indeterminate",
   reason_code,
 });
 
@@ -65,6 +70,7 @@ export type WorkspaceCurrentRelationship = Readonly<{
 }>;
 
 type WorkspaceResolverConfig = Readonly<{
+  authority_fingerprint: string;
   trust_anchors: readonly WorkspaceRepositoryTrustAnchor[];
   allowed_policies: readonly string[];
   minimum_version: readonly [number, number, number];
@@ -76,7 +82,9 @@ type WorkspaceResolverConfig = Readonly<{
     pinned_head: string;
   }>[];
   trusted_now: () => number;
-  invitation_store: object | null;
+  invitation_store: WorkspaceInvitationStoreCapability | null;
+  assurance_authority: WorkspaceAssuranceAuthority | null;
+  assurance_history_trust_anchors: readonly WorkspaceAssuranceHistoryTrustAnchor[];
   accepted_views: Map<string, Readonly<{
     head: string;
     observed_at: number;
@@ -101,6 +109,9 @@ type WorkspaceCurrentStateRecord = Readonly<{
   evidence: Readonly<Record<string, unknown>>;
   objects: readonly Readonly<Record<string, unknown>>[];
   policy: Readonly<Record<string, unknown>>;
+  workspace_capability_ceiling: readonly string[];
+  assurance: WorkspaceAssuranceProfile | null;
+  policy_history: readonly WorkspacePolicyHistoryEntry[];
   role: Readonly<Record<string, unknown>>;
   roles: readonly Readonly<Record<string, unknown>>[];
   grants: readonly Readonly<Record<string, unknown>>[];
@@ -116,6 +127,13 @@ type WorkspaceCurrentStateRecord = Readonly<{
     envelope_id: string;
     object_id: string;
   }>[];
+}>;
+
+type WorkspacePolicyHistoryEntry = Readonly<{
+  policy_head: string;
+  predecessor: string | null;
+  assurance: WorkspaceAssuranceProfile | null;
+  authorization: WorkspaceAssuranceAuthorization | null;
 }>;
 
 const WORKSPACE_RESOLVER_AUTHORITIES = new WeakMap<object, WorkspaceResolverConfig>();
@@ -152,17 +170,88 @@ type WorkspaceCurrentRelationshipRecord = Readonly<{
 }>;
 const WORKSPACE_CURRENT_RELATIONSHIPS = new WeakMap<object, WorkspaceCurrentRelationshipRecord>();
 
-type WorkspaceInvitationReservation = {
-  binding: string;
-  status: "reserved" | "committed";
-  holder: WorkspaceInvitationAcceptance;
+export type WorkspaceInvitationStoreRecord = Readonly<{
+  revision: number;
+  state: "prepared" | "executing" | "committed" | "indeterminate" | "rejected";
+  store_key: string;
+  acceptance_binding: string;
+  authority_fingerprint: string;
+  current_fingerprint: string;
+  root_role_id: string;
+  root_capability_ceiling: readonly string[];
+  policy_head: string;
+  predecessor: string | null;
+  authority_checkpoint: string;
   expires_at: number;
-};
-const WORKSPACE_INVITATION_STORES = new WeakMap<object, Map<string, WorkspaceInvitationReservation>>();
+  activation_binding: string | null;
+  execution_token: string | null;
+  terminal: Readonly<Record<string, unknown>> | null;
+  terminal_digest: string | null;
+}>;
 
-export class ReferenceWorkspaceInvitationAcceptanceStore {
-  constructor() {
-    WORKSPACE_INVITATION_STORES.set(this, new Map());
+export interface DurableWorkspaceInvitationAcceptanceStore {
+  load(token: string): WorkspaceInvitationStoreRecord | null;
+  compareAndSwap(
+    token: string,
+    expectedRevision: number | null,
+    next: WorkspaceInvitationStoreRecord | null,
+  ): "committed" | "conflict" | "unknown";
+}
+
+function cloneInvitationStoreRecord(
+  value: WorkspaceInvitationStoreRecord,
+): WorkspaceInvitationStoreRecord {
+  return JSON.parse(jcsCanonicalize(value)) as WorkspaceInvitationStoreRecord;
+}
+
+type WorkspaceInvitationStoreCapability = Readonly<{
+  identity: object;
+  load: DurableWorkspaceInvitationAcceptanceStore["load"];
+  compare_and_swap: DurableWorkspaceInvitationAcceptanceStore["compareAndSwap"];
+}>;
+
+/** Process-local conformance adapter; production hosts inject durable CAS callbacks. */
+export class ReferenceWorkspaceInvitationAcceptanceStore
+implements DurableWorkspaceInvitationAcceptanceStore {
+  readonly #load: DurableWorkspaceInvitationAcceptanceStore["load"];
+  readonly #compareAndSwap: DurableWorkspaceInvitationAcceptanceStore["compareAndSwap"];
+
+  constructor(backend?: DurableWorkspaceInvitationAcceptanceStore) {
+    if (backend === undefined) {
+      const records = new Map<string, WorkspaceInvitationStoreRecord>();
+      this.#load = (token) => {
+        const record = records.get(token);
+        return record === undefined ? null : cloneInvitationStoreRecord(record);
+      };
+      this.#compareAndSwap = (token, expectedRevision, next) => {
+        const existing = records.get(token);
+        if ((existing?.revision ?? null) !== expectedRevision) return "conflict";
+        if (next === null) records.delete(token);
+        else records.set(token, cloneInvitationStoreRecord(next));
+        return "committed";
+      };
+      return;
+    }
+    const load = backend.load;
+    const compareAndSwap = backend.compareAndSwap;
+    if (typeof load !== "function" || typeof compareAndSwap !== "function") {
+      throw new Error("workspace_repository_invalid");
+    }
+    this.#load = (token) => load.call(backend, token);
+    this.#compareAndSwap = (token, expectedRevision, next) =>
+      compareAndSwap.call(backend, token, expectedRevision, next);
+  }
+
+  load(token: string): WorkspaceInvitationStoreRecord | null {
+    return this.#load(token);
+  }
+
+  compareAndSwap(
+    token: string,
+    expectedRevision: number | null,
+    next: WorkspaceInvitationStoreRecord | null,
+  ): "committed" | "conflict" | "unknown" {
+    return this.#compareAndSwap(token, expectedRevision, next);
   }
 }
 
@@ -175,8 +264,15 @@ type WorkspaceInvitationAcceptanceRecord = Readonly<{
   current_state: WorkspaceCurrentState;
   grant_id: string;
   acceptance_id: string;
-  store: object;
+  store: WorkspaceInvitationStoreCapability;
   token: string;
+  acceptance_binding: string;
+  current_fingerprint: string;
+  root_role_id: string;
+  root_capability_ceiling: readonly string[];
+  policy_head: string;
+  predecessor: string | null;
+  authority_checkpoint: string;
   expires_at: number;
 }>;
 const WORKSPACE_INVITATION_ACCEPTANCES = new WeakMap<object, WorkspaceInvitationAcceptanceRecord>();
@@ -311,11 +407,18 @@ export function createWorkspaceRepositoryResolverAuthority(
     "max_ttl",
     "max_view_age",
     "repositories",
-  ], ["invitation_store"]);
+  ], ["invitation_store", "assurance_authority"], [
+    "assurance_history_trust_anchors",
+  ]);
   const input = captured?.data;
   const trustedNow = captured?.opaque.trusted_now;
   const invitationStore = captured?.opaque.invitation_store;
+  const assuranceAuthority = captured?.opaque.assurance_authority;
   const minimumVersion = parseWorkspaceSemver(input?.minimum_version);
+  const assuranceHistoryTrustAnchors = input?.assurance_history_trust_anchors;
+  const durableInvitationStore = invitationStore === undefined
+    ? null
+    : invitationStore as Partial<DurableWorkspaceInvitationAcceptanceStore>;
   if (input === undefined
     || typeof trustedNow !== "function"
     || !Array.isArray(input.trust_anchors)
@@ -344,13 +447,57 @@ export function createWorkspaceRepositoryResolverAuthority(
       const repository = candidate as Record<string, unknown>;
       return `${repository.workspace_key}:${repository.repository_rid}`;
     })).size !== input.repositories.length
+    || (assuranceHistoryTrustAnchors !== undefined
+      && (!Array.isArray(assuranceHistoryTrustAnchors)
+        || assuranceHistoryTrustAnchors.length === 0
+        || !assuranceHistoryTrustAnchors.every(isWorkspaceAssuranceHistoryTrustAnchor)
+        || new Set(assuranceHistoryTrustAnchors.map((candidate) => {
+          const anchor = candidate as WorkspaceAssuranceHistoryTrustAnchor;
+          return `${anchor.suite}:${anchor.public_key}`;
+        })).size !== assuranceHistoryTrustAnchors.length
+        || assuranceHistoryTrustAnchors.some((candidate) =>
+          (input.trust_anchors as WorkspaceRepositoryTrustAnchor[]).some((repositoryAnchor) =>
+            repositoryAnchor.suite === candidate.suite
+              && repositoryAnchor.public_key === candidate.public_key))))
     || (invitationStore !== undefined
       && (invitationStore === null || typeof invitationStore !== "object"
-        || !WORKSPACE_INVITATION_STORES.has(invitationStore)))) {
+        || typeof durableInvitationStore?.load !== "function"
+        || typeof durableInvitationStore?.compareAndSwap !== "function"))
+    || (assuranceAuthority !== undefined
+      && (assuranceAuthority === null || typeof assuranceAuthority !== "object"))) {
     throw new Error("workspace_repository_invalid");
   }
+  const invitationLoad = durableInvitationStore?.load;
+  const invitationCompareAndSwap = durableInvitationStore?.compareAndSwap;
+  const storeCapability = durableInvitationStore === null ? null : Object.freeze({
+    identity: invitationStore as object,
+    load: (token: string) => invitationLoad!.call(invitationStore, token),
+    compare_and_swap: (
+      token: string,
+      expectedRevision: number | null,
+      next: WorkspaceInvitationStoreRecord | null,
+    ) => invitationCompareAndSwap!.call(
+      invitationStore,
+      token,
+      expectedRevision,
+      next,
+    ),
+  });
+  const authorityFingerprint = bytesToHex(sha256(proofBytes(
+    "heterodyne-workspace-resolver-authority-v1",
+    {
+      allowed_policies: [...input.allowed_policies].sort(),
+      assurance_history_trust_anchors: assuranceHistoryTrustAnchors ?? [],
+      max_ttl: input.max_ttl,
+      max_view_age: input.max_view_age,
+      minimum_version: input.minimum_version,
+      repositories: input.repositories,
+      trust_anchors: input.trust_anchors,
+    },
+  )));
   const authority = Object.freeze({}) as WorkspaceRepositoryResolverAuthority;
   WORKSPACE_RESOLVER_AUTHORITIES.set(authority, {
+    authority_fingerprint: authorityFingerprint,
     trust_anchors: input.trust_anchors as WorkspaceRepositoryTrustAnchor[],
     allowed_policies: input.allowed_policies,
     minimum_version: minimumVersion,
@@ -358,7 +505,13 @@ export function createWorkspaceRepositoryResolverAuthority(
     max_view_age: input.max_view_age,
     repositories: input.repositories as WorkspaceResolverConfig["repositories"],
     trusted_now: trustedNow as () => number,
-    invitation_store: invitationStore === undefined ? null : invitationStore as object,
+    invitation_store: storeCapability,
+    assurance_authority: assuranceAuthority === undefined
+      ? null
+      : assuranceAuthority as WorkspaceAssuranceAuthority,
+    assurance_history_trust_anchors: assuranceHistoryTrustAnchors === undefined
+      ? []
+      : assuranceHistoryTrustAnchors as WorkspaceAssuranceHistoryTrustAnchor[],
     accepted_views: new Map(),
   });
   return authority;
@@ -509,6 +662,7 @@ export function authenticateWorkspaceRepositoryView(value: unknown):
       "policy_head",
       "predecessor",
       "authority_checkpoint",
+      "policy_history",
       "object_ids",
       "object_set_digest",
       "observed_at",
@@ -516,7 +670,7 @@ export function authenticateWorkspaceRepositoryView(value: unknown):
       "signature",
     ])
     || evidence.profile !== "heterodyne.workspace-repository-view.v1"
-    || evidence.spec_version !== "heterodyne/0.5.0"
+    || evidence.spec_version !== "heterodyne/0.6.0"
     || typeof evidence.resolver_policy !== "string"
     || !config.allowed_policies.includes(evidence.resolver_policy)
     || compareWorkspaceSemver(evidence.resolver_version, config.minimum_version) < 0
@@ -531,6 +685,7 @@ export function authenticateWorkspaceRepositoryView(value: unknown):
     || !isH64(evidence.policy_head)
     || !(evidence.predecessor === null || isH64(evidence.predecessor))
     || !isH64(evidence.authority_checkpoint)
+    || !Array.isArray(evidence.policy_history)
     || !isByteSortedH64Array(evidence.object_ids)
     || !isH64(evidence.object_set_digest)
     || !isSafeNonNegativeInteger(evidence.observed_at)
@@ -619,6 +774,70 @@ export function authenticateWorkspaceRepositoryView(value: unknown):
     evidence.observed_at,
   );
   if (!complete.ok) return { verdict: "reject", reason_code: complete.reason_code };
+  const assurance = captureWorkspaceAssuranceProfile(complete.value.policy.assurance);
+  if (assurance === undefined) {
+    return { verdict: "reject", reason_code: "workspace_repository_invalid" };
+  }
+  const previousRecord = previous === undefined
+    ? undefined
+    : WORKSPACE_CURRENT_STATES.get(previous.state);
+  if (previous !== undefined && previousRecord === undefined) {
+    return { verdict: "reject", reason_code: "workspace_repository_invalid" };
+  }
+  const policyHistory = captureWorkspacePolicyHistory(evidence.policy_history);
+  if (policyHistory === null
+    || !workspaceAssuranceProfilesEqual(
+      policyHistory[policyHistory.length - 1]?.assurance,
+      assurance,
+    )
+    || policyHistory[policyHistory.length - 1]?.policy_head !== currentState.policy_head
+    || policyHistory[policyHistory.length - 1]?.predecessor !== currentState.predecessor
+    || (previousRecord !== undefined
+      && !workspacePolicyHistoryIsPrefix(previousRecord.policy_history, policyHistory))) {
+    return { verdict: "reject", reason_code: "workspace_repository_invalid" };
+  }
+  const trustedPrefixLength = previousRecord?.policy_history.length ?? 0;
+  for (const [index, entry] of policyHistory.entries()) {
+    if (index < trustedPrefixLength) continue;
+    const prior = index === 0 ? null : policyHistory[index - 1];
+    const transition = {
+      workspace_key: currentState.workspace_key,
+      previous_policy_head: entry.predecessor,
+      next_policy_head: entry.policy_head,
+      previous_assurance: prior?.assurance ?? null,
+      next_assurance: entry.assurance,
+    };
+    const changed = !workspaceAssuranceProfilesEqual(
+      transition.previous_assurance,
+      transition.next_assurance,
+    );
+    if (!changed) {
+      if (entry.authorization !== null) {
+        return { verdict: "reject", reason_code: "workspace-assurance-state-required" };
+      }
+      continue;
+    }
+    if (entry.authorization === null
+      || entry.authorization.evaluated_at > evidence.observed_at) {
+      return { verdict: "reject", reason_code: "workspace-assurance-state-required" };
+    }
+    const assuranceDecision = verifyWorkspaceAssuranceAuthorization(
+      config.assurance_history_trust_anchors,
+      transition,
+      entry.authorization,
+    );
+    if (assuranceDecision.verdict !== "accept") return assuranceDecision;
+  }
+  if (assurance !== null) {
+    const assuranceDecision = evaluateWorkspaceAssuranceTransition(config.assurance_authority, {
+      workspace_key: currentState.workspace_key,
+      previous_policy_head: currentState.policy_head,
+      next_policy_head: currentState.policy_head,
+      previous_assurance: assurance,
+      next_assurance: assurance,
+    });
+    if (assuranceDecision.verdict !== "accept") return assuranceDecision;
+  }
   const priorEnvelopeIdentities = new Map((previous?.envelope_identity_history ?? [])
     .map((entry) => [entry.envelope_id, entry.object_id]));
   for (const envelope of complete.value.envelopes) {
@@ -646,6 +865,8 @@ export function authenticateWorkspaceRepositoryView(value: unknown):
     view_key: viewKey,
     evidence,
     objects: validatedObjects,
+    assurance,
+    policy_history: policyHistory,
     envelope_identity_history: envelopeIdentityHistory,
     ...complete.value,
   }));
@@ -666,6 +887,7 @@ function validateCompleteWorkspaceObjectSet(
   effectTime: number,
 ): Validation<{
   policy: Readonly<Record<string, unknown>>;
+  workspace_capability_ceiling: readonly string[];
   role: Readonly<Record<string, unknown>>;
   roles: readonly Readonly<Record<string, unknown>>[];
   grants: readonly Readonly<Record<string, unknown>>[];
@@ -738,6 +960,12 @@ function validateCompleteWorkspaceObjectSet(
     return { ok: false, reason_code: "workspace_repository_invalid" };
   }
   const rolesById = new Map(roles.map((role) => [String(role.role_id), role]));
+  const rootRoles = roles.filter((role) => role.parent_role_id === null);
+  if (rootRoles.length !== 1 || !isCapabilityArray(rootRoles[0]?.allowed_capabilities)) {
+    return { ok: false, reason_code: "workspace_repository_invalid" };
+  }
+  const rootRole = rootRoles[0] as Readonly<Record<string, unknown>>;
+  const workspaceCapabilityCeiling = [...rootRole.allowed_capabilities as string[]].sort();
   const checkpointsByRole = new Map<string, Readonly<Record<string, unknown>>>();
   for (const checkpoint of checkpoints) {
     const checkpointRoleChain = isH64(checkpoint.role_id)
@@ -771,17 +999,25 @@ function validateCompleteWorkspaceObjectSet(
       : visibility === "private" ? 2 : -1;
   for (const role of roles) {
     const chain = resolveWorkspaceRoleChain(roles, String(role.role_id));
-    if (!chain.ok) return chain;
+    if (!chain.ok || chain.value[0] !== rootRole) {
+      return { ok: false, reason_code: "workspace_repository_invalid" };
+    }
+    if (!chain.value.every((candidate) => isCapabilityArray(candidate.allowed_capabilities))) {
+      return { ok: false, reason_code: "workspace_repository_invalid" };
+    }
+    if (!subset(role.allowed_capabilities as string[], workspaceCapabilityCeiling)) {
+      return { ok: false, reason_code: "capability_escalation" };
+    }
     if (visibilityRank(chain.value[0].visibility) < visibilityRank(policy.visibility_ceiling)) {
       return { ok: false, reason_code: "workspace_repository_invalid" };
     }
     for (let index = 1; index < chain.value.length; index += 1) {
       const parent = chain.value[index - 1];
       const child = chain.value[index];
-      if (!isCapabilityArray(parent.allowed_capabilities)
-        || !isCapabilityArray(child.allowed_capabilities)
-        || !subset(child.allowed_capabilities, parent.allowed_capabilities)
-        || historyRank(child.history_mode) > historyRank(parent.history_mode)
+      if (!subset(child.allowed_capabilities as string[], parent.allowed_capabilities as string[])) {
+        return { ok: false, reason_code: "capability_escalation" };
+      }
+      if (historyRank(child.history_mode) > historyRank(parent.history_mode)
         || visibilityRank(child.visibility) < visibilityRank(parent.visibility)
         || (parent.history_mode === "selected-snapshots"
           && (!isH64Array(parent.selected_snapshots)
@@ -803,25 +1039,33 @@ function validateCompleteWorkspaceObjectSet(
     const chain = resolveWorkspaceRoleChain(roles, String(grant.role_id));
     const chainRoleIds = chain.ok ? new Set(chain.value.map((role) => role.role_id)) : new Set();
     if (!chain.ok || !isCapabilityArray(grant.capabilities)
-      || !chain.value.every((role) => isCapabilityArray(role.allowed_capabilities)
-        && subset(grant.capabilities as string[], role.allowed_capabilities))
       || !isH64Array(grant.resource_scope)
       || !grant.resource_scope.every((resourceId) => {
         const resource = resources.find((candidate) => candidate.resource_id === resourceId);
         return resource !== undefined && chainRoleIds.has(resource.role_id);
-      })
-      || (grant.delegable === true && !chain.value.every((role) =>
-        isCapabilityArray(role.allowed_capabilities)
-          && role.allowed_capabilities.includes("govern-delegation")))) {
+      })) {
       return { ok: false, reason_code: "workspace_repository_invalid" };
+    }
+    if (!subset(grant.capabilities, workspaceCapabilityCeiling)
+      || !chain.value.every((role) => isCapabilityArray(role.allowed_capabilities)
+        && subset(grant.capabilities as string[], role.allowed_capabilities))
+      || (grant.delegable === true && (!workspaceCapabilityCeiling.includes("govern-delegation")
+        || !chain.value.every((role) => isCapabilityArray(role.allowed_capabilities)
+          && role.allowed_capabilities.includes("govern-delegation"))))) {
+      return { ok: false, reason_code: "capability_escalation" };
     }
   }
   for (const resource of resources) {
     const chain = resolveWorkspaceRoleChain(roles, String(resource.role_id));
-    if (!chain.ok || !isCapabilityArray(resource.required_capabilities)
+    if (!chain.ok || !isCapabilityArray(resource.required_capabilities)) {
+      return { ok: false, reason_code: "workspace_repository_invalid" };
+    }
+    if (!subset(resource.required_capabilities, workspaceCapabilityCeiling)
       || !chain.value.every((role) => isCapabilityArray(role.allowed_capabilities)
-        && subset(resource.required_capabilities as string[], role.allowed_capabilities))
-      || visibilityRank(resource.visibility) < visibilityRank(policy.visibility_ceiling)
+        && subset(resource.required_capabilities as string[], role.allowed_capabilities))) {
+      return { ok: false, reason_code: "capability_escalation" };
+    }
+    if (visibilityRank(resource.visibility) < visibilityRank(policy.visibility_ceiling)
       || !chain.value.every((role) =>
         visibilityRank(resource.visibility) >= visibilityRank(role.visibility))
       || (resource.visibility === "public" && policy.allow_public_resources !== true)) {
@@ -856,6 +1100,15 @@ function validateCompleteWorkspaceObjectSet(
   for (const relationship of relationships) {
     if (!rolesById.has(String(relationship.source_role_id))) {
       return { ok: false, reason_code: "workspace_repository_invalid" };
+    }
+    const chain = resolveWorkspaceRoleChain(roles, String(relationship.source_role_id));
+    if (!chain.ok || !isCapabilityArray(relationship.capability_ceiling)) {
+      return { ok: false, reason_code: "workspace_repository_invalid" };
+    }
+    if (!subset(relationship.capability_ceiling, workspaceCapabilityCeiling)
+      || !chain.value.every((role) => isCapabilityArray(role.allowed_capabilities)
+        && subset(relationship.capability_ceiling as string[], role.allowed_capabilities))) {
+      return { ok: false, reason_code: "capability_escalation" };
     }
   }
   for (const receipt of relationshipReceipts) {
@@ -930,6 +1183,7 @@ function validateCompleteWorkspaceObjectSet(
     ok: true,
     value: {
       policy,
+      workspace_capability_ceiling: workspaceCapabilityCeiling,
       role,
       roles,
       grants,
@@ -1052,6 +1306,10 @@ function requireLatestCurrentView(
     }
     const complete = validateCompleteWorkspaceObjectSet(current.objects, current.state, trustedNow);
     if (!complete.ok) return complete;
+    if (!exactStringArray(
+      complete.value.workspace_capability_ceiling,
+      current.workspace_capability_ceiling,
+    )) return { ok: false, reason_code: "workspace_repository_invalid" };
   } catch {
     return { ok: false, reason_code: "workspace_repository_invalid" };
   }
@@ -1075,9 +1333,24 @@ function requireFreshCurrentView(
     return { ok: false, reason_code: "workspace_repository_invalid" };
   }
   const age = trustedNow - latest.value.observed_at;
-  return isSafeNonNegativeInteger(age) && age <= maximumAge
-    ? latest
-    : { ok: false, reason_code: "checkpoint_stale" };
+  if (!isSafeNonNegativeInteger(age) || age > maximumAge) {
+    return { ok: false, reason_code: "checkpoint_stale" };
+  }
+  if (effectClass === "authority" && latest.value.assurance !== null) {
+    const config = WORKSPACE_RESOLVER_AUTHORITIES.get(authority);
+    if (config === undefined) return { ok: false, reason_code: "workspace_repository_invalid" };
+    const assuranceDecision = evaluateWorkspaceAssuranceTransition(config.assurance_authority, {
+      workspace_key: latest.value.state.workspace_key,
+      previous_policy_head: latest.value.state.policy_head,
+      next_policy_head: latest.value.state.policy_head,
+      previous_assurance: latest.value.assurance,
+      next_assurance: latest.value.assurance,
+    });
+    if (assuranceDecision.verdict !== "accept") {
+      return { ok: false, reason_code: assuranceDecision.reason_code };
+    }
+  }
+  return latest;
 }
 
 export function resolveWorkspaceEffectiveAuthorization(value: unknown):
@@ -1167,9 +1440,10 @@ export function resolveWorkspaceEffectiveAuthorization(value: unknown):
       const rolePath = resolveWorkspaceRoleChain(current.roles, String(grant.role_id));
       if (!rolePath.ok) return false;
       const grantCapabilities = isCapabilityArray(grant.capabilities)
-        ? grant.capabilities.filter((capability) => rolePath.value.every((role) =>
-          isCapabilityArray(role.allowed_capabilities)
-            && role.allowed_capabilities.includes(capability)))
+        ? grant.capabilities.filter((capability) =>
+          current.workspace_capability_ceiling.includes(capability)
+            && rolePath.value.every((role) => isCapabilityArray(role.allowed_capabilities)
+              && role.allowed_capabilities.includes(capability)))
         : [];
       const grantResources = isH64Array(grant.resource_scope)
         ? grant.resource_scope.filter((resourceId) => knownResources.has(resourceId))
@@ -1187,8 +1461,8 @@ export function resolveWorkspaceEffectiveAuthorization(value: unknown):
   if (!selectedRolePath.ok) return { verdict: "reject", reason_code: selectedRolePath.reason_code };
   const effectiveCapabilities = (isCapabilityArray(selected.capabilities)
     ? selected.capabilities : [])
-    .filter((capability) => selectedRolePath.value.every((role) =>
-      isCapabilityArray(role.allowed_capabilities)
+    .filter((capability) => current.workspace_capability_ceiling.includes(capability)
+      && selectedRolePath.value.every((role) => isCapabilityArray(role.allowed_capabilities)
         && role.allowed_capabilities.includes(capability)))
     .sort();
   const effectiveResources = (isH64Array(selected.resource_scope)
@@ -1307,9 +1581,10 @@ function requireEffectiveAuthorizationAtEffect(
     return { ok: false, reason_code: "policy_denied" };
   }
   const currentCapabilities = isCapabilityArray(grant.capabilities)
-    ? grant.capabilities.filter((capability) => rolePath.value.every((role) =>
-      isCapabilityArray(role.allowed_capabilities)
-        && role.allowed_capabilities.includes(capability))).sort()
+    ? grant.capabilities.filter((capability) =>
+      current.workspace_capability_ceiling.includes(capability)
+        && rolePath.value.every((role) => isCapabilityArray(role.allowed_capabilities)
+          && role.allowed_capabilities.includes(capability))).sort()
     : [];
   const currentResourceIds = new Set(current.resources.map((resource) => resource.resource_id));
   const currentResources = isH64Array(grant.resource_scope)
@@ -1371,7 +1646,7 @@ function validateGrantApprovalSnapshot(
     "signature",
   ])
     || value.profile !== "heterodyne.workspace-grant-approval.v1"
-    || value.spec_version !== "heterodyne/0.5.0"
+    || value.spec_version !== "heterodyne/0.6.0"
     || !isH64(value.workspace_key)
     || !isH64(value.policy_head)
     || !(value.predecessor === null || isH64(value.predecessor))
@@ -1422,14 +1697,148 @@ export function evaluateAuthorization(value: unknown): WorkspaceVerdict {
     : rejected(resolved.reason_code);
 }
 
+function workspaceCurrentFingerprint(current: WorkspaceCurrentStateRecord): string {
+  return bytesToHex(sha256(proofBytes("heterodyne-workspace-current-binding-v1", {
+    authority_checkpoint: current.state.authority_checkpoint,
+    policy_head: current.state.policy_head,
+    predecessor: current.state.predecessor,
+    repository_head: current.state.repository_head,
+    repository_rid: current.state.repository_rid,
+    root_capability_ceiling: current.workspace_capability_ceiling,
+    root_role_id: current.role.role_id,
+    view_id: current.view_id,
+    workspace_key: current.state.workspace_key,
+  })));
+}
+
+function invitationStoreRecordSnapshot(value: unknown): WorkspaceInvitationStoreRecord | null {
+  const snapshot = snapshotJsonRecord(value);
+  if (snapshot === null || !hasExactMembers(snapshot, [
+    "revision",
+    "state",
+    "store_key",
+    "acceptance_binding",
+    "authority_fingerprint",
+    "current_fingerprint",
+    "root_role_id",
+    "root_capability_ceiling",
+    "policy_head",
+    "predecessor",
+    "authority_checkpoint",
+    "expires_at",
+    "activation_binding",
+    "execution_token",
+    "terminal",
+    "terminal_digest",
+  ])
+    || !isSafeNonNegativeInteger(snapshot.revision)
+    || !["prepared", "executing", "committed", "indeterminate", "rejected"]
+      .includes(String(snapshot.state))
+    || typeof snapshot.store_key !== "string"
+    || snapshot.store_key.length < 1
+    || !isH64(snapshot.acceptance_binding)
+    || !isH64(snapshot.authority_fingerprint)
+    || !isH64(snapshot.current_fingerprint)
+    || !isH64(snapshot.root_role_id)
+    || !isCapabilityArray(snapshot.root_capability_ceiling)
+    || !isH64(snapshot.policy_head)
+    || !(snapshot.predecessor === null || isH64(snapshot.predecessor))
+    || !isH64(snapshot.authority_checkpoint)
+    || !isSafeNonNegativeInteger(snapshot.expires_at)
+    || !(snapshot.activation_binding === null || isH64(snapshot.activation_binding))
+    || !(snapshot.execution_token === null || isH64(snapshot.execution_token))
+    || !(snapshot.terminal === null || isRecord(snapshot.terminal))
+    || !(snapshot.terminal_digest === null || isH64(snapshot.terminal_digest))) return null;
+  return deepFreeze(snapshot) as WorkspaceInvitationStoreRecord;
+}
+
+function loadWorkspaceInvitationStoreRecord(
+  store: WorkspaceInvitationStoreCapability,
+  token: string,
+): Validation<WorkspaceInvitationStoreRecord | null> {
+  let loaded: unknown;
+  try {
+    loaded = store.load(token);
+  } catch {
+    return { ok: false, reason_code: "workspace_replay" };
+  }
+  if (loaded === null) return { ok: true, value: null };
+  const record = invitationStoreRecordSnapshot(loaded);
+  return record === null
+    ? { ok: false, reason_code: "workspace_replay" }
+    : { ok: true, value: record };
+}
+
+function exactInvitationStoreBinding(
+  record: WorkspaceInvitationStoreRecord,
+  expected: WorkspaceInvitationStoreRecord,
+): boolean {
+  return record.acceptance_binding === expected.acceptance_binding
+    && record.store_key === expected.store_key
+    && record.authority_fingerprint === expected.authority_fingerprint
+    && record.current_fingerprint === expected.current_fingerprint
+    && record.root_role_id === expected.root_role_id
+    && exactStringArray(record.root_capability_ceiling, expected.root_capability_ceiling)
+    && record.policy_head === expected.policy_head
+    && record.predecessor === expected.predecessor
+    && record.authority_checkpoint === expected.authority_checkpoint
+    && record.expires_at === expected.expires_at;
+}
+
+function exactInvitationStoreRecord(
+  actual: WorkspaceInvitationStoreRecord,
+  expected: WorkspaceInvitationStoreRecord,
+): boolean {
+  return jcsCanonicalize(actual) === jcsCanonicalize(expected);
+}
+
+function workspaceInvitationTerminalDigest(
+  activationBinding: string,
+  terminal: Readonly<Record<string, unknown>>,
+): string {
+  return bytesToHex(sha256(proofBytes(
+    "heterodyne-workspace-invitation-terminal-v1",
+    { activation_binding: activationBinding, output: terminal },
+  )));
+}
+
+function persistWorkspaceInvitationIndeterminate(
+  store: WorkspaceInvitationStoreCapability,
+  token: string,
+  current: WorkspaceInvitationStoreRecord,
+  activationBinding: string,
+  executionToken: string,
+): void {
+  if (current.state !== "prepared" && current.state !== "executing") return;
+  try {
+    store.compare_and_swap(token, current.revision, {
+      ...current,
+      revision: current.revision + 1,
+      state: "indeterminate",
+      activation_binding: activationBinding,
+      execution_token: executionToken,
+    });
+  } catch {
+    // Absence of a confirmed terminal remains fail-closed.
+  }
+}
+
 function abortWorkspaceInvitationReservation(value: unknown): void {
   if (value === null || typeof value !== "object") return;
   const record = WORKSPACE_INVITATION_ACCEPTANCES.get(value);
   if (record === undefined) return;
-  const store = WORKSPACE_INVITATION_STORES.get(record.store);
-  const reservation = store?.get(record.token);
-  if (reservation?.status === "reserved" && reservation.holder === value) {
-    store?.delete(record.token);
+  const loaded = loadWorkspaceInvitationStoreRecord(record.store, record.token);
+  if (!loaded.ok || loaded.value === null
+    || loaded.value.state !== "prepared"
+    || loaded.value.acceptance_binding !== record.acceptance_binding) return;
+  try {
+    record.store.compare_and_swap(record.token, loaded.value.revision, {
+      ...loaded.value,
+      revision: loaded.value.revision + 1,
+      state: "rejected",
+    });
+  } catch {
+    // A failed release remains prepared and therefore non-replayable.
   }
 }
 
@@ -1452,6 +1861,33 @@ type WorkspaceGrantActivationValidation = Readonly<{
   invitation_acceptance: WorkspaceInvitationAcceptance | null;
   normalized: Readonly<Record<string, unknown>>;
 }>;
+
+function workspaceInvitationActivationBinding(
+  request: WorkspaceGrantActivationRequest,
+  record: WorkspaceInvitationAcceptanceRecord,
+): string | null {
+  const authorization = WORKSPACE_EFFECTIVE_AUTHORIZATIONS.get(request.authorization);
+  if (authorization === undefined
+    || authorization.authority !== request.authority
+    || authorization.current_state !== request.current_state) return null;
+  return bytesToHex(sha256(proofBytes(
+    "heterodyne-workspace-invitation-activation-binding-v1",
+    {
+      acceptance_binding: record.acceptance_binding,
+      actor_account: authorization.actor_account,
+      actor_device: authorization.actor_device,
+      actor_leaf: authorization.actor_leaf,
+      approvals: request.approvals,
+      grant_id: request.grant_id,
+      membership: request.membership,
+      operation_digest: authorization.operation_digest,
+      qualifying_grant_id: authorization.qualifying_grant_id,
+      requested_capabilities: authorization.requested_capabilities,
+      requested_delegable: authorization.requested_delegable,
+      requested_resources: authorization.requested_resources,
+    },
+  )));
+}
 
 function validateWorkspaceGrantActivationAtTime(
   request: WorkspaceGrantActivationRequest,
@@ -1559,7 +1995,7 @@ function validateWorkspaceGrantActivationAtTime(
     if (invitationRecord.authority !== request.authority
       || invitationRecord.current_state !== request.current_state
       || invitationRecord.grant_id !== grant.grant_id) {
-      return { ok: false, reason_code: "workspace_signature_invalid" };
+      return { ok: false, reason_code: "workspace_replay" };
     }
     if (!isRecord(grant.invitation)
       || !isSafeNonNegativeInteger(grant.invitation.expires_at)
@@ -1623,44 +2059,187 @@ function validateWorkspaceGrantActivationAtTime(
 function commitWorkspaceInvitationReservation(
   value: WorkspaceInvitationAcceptance,
   request: WorkspaceGrantActivationRequest,
-): Validation<WorkspaceGrantActivationValidation> {
+): Validation<WorkspaceGrantActivationValidation> | { indeterminate: true } {
   const record = WORKSPACE_INVITATION_ACCEPTANCES.get(value);
-  const store = record === undefined ? undefined : WORKSPACE_INVITATION_STORES.get(record.store);
-  const release = (): void => {
-    if (record === undefined || store === undefined) return;
-    const reservation = store.get(record.token);
-    if (reservation?.status === "reserved" && reservation.holder === value) {
-      store.delete(record.token);
-    }
-  };
-  if (record === undefined || store === undefined
+  const config = WORKSPACE_RESOLVER_AUTHORITIES.get(request.authority);
+  if (record === undefined || config === undefined || config.invitation_store === null
     || record.authority !== request.authority
-    || record.current_state !== request.current_state) {
-    release();
+    || record.current_state !== request.current_state
+    || config.invitation_store.identity !== record.store.identity) {
     return { ok: false, reason_code: "workspace_replay" };
   }
+  const currentRecord = WORKSPACE_CURRENT_STATES.get(request.current_state);
+  if (currentRecord === undefined
+    || currentRecord.authority !== request.authority
+    || workspaceCurrentFingerprint(currentRecord) !== record.current_fingerprint) {
+    return { ok: false, reason_code: "workspace_replay" };
+  }
+  const activationBinding = workspaceInvitationActivationBinding(request, record);
+  if (activationBinding === null) return { ok: false, reason_code: "workspace_replay" };
+  const loaded = loadWorkspaceInvitationStoreRecord(record.store, record.token);
+  if (!loaded.ok || loaded.value === null) return { ok: false, reason_code: "workspace_replay" };
+  const stored = loaded.value;
+  const expectedBase: WorkspaceInvitationStoreRecord = {
+    revision: stored.revision,
+    state: stored.state,
+    store_key: record.token,
+    acceptance_binding: record.acceptance_binding,
+    authority_fingerprint: config.authority_fingerprint,
+    current_fingerprint: record.current_fingerprint,
+    root_role_id: record.root_role_id,
+    root_capability_ceiling: record.root_capability_ceiling,
+    policy_head: record.policy_head,
+    predecessor: record.predecessor,
+    authority_checkpoint: record.authority_checkpoint,
+    expires_at: record.expires_at,
+    activation_binding: stored.activation_binding,
+    execution_token: stored.execution_token,
+    terminal: stored.terminal,
+    terminal_digest: stored.terminal_digest,
+  };
+  if (!exactInvitationStoreBinding(stored, expectedBase)) {
+    return { ok: false, reason_code: "workspace_replay" };
+  }
+
+  // The store load is external authority. Revalidate the exact signed current
+  // state after it returns and immediately before durable acquire/effect.
   const trusted = readWorkspaceTrustedNow(request.authority);
   if (!trusted.ok) {
-    release();
+    abortWorkspaceInvitationReservation(value);
     return trusted;
   }
   const validated = validateWorkspaceGrantActivationAtTime(request, trusted.value.now);
   if (!validated.ok) {
-    release();
+    abortWorkspaceInvitationReservation(value);
     return validated;
   }
-  const reservation = store.get(record.token);
-  if (validated.value.invitation_acceptance !== value
-    || reservation?.status !== "reserved"
-    || reservation.holder !== value
-    || reservation.binding !== record.acceptance_id
-    || reservation.expires_at !== record.expires_at
-    || trusted.value.now >= reservation.expires_at) {
-    release();
+  if (validated.value.invitation_acceptance !== value || trusted.value.now >= record.expires_at) {
+    abortWorkspaceInvitationReservation(value);
     return { ok: false, reason_code: "workspace_replay" };
   }
-  reservation.status = "committed";
-  return validated;
+  const terminal = validated.value.normalized;
+  const terminalDigest = workspaceInvitationTerminalDigest(activationBinding, terminal);
+  if (stored.state === "committed") {
+    if (stored.activation_binding !== activationBinding
+      || stored.execution_token === null
+      || stored.terminal === null
+      || stored.terminal_digest !== terminalDigest
+      || jcsCanonicalize(stored.terminal) !== jcsCanonicalize(terminal)) {
+      return { ok: false, reason_code: "workspace_replay" };
+    }
+    return {
+      ok: true,
+      value: deepFreeze({ invitation_acceptance: value, normalized: terminal }),
+    };
+  }
+  if (stored.state === "executing" || stored.state === "indeterminate") {
+    return stored.activation_binding === activationBinding && stored.execution_token !== null
+      ? { indeterminate: true }
+      : { ok: false, reason_code: "workspace_replay" };
+  }
+  if (stored.state !== "prepared"
+    || stored.activation_binding !== null
+    || stored.execution_token !== null
+    || stored.terminal !== null
+    || stored.terminal_digest !== null) {
+    return { ok: false, reason_code: "workspace_replay" };
+  }
+  const executionToken = bytesToHex(sha256(proofBytes(
+    "heterodyne-workspace-invitation-execution-token-v1",
+    {
+      acceptance_binding: record.acceptance_binding,
+      activation_binding: activationBinding,
+      executing_revision: stored.revision + 1,
+      store_key: record.token,
+    },
+  )));
+  const executing: WorkspaceInvitationStoreRecord = {
+    ...stored,
+    revision: stored.revision + 1,
+    state: "executing",
+    activation_binding: activationBinding,
+    execution_token: executionToken,
+  };
+  try {
+    record.store.compare_and_swap(record.token, stored.revision, executing);
+  } catch {
+    // Exact readback below, not the callback response, decides acquisition.
+  }
+  const acquiredRecord = loadWorkspaceInvitationStoreRecord(record.store, record.token);
+  if (!acquiredRecord.ok || acquiredRecord.value === null
+    || !exactInvitationStoreRecord(acquiredRecord.value, executing)) {
+    if (acquiredRecord.ok && acquiredRecord.value !== null
+      && exactInvitationStoreBinding(acquiredRecord.value, expectedBase)) {
+      persistWorkspaceInvitationIndeterminate(
+        record.store,
+        record.token,
+        acquiredRecord.value,
+        activationBinding,
+        executionToken,
+      );
+    }
+    return { indeterminate: true };
+  }
+
+  // Exact executing readback is also external; it cannot move current state
+  // between authorization and the terminal activation effect.
+  const effectTrusted = readWorkspaceTrustedNow(request.authority);
+  if (!effectTrusted.ok || effectTrusted.value.now < trusted.value.now) {
+    persistWorkspaceInvitationIndeterminate(
+      record.store,
+      record.token,
+      acquiredRecord.value,
+      activationBinding,
+      executionToken,
+    );
+    return effectTrusted.ok
+      ? { ok: false, reason_code: "checkpoint_stale" }
+      : effectTrusted;
+  }
+  const effectValidated = validateWorkspaceGrantActivationAtTime(
+    request,
+    effectTrusted.value.now,
+  );
+  if (!effectValidated.ok
+    || effectValidated.value.invitation_acceptance !== value
+    || effectTrusted.value.now >= record.expires_at
+    || jcsCanonicalize(effectValidated.value.normalized) !== jcsCanonicalize(terminal)) {
+    persistWorkspaceInvitationIndeterminate(
+      record.store,
+      record.token,
+      acquiredRecord.value,
+      activationBinding,
+      executionToken,
+    );
+    return !effectValidated.ok ? effectValidated : { ok: false, reason_code: "workspace_replay" };
+  }
+  const committed: WorkspaceInvitationStoreRecord = {
+    ...executing,
+    revision: executing.revision + 1,
+    state: "committed",
+    terminal,
+    terminal_digest: terminalDigest,
+  };
+  try {
+    record.store.compare_and_swap(record.token, executing.revision, committed);
+  } catch {
+    // Exact readback below, not the callback response, decides completion.
+  }
+  const after = loadWorkspaceInvitationStoreRecord(record.store, record.token);
+  if (after.ok && after.value !== null && exactInvitationStoreRecord(after.value, committed)) {
+    return validated;
+  }
+  if (after.ok && after.value !== null
+    && exactInvitationStoreBinding(after.value, expectedBase)) {
+    persistWorkspaceInvitationIndeterminate(
+      record.store,
+      record.token,
+      after.value,
+      activationBinding,
+      executionToken,
+    );
+  }
+  return { indeterminate: true };
 }
 
 export function evaluateGrantActivation(value: unknown): WorkspaceVerdict {
@@ -1713,6 +2292,81 @@ export function evaluateGrantActivation(value: unknown): WorkspaceVerdict {
   }) as WorkspaceGrantActivationRequest;
   const trusted = readWorkspaceTrustedNow(request.authority);
   if (!trusted.ok) return rejectActivation(trusted.reason_code);
+  if (request.invitation_acceptance !== null) {
+    const record = WORKSPACE_INVITATION_ACCEPTANCES.get(request.invitation_acceptance);
+    const config = WORKSPACE_RESOLVER_AUTHORITIES.get(request.authority);
+    if (record === undefined || config?.invitation_store === null
+      || config === undefined
+      || record.authority !== request.authority
+      || record.current_state !== request.current_state
+      || config.invitation_store.identity !== record.store.identity) {
+      return rejectActivation("workspace_replay");
+    }
+    const latest = requireFreshCurrentView(
+      request.authority,
+      request.current_state,
+      trusted.value.now,
+      "authority",
+    );
+    if (!latest.ok) return rejectActivation(latest.reason_code);
+    if (workspaceCurrentFingerprint(latest.value) !== record.current_fingerprint) {
+      return rejectActivation("workspace_replay");
+    }
+    const loaded = loadWorkspaceInvitationStoreRecord(record.store, record.token);
+    if (!loaded.ok || loaded.value === null) return indeterminate("workspace_replay");
+    const afterLoadCurrent = requireFreshCurrentView(
+      request.authority,
+      request.current_state,
+      trusted.value.now,
+      "authority",
+    );
+    if (!afterLoadCurrent.ok) return rejectActivation(afterLoadCurrent.reason_code);
+    if (workspaceCurrentFingerprint(afterLoadCurrent.value) !== record.current_fingerprint) {
+      return rejectActivation("workspace_replay");
+    }
+    const expected: WorkspaceInvitationStoreRecord = {
+      revision: loaded.value.revision,
+      state: loaded.value.state,
+      store_key: record.token,
+      acceptance_binding: record.acceptance_binding,
+      authority_fingerprint: config.authority_fingerprint,
+      current_fingerprint: record.current_fingerprint,
+      root_role_id: record.root_role_id,
+      root_capability_ceiling: record.root_capability_ceiling,
+      policy_head: record.policy_head,
+      predecessor: record.predecessor,
+      authority_checkpoint: record.authority_checkpoint,
+      expires_at: record.expires_at,
+      activation_binding: loaded.value.activation_binding,
+      execution_token: loaded.value.execution_token,
+      terminal: loaded.value.terminal,
+      terminal_digest: loaded.value.terminal_digest,
+    };
+    if (!exactInvitationStoreBinding(loaded.value, expected)) {
+      return rejectActivation("workspace_replay");
+    }
+    const activationBinding = workspaceInvitationActivationBinding(request, record);
+    if (activationBinding === null) return rejectActivation("workspace_replay");
+    if (loaded.value.state === "committed") {
+      if (loaded.value.activation_binding !== activationBinding
+        || loaded.value.execution_token === null
+        || loaded.value.terminal === null
+        || loaded.value.terminal_digest !== workspaceInvitationTerminalDigest(
+          activationBinding,
+          loaded.value.terminal,
+        )) {
+        return rejectActivation("workspace_replay");
+      }
+      // Full activation validation below recomputes the exact closed output;
+      // the durable cache is never accepted from a self-consistent hash alone.
+    }
+    if (loaded.value.state === "executing" || loaded.value.state === "indeterminate") {
+      return loaded.value.activation_binding === activationBinding
+        && loaded.value.execution_token !== null
+        ? indeterminate("workspace_replay")
+        : rejectActivation("workspace_replay");
+    }
+  }
   const initial = validateWorkspaceGrantActivationAtTime(request, trusted.value.now);
   if (!initial.ok) return rejectActivation(initial.reason_code);
   if (initial.value.invitation_acceptance === null) {
@@ -1722,6 +2376,7 @@ export function evaluateGrantActivation(value: unknown): WorkspaceVerdict {
     initial.value.invitation_acceptance,
     request,
   );
+  if ("indeterminate" in committed) return indeterminate("workspace_replay");
   return committed.ok
     ? accepted(committed.value.normalized as Record<string, unknown>)
     : rejectActivation(committed.reason_code);
@@ -1872,7 +2527,8 @@ export function resolveWorkspaceCurrentRelationship(value: unknown):
 
 export function consumeWorkspaceInvitationAcceptance(value: unknown):
   | { verdict: "accept"; acceptance: WorkspaceInvitationAcceptance }
-  | { verdict: "reject"; reason_code: string } {
+  | { verdict: "reject"; reason_code: string }
+  | { verdict: "indeterminate"; reason_code: string } {
   const captured = captureWorkspaceRequest(value, ["authority", "current_state"], ["acceptance"]);
   const authority = captured?.opaque.authority;
   const currentState = captured?.opaque.current_state;
@@ -1901,7 +2557,7 @@ export function consumeWorkspaceInvitationAcceptance(value: unknown):
       "signature",
     ])
     || acceptanceValue.profile !== "heterodyne.workspace-invitation-acceptance.v1"
-    || acceptanceValue.spec_version !== "heterodyne/0.5.0"
+    || acceptanceValue.spec_version !== "heterodyne/0.6.0"
     || !isH64(acceptanceValue.grant_id)
     || !isH64(acceptanceValue.grant_operation_digest)
     || !isH64(acceptanceValue.workspace_key)
@@ -1922,23 +2578,16 @@ export function consumeWorkspaceInvitationAcceptance(value: unknown):
     || !/^[0-9a-f]{128}$/u.test(acceptanceValue.signature)) {
     return { verdict: "reject", reason_code: "workspace_schema_invalid" };
   }
-  const trusted = readWorkspaceTrustedNow(authority as WorkspaceRepositoryResolverAuthority);
-  if (!trusted.ok) return { verdict: "reject", reason_code: trusted.reason_code };
-  const invitationStore = trusted.value.config.invitation_store;
+  const config = WORKSPACE_RESOLVER_AUTHORITIES.get(
+    authority as WorkspaceRepositoryResolverAuthority,
+  );
+  const invitationStore = config?.invitation_store;
   if (invitationStore === null) {
     return { verdict: "reject", reason_code: "workspace_repository_invalid" };
   }
-  const latest = requireFreshCurrentView(
-    authority as WorkspaceRepositoryResolverAuthority,
-    currentState as WorkspaceCurrentState,
-    trusted.value.now,
-    "authority",
-  );
-  if (!latest.ok) return { verdict: "reject", reason_code: latest.reason_code };
-  const config = trusted.value.config;
-  const current = latest.value;
-  const now = trusted.value.now;
-  const grant = current.grants.find((candidate) => candidate.grant_id === acceptanceValue.grant_id);
+  if (config === undefined || invitationStore === undefined) {
+    return { verdict: "reject", reason_code: "workspace_repository_invalid" };
+  }
   const unsignedAcceptance = { ...acceptanceValue };
   delete unsignedAcceptance.signature;
   if (!validRawSignature(
@@ -1946,6 +2595,34 @@ export function consumeWorkspaceInvitationAcceptance(value: unknown):
     proofBytes("heterodyne-workspace-invitation-acceptance-v1", unsignedAcceptance),
     acceptanceValue.subject_account,
   )) return { verdict: "reject", reason_code: "workspace_signature_invalid" };
+  const expectedCommitment = bytesToHex(sha256(proofBytes(
+    "heterodyne-workspace-invitation-nonce-v1",
+    {
+      grant_id: acceptanceValue.grant_id,
+      workspace_key: acceptanceValue.workspace_key,
+      subject_account: acceptanceValue.subject_account,
+      target_device: acceptanceValue.target_device,
+      target_leaf: acceptanceValue.target_leaf,
+      nonce_opening: acceptanceValue.nonce_opening,
+    },
+  )));
+  if (expectedCommitment !== acceptanceValue.nonce_commitment) {
+    return { verdict: "reject", reason_code: "workspace_signature_invalid" };
+  }
+  const token = `${acceptanceValue.workspace_key}:${acceptanceValue.grant_id}:${acceptanceValue.nonce_commitment}`;
+  const acceptanceId = workspaceObjectId(acceptanceValue);
+  const trusted = readWorkspaceTrustedNow(authority as WorkspaceRepositoryResolverAuthority);
+  if (!trusted.ok) return { verdict: "reject", reason_code: trusted.reason_code };
+  const latest = requireFreshCurrentView(
+    authority as WorkspaceRepositoryResolverAuthority,
+    currentState as WorkspaceCurrentState,
+    trusted.value.now,
+    "authority",
+  );
+  if (!latest.ok) return { verdict: "reject", reason_code: latest.reason_code };
+  const current = latest.value;
+  const now = trusted.value.now;
+  const grant = current.grants.find((candidate) => candidate.grant_id === acceptanceValue.grant_id);
   if (grant === undefined
     || grant.activation !== "subject-acceptance"
     || !isRecord(grant.invitation)
@@ -1980,32 +2657,105 @@ export function consumeWorkspaceInvitationAcceptance(value: unknown):
           && (grant.resource_scope as string[]).includes(String(revocation.target_id)))))) {
     return { verdict: "reject", reason_code: "policy_denied" };
   }
-  const expectedCommitment = bytesToHex(sha256(proofBytes(
-    "heterodyne-workspace-invitation-nonce-v1",
+  const currentFingerprint = workspaceCurrentFingerprint(current);
+  const acceptanceBinding = bytesToHex(sha256(proofBytes(
+    "heterodyne-workspace-invitation-acceptance-binding-v1",
     {
-      grant_id: acceptanceValue.grant_id,
-      workspace_key: acceptanceValue.workspace_key,
-      subject_account: acceptanceValue.subject_account,
-      target_device: acceptanceValue.target_device,
-      target_leaf: acceptanceValue.target_leaf,
-      nonce_opening: acceptanceValue.nonce_opening,
+      acceptance_id: acceptanceId,
+      authority_fingerprint: config.authority_fingerprint,
+      current_fingerprint: currentFingerprint,
     },
   )));
-  if (expectedCommitment !== acceptanceValue.nonce_commitment) {
-    return { verdict: "reject", reason_code: "workspace_signature_invalid" };
+  const preparedBase: WorkspaceInvitationStoreRecord = {
+    revision: 0,
+    state: "prepared",
+    store_key: token,
+    acceptance_binding: acceptanceBinding,
+    authority_fingerprint: config.authority_fingerprint,
+    current_fingerprint: currentFingerprint,
+    root_role_id: String(current.role.role_id),
+    root_capability_ceiling: current.workspace_capability_ceiling,
+    policy_head: current.state.policy_head,
+    predecessor: current.state.predecessor,
+    authority_checkpoint: current.state.authority_checkpoint,
+    expires_at: acceptanceValue.expires_at,
+    activation_binding: null,
+    execution_token: null,
+    terminal: null,
+    terminal_digest: null,
+  };
+  const loaded = loadWorkspaceInvitationStoreRecord(invitationStore, token);
+  if (!loaded.ok) return { verdict: "reject", reason_code: loaded.reason_code };
+  const afterStoreLoad = requireFreshCurrentView(
+    authority as WorkspaceRepositoryResolverAuthority,
+    currentState as WorkspaceCurrentState,
+    now,
+    "authority",
+  );
+  if (!afterStoreLoad.ok) {
+    return { verdict: "reject", reason_code: afterStoreLoad.reason_code };
   }
-  const store = WORKSPACE_INVITATION_STORES.get(invitationStore);
-  if (store === undefined) return { verdict: "reject", reason_code: "workspace_repository_invalid" };
-  const token = `${acceptanceValue.workspace_key}:${acceptanceValue.grant_id}:${acceptanceValue.nonce_commitment}`;
-  const existingReservation = store.get(token);
-  if (existingReservation !== undefined) {
-    if (existingReservation.status === "reserved" && now >= existingReservation.expires_at) {
-      store.delete(token);
-    } else {
+  if (workspaceCurrentFingerprint(afterStoreLoad.value) !== currentFingerprint) {
+    return { verdict: "reject", reason_code: "workspace_replay" };
+  }
+  let expectedRevision: number | null = null;
+  if (loaded.value !== null) {
+    if (loaded.value.state === "committed") {
+      if (!exactInvitationStoreBinding(loaded.value, preparedBase)
+        || loaded.value.activation_binding === null
+        || loaded.value.execution_token === null
+        || loaded.value.terminal === null
+        || loaded.value.terminal_digest !== workspaceInvitationTerminalDigest(
+          loaded.value.activation_binding,
+          loaded.value.terminal,
+        )) {
+        return { verdict: "reject", reason_code: "workspace_replay" };
+      }
+      const cachedAcceptance = Object.freeze({}) as WorkspaceInvitationAcceptance;
+      WORKSPACE_INVITATION_ACCEPTANCES.set(cachedAcceptance, deepFreeze({
+        authority: authority as WorkspaceRepositoryResolverAuthority,
+        current_state: currentState as WorkspaceCurrentState,
+        grant_id: acceptanceValue.grant_id,
+        acceptance_id: acceptanceId,
+        store: invitationStore,
+        token,
+        acceptance_binding: acceptanceBinding,
+        current_fingerprint: currentFingerprint,
+        root_role_id: String(current.role.role_id),
+        root_capability_ceiling: current.workspace_capability_ceiling,
+        policy_head: current.state.policy_head,
+        predecessor: current.state.predecessor,
+        authority_checkpoint: current.state.authority_checkpoint,
+        expires_at: acceptanceValue.expires_at,
+      }));
+      return { verdict: "accept", acceptance: cachedAcceptance };
+    }
+    if ((loaded.value.state === "executing" || loaded.value.state === "indeterminate")
+      && exactInvitationStoreBinding(loaded.value, preparedBase)) {
+      return { verdict: "indeterminate", reason_code: "workspace_replay" };
+    }
+    if (loaded.value.state !== "rejected"
+      && !(loaded.value.state === "prepared" && now >= loaded.value.expires_at)) {
       return { verdict: "reject", reason_code: "workspace_replay" };
     }
+    expectedRevision = loaded.value.revision;
   }
-  const acceptanceId = workspaceObjectId(acceptanceValue);
+  const prepared: WorkspaceInvitationStoreRecord = {
+    ...preparedBase,
+    revision: expectedRevision === null ? 0 : expectedRevision + 1,
+  };
+  let acquisition: "committed" | "conflict" | "unknown";
+  try {
+    acquisition = invitationStore.compare_and_swap(token, expectedRevision, prepared);
+  } catch {
+    return { verdict: "indeterminate", reason_code: "workspace_replay" };
+  }
+  if (acquisition === "unknown") {
+    return { verdict: "indeterminate", reason_code: "workspace_replay" };
+  }
+  if (acquisition !== "committed") {
+    return { verdict: "reject", reason_code: "workspace_replay" };
+  }
   const acceptance = Object.freeze({}) as WorkspaceInvitationAcceptance;
   WORKSPACE_INVITATION_ACCEPTANCES.set(acceptance, deepFreeze({
     authority: authority as WorkspaceRepositoryResolverAuthority,
@@ -2014,14 +2764,15 @@ export function consumeWorkspaceInvitationAcceptance(value: unknown):
     acceptance_id: acceptanceId,
     store: invitationStore,
     token,
+    acceptance_binding: acceptanceBinding,
+    current_fingerprint: currentFingerprint,
+    root_role_id: String(current.role.role_id),
+    root_capability_ceiling: current.workspace_capability_ceiling,
+    policy_head: current.state.policy_head,
+    predecessor: current.state.predecessor,
+    authority_checkpoint: current.state.authority_checkpoint,
     expires_at: acceptanceValue.expires_at,
   }));
-  store.set(token, {
-    binding: acceptanceId,
-    status: "reserved",
-    holder: acceptance,
-    expires_at: acceptanceValue.expires_at,
-  });
   return { verdict: "accept", acceptance };
 }
 
@@ -2068,7 +2819,7 @@ export function authenticateWorkspaceSuccessorReauthorization(value: unknown):
       "new_account_signature",
     ])
     || reauthorizationValue.profile !== "heterodyne.workspace-successor-reauthorization.v1"
-    || reauthorizationValue.spec_version !== "heterodyne/0.5.0"
+    || reauthorizationValue.spec_version !== "heterodyne/0.6.0"
     || !isH64(reauthorizationValue.workspace_key)
     || !isH64(reauthorizationValue.prior_account)
     || !isH64(reauthorizationValue.new_account)
@@ -2422,7 +3173,7 @@ export function evaluateAllowance(value: unknown): WorkspaceVerdict {
     "signature",
   ])
     || affiliation.profile !== "heterodyne.workspace-affiliation-evidence.v1"
-    || affiliation.spec_version !== "heterodyne/0.5.0"
+    || affiliation.spec_version !== "heterodyne/0.6.0"
     || affiliation.relationship_id !== object.relationship_id
     || affiliation.source_workspace_key !== source.state.workspace_key
     || affiliation.source_role_id !== object.source_role_id
@@ -2493,6 +3244,8 @@ export function evaluateAllowance(value: unknown): WorkspaceVerdict {
   const qualifyingGrant = affiliationGrants.find((grant) =>
     isCapabilityArray(grant.capabilities)
       && subset(input.requested_capabilities as string[], grant.capabilities)
+      && subset(input.requested_capabilities as string[], source.workspace_capability_ceiling)
+      && subset(input.requested_capabilities as string[], receiving.workspace_capability_ceiling)
       && sourceRolePath.value.every((role) => isCapabilityArray(role.allowed_capabilities)
         && subset(input.requested_capabilities as string[], role.allowed_capabilities))
       && receivingRolePath.value.every((role) => isCapabilityArray(role.allowed_capabilities)
@@ -2582,7 +3335,7 @@ function validateJointDelegateProofSnapshot(
     "signature",
   ])
     || value.profile !== "heterodyne.workspace-joint-delegate.v1"
-    || value.spec_version !== "heterodyne/0.5.0"
+    || value.spec_version !== "heterodyne/0.6.0"
     || !isH64(value.joint_workspace_key)
     || !isH64(value.relationship_id)
     || !isH64(value.delegate_key)
@@ -2857,7 +3610,7 @@ export function evaluateKeyRequest(value: unknown): WorkspaceVerdict {
     currentState as WorkspaceCurrentState,
     authorizationValue as WorkspaceEffectiveAuthorization,
     trusted.value.now,
-    "ordinary",
+    "authority",
   );
   if (!effective.ok) return rejected(effective.reason_code);
   const { current, authorization, grant, role_path: rolePath } = effective.value;
@@ -3210,6 +3963,147 @@ function hasExactMembers(value: Record<string, unknown>, members: readonly strin
   const keys = Object.keys(value);
   return keys.length === members.length && members.every((member) => Object.hasOwn(value, member));
 }
+
+function captureWorkspaceAssuranceProfile(
+  value: unknown,
+): WorkspaceAssuranceProfile | null | undefined {
+  if (value === undefined || value === null) return null;
+  const snapshot = snapshotJsonRecord(value);
+  if (snapshot === null || !hasExactMembers(snapshot, [
+    "profile",
+    "inception_event_id",
+    "required_state",
+  ])
+    || snapshot.profile !== "heterodyne.workspace.assurance.v1"
+    || !isH64(snapshot.inception_event_id)
+    || snapshot.required_state !== "verified") return undefined;
+  return snapshot as WorkspaceAssuranceProfile;
+}
+
+function captureWorkspacePolicyHistory(
+  value: unknown,
+): readonly WorkspacePolicyHistoryEntry[] | null {
+  const snapshot = snapshotJsonArray(value);
+  if (snapshot === null || snapshot.length === 0) return null;
+  const history: WorkspacePolicyHistoryEntry[] = [];
+  const seen = new Set<string>();
+  for (const [index, candidate] of snapshot.entries()) {
+    if (!isRecord(candidate) || !hasExactMembers(candidate, [
+      "policy_head",
+      "predecessor",
+      "assurance",
+      "authorization",
+    ])
+      || !isH64(candidate.policy_head)
+      || !(candidate.predecessor === null || isH64(candidate.predecessor))) return null;
+    const assurance = captureWorkspaceAssuranceProfile(candidate.assurance);
+    const authorization = captureWorkspaceAssuranceAuthorization(candidate.authorization);
+    const prior = history[index - 1];
+    if (assurance === undefined
+      || authorization === undefined
+      || seen.has(candidate.policy_head)
+      || (index === 0
+        ? candidate.predecessor !== null
+        : candidate.predecessor !== prior?.policy_head)) return null;
+    seen.add(candidate.policy_head);
+    history.push(deepFreeze({
+      policy_head: candidate.policy_head,
+      predecessor: candidate.predecessor,
+      assurance,
+      authorization,
+    }));
+  }
+  return deepFreeze(history);
+}
+
+function workspaceAssuranceProfilesEqual(
+  left: WorkspaceAssuranceProfile | null | undefined,
+  right: WorkspaceAssuranceProfile | null | undefined,
+): boolean {
+  return left === null ? right === null : left !== undefined && right !== null && right !== undefined
+    && left.profile === right.profile
+    && left.inception_event_id === right.inception_event_id
+    && left.required_state === right.required_state;
+}
+
+function workspacePolicyHistoryIsPrefix(
+  prefix: readonly WorkspacePolicyHistoryEntry[],
+  history: readonly WorkspacePolicyHistoryEntry[],
+): boolean {
+  return prefix.length <= history.length && prefix.every((entry, index) => {
+    const candidate = history[index];
+    return candidate !== undefined
+      && entry.policy_head === candidate.policy_head
+      && entry.predecessor === candidate.predecessor
+      && workspaceAssuranceProfilesEqual(entry.assurance, candidate.assurance)
+      && workspaceAssuranceAuthorizationsEqual(entry.authorization, candidate.authorization);
+  });
+}
+
+function captureWorkspaceAssuranceAuthorization(
+  value: unknown,
+): WorkspaceAssuranceAuthorization | null | undefined {
+  if (value === null) return null;
+  const snapshot = snapshotJsonRecord(value);
+  if (snapshot === null || !hasExactMembers(snapshot, [
+    "profile",
+    "suite",
+    "verification_key",
+    "workspace_key",
+    "previous_policy_head",
+    "next_policy_head",
+    "previous_assurance",
+    "next_assurance",
+    "transition_digest",
+    "evaluated_at",
+    "signature",
+  ])) return undefined;
+  const previousAssurance = captureWorkspaceAssuranceProfile(snapshot.previous_assurance);
+  const nextAssurance = captureWorkspaceAssuranceProfile(snapshot.next_assurance);
+  if (snapshot.profile !== "heterodyne.workspace.assurance-authorization.v1"
+    || snapshot.suite !== "bip340"
+    || !isH64(snapshot.verification_key)
+    || !isH64(snapshot.workspace_key)
+    || !(snapshot.previous_policy_head === null || isH64(snapshot.previous_policy_head))
+    || !isH64(snapshot.next_policy_head)
+    || previousAssurance === undefined
+    || nextAssurance === undefined
+    || !isH64(snapshot.transition_digest)
+    || !isSafeNonNegativeInteger(snapshot.evaluated_at)
+    || typeof snapshot.signature !== "string"
+    || !/^[0-9a-f]{128}$/u.test(snapshot.signature)) return undefined;
+  return deepFreeze({
+    profile: "heterodyne.workspace.assurance-authorization.v1",
+    suite: "bip340",
+    verification_key: snapshot.verification_key,
+    workspace_key: snapshot.workspace_key,
+    previous_policy_head: snapshot.previous_policy_head,
+    next_policy_head: snapshot.next_policy_head,
+    previous_assurance: previousAssurance,
+    next_assurance: nextAssurance,
+    transition_digest: snapshot.transition_digest,
+    evaluated_at: snapshot.evaluated_at,
+    signature: snapshot.signature,
+  });
+}
+
+function workspaceAssuranceAuthorizationsEqual(
+  left: WorkspaceAssuranceAuthorization | null,
+  right: WorkspaceAssuranceAuthorization | null,
+): boolean {
+  if (left === null || right === null) return left === right;
+  return left.profile === right.profile
+    && left.suite === right.suite
+    && left.verification_key === right.verification_key
+    && left.workspace_key === right.workspace_key
+    && left.previous_policy_head === right.previous_policy_head
+    && left.next_policy_head === right.next_policy_head
+    && workspaceAssuranceProfilesEqual(left.previous_assurance, right.previous_assurance)
+    && workspaceAssuranceProfilesEqual(left.next_assurance, right.next_assurance)
+    && left.transition_digest === right.transition_digest
+    && left.evaluated_at === right.evaluated_at
+    && left.signature === right.signature;
+}
 function hasExactShape(
   value: Record<string, unknown>,
   required: readonly string[],
@@ -3226,6 +4120,7 @@ function captureWorkspaceRequest(
   opaqueMembers: readonly string[],
   dataMembers: readonly string[],
   optionalOpaqueMembers: readonly string[] = [],
+  optionalDataMembers: readonly string[] = [],
 ): {
   opaque: Readonly<Record<string, unknown>>;
   data: Readonly<Record<string, unknown>>;
@@ -3236,7 +4131,8 @@ function captureWorkspaceRequest(
     const descriptors = Object.getOwnPropertyDescriptors(value);
     const keys = Reflect.ownKeys(value);
     const stringKeys = keys.filter((key): key is string => typeof key === "string");
-    const presentOptionalMembers = optionalOpaqueMembers.filter((member) =>
+    const presentOptionalMembers = [...optionalOpaqueMembers, ...optionalDataMembers]
+      .filter((member) =>
       stringKeys.includes(member));
     const expectedMembers = [...opaqueMembers, ...dataMembers, ...presentOptionalMembers].sort();
     if (keys.some((key) => typeof key !== "string")
@@ -3264,6 +4160,15 @@ function isWorkspaceRepositoryTrustAnchor(
   return isRecord(value)
     && hasExactMembers(value, ["suite", "public_key"])
     && (value.suite === "ed25519" || value.suite === "bip340")
+    && isH64(value.public_key);
+}
+
+function isWorkspaceAssuranceHistoryTrustAnchor(
+  value: unknown,
+): value is WorkspaceAssuranceHistoryTrustAnchor {
+  return isRecord(value)
+    && hasExactMembers(value, ["suite", "public_key"])
+    && value.suite === "bip340"
     && isH64(value.public_key);
 }
 
@@ -3300,3 +4205,11 @@ import {
   type TrustedSeedAdmissionAuthority,
 } from "./trusted-seed.js";
 import { WORKSPACE_SCHEMAS } from "./workspace-schemas.js";
+import {
+  evaluateWorkspaceAssuranceTransition,
+  verifyWorkspaceAssuranceAuthorization,
+  type WorkspaceAssuranceAuthorization,
+  type WorkspaceAssuranceAuthority,
+  type WorkspaceAssuranceHistoryTrustAnchor,
+  type WorkspaceAssuranceProfile,
+} from "./workspace-assurance.js";

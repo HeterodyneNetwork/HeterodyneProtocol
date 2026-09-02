@@ -39,10 +39,11 @@ describe("protocol document family", () => {
     ).trim().split(/\r?\n/u).map((path) => path.replaceAll("\\", "/"));
     const frozenOrHistoricalBuilders = resolvedFiles.filter((path) =>
       /\/src\/(?:topics[^/]*|snapshot[^/]*)\.ts$/u.test(path)
-      || /\/src\/(?:author|coverage|verify|cli)\.ts$/u.test(path)
+      || /\/src\/(?:author|verify|cli)\.ts$/u.test(path)
     );
 
     expect(frozenOrHistoricalBuilders).toEqual([]);
+    expect(resolvedFiles.some((path) => /\/src\/coverage\.ts$/u.test(path))).toBe(true);
   });
 
   it("keeps live OIDC continuity on active-persona authority", () => {
@@ -58,6 +59,7 @@ describe("protocol document family", () => {
   });
 
   it("parses the single family version", () => {
+    expect(FAMILY_VERSION).toBe("0.6.0");
     expect(QUALIFIED_VERSION).toBe(`heterodyne/${FAMILY_VERSION}`);
     expect(parseFamilyVersion("heterodyne/0.5.0")).toBe("0.5.0");
     expect(parseFamilyVersion("heterodyne/1.2.3-rc.1+build.5")).toBe(
@@ -71,6 +73,9 @@ describe("protocol document family", () => {
 
   it("rejects a version other than the current release", () => {
     expect(() => assertCurrentFamilyVersion(QUALIFIED_VERSION)).not.toThrow();
+    expect(() => assertCurrentFamilyVersion("heterodyne/0.5.0")).toThrow(
+      "heterodyne/0.6.0",
+    );
     expect(() => assertCurrentFamilyVersion("heterodyne/0.4.0")).toThrow(
       QUALIFIED_VERSION,
     );
@@ -78,12 +83,12 @@ describe("protocol document family", () => {
 
   it("negotiates only the exact current family version", () => {
     expect(negotiateExactFamilyVersion(
-      ["heterodyne/0.5.0"],
-      ["heterodyne/0.5.0"],
-    )).toBe("heterodyne/0.5.0");
+      ["heterodyne/0.6.0"],
+      ["heterodyne/0.6.0"],
+    )).toBe("heterodyne/0.6.0");
     expect(negotiateExactFamilyVersion(
+      ["heterodyne/0.6.0"],
       ["heterodyne/0.5.0"],
-      ["heterodyne/0.4.0"],
     )).toBeNull();
     expect(negotiateExactFamilyVersion(
       ["core/0.5.0"],
@@ -137,5 +142,12 @@ describe("protocol document family", () => {
     for (const document of ["comms", "control", "social", "workspace"] as const) {
       expect(DOCUMENT_LAYERING[document]).not.toContain("assurance");
     }
+  });
+
+  it("keeps Assurance optional and forbids Control-to-Workspace authority", () => {
+    expect(DOCUMENT_LAYERING.workspace).not.toContain("assurance");
+    expect(DOCUMENT_LAYERING.control).not.toContain("workspace");
+    expect(() => assertAllowedDependency("workspace", "assurance")).toThrow();
+    expect(() => assertAllowedDependency("control", "workspace")).toThrow();
   });
 });

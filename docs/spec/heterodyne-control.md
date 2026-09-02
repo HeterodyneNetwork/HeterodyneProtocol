@@ -3,7 +3,7 @@
 Document ID: `control`
 
 Control is a section of the Heterodyne specification and is governed by
-[`heterodyne:0.5.0#core-document-conventions`](heterodyne-core.md#core-document-conventions),
+[`heterodyne:0.6.0#core-document-conventions`](heterodyne-core.md#core-document-conventions),
 which fixes the family version, registry pin, release status, BCP 14 usage,
 and anchor and reference forms. Its conformance expression is **Core + Comms
 conformant + Control profile**. Optional Assurance can strengthen succession
@@ -13,13 +13,13 @@ and recovery but is not a Control prerequisite.
 ```json
 {
   "document_id": "control",
-  "spec_version": "heterodyne/0.5.0",
+  "spec_version": "heterodyne/0.6.0",
   "conformance_expression": "Core + Comms conformant + Control profile",
   "direct_dependencies": [
-    "heterodyne:0.5.0#core-conformance",
-    "heterodyne:0.5.0#comms-conformance",
-    "heterodyne:0.5.0#comms-marmot",
-    "heterodyne:0.5.0#comms-agent-authorship"
+    "heterodyne:0.6.0#core-conformance",
+    "heterodyne:0.6.0#comms-conformance",
+    "heterodyne:0.6.0#comms-marmot",
+    "heterodyne:0.6.0#comms-agent-authorship"
   ],
   "required_features": [
     "comms.marmot-conversations.v1",
@@ -146,6 +146,92 @@ an enrollment context; it grants no signer authority. Implementations MUST
 enforce finite pending-group counts, a finite lifetime, and rate and burst
 limits before durable admission.
 
+Invitation and pending-group evaluation is preparation, not durable admission.
+The durable enrollment commit accepts a closed enrollment identifier, group,
+client key, and Comms opaque current-authorization-view capability; it accepts
+no caller clock, freshness/conflict value, authorization age, checkpoint, or
+entitlement state. The consumer snapshots and freezes the closed enrollment
+input before it immediately revalidates the capability at the effect boundary.
+Only that effect-time result supplies commit time, repository/persona/manifest
+binding, issuer, and private-state checkpoint. A failed reload, changed
+manifest or checkpoint, conflict, stale transition, or forged capability
+commits nothing. An accepted commit still creates only `enrollment-only` state
+with no signer authority.
+
+<a id="control-enrollment-admission-authority"></a>
+The local Control enrollment-admission authority fixes its authority
+identifier, trusted clock, exact KeyPackage verifier, authenticated inventory
+and invite loaders, and every durable reservation-store method when it is
+constructed. The public authority is an opaque, frozen capability. Admission
+accepts only the closed persona, account, device, client key, group, active
+invite identifier and `control-enrollment` purpose, exact KeyPackage bytes and
+expected KeyPackageRef, and an optional reserved-slot identifier. It accepts
+no caller-selected clock, capacity, validity, availability, replenishment,
+rate, enrollment, replay, callback, or persistence result. Accessor-backed,
+proxied, extended, malformed, or post-capture-mutated inputs grant no
+authority.
+
+Capture is shallow-first and bounded before any recursive copy, verifier,
+loader, durable read, or hash. The request and every callback result MUST be
+an ordinary exact-key data-property object. Each identifier is limited to 512
+characters; KeyPackage input is limited to 65,536 bytes; each inventory list
+is limited to 256 unique non-empty entries and 65,536 aggregate characters;
+and all inventory lists together have the same 65,536-character aggregate
+limit. The authority rejects unknown members before inspecting their values,
+and accepts no nested public object. An invalid request envelope, profile,
+purpose, non-KeyPackage identifier, or slot is
+`control-enrollment-unavailable`; it MUST NOT be reported as a KeyPackage
+failure.
+
+The authority verifies the captured KeyPackage bytes through its fixed
+standards adapter before consulting admission policy. The verified account
+and KeyPackageRef MUST equal the captured request, its exclusive expiry MUST
+be later than trusted time, and the client key MUST be absent from the
+authenticated current-client inventory. A malformed, unbound, expired, or
+already-current KeyPackage is `control-keypackage-invalid`. The authority
+loads the purpose-bound invite and inventory, validates the invite's active
+state, account, client key, and exclusive expiry, and derives account and
+global pending capacity, reserved-slot availability, replenishment state,
+current account/device enrollment, and the current attempt budget only from
+those authenticated results. A paused replenishment state is
+`control-keypackage-replenishment-paused`; every other failed invite,
+capacity, slot, rate, or current-enrollment condition is
+`control-enrollment-unavailable`.
+
+Before any admission effect, the authority reloads authenticated invite and
+inventory state and submits one transaction to its constructor-captured
+enrollment reservation store. That transaction binds the complete captured
+request and verified KeyPackage result plus trusted time, both authenticated
+revisions, the exact account-pending count, global count and cap, complete
+reserved-slot set and selected slot, replenishment state, current clients,
+enrolled accounts and devices, rate-window counters and budget, and complete
+invite state. In one atomic compare-and-reserve operation the store MUST
+compare every bound value to its own current authenticated state, consume the
+invite, account/global or exact named-slot capacity and rate attempt, record
+the new current client, and persist the request's `executing` fence. No
+process-local precheck is reservation authority. Different invite keys that
+contend for any account, global, named-slot, or rate resource therefore cannot
+both acquire it.
+
+The durable record carries its reservation key, separate request and exact
+reservation-state bindings, execution token, and the complete closed capacity,
+slot, rate, inventory, invite, trusted-time, and KeyPackage-expiry snapshot. A
+binding-equal `executing`, `committed`, or `indeterminate` record is readable
+before any further action. After atomic acquisition and before any admission
+effect, the authority MUST reload the record and exactly validate its key,
+bindings, execution token, state, and complete snapshot. Missing, malformed,
+unreadable, or unequal readback commits nothing and is fenced as absorbing
+`indeterminate`; it MUST NOT repeat reservation or effect on an exact retry.
+Only a proven exact `executing` record permits the store to commit the exact
+state-derived enrollment identifier and group, and success is returned only
+after an equally exact terminal `committed` readback. A committed retry returns
+that cached result without another reservation or effect. A conflicting or
+unavailable reservation grants nothing. An unknown atomic reservation or
+uncertain effect is reconciled only from an exact committed readback or becomes
+an absorbing `indeterminate` record with an authority-derived reconciliation
+digest; `executing`, malformed, conflicting, or uncertain state MUST NOT reopen
+or repeat either reservation or effect.
+
 <a id="control-one-time-invites"></a>
 Purpose-bound invites use the provider-independent Comms one-time-invite
 format. An invite can authenticate rendezvous with a full node but cannot
@@ -153,16 +239,87 @@ replace OIDC approval, the exact signer grant, or current revocation state.
 Preauthorization MUST bind the expected NIP-46 client public key, persona,
 signer audience, selected key and class, methods, kinds, limits, and expiry.
 
+For prompt-free Control enrollment, the generic signed Comms
+`preauthorization` member is the exact closed Control template
+`{persona,audience,client_key,client_class,methods,event_kinds,limits,signer,expires_at}`.
+The template has no unknown members; `methods` and `event_kinds` are nonempty,
+duplicate-free bounded lists, `limits` is a nonempty closed map of positive
+finite integers, `client_class` is `human-light` or `automated`, `client_key`
+equals the descriptor's `expected_client_pubkey`, `signer` equals the signed
+inviter account, and `expires_at` equals the signed descriptor expiry. A
+prompt-free descriptor MUST use the non-convertible `control-enrollment`
+purpose and `preauthorized` approval mode. A `device-enrollment` purpose,
+including any attempt to convert this authority into prompt-free enrollment
+of a KERI-authorized device, is invalid.
+
+The Control preauthorization verifier descriptor-captures the complete closed
+envelope, template, and request before reading any member or invoking an
+asynchronous callback. Every captured string and object member name MUST be a
+valid Unicode scalar sequence before JCS, hashing, or proof processing; a
+malformed scalar sequence or any canonicalization or cryptographic failure
+returns `invite-preauthorization-invalid` and MUST NOT escape as an exception.
+It independently verifies the Comms BIP-340 descriptor
+signature and 256-bit secret commitment. The response proof is the Comms
+one-time-invite HMAC over a closed transcript binding the invite ID,
+descriptor digest, SHA-256 digest of the exact JCS template, purpose, persona,
+audience, client key and class, and the response's `now`, expiry, expected and
+actual purpose, seal and rumor public keys, and response digest. The two
+response keys MUST equal the expected client key, both response purposes MUST
+be `control-enrollment`, and the response expiry MUST equal the signed expiry.
+Legacy caller-supplied descriptor, secret, seal, proof, KeyPackage,
+capability, group-establishment, or other validity booleans are captured only
+as untrusted request data and MUST NOT grant authority. Because this interface
+receives no NIP-59 seal bytes, it MUST NOT claim to verify a NIP-59 seal; the
+separate consuming Comms invite authority remains responsible for that proof.
+
+The verifier uses a constructor-captured trusted clock and authenticated
+revocation loader. It requires the signed issue/expiry window, loads an active
+nonnegative revision, reloads the same active revision immediately before
+mint, and resamples trusted time around those reads. Failure, malformed state,
+revocation, revision change, or processing at or after expiry returns
+`invite-preauthorization-invalid`. Success returns only a frozen empty opaque
+`VerifiedControlInvitePreauthorization` bound privately to the minting
+authority, exact canonical envelope, descriptor and template digests, complete
+captured request, purpose, client, persona, audience, signer and class,
+methods, kinds, limits, expiry, and current revision. A plain lookalike,
+clone, proxy, accessor-bearing value, post-call mutation, or artifact from
+another authority grants nothing. This verifier is non-consuming; the
+separate Control enrollment admission authority performs the atomic invite,
+capacity, rate, and KeyPackage reservation before any enrollment effect.
+
 <a id="control-frame"></a>
 ### 4.1 Marmot Control frame
 
 Registry profile `heterodyne-control-marmot-frame-v1` allocates inner
-application `kind:31017`. It remains an unsigned Nostr-shaped application
-event inside MLS and MUST NOT be published as a standalone Nostr event. Its
-content is JCS-canonical compact JSON conforming to
-`docs/spec/schemas/control/control-frame-v1.schema.json`; tags are empty and
-the inner `pubkey` equals the Marmot sender account authenticated for the MLS
-leaf.
+application `kind:31017`. It is a signed NIP-01 application event inside MLS
+and MUST NOT be published as a standalone event. The exact UTF-8 frame bytes
+encode only the closed NIP-01 event members; the event ID and BIP-340
+signature MUST verify, tags are empty, and `pubkey` MUST equal the Marmot
+sender account authenticated for the MLS leaf. Its `content` is JCS-canonical
+compact JSON conforming to
+`docs/spec/schemas/control/control-frame-v1.schema.json`.
+
+For a request, `payload` is the closed object
+`{group_id,request_digest,body}`. `group_id` MUST equal the authenticated
+Marmot group and `request_digest` MUST equal the server-derived digest of the
+exact bound request. That digest is SHA-256 over
+`UTF-8("heterodyne-control-frame-request-v1") || 0x00 ||
+UTF-8(JCS({profile,version,group_id,sender,request_id,expires_at,body}))`.
+For `human-jsonrpc`, `body` MUST be the exact closed
+`control-rpc-request-v1` request and its `id` and `expires_at` MUST equal the
+outer frame members. For `agent-mcp`, `body` MUST be a closed request form of
+`control-mcp-frame-v1`, with a string `id` equal to the outer `request_id`.
+
+Before dispatch, the receiver captures the exact bytes, duplicate-aware
+decodes the outer event once, rejects duplicate or non-closed outer members,
+and verifies its identifier, signature, `kind`, empty tags, sender, and
+non-future `created_at`. It then parses the JCS-canonical closed Control
+content, selects the body schema from the authenticated profile, recomputes
+the request digest, and requires the expected profile, version, non-expired
+request, authenticated group, and expected digest. A signed frame replayed
+into another group, request, profile, version, sender, or time context fails
+as `control-frame-invalid`; transport authentication or a caller-supplied
+validity summary cannot replace those checks.
 
 The existing closed frame members and JSON-RPC/MCP payload distinction remain
 in force. A valid frame proves transport authenticity only. It MUST NOT be
@@ -183,15 +340,87 @@ event kinds, finite limits, issue time, and exclusive expiry. Persona-key
 signing requires an explicit approval; agent-key signing is the preferred
 automation default.
 
-Pending state conforms to
-`docs/spec/schemas/control/control-device-authorization-state-v1.schema.json`.
-It is node-local and contains only hashes of device codes, user codes, and the
-NIP-46 connection secret together with their non-secret entropy,
-normalization, display-fingerprint, retry, and lifetime controls. Device codes
-provide at least 128 bits of entropy; normalized user codes provide at least
-34.5 bits, allow at most five failed guesses, and use rate-limited polling.
-The record MUST NOT be placed in a public event, URL query, portable backup,
-or replicated credential.
+The complete OIDC/NIP-46 authorization state conforms to
+`docs/spec/schemas/control/control-device-authorization-state-v1.schema.json`
+and is materialized only when all of that schema's grant, authorization,
+signer, requested-capability, connection-secret, and revision members are
+available. Before then, Device Authorization uses a distinct private RFC 8628
+transaction projection. That projection is not the schema object and MUST NOT
+fabricate placeholder grant, signer, authorization, capability, or connection-
+secret members. Where the two states overlap, it uses the schema's
+`device_code_sha256`, `user_code_sha256`, entropy, normalization,
+`client_fingerprint`, failed-guess, interval, issue, and expiry meanings.
+
+Both states are node-local and contain only hashes of device codes, user
+codes, and, once present, the NIP-46 connection secret. Device codes provide
+at least 128 bits of entropy; normalized user codes provide at least 34.5 bits,
+allow at most five failed guesses, and use rate-limited polling. Neither state
+may be placed in a public event, URL query, portable backup, or replicated
+credential.
+
+The device-authorization authority fixes its authority identifier, trusted
+clock, cryptographic entropy source, and all durable-store method identities
+when it is constructed. The public authority value is an implementation-local
+opaque capability. Transaction creation and polling accept only closed data;
+they accept no caller-selected clock, entropy, current-state assertion,
+validity boolean, callback, or persistence result. Accessor-backed, proxied,
+extended, malformed, or post-capture-mutated inputs grant no authority.
+
+Transaction creation draws at least 128 independent device-code bits and 40
+independent user-code bits. User-code normalization is exactly uppercase ASCII
+with hyphens removed; lowercase, spaces, and other substitutions are not
+equivalent inputs. The authority derives the transaction identifier from its
+identity and the device-code hash, then atomically creates the private RFC 8628
+projection with hashes rather than either plaintext code. The projection binds
+the authority, transaction, client, persona, verification URI, displayed
+client fingerprint, issue and exclusive expiry times, initial and current poll
+intervals, first and next permitted poll times, failure budget and count,
+slow-down count, and terminal status. A separate outer durable-authority record
+is only an execution fence; its `available`, `executing`, `committed`, and
+`indeterminate` states are not protocol or schema authorization states. A code
+collision retries with fresh entropy a bounded number of times; exhaustion or
+invalid entropy creates no transaction.
+
+A poll derives the durable lookup key from the normalized device code and
+loads that projection as the only current transaction authority. A malformed
+or unknown device code is `control-device-code-invalid`. A wrong or malformed
+user code increments the durable failure count; the fifth failed guess
+atomically commits a denied terminal before returning the same reason. The
+first permitted poll time is `issued_at + interval_seconds`. Every correct-
+code poll, including one observing locally approved state, enforces the stored
+interval before exposing state. An early poll atomically increases the interval
+by exactly five seconds for that transaction, increments its slow-down count,
+records its next permitted time, and is
+`control-device-code-rate-limited`. A correct code shown with a different
+client fingerprint after the permitted time atomically commits denial and is
+`control-device-code-display-mismatch`. Reaching the stored expiry atomically
+commits an expired terminal and is `control-device-code-invalid`.
+
+Only the locally approved stored state can produce an `approved` result. Every
+poll mutation first acquires the exact complete pre-transition projection and
+request binding. The execution token binds that request digest for terminal
+and nonterminal transitions. A nonterminal transition reopens `available` only
+through an
+exact compare-and-swap and binding-equal readback; a terminal transition uses
+commit and requires exact key, prior binding, execution token, terminal state,
+reason, poll digest, output digest, revision, and complete output on readback.
+The terminal must also reconstruct exactly one legal bound predecessor:
+approval, display-mismatch denial, and expiry require a failure count strictly
+below the denial threshold, while invalid-code denial requires the threshold
+and an immediately preceding count one lower. Any contradictory terminal is a
+malformed durable record and grants no authority.
+The decision is derived from that durable terminal, never from the attempted
+transition. An exact binding-equal committed retry returns the cached result
+without repeating the transition. An ambiguous nonterminal result returns its
+decision only when the exact proposed `available` record can be read back;
+otherwise the acquired record becomes an absorbing `indeterminate` fence. A
+conflicting or unknown store result, malformed record, or `executing` or
+`indeterminate` record fails closed with a stable reconciliation digest. That
+digest is domain-separated and authority-derived from the transaction key,
+exact prior binding, and execution token; a store-supplied digest is compared
+but never becomes return authority. Such a record MUST NOT repeat or reopen
+the transition. These internal failures do not mint
+any additional public `control-device-code-*` reason.
 
 Approval binds the pending record's `transaction_id`, `grant_id`,
 `oidc_authorization_id`, persona, NIP-46 client, audience, selected signer and
@@ -302,6 +531,116 @@ checkpoint MUST validate on every request. It grants nothing beyond the
 stored signer record, is rejected by another node, and has no refresh token.
 The default is five minutes. Sixty minutes is an absolute maximum.
 
+Token issuance and token-protected effects consume only Comms' opaque current
+authorization view. Control does not accept a caller-provided clock,
+freshness/conflict boolean, or checkpoint/view age. Immediately before minting
+or authorizing an effect, the node uses the view's captured trusted clock and
+current-ledger loader to re-run continuity and freshness and to require the
+exact bound manifest and checkpoint. Token `iat` and private-state checkpoint
+come from that effect-time result. Passing one of Comms' independent
+checkpoint and authorization-view bounds never excuses failing the other.
+This baseline composition depends on Core and Comms only; Workspace is not an
+authorization prerequisite.
+
+At token use, a conforming verifier MUST validate the compact JWT itself with
+the current RFC 9068 verification boundary and the node's constructor-fixed
+issuer, exact single resource audience, and JWKS. It MUST require protected
+type `at+jwt`, an RS256 signature from exactly one matching public key, current
+`iat` and exclusive `exp`, the exact pairwise `sub` and `client_id`, sender
+constraint, Marmot group, authorization ID, credential-ledger persona and
+generation, grant generation, private-state checkpoint, scope, method, and
+object. It MUST also validate the referenced current Token Status List through
+the exact authenticated continuity/status-mirror chain. A syntactically valid
+JWT, a decoded claim summary, or a caller-supplied signature, status,
+freshness, generation, or grant boolean is not authority.
+
+The current Control grant/status projection is an implementation-local opaque
+view. A constructor-fixed current-grant resolver MUST load the exact current
+signed Control client-authorization record (or exact authenticated reducer
+result), verify its BIP-340 signature over
+`heterodyne-control-authorization-record-v1` proof bytes with the
+constructor-fixed signer, and require its exact predecessor, active state,
+time bounds, client sender key, methods, objects, limits, and capabilities.
+It returns only an opaque private artifact. Raw grant fields, a caller validity
+or status assertion, an unsigned record, a missing record, or a revoked record
+MUST NOT mint this artifact. The grant/status view is minted only by combining
+that artifact, a genuine Comms current-authorization view, and the exact
+cryptographically validated JWT, Token Status List, continuity, checkpoint,
+and generation material. It privately binds the resolver authority, persona,
+authorization ID, generation, client and class, subject and sender, Marmot
+group, scopes, methods, objects, expiry, checkpoint, and active state. It
+exposes no structural authority or validity boolean. An ordinary Comms view,
+plain lookalike, clone, cross-authority artifact, proxy, accessor-backed
+object, post-validation mutation, or token/grant/status mismatch MUST fail
+closed.
+Immediately before a token handle is minted, and again immediately before
+durable acquisition and the protected effect, the verifier MUST reload the
+grant view, re-run Comms freshness, and require the same trusted time,
+manifest, checkpoint, active grant, generation, status, and complete token/use
+tuple. Every public failure in this boundary is `control-token-invalid`;
+internal mismatch detail MUST NOT be exposed.
+
+Successful current validation mints only an empty opaque one-use token handle
+bound to the verifier instance, exact compact JWT, captured use tuple, and
+constructor-captured proof consumer. Before any copy, fingerprint, recursive
+validation, or callback, every public, resolver, grant-view, JWT, status,
+JWKS, use, operation, store, and effect input MUST pass complete bounded
+descriptor-first preflight: ordinary closed prototypes and members, data
+descriptors only, Unicode scalar strings, finite JSON depth/node/string-byte
+budgets, and applicable token/status/JWKS byte ceilings. Collection length,
+enumerable-string property count, and the global work for every JSON key and
+value MUST fit those budgets before complete descriptor-map materialization or
+unbounded traversal.
+For this object API, a `JsonValue` consists only of enumerable own string data
+members. Non-enumerable properties and symbols are out-of-model host metadata:
+the verifier MUST NOT completely enumerate, capture, hash, or forward them,
+and wire closure applies to the resulting captured JSON projection. A byte
+input MUST use captured intrinsic typed-array length and copy operations and
+MUST individually reject known operation-shadowing own members, including
+`byteLength`, `length`, and `Symbol.iterator`, before copying. A proxy or
+enumerable accessor MUST fail without invoking its traps or getter.
+
+The operation payload MUST be an exact closed live `human-jsonrpc` or
+`agent-mcp` request. The verifier MUST reuse the Control frame request parser
+and `heterodyne-control-frame-request-v1` digest derivation, require the body
+request ID to equal the operation ID, derive the authorization method and
+object from the captured body, require them to equal the token use tuple, and
+recompute the request digest from the exact profile, current Control version,
+Marmot group, sender, request ID, effective request expiry, and captured body.
+For MCP, whose body has no expiry member, the token expiry is the effective
+request expiry. A new human request MUST be unexpired and cannot outlive its
+token. The per-use proof MUST be consumed for that derived digest and exact
+sender key before acquisition. A caller-selected digest, arbitrary JSON
+payload, stale request, lookalike, clone, cross-verifier handle, reused proof
+for a new operation, or the same handle presented with another operation ID,
+request digest, or payload grants no authority. The operation input is closed
+data containing only its operation ID, request digest, and JSON payload; it
+MUST NOT contain a caller-supplied execution callback. The only execution
+capability is the callback captured when the verifier was constructed.
+
+Before that callback runs, a caller-independent durable store MUST atomically
+acquire the complete authority, token, proof, and operation binding and then
+return the exact binding-equal `executing` record on readback. The execution
+token is derived from that complete binding. Acceptance is exposed only after
+the callback returns the exact closed operation result, a `committed` terminal
+is durable, and key, binding, execution token, output digest, and cached output
+all read back equal. An exact committed retry, including after verifier
+reconstruction with the same authority identifier and store and after token
+expiry or grant/status revocation, returns the cached output without consuming
+the proof, requiring current grant authority, or executing again. For this
+purpose only, a token whose signature, issuer, audience, class, use tuple, and
+sender constraint remain cryptographically valid but which is no longer
+current may mint a private replay-only handle. Consumption first derives the
+complete token/proof/canonical-operation binding and performs an authenticated
+durable lookup. That handle can return only an exact committed readback; if
+the record is absent, malformed, executing, indeterminate, or binding-unequal
+it rejects without proof consumption, acquisition, or effect. It can never
+regain new effect authority. An existing
+exact `executing` or `indeterminate` record, an uncertain or invalid effect,
+or an unknown or non-equal terminal write returns a stable reasonless
+`indeterminate` result and MUST NOT repeat the effect. A conflicting or
+malformed durable record fails closed and never grants operation authority.
+
 <a id="control-request-processing"></a>
 ## 6. Request and operation processing
 
@@ -316,6 +655,11 @@ Before a signature or other side effect, the full node validates in order:
 7. the exact signer availability with no fallback;
 8. Comms automation attribution when the request is automated; and
 9. a durable operation reservation before any side effect.
+
+The current-authorization-view reload defined by Comms occurs immediately
+before the durable reservation or effect that consumes the decision. A view
+prepared earlier is not evidence that the same manifest, checkpoint, conflict
+state, or age remains current at effect time.
 
 The operation record conforms to
 `docs/spec/schemas/control/control-operation-record-v1.schema.json`. It binds
@@ -392,6 +736,21 @@ indeterminate reservation MUST NOT repeat the effect. The same request ID
 with different bound bytes is a conflict. Exhaustion is computed only from
 authoritative state.
 
+Executable conformance evidence for an uncertain signer effect invokes this
+same persisted execute-once boundary with an authoritative `executing`
+reservation. A reconstructed fence over the same durable store MUST return
+the cached terminal without invoking the key operation again. The evidence
+adapter descriptor-captures and privately deep-freezes the exact security
+input and returned result, and binds their canonical digests, object
+identities, signer-capability identity, and real boundary identity to a fresh
+opaque terminal. Before any semantic read, it also descriptor-captures the
+closed outer evidence fixture exactly once; accessors, proxies, extra or
+symbol members, and substituted signer capabilities are rejected without
+invocation. Mutation, cloning, or substitution across inputs or boundaries
+invalidates that terminal. The registered
+`control-signer-effect-indeterminate` result cannot be supplied by a
+caller-selected effect-state or validity flag.
+
 The server derives the request digest; a caller never supplies it. The digest
 is SHA-256 over `UTF-8("heterodyne-control-nip46-request-v1") || 0x00 ||
 UTF-8(JCS({grant_digest,authority,rpc_request,normalized_event,value_msats}))`, where
@@ -449,7 +808,7 @@ audience, signer, class, kind, value, and signed automation-policy binding.
 It derives agent class, association, tier, and scopes only from the signed
 grant; caller values never select policy. The node then invokes the Comms automation
 attribution transform at
-[`heterodyne:0.5.0#comms-agent-authorship`](heterodyne-comms.md#comms-agent-authorship),
+[`heterodyne:0.6.0#comms-agent-authorship`](heterodyne-comms.md#comms-agent-authorship),
 then verifies the resulting attribution, and only then passes the unsigned
 event to the signer-side execute-once capability; it never receives or invokes
 a raw signer. Before that invocation it MUST also reload authoritative
@@ -675,6 +1034,19 @@ state digest. The host MUST atomically persist that reset transition and its
 authoritative evidence before reporting completion or allowing successor
 authority.
 
+Executable conformance evidence for reset rejection invokes this validator
+with the actual signed grant and successor-signed completion plus the complete
+authoritative inventory, transition evidence, and optional pinned Assurance
+authority. Evidence adapters descriptor-capture and privately deep-freeze
+those exact inputs and the validator result, then bind their canonical
+digests and object and boundary identities to an opaque terminal. The closed
+outer fixture is descriptor-captured exactly once before any semantic read,
+so accessors, proxies, extra members, and symbol members reject without
+invocation. Post-mint mutation, cloning, or cross-input or cross-boundary
+substitution invalidates the terminal; adapters cannot replace signature,
+inventory, evidence, or subordinate-reauthorization checks with
+caller-supplied booleans.
+
 The baseline authorization class is `active-account`. Optional Assurance may
 authorize or reinforce succession and reset, including when the old key is
 unavailable, through `assurance-recovery`. Assurance evidence does not alias
@@ -751,7 +1123,7 @@ registered internal reason in encrypted audit.
 <a id="control-conformance"></a>
 ## 10. Conformance
 
-A Control 0.5.0 implementation may claim conformance only when it is Core and
+A Control 0.6.0 implementation may claim conformance only when it is Core and
 Comms conformant and passes the applicable executable checks for:
 
 - zero, one, and multiple isolated human or organization persona vaults;
@@ -790,3 +1162,15 @@ persona has no lower baseline status.
   ]
 }
 ```
+
+<a id="control-retired-semantics"></a>
+## 11. Retired diagnostic semantics
+
+`agent-attribution-bypass-prohibited`, `agent-human-profile-prohibited`,
+`agent-key-access-prohibited`, `agent-method-prohibited`,
+`agent-resource-denied`, `control-request-id-conflict`, and
+`control-signed-event-invalid` are retained as non-wire history, not current
+executable authority. They MUST NOT provide normative executable evidence or
+current protocol refusals. Their retirement does not relax attribution before
+signing, exact grants, or at-most-once execution: those live invariants remain
+covered by the existing publication, grant, and signer-fence boundaries.

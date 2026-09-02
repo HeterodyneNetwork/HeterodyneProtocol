@@ -1,0 +1,95 @@
+{
+  "vector_id": "assurance/succession-predecessor-mismatch",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "assurance",
+  "spec_refs": [
+    "heterodyne:assurance#assurance-chain-validation"
+  ],
+  "invariants": [
+    "ASSURANCE-I-TRANSITION-PROOF-BINDING"
+  ],
+  "reason_codes": [
+    "assurance-predecessor-mismatch"
+  ],
+  "description": "A fully signed succession cannot skip the accepted predecessor event.",
+  "direction": "consume",
+  "input": {
+    "current": {
+      "active_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "head": "5e42684ee4f5c3c754487dff44d8b5ffec5b601d5893e34bb726a6ec3b846e66",
+      "head_created_at": 1785000001,
+      "inception_event_id": "619aac8e3a4f2771819f16c1f27512f4dccc7e881de6b5c5399fce6b0041f3f9",
+      "inception_signature": "3d9c8a39fbddba60213a4876914a196b2f64a5b38302c9809e986aeca20bf8113ede674eed791bd188328d768f7609e7290b87996c4cd706f3ab56bdca48ba20",
+      "cold_root": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "succession_authority": "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9",
+      "epoch_policy": {
+        "current_keys": [
+          "e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13"
+        ],
+        "mode": "pre-rotation",
+        "next_key_commitments": [
+          "cd9177582b93ca2144ee27a0ecf19741ebab70464aafe6686843d8c4f08d9c8f"
+        ]
+      },
+      "witnesses": [
+        {
+          "key": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+          "weight": 1
+        }
+      ],
+      "thresholds": {
+        "epoch": 1,
+        "witness": 1
+      },
+      "associated_key_policy": {
+        "active_key": [
+          {
+            "role": "agent",
+            "scope": [
+              "nostr:kind:1"
+            ]
+          }
+        ],
+        "epoch_threshold": [
+          {
+            "role": "client",
+            "scope": [
+              "repository:read"
+            ]
+          }
+        ]
+      },
+      "compromise_cutoff": null
+    },
+    "event": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1785000011,
+      "kind": 31003,
+      "tags": [
+        [
+          "d",
+          "assurance-succession:5e42684ee4f5c3c754487dff44d8b5ffec5b601d5893e34bb726a6ec3b846e66"
+        ],
+        [
+          "profile",
+          "heterodyne.assurance.succession.v1"
+        ],
+        [
+          "p",
+          "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+        ],
+        [
+          "p",
+          "fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556"
+        ]
+      ],
+      "content": "{\"active_key\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",\"authorizing_evidence\":{\"authority_class\":\"succession\",\"authority_proofs\":[{\"authority_key\":\"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\",\"signature\":\"2a98ad91414e06764bf16e34b7aa16a1bfbb61d4077c65456af4705d28aa78b38b5c1708dbffde4c9c0afc25c5fe37be3b15d8d730943dfd13891365a88b636f\"}],\"witness_receipts\":[{\"signature\":\"1e7881f2968c0cdfe8d979d6b13b46baf7eca9d24fb5b626686c683b13d4053ac21e8640c7172d0ab9d8995ee3f9aacefcd03c79a9637f1a806f0203107cc8e2\",\"witness_key\":\"2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4\"}]},\"class\":\"routine\",\"created_at\":1785000011,\"new_active_key\":\"fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556\",\"new_key_acceptance\":{\"key\":\"fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556\",\"signature\":\"fa8426cc4df182ed0db8738fc6fe3b0525e4fcc24fca73dadb3d69524fe1357eb701f5b865a0775b1f4e6e8085a2ee9a43c9b4ee794170c9c5cece99c214f33f\"},\"next_associated_key_policy\":{\"active_key\":[{\"role\":\"agent\",\"scope\":[\"nostr:kind:1\"]}],\"epoch_threshold\":[{\"role\":\"client\",\"scope\":[\"repository:read\"]}]},\"next_epoch_policy\":{\"current_keys\":[\"5cbdf0646e5db4eaa398f365f2ea7a0e3d419b7e0330e39ce92bddedcac4f9bc\"],\"mode\":\"pre-rotation\",\"next_key_commitments\":[\"41030f76141fc2c57575f0bf350d0aa1b14974e6b7042e46a470935e229c2484\"]},\"next_succession_authority\":\"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\",\"predecessor\":\"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\",\"previous_active_key\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",\"previous_head\":\"5e42684ee4f5c3c754487dff44d8b5ffec5b601d5893e34bb726a6ec3b846e66\",\"profile\":\"heterodyne.assurance.succession.v1\",\"spec_version\":\"heterodyne/0.6.0\",\"subordinate_reauthorizations\":[],\"thresholds\":{\"epoch\":1,\"witness\":1},\"witnesses\":[{\"key\":\"2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4\",\"weight\":1}]}",
+      "id": "405a858c98c9e4ad3d372e7d9fe082a8e3e1ab13bf7e86e3fde56b068c3dcb32",
+      "sig": "d57412a5265dfdaafc3910a0b55f136ca4145d83a4c3c2d240b097534d6ac06b84826343a1429da2772b3b819fd72dc0aa3808515c15fb6107a4af924576c3f2"
+    }
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "assurance-predecessor-mismatch"
+  }
+}

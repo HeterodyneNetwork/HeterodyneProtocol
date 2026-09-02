@@ -1,12 +1,17 @@
+import { createHash } from "node:crypto";
 import {
   existsSync,
+  lstatSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
+  realpathSync,
   writeFileSync,
 } from "node:fs";
-import { relative, resolve, sep } from "node:path";
+import { join, relative, resolve, sep } from "node:path";
 import { Parser } from "commonmark";
 import type { Node as CommonmarkNode } from "commonmark";
+import ts from "typescript";
 import {
   assertAllowedDependency,
   DOCUMENTS,
@@ -53,10 +58,18 @@ export type FamilyDocIssue = {
     | "unregistered-proof-domain"
     | "mislinked-reference"
     | "retired-authoring-model"
+    | "stale-family-version"
     | "markdown-resource-limit"
-    | "profile-revision-registry-context-missing";
+    | "profile-revision-registry-context-missing"
+    | "defensive-validation-scope"
+    | "defensive-validation-target"
+    | "snapshot-manifest-invalid"
+    | "snapshot-guidance-missing"
+    | "snapshot-guidance-stale";
   message: string;
 };
+
+export type DocsLintIssue = FamilyDocIssue;
 
 type FamilyDocument = {
   document: DocumentId;
@@ -85,6 +98,8 @@ const LOCAL_ANCHOR_LINK = /\]\(#([a-z0-9-]+)\)/g;
 const NONCANONICAL_DECISION_REFERENCE = /\bADR-\d{3}\b|docs\/adr\//;
 const NUMBERED_HEADING = /^#{2,6}\s+(\d+(?:\.\d+)*)\.?\s/;
 const SECTION_REFERENCE = /§(\d+(?:\.\d+)*)/g;
+const STALE_BARE_FAMILY_VERSION =
+  /\b(?:Core|Assurance|Comms|Control|Social|Workspace)\s+0\.5(?:\.0)?\b(?!\.\d)/giu;
 const PROOF_DOMAIN = /\bdomain\s+`(heterodyne-[a-z0-9-]*-v[1-9][0-9]*)`/gi;
 const PROOF_DOMAIN_FENCED = /`?<?(heterodyne-[a-z0-9-]*-v[1-9][0-9]*) proof bytes>?`?/g;
 const FEATURE_ID =
@@ -123,6 +138,1023 @@ const RETIRED_MAINTAINED_GUIDE_PATTERNS = [
   /generator-owned\s+protocol\s+inputs:\s+live\s+normative\s+machine-readable\s+artifacts/i,
   /recheck the named family release/i,
 ];
+
+const DEFENSIVE_VALIDATION_TARGET_CATEGORIES = [
+  {
+    item: "live[-\\s]+targets?",
+    affirmative: /\blive[-\s]+targets?\b/giu,
+  },
+  {
+    item: "live\\s+(?:relays?|nodes?|services?|deployments?|identity\\s+providers?|accounts?|credentials?)",
+    affirmative:
+      /\blive\s+(?:relays?|nodes?|services?|deployments?|identity\s+providers?|accounts?|credentials?)\b/giu,
+  },
+  {
+    item: "production\\s+(?:deployments?|services?|relays?|nodes?|systems?)",
+    affirmative: /\bproduction\s+(?:deployments?|services?|relays?|nodes?|systems?)\b/giu,
+  },
+  {
+    item: "(?:real|external)\\s+(?:accounts?|credentials?|data)",
+    affirmative: /\b(?:real|external)\s+(?:accounts?|credentials?|data)\b/giu,
+  },
+  {
+    item: "(?:external|third[-\\s]+party)\\s+systems?",
+    affirmative: /\b(?:external|third[-\s]+party)\s+systems?\b/giu,
+  },
+  {
+    item: "external\\s+targets?",
+    affirmative:
+      /\b(?:use|contact|access|scan|exercise|test|reach)(?:s|ed|ing)?\s+(?:(?:any|a|an|the)\s+)?(?<target>external\s+targets?)\b/giu,
+  },
+  {
+    item: "(?:reusable|functional|deployable)\\s+(?:exploits?|payloads?)(?:\\s+directions?)?",
+    affirmative:
+      /\b(?:reusable|functional|deployable)\s+(?:exploits?|payloads?)(?:\s+directions?)?\b/giu,
+  },
+  {
+    item: "targets?",
+    affirmative:
+      /\b(?:use|contact|access|scan|exercise|test|reach)(?:s|ed|ing)?\s+(?:(?:any|a|an|the)\s+)?(?<target>targets?)\b/giu,
+  },
+] as const;
+const DEFENSIVE_VALIDATION_TARGET_ITEM =
+  `(?:${DEFENSIVE_VALIDATION_TARGET_CATEGORIES.map(({ item }) => item).join("|")})`;
+const DEFENSIVE_VALIDATION_PROHIBITED_LIST = new RegExp(
+  String.raw`\b(?:no|without)\s+${DEFENSIVE_VALIDATION_TARGET_ITEM}`
+    + String.raw`(?:\s*,\s*${DEFENSIVE_VALIDATION_TARGET_ITEM})*`
+    + String.raw`(?:\s*,?\s*(?:or|and)\s+${DEFENSIVE_VALIDATION_TARGET_ITEM})?`
+    + String.raw`(?:\s+(?:is|are)\s+(?:used|contacted|accessed|tested|created|produced|generated|delivered|deployed))?\b`,
+  "giu",
+);
+const DEFENSIVE_VALIDATION_DIRECT_PROHIBITION_BEFORE =
+  /\b(?:no|without|never)\s+(?:(?:any|a|an|the)\s+)?$|\b(?:must|shall|do)\s+not\s+(?:(?:use|contact|target|access|exercise|interact\s+with|test|create|produce|generate|deliver|send|run|deploy|connect)\s+)?(?:(?:any|a|an|the)\s+)?$|\b(?:avoid|exclude|excluding|excluded?|prohibit(?:s|ed)?|forbid(?:s|den)?)\s*$/iu;
+const DEFENSIVE_VALIDATION_DIRECT_PROHIBITION_AFTER =
+  /^\s*(?:(?:is|are|was|were|must|shall)\s+)?(?:prohibited|forbidden|disallowed|excluded|not\s+(?:allowed|permitted)|must\s+not\s+be\s+used)\b/iu;
+const DEFENSIVE_VALIDATION_DIRECT_ACTION_PROHIBITION_BEFORE =
+  /\b(?:never|do\s+not|must\s+not|shall\s+not)\s+(?:(?:use|contact|target|access|exercise|test|create|produce|generate|deliver|send|run|deploy|connect|scan)(?:s|ed|ing)?|sign(?:s|ed|ing)?\s+for)(?:\s+or\s+(?:(?:use|contact|target|access|exercise|test|create|produce|generate|deliver|send|run|deploy|connect|scan)(?:s|ed|ing)?|sign(?:s|ed|ing)?\s+for))*\s+(?:(?:any|a|an|the)\s+)?$/iu;
+function defensiveValidationTargetIsProhibited(
+  text: string,
+  matchStart: number,
+  matchEnd: number,
+  prohibitedListRanges: readonly (readonly [number, number])[],
+): boolean {
+  const before = text.slice(Math.max(0, matchStart - 128), matchStart);
+  const after = text.slice(matchEnd, matchEnd + 96);
+  return DEFENSIVE_VALIDATION_DIRECT_PROHIBITION_BEFORE.test(before)
+    || DEFENSIVE_VALIDATION_DIRECT_ACTION_PROHIBITION_BEFORE.test(before)
+    || DEFENSIVE_VALIDATION_DIRECT_PROHIBITION_AFTER.test(after)
+    || prohibitedListRanges.some(([start, end]) =>
+      start <= matchStart && end >= matchEnd
+    );
+}
+
+const APPROVED_CLOSURE_PLAN_PATH =
+  "docs/superpowers/plans/2026-08-29-heterodyne-0.6-final-security-closure.md";
+const DEFENSIVE_REVIEW_PATH = /(?:\.test\.ts|(?:brief|review)\.(?:md|txt))$/iu;
+
+/** Check new hostile-boundary test or brief prose for defensive framing. */
+export function lintDefensiveValidationText(
+  text: string,
+  path: string,
+): DocsLintIssue[] {
+  const hostile = /\b(hostile|adversarial|attacker|attack)\b/iu.test(text);
+  const defensive = /\bBLUE TEAM VALIDATION\b/u.test(text)
+    && /\b(synthetic|local)\b/iu.test(text);
+  const issues: DocsLintIssue[] = [];
+  if (hostile && !defensive) {
+    issues.push({
+      path,
+      line: 1,
+      code: "defensive-validation-scope",
+      message: "hostile-boundary validation must be framed as synthetic/local BLUE TEAM VALIDATION",
+    });
+  }
+  if (hostile) {
+    const prohibitedListRanges = [...text.matchAll(DEFENSIVE_VALIDATION_PROHIBITED_LIST)]
+      .map((match) => [match.index, match.index + match[0].length] as const);
+    for (const { affirmative } of DEFENSIVE_VALIDATION_TARGET_CATEGORIES) {
+      for (const match of text.matchAll(affirmative)) {
+        const target = match.groups?.target ?? match[0];
+        const matchStart = match.index + match[0].lastIndexOf(target);
+        const matchEnd = matchStart + target.length;
+        if (defensiveValidationTargetIsProhibited(
+          text,
+          matchStart,
+          matchEnd,
+          prohibitedListRanges,
+        )) continue;
+        issues.push({
+          path,
+          line: 1,
+          code: "defensive-validation-target",
+          message: "hostile-boundary validation must prohibit live targets, real credentials, external systems, and reusable payload directions",
+        });
+        return issues;
+      }
+    }
+  }
+  return issues;
+}
+
+const BLUE_TEAM_TEST_PREFIX = "BLUE TEAM VALIDATION: synthetic/local";
+
+type DefensiveValidationTestApi = "describe" | "it" | "test";
+type DefensiveValidationTestApiStep = { name: string; invoked: boolean };
+type DefensiveValidationTestApiChain = {
+  root: ts.Identifier;
+  steps: DefensiveValidationTestApiStep[];
+};
+type DefensiveValidationTestDeclaration = {
+  api: DefensiveValidationTestApi;
+  trusted: boolean;
+};
+
+const DEFENSIVE_VALIDATION_TEST_MODIFIERS = new Set([
+  "concurrent", "fails", "only", "sequential", "skip", "todo",
+]);
+const DEFENSIVE_VALIDATION_SUITE_MODIFIERS = new Set([
+  "concurrent", "only", "sequential", "shuffle", "skip", "todo",
+]);
+const DEFENSIVE_VALIDATION_CONDITIONAL_MODIFIERS = new Set(["runIf", "skipIf"]);
+const DEFENSIVE_VALIDATION_TABLE_MODIFIERS = new Set(["each", "for"]);
+
+function defensiveValidationLiteralElementName(
+  expression: ts.Expression | undefined,
+): string | undefined {
+  return expression !== undefined && ts.isStringLiteralLike(expression)
+    ? expression.text
+    : undefined;
+}
+
+function defensiveValidationUnwrapTransparentExpression(
+  expression: ts.Expression,
+): ts.Expression {
+  let current = expression;
+  while (ts.isParenthesizedExpression(current)
+    || ts.isAsExpression(current)
+    || ts.isTypeAssertionExpression(current)
+    || ts.isNonNullExpression(current)
+    || ts.isSatisfiesExpression(current)) {
+    current = current.expression;
+  }
+  return current;
+}
+
+function defensiveValidationTestApiChain(
+  expression: ts.Expression,
+): DefensiveValidationTestApiChain | undefined {
+  expression = defensiveValidationUnwrapTransparentExpression(expression);
+  if (ts.isIdentifier(expression)) return { root: expression, steps: [] };
+  if (ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression)) {
+    const propertyName = ts.isPropertyAccessExpression(expression)
+      ? expression.name.text
+      : defensiveValidationLiteralElementName(expression.argumentExpression);
+    if (propertyName === undefined) return undefined;
+    const chain = defensiveValidationTestApiChain(expression.expression);
+    return chain === undefined
+      ? undefined
+      : { ...chain, steps: [...chain.steps, { name: propertyName, invoked: false }] };
+  }
+  if (ts.isCallExpression(expression)) {
+    const chain = defensiveValidationTestApiChain(expression.expression);
+    const last = chain?.steps.at(-1);
+    if (chain === undefined || last === undefined || last.invoked) return undefined;
+    return {
+      ...chain,
+      steps: [
+        ...chain.steps.slice(0, -1),
+        { ...last, invoked: true },
+      ],
+    };
+  }
+  return undefined;
+}
+
+function defensiveValidationTestChainStatus(
+  api: DefensiveValidationTestApi,
+  steps: readonly DefensiveValidationTestApiStep[],
+): "builder" | "supported" | "unknown" {
+  if (steps.length === 0) return "supported";
+  const modifiers = api === "describe"
+    ? DEFENSIVE_VALIDATION_SUITE_MODIFIERS
+    : DEFENSIVE_VALIDATION_TEST_MODIFIERS;
+  const seen = new Set<string>();
+  for (const [index, step] of steps.entries()) {
+    const last = index === steps.length - 1;
+    if (DEFENSIVE_VALIDATION_CONDITIONAL_MODIFIERS.has(step.name)) {
+      if (index !== 0 || seen.has(step.name)) return "unknown";
+      if (!step.invoked) return last ? "builder" : "unknown";
+    } else if (DEFENSIVE_VALIDATION_TABLE_MODIFIERS.has(step.name)) {
+      if (!last || seen.has(step.name)) return "unknown";
+      return step.invoked ? "supported" : "builder";
+    } else if (!modifiers.has(step.name) || step.invoked || seen.has(step.name)) {
+      return "unknown";
+    }
+    seen.add(step.name);
+  }
+  return "supported";
+}
+
+function defensiveValidationTestDeclaration(
+  node: ts.CallExpression,
+  context: DefensiveValidationAstContext,
+): DefensiveValidationTestDeclaration | undefined {
+  const chain = defensiveValidationTestApiChain(node.expression);
+  if (chain === undefined) return undefined;
+  const trusted = defensiveValidationTrustedVitestTestApi(chain, context);
+  const candidate = trusted ?? defensiveValidationSyntacticVitestTestApi(chain, context);
+  if (candidate === undefined) return undefined;
+  const status = defensiveValidationTestChainStatus(candidate.api, candidate.steps);
+  if (status === "builder") return undefined;
+  return {
+    api: candidate.api,
+    trusted: trusted !== undefined,
+  };
+}
+
+function literalTestTitle(node: ts.CallExpression): string | undefined {
+  const title = node.arguments[0];
+  if (title === undefined || !ts.isStringLiteralLike(title)) return undefined;
+  return title.text;
+}
+
+function identifierTokens(identifier: string): string[] {
+  return identifier
+    .replace(/([a-z0-9])([A-Z])/gu, "$1 $2")
+    .replace(/([A-Z]+)([A-Z][a-z])/gu, "$1 $2")
+    .split(/[^A-Za-z0-9]+/u)
+    .filter((token) => token.length > 0)
+    .map((token) => token.toLowerCase());
+}
+
+function declarationNamesHostileFixture(
+  node: ts.CallExpression,
+  declaration: DefensiveValidationTestDeclaration,
+): boolean {
+  const title = literalTestTitle(node);
+  if (title !== undefined && /\b(?:hostile|adversarial|attacker|attack)\b/iu.test(title)) return true;
+  let hostile = false;
+  const visit = (child: ts.Node): void => {
+    if (hostile) return;
+    if (ts.isIdentifier(child)
+      && identifierTokens(child.text).some((token) =>
+        token === "hostile" || token === "adversarial"
+        || token === "attacker" || token === "attack"
+      )) {
+      hostile = true;
+      return;
+    }
+    if (
+      ts.isStringLiteralLike(child)
+      && /\b(?:hostile|adversarial|attacker|attack)\b/iu.test(child.text)
+      && ts.isPropertyAssignment(child.parent)
+      && child.parent.initializer === child
+    ) {
+      hostile = true;
+      return;
+    }
+    ts.forEachChild(child, visit);
+  };
+  visit(declaration.api === "describe" ? node.expression : node);
+  return hostile;
+}
+
+function hasExactBlueTeamTestPrefix(title: string): boolean {
+  if (!title.startsWith(BLUE_TEAM_TEST_PREFIX)) return false;
+  const boundary = title[BLUE_TEAM_TEST_PREFIX.length];
+  return boundary === undefined || /[\s:;,.!?()[\]{}—–-]/u.test(boundary);
+}
+
+/** Require exact BLUE TEAM framing on each explicitly hostile test declaration. */
+export function lintDefensiveValidationTestDeclarations(
+  text: string,
+  path: string,
+): DocsLintIssue[] {
+  const source = ts.createSourceFile(
+    path,
+    text,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const context = defensiveValidationAstContext(source);
+  const issues: DocsLintIssue[] = [];
+  const visit = (node: ts.Node): void => {
+    if (ts.isCallExpression(node)) {
+      const declaration = defensiveValidationTestDeclaration(node, context);
+      if (declaration === undefined || !declaration.trusted) {
+        ts.forEachChild(node, visit);
+        return;
+      }
+      const title = literalTestTitle(node);
+      if (declarationNamesHostileFixture(node, declaration)
+        && (title === undefined || !hasExactBlueTeamTestPrefix(title))) {
+        issues.push({
+          path,
+          line: source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1,
+          code: "defensive-validation-scope",
+          message:
+            `hostile test title must start exactly ${BLUE_TEAM_TEST_PREFIX}`,
+        });
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return issues;
+}
+
+function generatorTestPaths(repoRoot: string): string[] {
+  const sourcePath = "docs/spec/vectors/generator/src";
+  const sourceRoot = resolve(repoRoot, sourcePath);
+  if (!existsSync(sourceRoot)) return [];
+  const visit = (absolute: string): string[] => readdirSync(
+    absolute,
+    { withFileTypes: true },
+  ).flatMap((entry) => {
+    if (entry.isSymbolicLink()) return [];
+    const path = join(absolute, entry.name);
+    if (entry.isDirectory()) return visit(path);
+    if (!entry.isFile() || !entry.name.endsWith(".test.ts")) return [];
+    return [relative(repoRoot, path).split(sep).join("/")];
+  });
+  return visit(sourceRoot).sort();
+}
+
+function defensiveValidationFileText(text: string, path: string): string {
+  const source = ts.createSourceFile(
+    path,
+    text,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const context = defensiveValidationAstContext(source);
+  const excluded: Array<readonly [number, number]> = [];
+  const visit = (node: ts.Node): void => {
+    if (ts.isTemplateExpression(node)) {
+      excluded.push([node.getStart(source), node.end]);
+      return;
+    }
+    if (ts.isStringLiteralLike(node)) {
+      const parent = node.parent;
+      const isTitle = ts.isCallExpression(parent)
+        && defensiveValidationTestDeclaration(parent, context) !== undefined
+        && parent.arguments[0] === node;
+      if (!isTitle) excluded.push([node.getStart(source), node.end]);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  if (excluded.length === 0) return text;
+  const characters = text.split("");
+  for (const [start, end] of excluded) {
+    for (let index = start; index < end; index += 1) {
+      if (characters[index] !== "\n" && characters[index] !== "\r") {
+        characters[index] = " ";
+      }
+    }
+  }
+  return characters.join("");
+}
+
+const DEFENSIVE_VALIDATION_NETWORK_URL =
+  /\b(?:https?|wss?):\/\/(?<host>\[[^\]]+\]|[^\s/:?#"'`]+)/giu;
+
+function defensiveValidationUrlIsUnsafe(text: string): boolean {
+  for (const match of text.matchAll(DEFENSIVE_VALIDATION_NETWORK_URL)) {
+    const host = (match.groups?.host ?? "").replace(/^\[|\]$/gu, "").toLowerCase();
+    const tokens = host.split(/[^a-z0-9]+/u);
+    if (tokens.some((token) => token === "live" || token === "production")) return true;
+    if (host === "localhost" || host.endsWith(".localhost")
+      || host.endsWith(".example") || host.endsWith(".test")
+      || host.endsWith(".invalid") || host === "::1"
+      || /^(?:127\.|0\.0\.0\.0$)/u.test(host)
+      || /^(?:192\.0\.2\.|198\.51\.100\.|203\.0\.113\.)/u.test(host)) continue;
+    return true;
+  }
+  return false;
+}
+
+function defensiveValidationLiteralIsUnsafe(text: string): boolean {
+  if (defensiveValidationUrlIsUnsafe(text)) return true;
+  return lintDefensiveValidationText(
+    `${BLUE_TEAM_TEST_PREFIX} hostile case ${text}`,
+    "synthetic-literal.test.ts",
+  ).some(({ code }) => code === "defensive-validation-target");
+}
+
+const DEFENSIVE_VALIDATION_LINT_FIXTURE_CALLEES = new Set([
+  "findInvariantEvidenceIssues",
+  "findObsoletePrivacyTierGuidanceIssues",
+  "findRetiredNormativeClaimIssues",
+  "findStrictProfileClosureIssues",
+  "lintDefensiveValidationRepositoryTests",
+  "lintDefensiveValidationTestDeclarations",
+  "lintDefensiveValidationText",
+  "lintFamilyDocs",
+  "lintMaintainedGuides",
+  "lintMaintainedSnapshotGuidance",
+]);
+
+function defensiveValidationBindingNames(name: ts.BindingName): string[] {
+  if (ts.isIdentifier(name)) return [name.text];
+  return name.elements.flatMap((element) =>
+    ts.isOmittedExpression(element) ? [] : defensiveValidationBindingNames(element.name)
+  );
+}
+
+type DefensiveValidationBinding = {
+  name: string;
+  declaration: ts.Node;
+  scope: ts.Node;
+};
+
+type DefensiveValidationAssignment = {
+  name: string;
+  node: ts.Identifier;
+  scope: ts.Node;
+  binding: DefensiveValidationBinding | undefined;
+};
+
+type DefensiveValidationVitestOrigin = {
+  declaration: ts.ImportSpecifier | ts.NamespaceImport;
+  importedName: string;
+};
+
+type DefensiveValidationNamedImportOrigin = {
+  declaration: ts.ImportSpecifier;
+  importedName: string;
+};
+
+type DefensiveValidationAstContext = {
+  bindings: readonly DefensiveValidationBinding[];
+  reassignments: readonly DefensiveValidationAssignment[];
+  source: ts.SourceFile;
+  vitestOrigins: ReadonlyMap<string, DefensiveValidationVitestOrigin>;
+  ambiguousVitestOrigins: ReadonlySet<string>;
+  lintFixtureOrigins: ReadonlyMap<string, DefensiveValidationNamedImportOrigin>;
+  ambiguousLintFixtureOrigins: ReadonlySet<string>;
+};
+
+function defensiveValidationFindScope(
+  node: ts.Node,
+  predicate: (candidate: ts.Node) => boolean,
+): ts.Node {
+  for (let candidate = node.parent; candidate !== undefined; candidate = candidate.parent) {
+    if (predicate(candidate)) return candidate;
+  }
+  return node.getSourceFile();
+}
+
+function defensiveValidationIsLexicalScope(node: ts.Node): boolean {
+  return ts.isSourceFile(node) || ts.isBlock(node) || ts.isCaseBlock(node)
+    || ts.isForStatement(node) || ts.isForInStatement(node)
+    || ts.isForOfStatement(node) || ts.isCatchClause(node);
+}
+
+function defensiveValidationVariableScope(node: ts.VariableDeclaration): ts.Node {
+  if (ts.isCatchClause(node.parent) && node.parent.variableDeclaration === node) {
+    return node.parent;
+  }
+  const declarationList = ts.isVariableDeclarationList(node.parent)
+    ? node.parent
+    : undefined;
+  const blockScoped = declarationList !== undefined
+    && (declarationList.flags & ts.NodeFlags.BlockScoped) !== 0;
+  return defensiveValidationFindScope(
+    node,
+    blockScoped
+      ? defensiveValidationIsLexicalScope
+      : (candidate) => ts.isFunctionLike(candidate) || ts.isSourceFile(candidate),
+  );
+}
+
+function defensiveValidationAssignedIdentifiers(expression: ts.Expression): ts.Identifier[] {
+  if (ts.isIdentifier(expression)) return [expression];
+  if (ts.isParenthesizedExpression(expression)
+    || ts.isSpreadElement(expression)) {
+    return defensiveValidationAssignedIdentifiers(expression.expression);
+  }
+  if (ts.isBinaryExpression(expression)
+    && expression.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
+    return defensiveValidationAssignedIdentifiers(expression.left);
+  }
+  if (ts.isArrayLiteralExpression(expression)) {
+    return expression.elements.flatMap((element) =>
+      ts.isExpression(element) ? defensiveValidationAssignedIdentifiers(element) : []
+    );
+  }
+  if (ts.isObjectLiteralExpression(expression)) {
+    return expression.properties.flatMap((property) => {
+      if (ts.isShorthandPropertyAssignment(property)) return [property.name];
+      if (ts.isPropertyAssignment(property)) {
+        return defensiveValidationAssignedIdentifiers(property.initializer);
+      }
+      if (ts.isSpreadAssignment(property)) {
+        return defensiveValidationAssignedIdentifiers(property.expression);
+      }
+      return [];
+    });
+  }
+  return [];
+}
+
+function defensiveValidationVisibleBindings(
+  name: string,
+  node: ts.Node,
+  bindings: readonly DefensiveValidationBinding[],
+): DefensiveValidationBinding[] {
+  const visible = bindings.filter((binding) =>
+    binding.name === name && defensiveValidationNodeContains(binding.scope, node)
+  );
+  if (visible.length < 2) return visible;
+  const innermostWidth = Math.min(
+    ...visible.map((binding) => binding.scope.end - binding.scope.pos),
+  );
+  return visible.filter((binding) =>
+    binding.scope.end - binding.scope.pos === innermostWidth
+  );
+}
+
+function defensiveValidationResolvedBinding(
+  name: string,
+  node: ts.Node,
+  bindings: readonly DefensiveValidationBinding[],
+): DefensiveValidationBinding | undefined | null {
+  const visible = defensiveValidationVisibleBindings(name, node, bindings);
+  if (visible.length === 0) return undefined;
+  return visible.length === 1 ? visible[0] : null;
+}
+
+function defensiveValidationAstContext(
+  source: ts.SourceFile,
+): DefensiveValidationAstContext {
+  const bindings: DefensiveValidationBinding[] = [];
+  const pendingReassignments: Array<{
+    name: string;
+    node: ts.Identifier;
+    scope: ts.Node;
+  }> = [];
+  const vitestOrigins = new Map<string, DefensiveValidationVitestOrigin>();
+  const ambiguousVitestOrigins = new Set<string>();
+  const lintFixtureOrigins = new Map<string, DefensiveValidationNamedImportOrigin>();
+  const ambiguousLintFixtureOrigins = new Set<string>();
+  const addBinding = (name: string, declaration: ts.Node, scope: ts.Node): void => {
+    bindings.push({ name, declaration, scope });
+  };
+  const visit = (node: ts.Node): void => {
+    if (ts.isImportDeclaration(node) && node.importClause !== undefined) {
+      const moduleName = ts.isStringLiteral(node.moduleSpecifier)
+        ? node.moduleSpecifier.text
+        : undefined;
+      const clause = node.importClause;
+      if (clause.name !== undefined) addBinding(clause.name.text, clause.name, source);
+      if (clause.namedBindings !== undefined) {
+        if (ts.isNamespaceImport(clause.namedBindings)) {
+          addBinding(clause.namedBindings.name.text, clause.namedBindings, source);
+          if (!clause.isTypeOnly && moduleName === "vitest") {
+            if (vitestOrigins.has(clause.namedBindings.name.text)) {
+              ambiguousVitestOrigins.add(clause.namedBindings.name.text);
+            } else {
+              vitestOrigins.set(clause.namedBindings.name.text, {
+                declaration: clause.namedBindings,
+                importedName: "*",
+              });
+            }
+          }
+        } else {
+          for (const element of clause.namedBindings.elements) {
+            addBinding(element.name.text, element, source);
+            const importedName = element.propertyName?.text ?? element.name.text;
+            if (!clause.isTypeOnly && !element.isTypeOnly && moduleName === "vitest") {
+              if (vitestOrigins.has(element.name.text)) {
+                ambiguousVitestOrigins.add(element.name.text);
+              } else {
+                vitestOrigins.set(element.name.text, {
+                  declaration: element,
+                  importedName,
+                });
+              }
+            }
+            if (!clause.isTypeOnly && !element.isTypeOnly
+              && moduleName === "./docs-lint.js"
+              && DEFENSIVE_VALIDATION_LINT_FIXTURE_CALLEES.has(importedName)) {
+              if (lintFixtureOrigins.has(element.name.text)) {
+                ambiguousLintFixtureOrigins.add(element.name.text);
+              } else {
+                lintFixtureOrigins.set(element.name.text, {
+                  declaration: element,
+                  importedName,
+                });
+              }
+            }
+          }
+        }
+      }
+      return;
+    }
+    if (ts.isVariableDeclaration(node)) {
+      const scope = defensiveValidationVariableScope(node);
+      for (const name of defensiveValidationBindingNames(node.name)) {
+        addBinding(name, node, scope);
+      }
+    } else if (ts.isParameter(node)) {
+      const scope = defensiveValidationFindScope(node, ts.isFunctionLike);
+      for (const name of defensiveValidationBindingNames(node.name)) {
+        addBinding(name, node, scope);
+      }
+    } else if ((ts.isFunctionDeclaration(node) || ts.isClassDeclaration(node))
+      && node.name !== undefined) {
+      addBinding(
+        node.name.text,
+        node,
+        defensiveValidationFindScope(node, defensiveValidationIsLexicalScope),
+      );
+    } else if (ts.isFunctionExpression(node) && node.name !== undefined) {
+      addBinding(node.name.text, node, node);
+    } else if (ts.isBinaryExpression(node)
+      && node.operatorToken.kind >= ts.SyntaxKind.FirstAssignment
+      && node.operatorToken.kind <= ts.SyntaxKind.LastAssignment) {
+      const scope = defensiveValidationFindScope(
+        node,
+        (candidate) => ts.isFunctionLike(candidate) || ts.isSourceFile(candidate),
+      );
+      for (const identifier of defensiveValidationAssignedIdentifiers(node.left)) {
+        pendingReassignments.push({ name: identifier.text, node: identifier, scope });
+      }
+    } else if ((ts.isPrefixUnaryExpression(node) || ts.isPostfixUnaryExpression(node))
+      && (node.operator === ts.SyntaxKind.PlusPlusToken
+        || node.operator === ts.SyntaxKind.MinusMinusToken)
+      && ts.isIdentifier(node.operand)) {
+      pendingReassignments.push({
+        name: node.operand.text,
+        node: node.operand,
+        scope: defensiveValidationFindScope(
+          node,
+          (candidate) => ts.isFunctionLike(candidate) || ts.isSourceFile(candidate),
+        ),
+      });
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  const reassignments = pendingReassignments.flatMap((reassignment) => {
+    const binding = defensiveValidationResolvedBinding(
+      reassignment.name,
+      reassignment.node,
+      bindings,
+    );
+    return binding === null ? [] : [{ ...reassignment, binding }];
+  });
+  return {
+    bindings,
+    reassignments,
+    source,
+    vitestOrigins,
+    ambiguousVitestOrigins,
+    lintFixtureOrigins,
+    ambiguousLintFixtureOrigins,
+  };
+}
+
+function defensiveValidationNodeContains(scope: ts.Node, node: ts.Node): boolean {
+  return scope.pos <= node.pos && scope.end >= node.end;
+}
+
+function defensiveValidationRootIsVitestExpect(
+  root: ts.Identifier,
+  context: DefensiveValidationAstContext,
+): boolean {
+  return defensiveValidationTrustedVitestName(root, context) === "expect";
+}
+
+type DefensiveValidationResolvedVitestOrigin =
+  | { kind: "namespace" }
+  | { kind: "name"; name: string };
+
+type DefensiveValidationTestApiCandidate = {
+  api: DefensiveValidationTestApi;
+  steps: readonly DefensiveValidationTestApiStep[];
+};
+
+function defensiveValidationBindingWasReassigned(
+  name: string,
+  binding: DefensiveValidationBinding | undefined,
+  use: ts.Node,
+  context: DefensiveValidationAstContext,
+): boolean {
+  return context.reassignments.some((reassignment) =>
+    reassignment.name === name
+    && reassignment.binding === binding
+    && reassignment.node.getStart(context.source) < use.getStart(context.source)
+    && defensiveValidationNodeContains(reassignment.scope, use)
+  );
+}
+
+function defensiveValidationObjectBindingProperty(
+  binding: DefensiveValidationBinding,
+): string | undefined {
+  if (!ts.isVariableDeclaration(binding.declaration)
+    || !ts.isObjectBindingPattern(binding.declaration.name)) return undefined;
+  const element = binding.declaration.name.elements.find((candidate) =>
+    candidate.dotDotDotToken === undefined
+    && ts.isIdentifier(candidate.name)
+    && candidate.name.text === binding.name
+  );
+  if (element === undefined || !ts.isIdentifier(element.name)) return undefined;
+  if (element.propertyName === undefined) return element.name.text;
+  if (ts.isIdentifier(element.propertyName)
+    || ts.isStringLiteralLike(element.propertyName)) return element.propertyName.text;
+  if (ts.isComputedPropertyName(element.propertyName)) {
+    return defensiveValidationLiteralElementName(element.propertyName.expression);
+  }
+  return undefined;
+}
+
+function defensiveValidationResolveVitestOrigin(
+  expression: ts.Expression,
+  context: DefensiveValidationAstContext,
+  resolving = new Set<DefensiveValidationBinding>(),
+): DefensiveValidationResolvedVitestOrigin | undefined {
+  expression = defensiveValidationUnwrapTransparentExpression(expression);
+  if (ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression)) {
+    const propertyName = ts.isPropertyAccessExpression(expression)
+      ? expression.name.text
+      : defensiveValidationLiteralElementName(expression.argumentExpression);
+    if (propertyName === undefined) return undefined;
+    const owner = defensiveValidationResolveVitestOrigin(
+      expression.expression,
+      context,
+      resolving,
+    );
+    return owner?.kind === "namespace"
+      ? { kind: "name", name: propertyName }
+      : undefined;
+  }
+  if (!ts.isIdentifier(expression)) return undefined;
+
+  if (context.ambiguousVitestOrigins.has(expression.text)) return undefined;
+  const binding = defensiveValidationResolvedBinding(
+    expression.text,
+    expression,
+    context.bindings,
+  );
+  if (binding === null
+    || defensiveValidationBindingWasReassigned(
+      expression.text,
+      binding,
+      expression,
+      context,
+    )) return undefined;
+  if (binding === undefined) return { kind: "name", name: expression.text };
+
+  const imported = context.vitestOrigins.get(expression.text);
+  if (imported !== undefined && binding.declaration === imported.declaration) {
+    return imported.importedName === "*"
+      ? { kind: "namespace" }
+      : { kind: "name", name: imported.importedName };
+  }
+  if (!ts.isVariableDeclaration(binding.declaration)
+    || binding.declaration.initializer === undefined
+    || expression.getStart(context.source) < binding.declaration.end
+    || resolving.has(binding)) return undefined;
+  const next = new Set(resolving);
+  next.add(binding);
+  const initializerOrigin = defensiveValidationResolveVitestOrigin(
+    binding.declaration.initializer,
+    context,
+    next,
+  );
+  if (ts.isIdentifier(binding.declaration.name)) return initializerOrigin;
+  const propertyName = defensiveValidationObjectBindingProperty(binding);
+  return initializerOrigin?.kind === "namespace" && propertyName !== undefined
+    ? { kind: "name", name: propertyName }
+    : undefined;
+}
+
+function defensiveValidationTestApiFromOrigin(
+  origin: DefensiveValidationResolvedVitestOrigin,
+  steps: readonly DefensiveValidationTestApiStep[],
+): DefensiveValidationTestApiCandidate | undefined {
+  const apiName = origin.kind === "namespace" ? steps[0]?.name : origin.name;
+  if (apiName !== "describe" && apiName !== "it" && apiName !== "test") return undefined;
+  if (origin.kind === "namespace" && (steps[0] === undefined || steps[0].invoked)) {
+    return undefined;
+  }
+  return {
+    api: apiName,
+    steps: origin.kind === "namespace" ? steps.slice(1) : steps,
+  };
+}
+
+function defensiveValidationSyntacticVitestTestApi(
+  chain: DefensiveValidationTestApiChain,
+  context: DefensiveValidationAstContext,
+): DefensiveValidationTestApiCandidate | undefined {
+  const importedName = context.vitestOrigins.get(chain.root.text)?.importedName;
+  return defensiveValidationTestApiFromOrigin(
+    importedName === "*"
+      ? { kind: "namespace" }
+      : { kind: "name", name: importedName ?? chain.root.text },
+    chain.steps,
+  );
+}
+
+function defensiveValidationTrustedVitestTestApi(
+  chain: DefensiveValidationTestApiChain,
+  context: DefensiveValidationAstContext,
+): DefensiveValidationTestApiCandidate | undefined {
+  const origin = defensiveValidationResolveVitestOrigin(chain.root, context);
+  return origin === undefined
+    ? undefined
+    : defensiveValidationTestApiFromOrigin(origin, chain.steps);
+}
+
+function defensiveValidationTrustedVitestName(
+  root: ts.Identifier,
+  context: DefensiveValidationAstContext,
+): string | undefined {
+  const origin = defensiveValidationResolveVitestOrigin(root, context);
+  return origin?.kind === "name" ? origin.name : undefined;
+}
+
+function defensiveValidationCallIsExpectRooted(
+  call: ts.CallExpression,
+  context: DefensiveValidationAstContext,
+): boolean {
+  let expression = call.expression;
+  while (ts.isPropertyAccessExpression(expression)) expression = expression.expression;
+  return ts.isIdentifier(expression)
+    && defensiveValidationRootIsVitestExpect(expression, context);
+}
+
+function defensiveValidationExpressionIsAssertionChain(
+  expression: ts.Expression,
+  context: DefensiveValidationAstContext,
+): boolean {
+  while (ts.isPropertyAccessExpression(expression)) expression = expression.expression;
+  return ts.isCallExpression(expression)
+    && defensiveValidationCallIsExpectRooted(expression, context);
+}
+
+function defensiveValidationIsAssertionMatcher(
+  call: ts.CallExpression,
+  context: DefensiveValidationAstContext,
+): boolean {
+  return ts.isPropertyAccessExpression(call.expression)
+    && defensiveValidationExpressionIsAssertionChain(
+      call.expression.expression,
+      context,
+    );
+}
+
+function defensiveValidationCallFeedsAssertionChain(call: ts.CallExpression): boolean {
+  let child: ts.Node = call;
+  let parent = call.parent;
+  while (ts.isPropertyAccessExpression(parent) && parent.expression === child) {
+    child = parent;
+    parent = parent.parent;
+  }
+  return ts.isCallExpression(parent) && parent.expression === child;
+}
+
+function defensiveValidationCallIsLintFixtureConsumer(
+  call: ts.CallExpression,
+  context: DefensiveValidationAstContext,
+): boolean {
+  if (!ts.isIdentifier(call.expression)
+    || context.ambiguousLintFixtureOrigins.has(call.expression.text)) return false;
+  const origin = context.lintFixtureOrigins.get(call.expression.text);
+  if (origin === undefined) return false;
+  const binding = defensiveValidationResolvedBinding(
+    call.expression.text,
+    call.expression,
+    context.bindings,
+  );
+  return binding !== null
+    && binding?.declaration === origin.declaration
+    && !defensiveValidationBindingWasReassigned(
+      call.expression.text,
+      binding,
+      call.expression,
+      context,
+    );
+}
+
+function defensiveValidationLiteralIsExempt(
+  node: ts.Node,
+  context: DefensiveValidationAstContext,
+): boolean {
+  let child = node;
+  for (let parent = node.parent; parent !== undefined; parent = parent.parent) {
+    if (ts.isCallExpression(parent)) {
+      const isArgument = parent.arguments.some((argument) =>
+        argument.getStart() <= child.getStart() && argument.end >= child.end
+      );
+      if (!isArgument) return false;
+      if (defensiveValidationCallIsLintFixtureConsumer(parent, context)) {
+        return true;
+      }
+      if (defensiveValidationIsAssertionMatcher(parent, context)) return true;
+      if (defensiveValidationCallIsExpectRooted(parent, context)
+        && !defensiveValidationCallFeedsAssertionChain(parent)) {
+        child = parent;
+        continue;
+      }
+      return false;
+    }
+    if (ts.isFunctionLike(parent) || ts.isStatement(parent)) return false;
+    child = parent;
+  }
+  return false;
+}
+
+function lintDefensiveValidationLiteralTargets(
+  text: string,
+  path: string,
+): DocsLintIssue[] {
+  const source = ts.createSourceFile(
+    path,
+    text,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const expectContext = defensiveValidationAstContext(source);
+  const issues: DocsLintIssue[] = [];
+  const visit = (node: ts.Node): void => {
+    const literalText = ts.isTemplateExpression(node)
+      ? node.getText(source)
+      : ts.isStringLiteralLike(node)
+      ? node.text
+      : undefined;
+    if (literalText !== undefined) {
+      if (!defensiveValidationLiteralIsExempt(node, expectContext)
+        && defensiveValidationLiteralIsUnsafe(literalText)) {
+        issues.push({
+          path,
+          line: source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1,
+          code: "defensive-validation-target",
+          message: "generator tests must prohibit live targets, real credentials, external systems, and reusable payload directions",
+        });
+      }
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return issues;
+}
+
+/** Review every generator test declaration, excluding non-source dependency/build trees. */
+export function lintDefensiveValidationRepositoryTests(
+  repoRoot: string,
+): DocsLintIssue[] {
+  return generatorTestPaths(repoRoot).flatMap((path) => {
+    const text = readFileSync(resolve(repoRoot, path), "utf8");
+    return [
+      ...lintDefensiveValidationText(defensiveValidationFileText(text, path), path),
+      ...lintDefensiveValidationLiteralTargets(text, path),
+      ...lintDefensiveValidationTestDeclarations(text, path),
+    ];
+  });
+}
+
+function lintDefensiveValidationReviews(
+  repoRoot: string,
+  contentOverrides: Readonly<Record<string, string>> = {},
+): DocsLintIssue[] {
+  const paths = [APPROVED_CLOSURE_PLAN_PATH];
+  const issues: DocsLintIssue[] = [];
+  const auditRepositoryReviews = Object.keys(contentOverrides).length === 0;
+  if (auditRepositoryReviews) {
+    issues.push(...lintDefensiveValidationRepositoryTests(repoRoot));
+  }
+  for (const path of paths) {
+    if (!auditRepositoryReviews && !Object.hasOwn(contentOverrides, path)) continue;
+    const text = contentOverrides[path]
+      ?? (existsSync(resolve(repoRoot, path))
+        ? readFileSync(resolve(repoRoot, path), "utf8")
+        : undefined);
+    if (text !== undefined) {
+      issues.push(...lintDefensiveValidationText(text, path));
+      if (path.endsWith(".test.ts")) {
+        issues.push(...lintDefensiveValidationTestDeclarations(text, path));
+      }
+    }
+  }
+  for (const [path, text] of Object.entries(contentOverrides)) {
+    if (paths.includes(path as (typeof paths)[number]) || !DEFENSIVE_REVIEW_PATH.test(path)) {
+      continue;
+    }
+    issues.push(...lintDefensiveValidationText(text, path));
+    if (path.endsWith(".test.ts")) {
+      issues.push(...lintDefensiveValidationTestDeclarations(text, path));
+    }
+  }
+  return issues;
+}
 
 // These patterns target affirmative live guidance, not historical or explicit
 // retirement/optionality statements. Whitespace is intentionally flexible so
@@ -518,6 +1550,97 @@ function loadFamilyDocuments(repoRoot: string): FamilyDocument[] {
   });
 }
 
+function anchorInventory(
+  documents: readonly FamilyDocument[],
+): ReadonlyMap<DocumentId, ReadonlySet<string>> {
+  const inventory = new Map<DocumentId, ReadonlySet<string>>();
+  for (const document of documents) {
+    const anchors = new Set<string>();
+    for (const line of document.lines) {
+      for (const match of line.matchAll(EXPLICIT_ANCHOR)) anchors.add(match[1]);
+    }
+    inventory.set(document.document, anchors);
+  }
+  return inventory;
+}
+
+/** Explicit live specification anchors keyed by their owning family document. */
+export function loadFamilyAnchorInventory(
+  repoRoot: string,
+): ReadonlyMap<DocumentId, ReadonlySet<string>> {
+  return anchorInventory(loadFamilyDocuments(repoRoot));
+}
+
+type VersionQualifierSurface = {
+  path: string;
+  text: string;
+};
+
+// Mirror the current compiler lane: tests and generator-owned historical
+// authoring/snapshot sources must not turn preserved 0.5 evidence into lint.
+const HISTORICAL_GENERATOR_SOURCE_PREFIXES = [
+  "kel",
+  "keri-",
+  "legacy-",
+  "snapshot",
+  "topics",
+] as const;
+const HISTORICAL_GENERATOR_SOURCE_NAMES = new Set([
+  "author.ts",
+  "cli.ts",
+  "coverage.ts",
+  "verify.ts",
+]);
+const SNAPSHOT_TRANSITION_PATH = "docs/spec/heterodyne.md";
+const SNAPSHOT_TRANSITION_HEADING = "## Live validation and frozen history";
+
+function isCurrentGeneratorSource(file: string): boolean {
+  return file.endsWith(".ts")
+    && !file.endsWith(".test.ts")
+    && !HISTORICAL_GENERATOR_SOURCE_NAMES.has(file)
+    && !HISTORICAL_GENERATOR_SOURCE_PREFIXES.some((prefix) => file.startsWith(prefix));
+}
+
+function isIntentionalSnapshotTransitionQualifier(
+  path: string,
+  text: string,
+  offset: number,
+): boolean {
+  if (path !== SNAPSHOT_TRANSITION_PATH) return false;
+  const start = text.indexOf(SNAPSHOT_TRANSITION_HEADING);
+  if (start < 0) return false;
+  const nextHeading = text.indexOf("\n## ", start + SNAPSHOT_TRANSITION_HEADING.length);
+  return offset >= start && (nextHeading < 0 || offset < nextHeading);
+}
+
+function loadVersionQualifierSurfaces(
+  repoRoot: string,
+  documents: readonly FamilyDocument[],
+): VersionQualifierSurface[] {
+  const surfaces = documents.map(({ displayPath: path, lines }) => ({
+    path,
+    text: lines.join("\n"),
+  }));
+  const overviewPath = resolve(repoRoot, SNAPSHOT_TRANSITION_PATH);
+  if (existsSync(overviewPath)) {
+    surfaces.push({
+      path: SNAPSHOT_TRANSITION_PATH,
+      text: readFileSync(overviewPath, "utf8"),
+    });
+  }
+  const sourceDirectory = resolve(repoRoot, "docs/spec/vectors/generator/src");
+  if (!existsSync(sourceDirectory)) return surfaces;
+  for (const entry of readdirSync(sourceDirectory, { withFileTypes: true })) {
+    if (!entry.isFile() || !isCurrentGeneratorSource(entry.name)) continue;
+    const absolutePath = resolve(sourceDirectory, entry.name);
+    surfaces.push({
+      path: displayPath(repoRoot, absolutePath),
+      text: readFileSync(absolutePath, "utf8"),
+    });
+  }
+  return surfaces;
+}
+
 function carriesNormativeForce(line: string): boolean {
   return BCP14_KEYWORD.test(line) || EXPLICIT_NORMATIVE.test(line);
 }
@@ -594,8 +1717,13 @@ function normativeParagraphLines(lines: readonly string[]): Set<number> {
 export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
   const documents = loadFamilyDocuments(repoRoot);
   const issues: FamilyDocIssue[] = [];
+  issues.push(...lintDefensiveValidationReviews(repoRoot));
   const anchors = new Map<string, { path: string; line: number }>();
-  const documentAnchors = new Set<string>();
+  const documentAnchors = new Set(
+    [...anchorInventory(documents)].flatMap(([document, documentValues]) =>
+      [...documentValues].map((anchor) => `${document}:${anchor}`)
+    ),
+  );
   const sections = new Map<DocumentId, Set<string>>();
   const anchorOwner = new Map<string, DocumentId>();
 
@@ -609,7 +1737,6 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
     for (const [index, line] of document.lines.entries()) {
       for (const match of line.matchAll(EXPLICIT_ANCHOR)) {
         const anchor = match[1];
-        documentAnchors.add(`${document.document}:${anchor}`);
         anchorOwner.set(anchor, document.document);
         const existing = anchors.get(anchor);
         if (existing !== undefined) {
@@ -640,6 +1767,18 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
       document.displayPath,
       document.lines.join("\n"),
     ));
+  }
+
+  for (const { path, text } of loadVersionQualifierSurfaces(repoRoot, documents)) {
+    for (const match of text.matchAll(STALE_BARE_FAMILY_VERSION)) {
+      if (isIntentionalSnapshotTransitionQualifier(path, text, match.index)) continue;
+      issues.push({
+        path,
+        line: text.slice(0, match.index).split(/\r?\n/).length,
+        code: "stale-family-version",
+        message: `${match[0]} is not the current family version ${FAMILY_VERSION}`,
+      });
+    }
   }
 
   for (const document of documents) {
@@ -981,6 +2120,666 @@ export function findStrictProfileClosureIssues(
   }
   return issues.sort();
 }
+
+type SnapshotGuidanceArtifact = {
+  path: string;
+  sha256: string;
+};
+
+type SnapshotGuidanceManifest = {
+  snapshot_schema: "1";
+  source_commit: string;
+  vector_schema_version: string;
+  vector_count: number;
+  artifacts: SnapshotGuidanceArtifact[];
+  owner_documents: string[];
+};
+
+const SNAPSHOT_MANIFEST_PATH = "docs/spec/vectors/snapshot.json";
+const SNAPSHOT_VECTOR_ROOT = "docs/spec/vectors";
+const SNAPSHOT_FULL_COMMIT = /^[0-9a-f]{40}$/u;
+const SNAPSHOT_SHA256 = /^[0-9a-f]{64}$/u;
+const SNAPSHOT_SEMVER = /^\d+\.\d+\.\d+$/u;
+const SNAPSHOT_SAFE_PATH = /^[A-Za-z0-9._/-]+$/u;
+const SNAPSHOT_SUPPORT_PATHS = [
+  "fixtures.json",
+  "schema/vector.schema.json",
+  "schema/reason-codes.json",
+  "schema/reason-codes.md",
+  "coverage/manifest.json",
+  "coverage/core.md",
+  "coverage/comms.md",
+  "coverage/control.md",
+  "coverage/social.md",
+  "coverage/workspace.md",
+  "coverage/family.md",
+] as const;
+const SNAPSHOT_OPTIONAL_ASSURANCE_COVERAGE = "coverage/assurance.md";
+const SNAPSHOT_EXCLUDED_DIRECTORIES = new Set(["coverage", "generator", "schema"]);
+const SNAPSHOT_EXCLUDED_FILES = new Set([
+  "fixtures.json",
+  "snapshot.json",
+  "snapshot.meta.schema.json",
+  "snapshot.schema.json",
+  "snapshot-unique-by-path.meta.schema.json",
+]);
+
+function snapshotGuidanceRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function snapshotGuidanceExactKeys(
+  value: Record<string, unknown>,
+  keys: readonly string[],
+  label: string,
+): void {
+  for (const key of keys) {
+    if (!Object.hasOwn(value, key)) throw new Error(`${label} missing property: ${key}`);
+  }
+  for (const key of Object.keys(value)) {
+    if (!keys.includes(key)) throw new Error(`${label} has unexpected property: ${key}`);
+  }
+}
+
+function snapshotGuidanceSafePath(path: string): boolean {
+  return SNAPSHOT_SAFE_PATH.test(path)
+    && path.startsWith(`${SNAPSHOT_VECTOR_ROOT}/`)
+    && !path.includes("//")
+    && path.split("/").every((segment) =>
+      segment !== "" && segment !== "." && segment !== ".."
+    );
+}
+
+function parseSnapshotGuidanceManifest(value: unknown): Omit<SnapshotGuidanceManifest, "owner_documents"> {
+  if (!snapshotGuidanceRecord(value)) throw new Error("snapshot manifest must be an object");
+  snapshotGuidanceExactKeys(
+    value,
+    ["snapshot_schema", "source_commit", "vector_schema_version", "vector_count", "artifacts"],
+    "snapshot manifest",
+  );
+  if (value.snapshot_schema !== "1") throw new Error("snapshot schema must be 1");
+  if (typeof value.source_commit !== "string" || !SNAPSHOT_FULL_COMMIT.test(value.source_commit)) {
+    throw new Error("snapshot source commit must be 40-lowercase-hex");
+  }
+  if (typeof value.vector_schema_version !== "string"
+    || !SNAPSHOT_SEMVER.test(value.vector_schema_version)) {
+    throw new Error("snapshot vector schema version must be semantic version syntax");
+  }
+  if (!Number.isSafeInteger(value.vector_count) || (value.vector_count as number) < 0) {
+    throw new Error("snapshot vector count must be a non-negative safe integer");
+  }
+  if (!Array.isArray(value.artifacts)) throw new Error("snapshot artifacts must be an array");
+  const seen = new Set<string>();
+  const artifacts = value.artifacts.map((entry, index): SnapshotGuidanceArtifact => {
+    if (!snapshotGuidanceRecord(entry)) {
+      throw new Error(`snapshot artifact ${index} must be an object`);
+    }
+    snapshotGuidanceExactKeys(entry, ["path", "sha256"], `snapshot artifact ${index}`);
+    if (typeof entry.path !== "string" || !snapshotGuidanceSafePath(entry.path)) {
+      throw new Error(`unsafe artifact path: ${String(entry.path)}`);
+    }
+    if (seen.has(entry.path)) throw new Error(`duplicate artifact path: ${entry.path}`);
+    seen.add(entry.path);
+    if (typeof entry.sha256 !== "string" || !SNAPSHOT_SHA256.test(entry.sha256)) {
+      throw new Error(`invalid artifact digest: ${entry.path}`);
+    }
+    return { path: entry.path, sha256: entry.sha256 };
+  });
+  if (artifacts.some((entry, index) => index > 0 && artifacts[index - 1]!.path >= entry.path)) {
+    throw new Error("snapshot artifact paths must be unique and strictly sorted");
+  }
+  return {
+    snapshot_schema: "1",
+    source_commit: value.source_commit,
+    vector_schema_version: value.vector_schema_version,
+    vector_count: value.vector_count as number,
+    artifacts,
+  };
+}
+
+function snapshotGuidanceBytes(repoRoot: string, path: string): Buffer {
+  const repositoryRoot = resolve(repoRoot);
+  const rootStatus = lstatSync(repositoryRoot);
+  if (rootStatus.isSymbolicLink() || !rootStatus.isDirectory()) {
+    throw new Error("snapshot repository root must be a non-symbolic-link directory");
+  }
+  const rootRealPath = realpathSync(repositoryRoot);
+  let current = repositoryRoot;
+  for (const [index, segment] of path.split("/").entries()) {
+    current = join(current, segment);
+    const status = lstatSync(current);
+    if (status.isSymbolicLink()) throw new Error(`snapshot path must not be a symbolic link: ${path}`);
+    const final = index === path.split("/").length - 1;
+    if (final ? !status.isFile() : !status.isDirectory()) {
+      throw new Error(
+        final
+          ? `snapshot artifact must be a regular file: ${path}`
+          : `snapshot artifact parent must be a directory: ${path}`,
+      );
+    }
+  }
+  const realPath = realpathSync(current);
+  const relativePath = relative(rootRealPath, realPath);
+  if (relativePath === ".." || relativePath.startsWith(`..${sep}`) || realPath === rootRealPath) {
+    throw new Error(`snapshot artifact escapes repository root: ${path}`);
+  }
+  return readFileSync(realPath);
+}
+
+function snapshotGuidanceJson(bytes: Buffer, label: string): unknown {
+  try {
+    return JSON.parse(bytes.toString("utf8")) as unknown;
+  } catch (error) {
+    throw new Error(`${label} is not valid JSON: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+function snapshotGuidanceVectorPaths(vectorRoot: string): string[] {
+  const nestedJsonPaths = (root: string, current: string): string[] =>
+    readdirSync(current, { withFileTypes: true }).flatMap((entry) => {
+      const absolute = join(current, entry.name);
+      if (entry.isSymbolicLink()) {
+        throw new Error(`snapshot path must not be a symbolic link: ${entry.name}`);
+      }
+      if (entry.isDirectory()) return nestedJsonPaths(root, absolute);
+      if (!entry.isFile() || !entry.name.endsWith(".json")) return [];
+      return [`${SNAPSHOT_VECTOR_ROOT}/${relative(root, absolute).split(sep).join("/")}`];
+    });
+  return readdirSync(vectorRoot, { withFileTypes: true }).flatMap((entry) => {
+    if (entry.isSymbolicLink()) {
+      throw new Error(`snapshot path must not be a symbolic link: ${entry.name}`);
+    }
+    if (entry.isDirectory()) {
+      return SNAPSHOT_EXCLUDED_DIRECTORIES.has(entry.name)
+        ? []
+        : nestedJsonPaths(vectorRoot, join(vectorRoot, entry.name));
+    }
+    if (!entry.isFile() || !entry.name.endsWith(".json")
+      || SNAPSHOT_EXCLUDED_FILES.has(entry.name)) return [];
+    return [`${SNAPSHOT_VECTOR_ROOT}/${entry.name}`];
+  }).sort();
+}
+
+function loadSnapshotGuidanceManifest(repoRoot: string): SnapshotGuidanceManifest {
+  const bytes = snapshotGuidanceBytes(repoRoot, SNAPSHOT_MANIFEST_PATH).toString("utf8");
+  const manifest = parseSnapshotGuidanceManifest(snapshotGuidanceJson(
+    Buffer.from(bytes, "utf8"),
+    "snapshot manifest",
+  ));
+  const canonical = `${JSON.stringify({
+    snapshot_schema: manifest.snapshot_schema,
+    source_commit: manifest.source_commit,
+    vector_schema_version: manifest.vector_schema_version,
+    vector_count: manifest.vector_count,
+    artifacts: manifest.artifacts,
+  }, null, 2)}\n`;
+  if (bytes !== canonical) {
+    throw new Error("snapshot manifest is not canonical two-space JSON with one trailing LF");
+  }
+
+  const schemaPath = `${SNAPSHOT_VECTOR_ROOT}/schema/vector.schema.json`;
+  const schema = snapshotGuidanceJson(
+    snapshotGuidanceBytes(repoRoot, schemaPath),
+    "packaged vector schema",
+  );
+  if (!snapshotGuidanceRecord(schema) || !snapshotGuidanceRecord(schema.properties)) {
+    throw new Error("packaged vector schema has no properties object");
+  }
+  const versionRule = schema.properties.vector_schema_version;
+  const ownerRule = schema.properties.owner_document;
+  if (!snapshotGuidanceRecord(versionRule)
+    || typeof versionRule.const !== "string"
+    || !SNAPSHOT_SEMVER.test(versionRule.const)) {
+    throw new Error("packaged vector schema has no exact vector_schema_version const");
+  }
+  if (!snapshotGuidanceRecord(ownerRule)
+    || !Array.isArray(ownerRule.enum)
+    || ownerRule.enum.length === 0
+    || ownerRule.enum.some((owner) => typeof owner !== "string")
+    || new Set(ownerRule.enum).size !== ownerRule.enum.length) {
+    throw new Error("packaged vector schema has no closed unique owner_document enum");
+  }
+  const ownerDocuments = ownerRule.enum as string[];
+  if (manifest.vector_schema_version !== versionRule.const) {
+    throw new Error(
+      `snapshot schema version disagreement: manifest ${manifest.vector_schema_version}, packaged schema ${versionRule.const}`,
+    );
+  }
+
+  const vectorRoot = resolve(repoRoot, SNAPSHOT_VECTOR_ROOT);
+  const vectorPaths = snapshotGuidanceVectorPaths(vectorRoot);
+  for (const path of vectorPaths) {
+    const vector = snapshotGuidanceJson(snapshotGuidanceBytes(repoRoot, path), `snapshot vector ${path}`);
+    if (!snapshotGuidanceRecord(vector) || vector.vector_schema_version !== versionRule.const) {
+      throw new Error(`snapshot schema version disagreement: ${path} does not use ${versionRule.const}`);
+    }
+  }
+  if (manifest.vector_count !== vectorPaths.length) {
+    throw new Error(
+      `snapshot vector count mismatch: expected ${vectorPaths.length}, found ${manifest.vector_count}`,
+    );
+  }
+  const supportPaths: string[] = [...SNAPSHOT_SUPPORT_PATHS];
+  if (existsSync(resolve(repoRoot, SNAPSHOT_VECTOR_ROOT, SNAPSHOT_OPTIONAL_ASSURANCE_COVERAGE))) {
+    supportPaths.push(SNAPSHOT_OPTIONAL_ASSURANCE_COVERAGE);
+  }
+  const expectedPaths = [
+    ...vectorPaths,
+    ...supportPaths.map((path) => `${SNAPSHOT_VECTOR_ROOT}/${path}`),
+  ].sort();
+  if (manifest.artifacts.length !== expectedPaths.length) {
+    throw new Error("snapshot artifact inventory length mismatch");
+  }
+  for (const [index, path] of expectedPaths.entries()) {
+    const artifact = manifest.artifacts[index];
+    if (artifact?.path !== path) throw new Error(`snapshot artifact inventory mismatch: ${path}`);
+    const digest = createHash("sha256").update(snapshotGuidanceBytes(repoRoot, path)).digest("hex");
+    if (artifact.sha256 !== digest) throw new Error(`artifact digest mismatch: ${path}`);
+  }
+  return { ...manifest, owner_documents: ownerDocuments };
+}
+
+const MAINTAINED_SNAPSHOT_GUIDANCE_PATHS = [
+  "docs/spec/heterodyne-core.md",
+  "docs/spec/heterodyne.md",
+  "README.md",
+  "docs/spec/vectors/README.md",
+  "docs/architecture.md",
+  "docs/glossary.md",
+  "docs/security/threat-model.md",
+  "AGENTS.md",
+  "CHANGELOG.md",
+] as const;
+const SOURCE_COMMIT_STATEMENT = /\bsource commit(?:\s+is)?\s+`?([0-9a-f]{40})`?/giu;
+const SNAPSHOT_COMMIT_STATEMENT = /\bsnapshot commit(?:\s+is)?\s+`?([0-9a-f]{40})`?/giu;
+const VECTOR_COUNT_STATEMENT = /(?<![A-Za-z0-9-])([0-9]+)[-\s]+vectors?\b/giu;
+const ARTIFACT_COUNT_STATEMENT =
+  /(?<![A-Za-z0-9-])([0-9]+)[-\s]+(?:(?:manifest[-\s]+listed|digest[-\s]+bound)\s+)?artifacts?\b/giu;
+const VECTOR_SCHEMA_STATEMENT =
+  /\b(?:vector[-\s]+)?schema[-\s]+([0-9]+\.[0-9]+\.[0-9]+)\b/giu;
+const STALE_SNAPSHOT_GUIDANCE = [
+  /\bcurrent(?:[-\s]+(?:draft|lane|generator))?[^.\n]{0,80}\b0\.5(?:\.0)?\b/iu,
+  /\b(?:source root|snapshot)[^.\n]{0,100}\bfive documents?\b/iu,
+  /\bschema[-\s]+2(?:\.0\.0)?\b/iu,
+  /\bzero (?:declared )?(?:reference[-\s]+checker|executable)(?: cases?| declarations?)?\b/iu,
+] as const;
+
+function currentChangelogText(text: string): string {
+  const datedRelease = text.search(/^## \[[0-9]+\.[0-9]+\.[0-9]+\]\s+[-—]/mu);
+  return datedRelease < 0 ? text : text.slice(0, datedRelease);
+}
+
+/** Lint current snapshot guidance against the closed manifest and history mechanism. */
+export function lintMaintainedSnapshotGuidance(
+  repoRoot: string,
+): DocsLintIssue[] {
+  let manifest;
+  try {
+    manifest = loadSnapshotGuidanceManifest(repoRoot);
+  } catch (error) {
+    return [{
+      path: SNAPSHOT_MANIFEST_PATH,
+      line: 1,
+      code: "snapshot-manifest-invalid",
+      message: `snapshot guidance cannot load the closed manifest: ${String(error)}`,
+    }];
+  }
+
+  const issues: DocsLintIssue[] = [];
+  const addIssue = (
+    path: string,
+    text: string,
+    offset: number,
+    code: "snapshot-guidance-missing" | "snapshot-guidance-stale",
+    message: string,
+  ): void => {
+    issues.push({
+      path,
+      line: text.slice(0, offset).split(/\r?\n/u).length,
+      code,
+      message,
+    });
+  };
+
+  for (const path of MAINTAINED_SNAPSHOT_GUIDANCE_PATHS) {
+    const source = readFileSync(resolve(repoRoot, path), "utf8");
+    const text = path === "CHANGELOG.md" ? currentChangelogText(source) : source;
+    if (!text.includes(SNAPSHOT_MANIFEST_PATH)
+      || !/\bexact\b[\s\S]{0,160}\b(?:fact|source|identity|authority)/iu.test(text)) {
+      addIssue(
+        path,
+        text,
+        0,
+        "snapshot-guidance-missing",
+        `guide must identify ${SNAPSHOT_MANIFEST_PATH} as the exact source of mutable snapshot facts`,
+      );
+    }
+    if (!/(?:`snapshot-check`[\s\S]{0,220}\blast commit that changed|last commit that changed[\s\S]{0,220}`snapshot-check`)/iu
+      .test(text)) {
+      addIssue(
+        path,
+        text,
+        0,
+        "snapshot-guidance-missing",
+        "guide must state that snapshot-check derives snapshot identity from the last manifest-changing commit",
+      );
+    }
+    if (!/\b(?:current[-\s]+draft|draft)[\s\S]{0,200}\bindependent/iu.test(text)
+      && !/\bindependent[\s\S]{0,200}\b(?:current[-\s]+draft|draft)/iu.test(text)) {
+      addIssue(
+        path,
+        text,
+        0,
+        "snapshot-guidance-missing",
+        "guide must keep current-draft and history-bound snapshot checks independent",
+      );
+    }
+
+    for (const match of text.matchAll(SOURCE_COMMIT_STATEMENT)) {
+      if (match[1] === manifest.source_commit) continue;
+      addIssue(
+        path,
+        text,
+        match.index,
+        "snapshot-guidance-stale",
+        "copied snapshot source commit disagrees with the closed manifest",
+      );
+    }
+    for (const match of text.matchAll(SNAPSHOT_COMMIT_STATEMENT)) {
+      addIssue(
+        path,
+        text,
+        match.index,
+        "snapshot-guidance-stale",
+        "snapshot commit must be history-derived and must not be copied into maintained prose",
+      );
+    }
+    for (const match of text.matchAll(VECTOR_COUNT_STATEMENT)) {
+      if (Number(match[1]) === manifest.vector_count) continue;
+      addIssue(
+        path,
+        text,
+        match.index,
+        "snapshot-guidance-stale",
+        "copied snapshot vector count disagrees with the closed manifest",
+      );
+    }
+    for (const match of text.matchAll(ARTIFACT_COUNT_STATEMENT)) {
+      if (Number(match[1]) === manifest.artifacts.length) continue;
+      addIssue(
+        path,
+        text,
+        match.index,
+        "snapshot-guidance-stale",
+        "copied snapshot artifact count disagrees with the closed manifest",
+      );
+    }
+    for (const match of text.matchAll(VECTOR_SCHEMA_STATEMENT)) {
+      if (match[1] === manifest.vector_schema_version) continue;
+      addIssue(
+        path,
+        text,
+        match.index,
+        "snapshot-guidance-stale",
+        "copied snapshot vector schema version disagrees with the closed manifest",
+      );
+    }
+    for (const pattern of STALE_SNAPSHOT_GUIDANCE) {
+      const match = pattern.exec(text);
+      if (match === null) continue;
+      addIssue(
+        path,
+        text,
+        match.index,
+        "snapshot-guidance-stale",
+        `retired current snapshot guidance: ${match[0]}`,
+      );
+    }
+    if (path === "docs/spec/vectors/README.md") {
+      const ownerExample = /"owner_document"\s*:\s*"([^"]+)"/u.exec(text);
+      if (ownerExample !== null) {
+        const documentedOwners = ownerExample[1]!.split("|").map((owner) => owner.trim());
+        if (documentedOwners.length !== manifest.owner_documents.length
+          || documentedOwners.some((owner, index) => owner !== manifest.owner_documents[index])) {
+          addIssue(
+            path,
+            text,
+            ownerExample.index,
+            "snapshot-guidance-stale",
+            "owner_document example must match the packaged vector schema enum",
+          );
+        }
+      }
+    }
+  }
+  return issues;
+}
+
+const CURRENT_PRIVACY_TIER_GUIDE_PATHS = new Set([
+  "README.md",
+  "docs/spec/heterodyne.md",
+  "docs/architecture.md",
+  "docs/glossary.md",
+  "docs/security/threat-model.md",
+]);
+const OBSOLETE_PRIVACY_TIER_GUIDANCE = [
+  /\bTier\s*2\b(?:(?!\bTier\s*3\b)[\s\S]){0,180}\bplaintext\b(?:(?!\bTier\s*3\b)[\s\S]){0,120}\bprivate repositor/iu,
+  /\bTier\s*2\b(?:(?!\bTier\s*3\b)[\s\S]){0,180}\bprivate repositor(?:(?!\bTier\s*3\b)[\s\S]){0,120}\bplaintext\b/iu,
+  /\bTier\s*3\b[\s\S]{0,180}\b(?:audience|group)[-\s]+encrypted\b[\s\S]{0,160}\bcarriers?\b[\s\S]{0,80}\bdo not receive plaintext\b/iu,
+] as const;
+
+/** Reject the superseded privacy-tier model only in maintained current guides. */
+export function findObsoletePrivacyTierGuidanceIssues(
+  text: string,
+  path: string,
+): DocsLintIssue[] {
+  if (!CURRENT_PRIVACY_TIER_GUIDE_PATHS.has(path)) return [];
+  return OBSOLETE_PRIVACY_TIER_GUIDANCE.flatMap((pattern) => {
+    const match = pattern.exec(text);
+    if (match === null) return [];
+    return [{
+      path,
+      line: text.slice(0, match.index).split(/\r?\n/u).length,
+      code: "retired-authoring-model" as const,
+      message: "obsolete privacy-tier guidance conflicts with the current Comms carrier model",
+    }];
+  });
+}
+
+const VECTOR_GUIDE_PATH = "docs/spec/vectors/README.md";
+const VECTOR_GUIDE_FAMILY_MARKER = "Family layering follows this DAG:";
+const VECTOR_GUIDE_COVERAGE_HEADING = "## Coverage authority";
+const VECTOR_GUIDE_REASON_CODES_HEADING = "## Reason codes";
+const REQUIRED_VECTOR_GUIDE_EDGES = [
+  "Core <- Assurance",
+  "Core <- Comms",
+  "Comms <- Control",
+  "Comms <- Social",
+  "Comms <- Workspace",
+  "Control <- Workspace",
+  "Social <- Workspace",
+] as const;
+const VECTOR_GUIDE_SUPPORT_DIRECTORIES = new Set(["coverage", "generator", "schema"]);
+const VECTOR_GUIDE_AFFIRMATIVE_ANCHOR_CLAUSES = [
+  "anchors resolve in that vector's owning family document",
+  "anchors resolve in each vector's owning family document",
+  "anchors resolve in their owning family document",
+  "anchors resolve within each vector's owning family document",
+  "anchors resolve within their owning family document",
+  "anchors resolve to each vector's owning family document",
+  "anchors resolve to their owning family document",
+  "each vector's anchors resolve in its owning family document",
+  "each vector's anchors resolve within its owning family document",
+  "each vector's anchors resolve to its owning family document",
+] as const;
+const VECTOR_GUIDE_CURRENT_ANCHOR_SENTENCE =
+  "for every vector, the coverage manifest records qualified references whose "
+  + "anchors resolve in that vector's owning family document.";
+const RETIRED_VECTOR_TOPIC_PATH =
+  /\b((?:interop|org|core-redundancy|marmot-radicle|claims|claim-ledger|oidc|token-status)\/)/giu;
+
+function vectorGuideOwnerName(document: DocumentId): string {
+  return document[0]!.toUpperCase() + document.slice(1);
+}
+
+function vectorGuideDagEdges(section: string): ReadonlySet<string> {
+  const fence = /```text\s*\r?\n([\s\S]*?)\r?\n```/u.exec(section);
+  if (fence === null) return new Set();
+  const edges = new Set<string>();
+  for (const line of fence[1]!.split(/\r?\n/u)) {
+    const nodes = line.trim().split(/\s*<-\s*/u).filter(Boolean);
+    for (let index = 0; index + 1 < nodes.length; index += 1) {
+      edges.add(`${nodes[index]} <- ${nodes[index + 1]}`);
+    }
+  }
+  return edges;
+}
+
+function vectorGuideHasAffirmativeAnchorRule(section: string): boolean {
+  const sentences = section
+    .replace(/[\r\n]+/gu, " ")
+    .split(/(?<=[.!?])\s+/u)
+    .map((sentence) => sentence
+      .replace(/[‘’]/gu, "'")
+      .replace(/\s+/gu, " ")
+      .trim()
+      .toLowerCase());
+  const affirmative = (sentence: string): boolean =>
+    sentence === VECTOR_GUIDE_CURRENT_ANCHOR_SENTENCE
+    || VECTOR_GUIDE_AFFIRMATIVE_ANCHOR_CLAUSES.some((clause) =>
+      sentence === `${clause}.`
+    );
+  const contradiction = (sentence: string): boolean =>
+    /\banchors?\b/u.test(sentence)
+    && /\bresolve(?:s|d)?\b/u.test(sentence)
+    && /\b(?:non-owning|owning) family document\b/u.test(sentence)
+    && !affirmative(sentence);
+  return sentences.some(affirmative) && !sentences.some(contradiction);
+}
+
+function findObsoleteVectorGuideIssues(text: string, path: string): FamilyDocIssue[] {
+  if (path !== VECTOR_GUIDE_PATH) return [];
+  const issues: FamilyDocIssue[] = [];
+  const addIssue = (offset: number, message: string): void => {
+    issues.push({
+      path,
+      line: text.slice(0, offset).split(/\r?\n/u).length,
+      code: "retired-authoring-model",
+      message,
+    });
+  };
+  for (const match of text.matchAll(RETIRED_VECTOR_TOPIC_PATH)) {
+    addIssue(match.index, `retired vector topic path guidance: ${match[1]}`);
+  }
+
+  const familyStart = text.indexOf(VECTOR_GUIDE_FAMILY_MARKER);
+  const coverageStart = text.indexOf(VECTOR_GUIDE_COVERAGE_HEADING);
+  if (familyStart < 0) {
+    addIssue(0, "vector guide requires the complete Family section");
+  } else {
+    const reasonCodesStart = text.indexOf(VECTOR_GUIDE_REASON_CODES_HEADING, familyStart + 1);
+    const familyEnd = coverageStart > familyStart
+      ? coverageStart
+      : reasonCodesStart > familyStart
+      ? reasonCodesStart
+      : text.length;
+    const familySection = text.slice(familyStart, familyEnd);
+    const familyProse = familySection.replace(/```[\s\S]*?```/gu, "");
+    const actualEdges = vectorGuideDagEdges(familySection);
+    for (const edge of REQUIRED_VECTOR_GUIDE_EDGES) {
+      if (!actualEdges.has(edge)) {
+        addIssue(familyStart, `vector guide family DAG is missing required edge ${edge}`);
+      }
+    }
+    for (const edge of actualEdges) {
+      if (!(REQUIRED_VECTOR_GUIDE_EDGES as readonly string[]).includes(edge)) {
+        addIssue(familyStart, `vector guide family DAG has unexpected edge ${edge}`);
+      }
+    }
+    for (const document of DOCUMENTS) {
+      const owner = vectorGuideOwnerName(document);
+      if (!new RegExp(`\\b${owner}\\b`, "u").test(familyProse)) {
+        addIssue(familyStart, `vector guide family prose is missing owner ${owner}`);
+      }
+    }
+    if (!/\boptional\b[^.\n]{0,100}\bAssurance\b|\bAssurance\b[^.\n]{0,100}\boptional\b/iu
+      .test(familyProse)) {
+      addIssue(
+        familyStart,
+        "vector guide family prose must identify Assurance as optional",
+      );
+    }
+  }
+
+  if (coverageStart < 0) {
+    addIssue(0, "vector guide requires the complete Coverage section");
+  } else {
+    const coverageEnd = text.indexOf(VECTOR_GUIDE_REASON_CODES_HEADING, coverageStart + 1);
+    const coverageSection = text.slice(
+      coverageStart,
+      coverageEnd < 0 ? text.length : coverageEnd,
+    );
+    const coverageFiles = new Set(
+      [...coverageSection.matchAll(/\]\(coverage\/([a-z]+)\.md\)/gu)]
+        .map((match) => match[1]),
+    );
+    const payloadDirectories = new Set(
+      [...coverageSection.matchAll(/`([a-z][a-z0-9-]*)\/`/gu)]
+        .map((match) => match[1]),
+    );
+    for (const document of DOCUMENTS) {
+      if (!coverageFiles.has(document)) {
+        addIssue(
+          coverageStart,
+          `vector coverage inventory is missing coverage/${document}.md`,
+        );
+      }
+      if (!payloadDirectories.has(document)) {
+        addIssue(
+          coverageStart,
+          `vector payload inventory is missing ${document}/`,
+        );
+      }
+    }
+    for (const coverageFile of coverageFiles) {
+      if (coverageFile !== "family" && !DOCUMENTS.includes(coverageFile as DocumentId)) {
+        addIssue(
+          coverageStart,
+          `vector coverage inventory has unexpected projection coverage/${coverageFile}.md`,
+        );
+      }
+    }
+    for (const directory of payloadDirectories) {
+      if (!DOCUMENTS.includes(directory as DocumentId)
+        && !VECTOR_GUIDE_SUPPORT_DIRECTORIES.has(directory)) {
+        addIssue(
+          coverageStart,
+          `vector payload inventory has unexpected directory ${directory}/`,
+        );
+      }
+    }
+    if (!vectorGuideHasAffirmativeAnchorRule(coverageSection)) {
+      addIssue(
+        coverageStart,
+        "vector guide requires the owner-document anchor rule",
+      );
+    }
+  }
+
+  const fiveOwnerClaim = /\bfive[-\s]+(?:document|family|owner)s?\b/iu.exec(text);
+  if (fiveOwnerClaim !== null) {
+    addIssue(fiveOwnerClaim.index, `five-owner vector guidance omits Assurance: ${fiveOwnerClaim[0]}`);
+  }
+  const commsAnchor = /\b(?:every|each)\s+vector\b[^.\n]{0,100}\bComms anchor\b/iu.exec(text);
+  if (commsAnchor !== null) {
+    addIssue(
+      commsAnchor.index,
+      "vector anchors resolve in each owning family document, not universally through Comms",
+    );
+  }
+  return issues;
+}
+
 /** Lint the maintained authoring guides against the single-family model. */
 export function lintMaintainedGuides(
   repoRoot: string,
@@ -1008,6 +2807,11 @@ export function lintMaintainedGuides(
       contentOverrides[path] ?? readFileSync(resolve(repoRoot, path), "utf8"),
     ]),
   );
+  for (const [path, text] of contents) {
+    issues.push(...findObsoletePrivacyTierGuidanceIssues(text, path));
+    issues.push(...findObsoleteVectorGuideIssues(text, path));
+  }
+  issues.push(...lintDefensiveValidationReviews(repoRoot, contentOverrides));
   const corpusBytes = [...contents.values()].reduce(
     (total, text) => total + Buffer.byteLength(text, "utf8"),
     0,

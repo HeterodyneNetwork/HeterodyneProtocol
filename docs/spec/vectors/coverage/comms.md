@@ -2,208 +2,115 @@
 
 Generated from [manifest.json](manifest.json); do not edit by hand.
 
-| Vector | Owner | Profile | Spec references |
-|---|---|---|---|
-| `acceptance-gating/authentication-before-policy` | comms | — | `heterodyne:comms#comms-acceptance-hook` |
-| `acceptance-gating/authentication-reject` | comms | — | `heterodyne:comms#comms-acceptance-hook` |
-| `acceptance-gating/control-capacity-reject` | comms | — | `heterodyne:comms#comms-acceptance-hook` |
-| `acceptance-gating/control-default-off-reject` | comms | — | `heterodyne:comms#comms-acceptance-hook` |
-| `acceptance-gating/control-entitled-authorized` | comms | — | `heterodyne:comms#comms-acceptance-hook` |
-| `acceptance-gating/control-entitlement-conflict-reject` | comms | — | `heterodyne:comms#comms-acceptance-hook` |
-| `acceptance-gating/control-explicit-reject-absorbing` | comms | — | `heterodyne:comms#comms-acceptance-hook` |
-| `acceptance-gating/control-permanent-enrollment-only` | comms | — | `heterodyne:comms#comms-acceptance-hook` |
-| `acceptance-gating/dm-invite-accept` | comms | — | `heterodyne:comms#comms-acceptance-hook` |
-| `acceptance-gating/established-ordinary-accept` | comms | — | `heterodyne:comms#comms-acceptance-hook` |
-| `acceptance-gating/message-request-no-receipt` | comms | — | `heterodyne:comms#comms-acceptance-hook` |
-| `acceptance-gating/new-ordinary-hold` | comms | — | `heterodyne:comms#comms-acceptance-hook` |
-| `acceptance-gating/ordinary-explicit-reject` | comms | — | `heterodyne:comms#comms-acceptance-hook` |
-| `agent-authorship/attribution-kind-1` | comms | `heterodyne-comms-agent-attribution-kind-1-v1` | `heterodyne:comms#comms-agent-attribution` |
-| `agent-authorship/attribution-kind-1063` | comms | `heterodyne-comms-agent-attribution-kind-1063-v1` | `heterodyne:comms#comms-agent-attribution` |
-| `agent-authorship/attribution-kind-16` | comms | `heterodyne-comms-agent-attribution-kind-16-v1` | `heterodyne:comms#comms-agent-attribution` |
-| `agent-authorship/attribution-kind-1985` | comms | `heterodyne-comms-agent-attribution-kind-1985-v1` | `heterodyne:comms#comms-agent-attribution` |
-| `agent-authorship/attribution-kind-30023` | comms | `heterodyne-comms-agent-attribution-kind-30023-v1` | `heterodyne:comms#comms-agent-attribution` |
-| `agent-authorship/attribution-kind-4550` | comms | `heterodyne-comms-agent-attribution-kind-4550-v1` | `heterodyne:comms#comms-agent-attribution` |
-| `agent-authorship/attribution-kind-6` | comms | `heterodyne-comms-agent-attribution-kind-6-v1` | `heterodyne:comms#comms-agent-attribution` |
-| `agent-authorship/attribution-kind-7` | comms | `heterodyne-comms-agent-attribution-kind-7-v1` | `heterodyne:comms#comms-agent-attribution` |
-| `agent-authorship/caller-forgery-replaced` | comms | — | `heterodyne:comms#comms-agent-attribution` |
-| `agent-authorship/cross-persona-unlinkable` | comms | — | `heterodyne:comms#comms-agent-attribution` |
-| `agent-authorship/delegation-key-proof-invalid` | comms | — | `heterodyne:comms#comms-agent-delegation` |
-| `agent-authorship/delegation-valid` | comms | `heterodyne-comms-agent-signing-delegation-v1` | `heterodyne:comms#comms-agent-delegation` |
-| `agent-authorship/human-review-preserves-agent-label` | comms | — | `heterodyne:comms#comms-agent-attribution` |
-| `agent-authorship/idempotent-retry-reuses-event` | comms | — | `heterodyne:comms#comms-agent-attribution` |
-| `agent-authorship/multiple-roles-one-nid` | comms | — | `heterodyne:comms#comms-agent-delegation` |
-| `agent-authorship/profile-unavailable-rejected` | comms | — | `heterodyne:comms#comms-agent-fail-closed` |
-| `agent-authorship/role-key-replacement` | comms | — | `heterodyne:comms#comms-agent-delegation` |
-| `agent-authorship/stable-identity-renewal` | comms | — | `heterodyne:comms#comms-agent-workload` |
-| `agent-authorship/tier3-inner-only` | comms | — | `heterodyne:comms#comms-agent-attribution` |
-| `agent-authorship/token-audience-invalid` | comms | — | `heterodyne:comms#comms-agent-token` |
-| `agent-authorship/token-expired` | comms | — | `heterodyne:comms#comms-agent-token` |
-| `agent-authorship/token-revoked` | comms | — | `heterodyne:comms#comms-agent-token` |
-| `agent-authorship/token-role-mismatch` | comms | — | `heterodyne:comms#comms-agent-token` |
-| `agent-authorship/token-sender-proof-invalid` | comms | — | `heterodyne:comms#comms-agent-token` |
-| `agent-authorship/token-valid` | comms | — | `heterodyne:comms#comms-agent-token` |
-| `agent-authorship/workload-registration-unbounded-rejected` | comms | — | `heterodyne:comms#comms-agent-workload` |
-| `agent-authorship/workload-registration-valid` | comms | — | `heterodyne:comms#comms-agent-workload` |
-| `claim-ledger/authority-reduction-wins` | comms | — | `heterodyne:comms#comms-claim-ledger` |
-| `claim-ledger/checkpoint-rollback-rejected` | comms | — | `heterodyne:comms#comms-claim-ledger` |
-| `claim-ledger/delivered-grant-provisional` | comms | — | `heterodyne:comms#comms-claim-ledger` |
-| `claim-ledger/immediate-revocation` | comms | — | `heterodyne:comms#comms-claim-ledger` |
-| `claim-ledger/keyed-path-metadata-private` | comms | — | `heterodyne:comms#comms-claim-ledger` |
-| `claim-ledger/multiwriter-revocation-wins` | comms | — | `heterodyne:comms#comms-claim-ledger` |
-| `claim-ledger/multiwriter-status-allocation` | comms | — | `heterodyne:comms#comms-multiwriter-minting` |
-| `claim-ledger/nidless-reader-denied` | comms | — | `heterodyne:comms#comms-claim-ledger` |
-| `claim-ledger/nonmonotonic-conflict-blocks` | comms | — | `heterodyne:comms#comms-claim-ledger` |
-| `claim-ledger/reader-nid-authorized` | comms | — | `heterodyne:comms#comms-claim-ledger` |
-| `claim-ledger/reader-removal-key-rotation` | comms | — | `heterodyne:comms#comms-claim-ledger` |
-| `claim-ledger/source-claim-revokes-token` | comms | — | `heterodyne:comms#comms-claim-revocation` |
-| `claim-ledger/stale-minter-denied` | comms | — | `heterodyne:comms#comms-multiwriter-minting` |
-| `claims/authorization-self-revocation` | comms | `heterodyne-comms-claim-revocation-nostr-bip340-v1` | `heterodyne:comms#comms-claim-revocation` |
-| `claims/canonical-jwk-thumbprint-subject` | comms | `heterodyne-comms-claim-revocation-jwk-jws-v1` | `heterodyne:comms#comms-key-claims` |
-| `claims/canonical-nostr-subject` | comms | `heterodyne-comms-key-claim-nostr-bip340-v1` | `heterodyne:comms#comms-key-claims` |
-| `claims/canonical-radicle-nid-subject` | comms | `heterodyne-comms-key-claim-radicle-ed25519-v1` | `heterodyne:comms#comms-key-claims` |
-| `claims/chain-attenuation-valid` | comms | — | `heterodyne:comms#comms-claim-chain` |
-| `claims/chain-depth-exceeded` | comms | — | `heterodyne:comms#comms-claim-chain` |
-| `claims/chain-widening-rejected` | comms | — | `heterodyne:comms#comms-claim-chain` |
-| `claims/claim-id-mismatch` | comms | — | `heterodyne:comms#comms-key-claims` |
-| `claims/copied-proof-rejected` | comms | — | `heterodyne:comms#comms-claim-verification` |
-| `claims/delegated-issuance-active` | comms | — | `heterodyne:comms#comms-claim-verification` |
-| `claims/descriptive-subject-rejection` | comms | `heterodyne-comms-claim-revocation-radicle-ed25519-v1` | `heterodyne:comms#comms-claim-revocation` |
-| `claims/local-only-no-publication` | comms | — | `heterodyne:comms#comms-key-claims` |
-| `claims/pairwise-private-marmot-delivery` | comms | — | `heterodyne:comms#comms-key-claims` |
-| `claims/persona-issuance-active` | comms | — | `heterodyne:comms#comms-claim-verification` |
-| `claims/provisional-authorization-denied` | comms | — | `heterodyne:comms#comms-claim-ledger` |
-| `claims/public-claim-publication` | comms | — | `heterodyne:comms#comms-key-claims` |
-| `claims/repository-confirmed-active` | comms | — | `heterodyne:comms#comms-claim-ledger` |
-| `claims/repository-private-encryption` | comms | — | `heterodyne:comms#comms-key-claims` |
-| `claims/subject-proof-valid` | comms | `heterodyne-comms-key-claim-jwk-jws-v1` | `heterodyne:comms#comms-claim-verification` |
-| `claims/third-party-issuer-untrusted` | comms | — | `heterodyne:comms#comms-claim-verification` |
-| `config-backup/config-blob-encrypt-decrypt` | comms | — | `heterodyne:comms#comms-config-repository` |
-| `config-backup/key-id-derivation` | comms | — | `heterodyne:comms#comms-config-repository` |
-| `config-backup/key-rotation-ref-delta` | comms | — | `heterodyne:comms#comms-config-repository` |
-| `credential-continuity/candidate-exact-tip-append` | comms | — | `heterodyne:comms#comms-credential-continuity` |
-| `credential-continuity/checkpoint-genesis` | comms | — | `heterodyne:comms#comms-credential-continuity` |
-| `credential-continuity/cold-root-exposure-migrates` | comms | — | `heterodyne:comms#comms-credential-continuity` |
-| `credential-continuity/config-git-raw-projection` | comms | — | `heterodyne:comms#comms-credential-continuity` |
-| `credential-continuity/governed-obligation-equation` | comms | — | `heterodyne:comms#comms-credential-continuity` |
-| `credential-continuity/pending-retirement-conservative` | comms | — | `heterodyne:comms#comms-credential-continuity` |
-| `credential-continuity/retention-inventory-genesis` | comms | — | `heterodyne:comms#comms-credential-continuity` |
-| `credential-continuity/routine-removal-complete` | comms | — | `heterodyne:comms#comms-credential-continuity` |
-| `credential-continuity/seventeen-schemas-draft` | comms | — | `heterodyne:comms#comms-credential-continuity` |
-| `credential-continuity/stale-generation` | comms | — | `heterodyne:comms#comms-credential-continuity` |
-| `index/complete-fetch-attempt` | comms | — | `heterodyne:comms#comms-feed-index` |
-| `index/missing-predecessor-structured-outcome` | comms | — | `heterodyne:comms#comms-feed-index` |
-| `index/prev-page-hash` | comms | — | `heterodyne:comms#comms-feed-index` |
-| `marmot-radicle/agent-group-attribution` | comms | — | `heterodyne:comms#comms-agent-authorship` |
-| `marmot-radicle/agent-group-scope-denied` | comms | — | `heterodyne:comms#comms-agent-authorship` |
-| `marmot-radicle/canonical-h-equivocation` | comms | — | `heterodyne:comms#comms-marmot-routing-generation` |
-| `marmot-radicle/concurrent-routing-marmot-wins` | comms | — | `heterodyne:comms#comms-marmot-routing-generation` |
-| `marmot-radicle/direct-member-history-boundary` | comms | — | `heterodyne:comms#comms-marmot-participation` |
-| `marmot-radicle/directory-sensitive-fields-encrypted` | comms | — | `heterodyne:comms#comms-marmot-directory` |
-| `marmot-radicle/expiration-is-not-erasure` | comms | — | `heterodyne:comms#comms-marmot-retention` |
-| `marmot-radicle/failover-delivery` | comms | — | `heterodyne:comms#comms-marmot-rotation` |
-| `marmot-radicle/invites-individually-sealed` | comms | — | `heterodyne:comms#comms-marmot-directory` |
-| `marmot-radicle/keypackage-replay-rejected` | comms | — | `heterodyne:comms#comms-marmot-persona-inbox` |
-| `marmot-radicle/kind445-exact-bytes` | comms | — | `heterodyne:comms#comms-marmot-exact-bytes` |
-| `marmot-radicle/logical-size-cap-control-open` | comms | — | `heterodyne:comms#comms-marmot-event-repository` |
-| `marmot-radicle/media-exact-bytes` | comms | — | `heterodyne:comms#comms-marmot-exact-bytes` |
-| `marmot-radicle/node-mediated-secret-confinement` | comms | — | `heterodyne:comms#comms-marmot-participation` |
-| `marmot-radicle/persona-inbox-atomic-bootstrap` | comms | — | `heterodyne:comms#comms-marmot-persona-inbox` |
-| `marmot-radicle/private-group-radicle-required` | comms | — | `heterodyne:comms#comms-marmot-groups` |
-| `marmot-radicle/private-inbox-nid-required` | comms | — | `heterodyne:comms#comms-marmot-persona-inbox` |
-| `marmot-radicle/public-inbox-lazy-media` | comms | — | `heterodyne:comms#comms-marmot-persona-inbox` |
-| `marmot-radicle/radicle-durable-ack` | comms | — | `heterodyne:comms#comms-marmot-rotation` |
-| `marmot-radicle/redundant-delivery-dedup` | comms | — | `heterodyne:comms#comms-marmot-rotation` |
-| `marmot-radicle/relay-ack-before-durable-rejected` | comms | — | `heterodyne:comms#comms-marmot-rotation` |
-| `marmot-radicle/relay-routes-by-h-only` | comms | — | `heterodyne:comms#comms-marmot-relay` |
-| `marmot-radicle/removal-before-routing-rotation` | comms | — | `heterodyne:comms#comms-marmot-routing-generation` |
-| `marmot-radicle/repeated-media-locators` | comms | — | `heterodyne:comms#comms-marmot-media` |
-| `marmot-radicle/retained-routing-overlap` | comms | — | `heterodyne:comms#comms-marmot-retention` |
-| `marmot-radicle/routing-binding-valid` | comms | — | `heterodyne:comms#comms-marmot-routing-generation` |
-| `marmot-radicle/routing-genesis-mismatch` | comms | — | `heterodyne:comms#comms-marmot-routing-generation` |
-| `marmot-radicle/standard-marmot-interop` | comms | — | `heterodyne:comms#comms-marmot-groups` |
-| `marmot-radicle/unauthorized-ref-rejected` | comms | — | `heterodyne:comms#comms-marmot-event-repository` |
-| `marmot-radicle/writer-ref-union-dedup` | comms | — | `heterodyne:comms#comms-marmot-event-repository` |
-| `oidc/authorization-code-pkce` | comms | — | `heterodyne:comms#comms-oidc-authorization` |
-| `oidc/device-authorization` | comms | — | `heterodyne:comms#comms-oidc-authorization` |
-| `oidc/discovery-exact-issuer` | comms | — | `heterodyne:comms#comms-oidc-endpoints` |
-| `oidc/dpop-confirmation-bound` | comms | — | `heterodyne:comms#comms-jwt-projection` |
-| `oidc/id-token-valid` | comms | — | `heterodyne:comms#comms-jwt-projection` |
-| `oidc/issuer-mismatch-rejected` | comms | — | `heterodyne:comms#comms-oidc-endpoints` |
-| `oidc/mtls-confirmation-bound` | comms | — | `heterodyne:comms#comms-jwt-projection` |
-| `oidc/pairwise-subject` | comms | — | `heterodyne:comms#comms-oidc-authorization` |
-| `oidc/prohibited-grants` | comms | — | `heterodyne:comms#comms-oidc-authorization` |
-| `oidc/registered-jwt-assertion` | comms | — | `heterodyne:comms#comms-jwt-projection` |
-| `oidc/rfc9068-access-token-valid` | comms | — | `heterodyne:comms#comms-jwt-projection` |
-| `oidc/stable-key-consent-gated` | comms | — | `heterodyne:comms#comms-oidc-authorization` |
-| `oidc/token-type-confusion-rejected` | comms | — | `heterodyne:comms#comms-jwt-projection` |
-| `one-time-invite/descriptor-and-fragment` | comms | — | `heterodyne:comms#comms-one-time-invites` |
-| `one-time-invite/expired` | comms | — | `heterodyne:comms#comms-one-time-invites` |
-| `one-time-invite/first-valid-reservation` | comms | — | `heterodyne:comms#comms-one-time-invites` |
-| `one-time-invite/invalid-keypackage-no-reservation` | comms | — | `heterodyne:comms#comms-one-time-invites` |
-| `one-time-invite/purpose-mismatch` | comms | — | `heterodyne:comms#comms-one-time-invites` |
-| `one-time-invite/reservation-race-rejected` | comms | — | `heterodyne:comms#comms-one-time-invites` |
-| `one-time-invite/reserved-responder-retry` | comms | — | `heterodyne:comms#comms-one-time-invites` |
-| `one-time-invite/response-proof` | comms | — | `heterodyne:comms#comms-one-time-invites` |
-| `org/canonical-branch-reachability` | comms | — | `heterodyne:comms#comms-org-authorization` |
-| `outbox/full-public-outbox` | comms | — | `heterodyne:comms#comms-retrieval` |
-| `outbox/scoped-outbox` | comms | — | `heterodyne:comms#comms-retrieval` |
-| `outbox/transitive-discovery-walk` | comms | — | `heterodyne:comms#comms-retrieval` |
-| `privacy-tiers/all-active-devices` | comms | — | `heterodyne:comms#comms-privacy-tiers` |
-| `privacy-tiers/audience-key-rotation-on-removal` | comms | — | `heterodyne:comms#comms-privacy-tiers` |
-| `privacy-tiers/cold-root-recipient-rejected` | comms | — | `heterodyne:comms#comms-privacy-tiers` |
-| `privacy-tiers/complete-fetch-attempt` | comms | — | `heterodyne:comms#comms-privacy-tiers` |
-| `privacy-tiers/device-removal-rotates-generation` | comms | — | `heterodyne:comms#comms-privacy-tiers` |
-| `privacy-tiers/epoch-recipient-rejected` | comms | — | `heterodyne:comms#comms-privacy-tiers` |
-| `privacy-tiers/light-device-decryption` | comms | — | `heterodyne:comms#comms-privacy-tiers` |
-| `privacy-tiers/non-circular-bootstrap` | comms | — | `heterodyne:comms#comms-privacy-tiers` |
-| `privacy-tiers/revoked-device-rejected` | comms | — | `heterodyne:comms#comms-privacy-tiers` |
-| `privacy-tiers/selected-device-narrowing` | comms | — | `heterodyne:comms#comms-privacy-tiers` |
-| `privacy-tiers/tier1-public-plaintext-both-backends` | comms | — | `heterodyne:comms#comms-privacy-tiers` |
-| `privacy-tiers/tier2-private-repo-not-encrypted` | comms | — | `heterodyne:comms#comms-privacy-tiers` |
-| `privacy-tiers/tier3-index-key-derivation-and-encryption` | comms | — | `heterodyne:comms#comms-privacy-tiers` |
-| `privacy-tiers/tier3-kind31011-audience-key-wrap` | comms | — | `heterodyne:comms#comms-privacy-tiers` |
-| `privacy-tiers/tier3-kind31012-audience-roster` | comms | — | `heterodyne:comms#comms-privacy-tiers` |
-| `privacy-tiers/tier3-membership-metadata-disclosed` | comms | — | `heterodyne:comms#comms-privacy-tiers` |
-| `privacy-tiers/tier3-prev-page-hash-mismatch` | comms | — | `heterodyne:comms#comms-privacy-tiers` |
-| `privacy-tiers/tier3-prev-page-hash-valid` | comms | — | `heterodyne:comms#comms-privacy-tiers` |
-| `profiles/tier3-kind-1` | comms | `heterodyne-comms-tier3-wrapped-content-kind-1-v1` | `heterodyne:comms#comms-tier-three-profile` |
-| `profiles/tier3-kind-1063` | comms | `heterodyne-comms-tier3-wrapped-content-kind-1063-v1` | `heterodyne:comms#comms-tier-three-profile` |
-| `profiles/tier3-kind-16` | comms | `heterodyne-comms-tier3-wrapped-content-kind-16-v1` | `heterodyne:comms#comms-tier-three-profile` |
-| `profiles/tier3-kind-30023` | comms | `heterodyne-comms-tier3-wrapped-content-kind-30023-v1` | `heterodyne:comms#comms-tier-three-profile` |
-| `profiles/tier3-kind-30402` | comms | `heterodyne-comms-tier3-wrapped-content-kind-30402-v1` | `heterodyne:comms#comms-tier-three-profile` |
-| `profiles/tier3-kind-6` | comms | `heterodyne-comms-tier3-wrapped-content-kind-6-v1` | `heterodyne:comms#comms-tier-three-profile` |
-| `public-reader/credential-relay-hint-rejected` | comms | — | `heterodyne:comms#comms-public-launcher` |
-| `public-reader/external-media-disclosure` | comms | — | `heterodyne:comms#comms-public-reader-security` |
-| `public-reader/failed-revocation-expiry` | comms | — | `heterodyne:comms#comms-public-transition` |
-| `public-reader/launcher-address-roundtrip` | comms | — | `heterodyne:comms#comms-public-launcher` |
-| `public-reader/launcher-event-roundtrip` | comms | — | `heterodyne:comms#comms-public-launcher` |
-| `public-reader/launcher-persona-roundtrip` | comms | — | `heterodyne:comms#comms-public-launcher` |
-| `public-reader/localhost-relay-hint-rejected` | comms | — | `heterodyne:comms#comms-public-launcher` |
-| `public-reader/logout-cleanup` | comms | — | `heterodyne:comms#comms-public-transition` |
-| `public-reader/malformed-entity-no-network` | comms | — | `heterodyne:comms#comms-public-resolution` |
-| `public-reader/nip65-refresh-replaces-stale-hint` | comms | — | `heterodyne:comms#comms-public-resolution` |
-| `public-reader/onion-hint-tor-required` | comms | — | `heterodyne:comms#comms-public-launcher` |
-| `public-reader/oversized-fragment-no-network` | comms | — | `heterodyne:comms#comms-public-resolution` |
-| `public-reader/private-resolved-relay-hint-rejected` | comms | — | `heterodyne:comms#comms-public-launcher` |
-| `public-reader/resolution-canonical` | comms | — | `heterodyne:comms#comms-public-resolution` |
-| `public-reader/resolution-conflicted` | comms | — | `heterodyne:comms#comms-public-resolution` |
-| `public-reader/resolution-private` | comms | — | `heterodyne:comms#comms-public-resolution` |
-| `public-reader/resolution-provisional-canonical` | comms | — | `heterodyne:comms#comms-public-resolution` |
-| `public-reader/resolution-unavailable` | comms | — | `heterodyne:comms#comms-public-resolution` |
-| `public-reader/resolution-unindexed-signed-event` | comms | — | `heterodyne:comms#comms-public-resolution` |
-| `public-reader/target-absent-from-http-path` | comms | — | `heterodyne:comms#comms-public-launcher` |
-| `public-reader/tier3-refused` | comms | — | `heterodyne:comms#comms-public-resolution` |
-| `public-reader/transition-without-reload` | comms | — | `heterodyne:comms#comms-public-transition` |
-| `public-reader/unknown-version-no-network` | comms | — | `heterodyne:comms#comms-public-resolution` |
-| `relay-interop/auth-rejection-permanent` | comms | — | `heterodyne:comms#comms-publishing` |
-| `relay-interop/keri-rotation-auth-new-key` | comms | — | `heterodyne:comms#comms-publishing` |
-| `relay-interop/nip42-auth-current-epoch-key` | comms | — | `heterodyne:comms#comms-publishing` |
-| `token-status/https-outage-radicle-fallback` | comms | — | `heterodyne:comms#comms-issuer-continuity` |
-| `token-status/https-radicle-byte-identity` | comms | — | `heterodyne:comms#comms-token-status` |
-| `token-status/invalidated-token` | comms | — | `heterodyne:comms#comms-token-status` |
-| `token-status/issuer-successor` | comms | — | `heterodyne:comms#comms-issuer-continuity` |
-| `token-status/radicle-digest-mismatch` | comms | — | `heterodyne:comms#comms-token-status` |
-| `token-status/signing-key-compromise` | comms | — | `heterodyne:comms#comms-token-status` |
-| `token-status/stale-status-list-rejected` | comms | — | `heterodyne:comms#comms-token-status` |
-| `token-status/valid-status-list` | comms | — | `heterodyne:comms#comms-token-status` |
-| `token-status/writer-index-collision-rejected` | comms | — | `heterodyne:comms#comms-token-status` |
+| Vector | Owner | Profile | Invariants | Reason codes | Spec references |
+|---|---|---|---|---|---|
+| `comms/agent-attribution-encrypted-inner` | comms | — | `COMMS-I-AGENT-ATTRIBUTION`<br>`COMMS-I-AGENT-SIGNER-BINDING` | — | `heterodyne:comms#comms-agent-attribution` |
+| `comms/agent-attribution-invalid` | comms | — | `COMMS-I-AGENT-ATTRIBUTION` | `agent-attribution-invalid` | `heterodyne:comms#comms-agent-authorship` |
+| `comms/agent-attribution-profile-unavailable` | comms | — | `COMMS-I-AGENT-ATTRIBUTION` | `agent-attribution-profile-unavailable` | `heterodyne:comms#comms-agent-authorship` |
+| `comms/agent-persona-scope-required` | comms | — | `COMMS-I-AGENT-ATTRIBUTION` | `agent-persona-scope-required` | `heterodyne:comms#comms-agent-authorship` |
+| `comms/agent-sender-proof-invalid` | comms | — | `COMMS-I-WORKLOAD-TOKEN-CONFINEMENT` | `agent-sender-proof-invalid` | `heterodyne:comms#comms-agent-authorship` |
+| `comms/agent-signer-mismatch` | comms | — | `COMMS-I-WORKLOAD-TOKEN-CONFINEMENT` | `agent-signer-mismatch` | `heterodyne:comms#comms-agent-authorship` |
+| `comms/agent-token-invalid` | comms | — | `COMMS-I-WORKLOAD-TOKEN-CONFINEMENT` | `agent-token-invalid` | `heterodyne:comms#comms-agent-authorship` |
+| `comms/agent-workload-registration-invalid` | comms | — | `COMMS-I-WORKLOAD-TOKEN-CONFINEMENT` | `agent-workload-registration-invalid` | `heterodyne:comms#comms-agent-authorship` |
+| `comms/agent-workload-token-accepted` | comms | — | `COMMS-I-AGENT-SIGNER-BINDING`<br>`COMMS-I-WORKLOAD-TOKEN-CONFINEMENT` | — | `heterodyne:comms#comms-agent-fail-closed` |
+| `comms/auth-rejected-permanent` | comms | — | `COMMS-I-MARMOT-UPSTREAM-AUTHORITY` | `auth_rejected_permanent` | `heterodyne:comms#comms-publishing` |
+| `comms/authorization-view-300-boundary` | comms | — | `COMMS-I-MINT-FRESHNESS` | — | `heterodyne:comms#comms-authorization-freshness` |
+| `comms/authorization-view-86400-boundary` | comms | — | `COMMS-I-MINT-FRESHNESS` | — | `heterodyne:comms#comms-authorization-freshness` |
+| `comms/authorization-view-maximum-malformed` | comms | — | `COMMS-I-MINT-FRESHNESS` | `claim-schema-invalid` | `heterodyne:comms#comms-authorization-freshness` |
+| `comms/checkpoint-exact-boundary` | comms | — | `COMMS-I-MINT-FRESHNESS` | — | `heterodyne:comms#comms-authorization-freshness` |
+| `comms/checkpoint-stale-independent` | comms | — | `COMMS-I-MINT-FRESHNESS` | `oidc-checkpoint-stale` | `heterodyne:comms#comms-authorization-freshness` |
+| `comms/claim-active-authenticated` | comms | — | `COMMS-I-CLAIM-ATTENUATION`<br>`COMMS-I-CLAIM-AUTHENTICITY` | — | `heterodyne:comms#comms-claim-verification` |
+| `comms/claim-attenuation-violation` | comms | — | `COMMS-I-CLAIM-ATTENUATION` | `claim-attenuation-violation` | `heterodyne:comms#comms-conformance` |
+| `comms/claim-authorization-effect-indeterminate` | comms | — | `COMMS-I-CLAIM-AUTHENTICITY` | — | `heterodyne:comms#comms-claim-verification` |
+| `comms/claim-chain-cycle` | comms | — | `COMMS-I-CLAIM-ATTENUATION` | `claim-chain-cycle` | `heterodyne:comms#comms-conformance` |
+| `comms/claim-chain-depth-exceeded` | comms | — | `COMMS-I-CLAIM-ATTENUATION` | `claim-chain-depth-exceeded` | `heterodyne:comms#comms-conformance` |
+| `comms/claim-delegation-not-authorized` | comms | — | `COMMS-I-CLAIM-ATTENUATION` | `claim-delegation-not-authorized` | `heterodyne:comms#comms-conformance` |
+| `comms/claim-event-signature-invalid` | comms | — | `COMMS-I-CLAIM-AUTHENTICITY` | `claim-event-signature-invalid` | `heterodyne:comms#comms-conformance` |
+| `comms/claim-expired` | comms | — | `COMMS-I-CLAIM-AUTHENTICITY` | `claim-expired` | `heterodyne:comms#comms-conformance` |
+| `comms/claim-id-mismatch` | comms | — | `COMMS-I-CLAIM-AUTHENTICITY` | `claim-id-mismatch` | `heterodyne:comms#comms-conformance` |
+| `comms/claim-issuer-authority-invalid` | comms | — | `COMMS-I-CLAIM-AUTHENTICITY` | `claim-issuer-authority-invalid` | `heterodyne:comms#comms-conformance` |
+| `comms/claim-issuer-untrusted` | comms | — | `COMMS-I-CLAIM-AUTHENTICITY` | `claim-issuer-untrusted` | `heterodyne:comms#comms-conformance` |
+| `comms/claim-key-reference-invalid` | comms | — | `COMMS-I-CLAIM-AUTHENTICITY` | `claim-key-reference-invalid` | `heterodyne:comms#comms-conformance` |
+| `comms/claim-ledger-rollback` | comms | — | `COMMS-I-CLAIM-REPOSITORY-AUTHORITY` | `claim-ledger-rollback` | `heterodyne:comms#comms-conformance` |
+| `comms/claim-ledger-writer-unauthorized` | comms | — | `COMMS-I-CLAIM-REPOSITORY-AUTHORITY` | `claim-ledger-writer-unauthorized` | `heterodyne:comms#comms-claim-ledger` |
+| `comms/claim-repository-conflict` | comms | — | `COMMS-I-CLAIM-REPOSITORY-AUTHORITY` | `claim-repository-conflict` | `heterodyne:comms#comms-conformance` |
+| `comms/claim-repository-unconfirmed` | comms | — | `COMMS-I-CLAIM-REPOSITORY-AUTHORITY` | `claim-repository-unconfirmed` | `heterodyne:comms#comms-claim-ledger` |
+| `comms/claim-revoked` | comms | — | `COMMS-I-CLAIM-REVOCATION` | `claim-revoked` | `heterodyne:comms#comms-conformance` |
+| `comms/claim-revoker-unauthorized` | comms | — | `COMMS-I-CLAIM-REVOCATION` | `claim-revoker-unauthorized` | `heterodyne:comms#comms-conformance` |
+| `comms/claim-subject-proof-invalid` | comms | — | `COMMS-I-CLAIM-AUTHENTICITY` | `claim-subject-proof-invalid` | `heterodyne:comms#comms-conformance` |
+| `comms/claim-subject-proof-replayed` | comms | — | `COMMS-I-CLAIM-AUTHENTICITY` | `claim-subject-proof-replayed` | `heterodyne:comms#comms-conformance` |
+| `comms/claim-subject-proof-required` | comms | — | `COMMS-I-CLAIM-AUTHENTICITY` | `claim-subject-proof-required` | `heterodyne:comms#comms-conformance` |
+| `comms/config-private-state-encrypted` | comms | — | `COMMS-I-CONFIG-AT-REST`<br>`COMMS-I-TIER2-HONESTY` | — | `heterodyne:comms#comms-config-repository` |
+| `comms/conversation-rejected` | comms | — | `COMMS-I-MARMOT-UPSTREAM-AUTHORITY` | `conversation-rejected` | `heterodyne:comms#comms-ordinary-conversation-admission` |
+| `comms/invite-already-reserved` | comms | — | `COMMS-I-MARMOT-UPSTREAM-AUTHORITY` | `invite-already-reserved` | `heterodyne:comms#comms-one-time-invites` |
+| `comms/invite-authentication-invalid` | comms | — | `COMMS-I-MARMOT-UPSTREAM-AUTHORITY` | `invite-authentication-invalid` | `heterodyne:comms#comms-one-time-invites` |
+| `comms/invite-expired` | comms | — | `COMMS-I-MARMOT-UPSTREAM-AUTHORITY` | `invite-expired` | `heterodyne:comms#comms-one-time-invites` |
+| `comms/invite-purpose-mismatch` | comms | — | `COMMS-I-MARMOT-UPSTREAM-AUTHORITY` | `invite-purpose-mismatch` | `heterodyne:comms#comms-one-time-invites` |
+| `comms/ledger-reader-authorized` | comms | — | `COMMS-I-CLAIM-REVOCATION`<br>`COMMS-I-LEDGER-CONFINEMENT` | — | `heterodyne:comms#comms-claim-ledger` |
+| `comms/ledger-reader-unauthorized` | comms | — | `COMMS-I-LEDGER-CONFINEMENT` | `claim-ledger-reader-unauthorized` | `heterodyne:comms#comms-claim-ledger` |
+| `comms/marmot-agent-scope-denied` | comms | — | `COMMS-I-MARMOT-UPSTREAM-AUTHORITY` | `marmot-agent-scope-denied` | `heterodyne:comms#comms-agent-authorship` |
+| `comms/marmot-exact-bytes-durable` | comms | — | `COMMS-I-MARMOT-EXACT-BYTES` | — | `heterodyne:comms#comms-marmot-exact-bytes` |
+| `comms/marmot-expiration-not-erasure` | comms | — | `COMMS-I-RADICLE-NON-ERASURE` | — | `heterodyne:comms#comms-marmot-retention` |
+| `comms/marmot-keypackage-replayed` | comms | — | `COMMS-I-MARMOT-UPSTREAM-AUTHORITY` | `marmot-keypackage-replayed` | `heterodyne:comms#comms-marmot-persona-inbox` |
+| `comms/marmot-ordinary-welcome-held` | comms | — | `COMMS-I-MARMOT-ACCOUNT-IDENTITY`<br>`COMMS-I-MARMOT-SECRET-CONFINEMENT`<br>`COMMS-I-MARMOT-UPSTREAM-AUTHORITY` | — | `heterodyne:comms#comms-ordinary-conversation-admission` |
+| `comms/marmot-premature-ack` | comms | — | `COMMS-I-MARMOT-EXACT-BYTES` | `marmot-premature-ack` | `heterodyne:comms#comms-marmot-rotation` |
+| `comms/marmot-private-inbox-nid-required` | comms | — | `COMMS-I-MARMOT-UPSTREAM-AUTHORITY` | `marmot-private-inbox-nid-required` | `heterodyne:comms#comms-marmot-persona-inbox` |
+| `comms/marmot-private-route-required` | comms | — | `COMMS-I-MARMOT-UPSTREAM-AUTHORITY` | `marmot-private-route-required` | `heterodyne:comms#comms-marmot-groups` |
+| `comms/marmot-routing-binding-valid` | comms | — | `COMMS-I-RADICLE-ROUTING-AUTHORITY` | — | `heterodyne:comms#comms-marmot-routing-generation` |
+| `comms/marmot-routing-equivocation` | comms | — | `COMMS-I-RADICLE-ROUTING-AUTHORITY` | `marmot-routing-equivocation` | `heterodyne:comms#comms-marmot-host-authority` |
+| `comms/marmot-routing-genesis-mismatch` | comms | — | `COMMS-I-RADICLE-ROUTING-AUTHORITY` | `marmot-routing-binding-invalid` | `heterodyne:comms#comms-marmot-routing-generation` |
+| `comms/marmot-unauthorized-ref` | comms | — | `COMMS-I-RADICLE-ROUTING-AUTHORITY` | `marmot-unauthorized-ref` | `heterodyne:comms#comms-marmot-event-repository` |
+| `comms/nip59-broadcast-rejected` | comms | — | `COMMS-I-MARMOT-UPSTREAM-AUTHORITY` | `nip59_broadcast_rejected` | `heterodyne:comms#comms-tier-three-profile` |
+| `comms/oidc-access-token-validated` | comms | — | `COMMS-I-JWT-TYPE-AUDIENCE`<br>`COMMS-I-STATUS-INTEGRITY` | — | `heterodyne:comms#comms-jwt-projection` |
+| `comms/oidc-audience-invalid` | comms | — | `COMMS-I-JWT-TYPE-AUDIENCE` | `oidc-audience-invalid` | `heterodyne:comms#comms-jwt-projection` |
+| `comms/oidc-claim-release` | comms | — | `COMMS-I-CLAIM-RELEASE`<br>`COMMS-I-ISSUER-KEY-CONFINEMENT` | — | `heterodyne:comms#comms-oidc-authorization` |
+| `comms/oidc-claim-release-denied` | comms | — | `COMMS-I-CLAIM-RELEASE` | `oidc-claim-release-denied` | `heterodyne:comms#comms-oidc-authorization` |
+| `comms/oidc-client-unregistered` | comms | — | `COMMS-I-CLAIM-RELEASE` | `oidc-client-unregistered` | `heterodyne:comms#comms-oidc-authorization` |
+| `comms/oidc-consent-required` | comms | — | `COMMS-I-CLAIM-RELEASE` | `oidc-consent-required` | `heterodyne:comms#comms-oidc-authorization` |
+| `comms/oidc-grant-prohibited` | comms | — | `COMMS-I-CLAIM-RELEASE` | `oidc-grant-prohibited` | `heterodyne:comms#comms-oidc-authorization` |
+| `comms/oidc-issuer-authority-invalid` | comms | — | `COMMS-I-ISSUER-KEY-CONFINEMENT` | `oidc-issuer-authority-invalid` | `heterodyne:comms#comms-conformance` |
+| `comms/oidc-issuer-mismatch` | comms | — | `COMMS-I-ISSUER-CONTINUITY` | `oidc-issuer-mismatch` | `heterodyne:comms#comms-issuer-continuity` |
+| `comms/oidc-issuer-persona-continuity` | comms | — | `COMMS-I-ISSUER-CONTINUITY` | — | `heterodyne:comms#comms-issuer-continuity` |
+| `comms/oidc-signing-key-unavailable` | comms | — | `COMMS-I-ISSUER-KEY-CONFINEMENT` | `oidc-signing-key-unavailable` | `heterodyne:comms#comms-conformance` |
+| `comms/oidc-status-invalid` | comms | — | `COMMS-I-STATUS-INTEGRITY` | `oidc-status-invalid` | `heterodyne:comms#comms-conformance` |
+| `comms/oidc-token-type-invalid` | comms | — | `COMMS-I-JWT-TYPE-AUDIENCE` | `oidc-token-type-invalid` | `heterodyne:comms#comms-jwt-projection` |
+| `comms/profile-heterodyne-comms-agent-attribution-kind-1-v1` | comms | `heterodyne-comms-agent-attribution-kind-1-v1` | `COMMS-I-AGENT-ATTRIBUTION`<br>`COMMS-I-AGENT-SIGNER-BINDING` | — | `heterodyne:comms#comms-security` |
+| `comms/profile-heterodyne-comms-agent-attribution-kind-1063-v1` | comms | `heterodyne-comms-agent-attribution-kind-1063-v1` | `COMMS-I-AGENT-ATTRIBUTION`<br>`COMMS-I-AGENT-SIGNER-BINDING` | — | `heterodyne:comms#comms-security` |
+| `comms/profile-heterodyne-comms-agent-attribution-kind-16-v1` | comms | `heterodyne-comms-agent-attribution-kind-16-v1` | `COMMS-I-AGENT-ATTRIBUTION`<br>`COMMS-I-AGENT-SIGNER-BINDING` | — | `heterodyne:comms#comms-security` |
+| `comms/profile-heterodyne-comms-agent-attribution-kind-1985-v1` | comms | `heterodyne-comms-agent-attribution-kind-1985-v1` | `COMMS-I-AGENT-ATTRIBUTION`<br>`COMMS-I-AGENT-SIGNER-BINDING` | — | `heterodyne:comms#comms-security` |
+| `comms/profile-heterodyne-comms-agent-attribution-kind-30023-v1` | comms | `heterodyne-comms-agent-attribution-kind-30023-v1` | `COMMS-I-AGENT-ATTRIBUTION`<br>`COMMS-I-AGENT-SIGNER-BINDING` | — | `heterodyne:comms#comms-security` |
+| `comms/profile-heterodyne-comms-agent-attribution-kind-4550-v1` | comms | `heterodyne-comms-agent-attribution-kind-4550-v1` | `COMMS-I-AGENT-ATTRIBUTION`<br>`COMMS-I-AGENT-SIGNER-BINDING` | — | `heterodyne:comms#comms-security` |
+| `comms/profile-heterodyne-comms-agent-attribution-kind-6-v1` | comms | `heterodyne-comms-agent-attribution-kind-6-v1` | `COMMS-I-AGENT-ATTRIBUTION`<br>`COMMS-I-AGENT-SIGNER-BINDING` | — | `heterodyne:comms#comms-security` |
+| `comms/profile-heterodyne-comms-agent-attribution-kind-7-v1` | comms | `heterodyne-comms-agent-attribution-kind-7-v1` | `COMMS-I-AGENT-ATTRIBUTION`<br>`COMMS-I-AGENT-SIGNER-BINDING` | — | `heterodyne:comms#comms-security` |
+| `comms/profile-heterodyne-comms-claim-revocation-jwk-jws-v1` | comms | `heterodyne-comms-claim-revocation-jwk-jws-v1` | `COMMS-I-CLAIM-REVOCATION` | — | `heterodyne:comms#comms-security` |
+| `comms/profile-heterodyne-comms-claim-revocation-nostr-bip340-v1` | comms | `heterodyne-comms-claim-revocation-nostr-bip340-v1` | `COMMS-I-CLAIM-REVOCATION` | — | `heterodyne:comms#comms-security` |
+| `comms/profile-heterodyne-comms-claim-revocation-radicle-ed25519-v1` | comms | `heterodyne-comms-claim-revocation-radicle-ed25519-v1` | `COMMS-I-CLAIM-REVOCATION` | — | `heterodyne:comms#comms-security` |
+| `comms/profile-heterodyne-comms-key-claim-jwk-jws-v1` | comms | `heterodyne-comms-key-claim-jwk-jws-v1` | `COMMS-I-CLAIM-AUTHENTICITY` | — | `heterodyne:comms#comms-security` |
+| `comms/profile-heterodyne-comms-key-claim-nostr-bip340-v1` | comms | `heterodyne-comms-key-claim-nostr-bip340-v1` | `COMMS-I-CLAIM-AUTHENTICITY` | — | `heterodyne:comms#comms-security` |
+| `comms/profile-heterodyne-comms-key-claim-radicle-ed25519-v1` | comms | `heterodyne-comms-key-claim-radicle-ed25519-v1` | `COMMS-I-CLAIM-AUTHENTICITY` | — | `heterodyne:comms#comms-security` |
+| `comms/profile-heterodyne-comms-tier3-wrapped-content-kind-1-v1` | comms | `heterodyne-comms-tier3-wrapped-content-kind-1-v1` | `COMMS-I-TIER3-BLIND-CARRIER`<br>`COMMS-I-TIER3-CONFINED` | — | `heterodyne:comms#comms-security` |
+| `comms/profile-heterodyne-comms-tier3-wrapped-content-kind-1063-v1` | comms | `heterodyne-comms-tier3-wrapped-content-kind-1063-v1` | `COMMS-I-TIER3-BLIND-CARRIER`<br>`COMMS-I-TIER3-CONFINED` | — | `heterodyne:comms#comms-security` |
+| `comms/profile-heterodyne-comms-tier3-wrapped-content-kind-16-v1` | comms | `heterodyne-comms-tier3-wrapped-content-kind-16-v1` | `COMMS-I-TIER3-BLIND-CARRIER`<br>`COMMS-I-TIER3-CONFINED` | — | `heterodyne:comms#comms-security` |
+| `comms/profile-heterodyne-comms-tier3-wrapped-content-kind-30023-v1` | comms | `heterodyne-comms-tier3-wrapped-content-kind-30023-v1` | `COMMS-I-TIER3-BLIND-CARRIER`<br>`COMMS-I-TIER3-CONFINED` | — | `heterodyne:comms#comms-security` |
+| `comms/profile-heterodyne-comms-tier3-wrapped-content-kind-30402-v1` | comms | `heterodyne-comms-tier3-wrapped-content-kind-30402-v1` | `COMMS-I-TIER3-BLIND-CARRIER`<br>`COMMS-I-TIER3-CONFINED` | — | `heterodyne:comms#comms-security` |
+| `comms/profile-heterodyne-comms-tier3-wrapped-content-kind-6-v1` | comms | `heterodyne-comms-tier3-wrapped-content-kind-6-v1` | `COMMS-I-TIER3-BLIND-CARRIER`<br>`COMMS-I-TIER3-CONFINED` | — | `heterodyne:comms#comms-security` |
+| `comms/public-reader-private-content` | comms | — | `COMMS-I-PUBLIC-READER-TIER1-ONLY` | `public-reader-private-content` | `heterodyne:comms#comms-public-reader` |
+| `comms/public-reader-private-tier` | comms | — | `COMMS-I-PUBLIC-READER-TIER1-ONLY` | — | `heterodyne:comms#comms-public-reader` |
+| `comms/public-reader-relay-hint-invalid` | comms | — | `COMMS-I-PUBLIC-READER-TIER1-ONLY` | `public-reader-relay-hint-invalid` | `heterodyne:comms#comms-public-reader-security` |
+| `comms/public-reader-route-invalid` | comms | — | `COMMS-I-PUBLIC-READER-TIER1-ONLY` | `public-reader-route-invalid` | `heterodyne:comms#comms-public-launcher` |
+| `comms/tier3-client-side-encryption` | comms | — | `COMMS-I-CLIENT-SIDE-DELIVERY`<br>`COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY`<br>`COMMS-I-TIER3-BLIND-CARRIER` | — | `heterodyne:comms#comms-tier-three-profile` |
+| `comms/tier3-recipient-confined` | comms | — | `COMMS-I-TIER3-CONFINED` | `tier3-recipient-not-active-device` | `heterodyne:comms#comms-tier3-confinement` |
+| `comms/trusted-seed-acl-ambiguous` | comms | — | `COMMS-I-TRUSTED-SEED-CONFINEMENT` | `trusted-seed-acl-ambiguous` | `heterodyne:comms#comms-trusted-seed-private-relay` |
+| `comms/trusted-seed-acl-conflict` | comms | — | `COMMS-I-TRUSTED-SEED-CONFINEMENT` | `trusted-seed-acl-conflict` | `heterodyne:comms#comms-trusted-seed-private-relay` |
+| `comms/trusted-seed-acl-expired` | comms | — | `COMMS-I-TRUSTED-SEED-CONFINEMENT` | `trusted-seed-acl-expired` | `heterodyne:comms#comms-trusted-seed-private-relay` |
+| `comms/trusted-seed-acl-invalid` | comms | — | `COMMS-I-TRUSTED-SEED-CONFINEMENT` | `trusted-seed-acl-invalid` | `heterodyne:comms#comms-trusted-seed-private-relay` |
+| `comms/trusted-seed-acl-missing` | comms | — | `COMMS-I-TRUSTED-SEED-CONFINEMENT` | `trusted-seed-acl-missing` | `heterodyne:comms#comms-trusted-seed-private-relay` |
+| `comms/trusted-seed-acl-stale` | comms | — | `COMMS-I-TRUSTED-SEED-CONFINEMENT` | `trusted-seed-acl-stale` | `heterodyne:comms#comms-trusted-seed-private-relay` |
+| `comms/trusted-seed-event-invalid` | comms | — | `COMMS-I-TRUSTED-SEED-CONFINEMENT` | `trusted-seed-event-invalid` | `heterodyne:comms#comms-trusted-seed-private-relay` |
+| `comms/trusted-seed-exact-write` | comms | — | `COMMS-I-MARMOT-EXACT-BYTES`<br>`COMMS-I-PRIVATE-RELAY-ACL`<br>`COMMS-I-TRUSTED-SEED-CONFINEMENT` | — | `heterodyne:comms#comms-trusted-seed-private-relay` |
+| `comms/trusted-seed-nip42-required` | comms | — | `COMMS-I-TRUSTED-SEED-CONFINEMENT` | `trusted-seed-nip42-required` | `heterodyne:comms#comms-trusted-seed-private-relay` |
+| `comms/trusted-seed-request-invalid` | comms | — | `COMMS-I-TRUSTED-SEED-CONFINEMENT` | `trusted-seed-request-invalid` | `heterodyne:comms#comms-trusted-seed-private-relay` |
+| `comms/trusted-seed-request-replay` | comms | — | `COMMS-I-TRUSTED-SEED-CONFINEMENT` | `trusted-seed-request-replay` | `heterodyne:comms#comms-trusted-seed-private-relay` |
+| `comms/trusted-seed-revoked` | comms | — | `COMMS-I-TRUSTED-SEED-CONFINEMENT` | `trusted-seed-revoked` | `heterodyne:comms#comms-trusted-seed-private-relay` |
+| `comms/trusted-seed-route-mismatch` | comms | — | `COMMS-I-TRUSTED-SEED-CONFINEMENT` | `trusted-seed-route-mismatch` | `heterodyne:comms#comms-trusted-seed-private-relay` |
+| `comms/trusted-seed-unauthorized` | comms | — | `COMMS-I-TRUSTED-SEED-CONFINEMENT` | `trusted-seed-unauthorized` | `heterodyne:comms#comms-trusted-seed-private-relay` |

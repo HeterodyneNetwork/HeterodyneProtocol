@@ -28,7 +28,7 @@
   ],
   "properties": {
     "spec_version": {
-      "const": "heterodyne/0.5.0"
+      "const": "heterodyne/0.6.0"
     },
     "object_type": {
       "const": "workspace-policy-v1"
@@ -152,6 +152,27 @@
       "type": "integer",
       "minimum": 0,
       "maximum": 300
+    },
+    "assurance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile",
+        "inception_event_id",
+        "required_state"
+      ],
+      "properties": {
+        "profile": {
+          "const": "heterodyne.workspace.assurance.v1"
+        },
+        "inception_event_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "required_state": {
+          "const": "verified"
+        }
+      }
     }
   }
 }

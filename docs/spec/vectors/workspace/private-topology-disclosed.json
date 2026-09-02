@@ -1,0 +1,27 @@
+{
+  "vector_id": "workspace/private-topology-disclosed",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "workspace",
+  "spec_refs": [
+    "heterodyne:workspace#workspace-privacy"
+  ],
+  "invariants": [
+    "WORKSPACE-I-PRIVATE-TOPOLOGY"
+  ],
+  "reason_codes": [
+    "private_topology_disclosed"
+  ],
+  "description": "A stable public identifier correlating a concealed Workspace is rejected.",
+  "direction": "produce",
+  "input": {
+    "private_identifiers": [
+      "1111111111111111111111111111111111111111111111111111111111111111"
+    ],
+    "private_counts": 0,
+    "encrypted_placeholders": 0
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "private_topology_disclosed"
+  }
+}

@@ -1,26 +1,49 @@
 import { createHash } from "node:crypto";
-import { describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import type { CurrentAuthorizationView } from "./authorization-freshness.js";
 import {
   issueControlToken,
   validateControlTokenUse,
+  type ControlAuthorizationRecord,
   type ControlToken,
   type TokenIssuanceInput,
   type TokenUseInput,
 } from "./control-profile.js";
 import { jcsCanonicalize } from "./jcs.js";
+import { buildAuthorizationFreshnessTestSupport } from "./authorization-freshness-test-support.js";
 
 const client = "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798";
 const otherClient = "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5";
 const node = "22".repeat(32);
 const group = "33".repeat(32);
-const checkpoint = "55".repeat(32);
 const expectedJkt = "2JF8vg9etJzjFwZwmkvhBLLZ0bfMVVOPivYR5lFtcec";
 const otherJkt = "GKeBJdbiPSiSZ8qwiPH8NBmmtrLcKCZ7gYOzX0hwzlM";
 const object = { class: "config_namespace" as const, id: "ui" };
+type FreshnessSupport = Awaited<ReturnType<typeof buildAuthorizationFreshnessTestSupport>>;
+let freshness: FreshnessSupport;
+let freshnessScenario: FreshnessSupport["scenario"];
+let freshnessClock: { now: number };
+let checkpoint: string;
 
-const authorization = {
+beforeAll(async () => {
+  freshness = await buildAuthorizationFreshnessTestSupport();
+  freshnessScenario = freshness.scenario;
+});
+
+function currentAuthorizationView(): CurrentAuthorizationView {
+  return freshness.currentView(freshnessClock);
+}
+
+let authorization: ControlAuthorizationRecord;
+let issuance: TokenIssuanceInput;
+
+beforeEach(() => {
+  const state = freshnessScenario.issuerKeyEpochOneState;
+  freshnessClock = { now: state.checkpoint.observed_at };
+  checkpoint = state.checkpoint.commit_oid;
+  authorization = {
   record_id: "44".repeat(32),
-  persona: "aa".repeat(32),
+  persona: freshnessScenario.persona,
   client_key: client,
   client_class: "automated" as const,
   approving_node: node,
@@ -45,38 +68,33 @@ const authorization = {
   expires_at: null,
   signer: node,
   signature: "66".repeat(64),
-};
+  };
+  issuance = {
+    entitlement: authorization,
+    group_id: group,
+    audience: "urn:heterodyne:control:node-a",
+    node_key: node,
+    issuance_nonce: "77".repeat(32),
+    requested_lifetime_seconds: 300,
+    node_policy_max_seconds: 3_600,
+    authorization_view: currentAuthorizationView(),
+    methods: ["config.get"],
+    objects: [object],
+    limits: {
+      max_content_bytes: 1_024,
+      rate_count: 10,
+    },
+  };
+});
 
-const issuance = {
-  entitlement: authorization,
-  group_id: group,
-  issuer: "https://node.example/oidc/persona",
-  audience: "urn:heterodyne:control:node-a",
-  node_key: node,
-  registry_checkpoint: checkpoint,
-  issuance_nonce: "77".repeat(32),
-  requested_lifetime_seconds: 300,
-  node_policy_max_seconds: 3_600,
-  now: 1_000,
-  authorization_view_authenticated: true,
-  authorization_view_conflicted: false,
-  authorization_view_age_seconds: 0,
-  methods: ["config.get"],
-  objects: [object],
-  limits: {
-    max_content_bytes: 1_024,
-    rate_count: 10,
-  },
-};
-
-function issue(overrides: Record<string, unknown> = {}) {
+function issue(overrides: Partial<TokenIssuanceInput> = {}) {
   return issueControlToken({
     ...issuance,
     ...overrides,
-  } as unknown as TokenIssuanceInput);
+  });
 }
 
-function acceptedToken(overrides: Record<string, unknown> = {}) {
+function acceptedToken(overrides: Partial<TokenIssuanceInput> = {}) {
   const result = issue(overrides);
   if (result.verdict !== "accept") throw new Error("fixture token failed");
   return result.token;
@@ -86,23 +104,19 @@ function useInput(token = acceptedToken()): TokenUseInput {
   return {
     token,
     signature_valid: true,
-    now: 1_100,
-    expected_issuer: issuance.issuer,
+    expected_issuer: token.iss,
     expected_audience: issuance.audience,
     expected_node_key: node,
     authenticated_sender_jkt: expectedJkt,
     group_id: group,
     current_entitlement: authorization,
-    current_registry_checkpoint: checkpoint,
-    authorization_view_authenticated: true,
-    authorization_view_conflicted: false,
-    authorization_view_age_seconds: 100,
+    authorization_view: currentAuthorizationView(),
     required_scope: "control",
     method: "config.get",
     object,
     usage: { max_content_bytes: 512, rate_count: 1 },
     required_agent_role: "agent:newsletter",
-  } as unknown as TokenUseInput;
+  };
 }
 
 function withRecomputedJti(token: ControlToken): ControlToken {
@@ -134,7 +148,7 @@ describe("Control token authorization projection", () => {
   });
 
   it("derives the even-Y secp256k1 JWK thumbprint and rejects a non-point key", () => {
-    expect(issue({ client_jkt: otherJkt })).toMatchObject({
+    expect(issue()).toMatchObject({
       verdict: "accept",
       token: { cnf: { jkt: expectedJkt } },
     });
@@ -146,20 +160,18 @@ describe("Control token authorization projection", () => {
   it("derives extended lifetime authority at mint and revalidates its removal at use", () => {
     const withoutExtended = {
       ...authorization,
-      capabilities: [] as string[],
+      capabilities: [] as ControlAuthorizationRecord["capabilities"],
     };
     expect(issue({
       entitlement: withoutExtended,
       requested_lifetime_seconds: 301,
-      extended_capability: true,
     })).toEqual({ verdict: "reject", reason_code: "control-token-invalid" });
 
     const token = acceptedToken({ requested_lifetime_seconds: 3_600 });
     expect(validateControlTokenUse({
       ...useInput(token),
-      now: 1_100,
       current_entitlement: withoutExtended,
-    } as unknown as TokenUseInput)).toEqual({
+    })).toEqual({
       verdict: "reject",
       reason_code: "control-token-invalid",
     });
@@ -176,7 +188,7 @@ describe("Control token key and issuance-identifier binding", () => {
     expect(validateControlTokenUse({
       ...useInput(crossBound),
       authenticated_sender_jkt: otherJkt,
-    } as unknown as TokenUseInput)).toEqual({
+    })).toEqual({
       verdict: "reject",
       reason_code: "control-token-invalid",
     });
@@ -191,7 +203,7 @@ describe("Control token key and issuance-identifier binding", () => {
     expect(validateControlTokenUse({
       ...useInput(noncanonical),
       authenticated_sender_jkt: noncanonical.cnf.jkt,
-    } as unknown as TokenUseInput)).toEqual({
+    })).toEqual({
       verdict: "reject",
       reason_code: "control-token-invalid",
     });
@@ -211,7 +223,7 @@ describe("Control token key and issuance-identifier binding", () => {
     const token = acceptedToken();
     expect(validateControlTokenUse({
       ...useInput({ ...token, jti: "00".repeat(32) }),
-    } as unknown as TokenUseInput)).toEqual({
+    })).toEqual({
       verdict: "reject",
       reason_code: "control-token-invalid",
     });

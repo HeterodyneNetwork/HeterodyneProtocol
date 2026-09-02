@@ -1,0 +1,49 @@
+{
+  "vector_id": "comms/agent-attribution-profile-unavailable",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-agent-authorship"
+  ],
+  "invariants": [
+    "COMMS-I-AGENT-ATTRIBUTION"
+  ],
+  "reason_codes": [
+    "agent-attribution-profile-unavailable"
+  ],
+  "description": "The current workload boundary rejects agent attribution profile unavailable.",
+  "direction": "consume",
+  "input": {
+    "kind": 2,
+    "tags": [
+      [
+        "client",
+        "heterodyne"
+      ]
+    ],
+    "agent_class": "ai",
+    "persona": "1111111111111111111111111111111111111111111111111111111111111111",
+    "issuer": "https://issuer.example/oidc/npub1persona",
+    "subject": "stable-pairwise-sub",
+    "client_id": "current-agent-client",
+    "signer": "3333333333333333333333333333333333333333333333333333333333333333",
+    "expected_signer": "3333333333333333333333333333333333333333333333333333333333333333",
+    "signer_key_class": "agent",
+    "oidc_scopes": [
+      "heterodyne:agent:publish"
+    ],
+    "agent_association": {
+      "kind": "key",
+      "value": "3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    "expected_agent_association": {
+      "kind": "key",
+      "value": "3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    "tier": 3
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "agent-attribution-profile-unavailable"
+  }
+}

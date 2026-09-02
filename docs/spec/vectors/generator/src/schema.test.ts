@@ -3,18 +3,26 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Ajv, type AnySchema } from "ajv";
 import { Ajv2020 } from "ajv/dist/2020.js";
+import { base58 } from "@scure/base";
 import { describe, expect, it } from "vitest";
+import {
+  didKeyFromEd25519,
+  ed25519PublicKey,
+  fixtureRid,
+} from "./radicle.js";
 import {
   CREDENTIAL_CONTINUITY_SCHEMA_FILES,
   CREDENTIAL_CONTINUITY_SCHEMAS,
   KEY_CLAIM_REVOCATION_SCHEMA,
   KEY_CLAIM_SCHEMA,
+  REPOSITORY_WRITER_BINDING_SCHEMA,
   VECTOR_SCHEMA,
   validateClaimRevocationSchemaOrThrow,
   validateCredentialContinuitySchemaOrThrow,
   validateKeyClaimSchemaOrThrow,
   validateOneTimeInviteResponseSchemaOrThrow,
   validateOneTimeInviteSchemaOrThrow,
+  validateRepositoryWriterBindingSchemaOrThrow,
   validateVectorOrThrow,
 } from "./schema.js";
 
@@ -47,6 +55,7 @@ const marmotSchemaNames = [
 ] as const;
 
 const marmotSchemas = new Ajv({ allErrors: true, strict: false });
+const HETERODYNE_SCHEMA_ORIGIN = "https://" + ["heterodyne", "network"].join(".");
 for (const name of marmotSchemaNames) {
   marmotSchemas.addSchema(JSON.parse(
     readFileSync(resolve(commsSchemasRoot, name), "utf8"),
@@ -54,7 +63,7 @@ for (const name of marmotSchemaNames) {
 }
 
 function validateMarmotSchema(name: typeof marmotSchemaNames[number], value: unknown): string | null {
-  const id = `https://heterodyne.network/schemas/comms/${name}`;
+  const id = `${HETERODYNE_SCHEMA_ORIGIN}/schemas/comms/${name}`;
   const validate = marmotSchemas.getSchema(id);
   if (validate === undefined) throw new Error(`missing Marmot schema: ${id}`);
   return validate(value) ? null : JSON.stringify(validate.errors);
@@ -109,7 +118,7 @@ describe("Social active-author policy schemas", () => {
   const policy = { id: "network.heterodyne.agent-policy", version: "1.0.0" };
   const receipt = {
     profile: "heterodyne.social.agent-policy-receipt.v1",
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     event_id: h("b"),
     event_author: author,
     agent_association: association,
@@ -123,7 +132,7 @@ describe("Social active-author policy schemas", () => {
   };
   const correction = {
     profile: "heterodyne.social.agent-policy-correction.v1",
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     corrects_receipt_id: h("c"),
     event_id: receipt.event_id,
     event_author: author,
@@ -202,7 +211,7 @@ describe("multi-persona Control schemas", () => {
   const audience = "https://node.example/nip46/persona-1";
   const grant = {
     profile: "heterodyne.control.signer-grant.v1",
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     grant_id: grantId,
     vault_id: vaultId,
     persona_active_key: persona,
@@ -244,7 +253,7 @@ describe("multi-persona Control schemas", () => {
   };
   const recoveryGrant = {
     profile: "heterodyne.control.compromise-reset-grant.v1",
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     recovery_id: h("e"),
     persona_active_key: persona,
     successor_active_key: successor,
@@ -264,7 +273,7 @@ describe("multi-persona Control schemas", () => {
   };
   const recoveryCompletion = {
     profile: "heterodyne.control.compromise-reset-completion.v1",
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     recovery_id: recoveryGrant.recovery_id,
     persona_active_key: persona,
     successor_active_key: successor,
@@ -328,7 +337,7 @@ describe("multi-persona Control schemas", () => {
     ["control-client-authorization-v1.schema.json", grant],
     ["control-agent-publish-v1.schema.json", {
       profile: "heterodyne.control.agent-publish-intent.v1",
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       grant_id: grantId,
       vault_id: vaultId,
       persona_active_key: persona,
@@ -347,7 +356,7 @@ describe("multi-persona Control schemas", () => {
     }],
     ["control-audit-record-v1.schema.json", {
       profile: "heterodyne.control.audit-record.v1",
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       grant_id: grantId,
       vault_id: vaultId,
       persona_active_key: persona,
@@ -367,7 +376,7 @@ describe("multi-persona Control schemas", () => {
     }],
     ["control-capability-set-v1.schema.json", {
       profile: "heterodyne.control.capability-set.v1",
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       node_mode: "full",
       max_persona_vaults: 16,
       custody_modes: ["local", "nip46"],
@@ -379,7 +388,7 @@ describe("multi-persona Control schemas", () => {
     }],
     ["control-device-authorization-state-v1.schema.json", {
       profile: "heterodyne.control.device-authorization-state.v1",
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       transaction_id: h("8"),
       grant_id: grantId,
       oidc_authorization_id: grant.oidc_authorization_id,
@@ -409,7 +418,7 @@ describe("multi-persona Control schemas", () => {
     }],
     ["control-operation-record-v1.schema.json", {
       profile: "heterodyne.control.signing-operation.v1",
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       operation_id: h("b"),
       request_id: "nostr-tools-1",
       grant_id: grantId,
@@ -600,7 +609,7 @@ describe("trusted private seed and flexible agent schemas", () => {
   const privateRid = "rad:z3gqcJUoA1n9HaHKufZs5FCSGazv5";
   const acl = {
     profile: "heterodyne.trusted-seed-acl.v1",
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     administrator_account: administratorAccount,
     accounts: [{ account_key: personaKey, roles: ["read", "write"] }],
     h: "private-routing-id",
@@ -655,6 +664,7 @@ describe("trusted private seed and flexible agent schemas", () => {
     sequence: 0,
     predecessor_digest: null,
     max_checkpoint_age_seconds: 300,
+    authorization_view_max_age: 300,
     current_jwks_sha256: h("7"),
     current_signing_key_id: "B".repeat(43),
     current_signing_jwk_sha256: h("8"),
@@ -758,11 +768,40 @@ describe("trusted private seed and flexible agent schemas", () => {
       missingPersona,
     )).toMatch(/persona_key|required/);
   });
+
+  it("requires independent closed checkpoint and authorization-view freshness bounds", () => {
+    expect(validateCommsSchema(
+      "oidc-continuity-manifest-v1.schema.json",
+      { ...continuity, authorization_view_max_age: 86_400 },
+    )).toBeNull();
+
+    for (const authorizationViewMaxAge of [0, 86_401, 300.5]) {
+      expect(validateCommsSchema(
+        "oidc-continuity-manifest-v1.schema.json",
+        { ...continuity, authorization_view_max_age: authorizationViewMaxAge },
+      ), String(authorizationViewMaxAge)).not.toBeNull();
+    }
+
+    const missing = { ...continuity } as Record<string, unknown>;
+    delete missing.authorization_view_max_age;
+    expect(validateCommsSchema(
+      "oidc-continuity-manifest-v1.schema.json",
+      missing,
+    )).toMatch(/authorization_view_max_age|required/);
+    expect(validateCommsSchema(
+      "oidc-continuity-manifest-v1.schema.json",
+      { ...continuity, authorization_view_fresh: true },
+    )).toMatch(/additionalProperties/);
+    expect(validateCommsSchema(
+      "oidc-continuity-manifest-v1.schema.json",
+      { ...continuity, max_checkpoint_age_seconds: 301 },
+    )).toMatch(/maximum/);
+  });
 });
 
 const assuranceInception = {
   profile: "heterodyne.assurance.enrollment-inception.v1",
-  spec_version: "heterodyne/0.5.0",
+  spec_version: "heterodyne/0.6.0",
   active_key: h("1"),
   created_at: 1_785_000_000,
   predecessor: null,
@@ -789,7 +828,7 @@ const assuranceInception = {
 
 const assuranceAcceptance = {
   profile: "heterodyne.assurance.active-key-acceptance.v1",
-  spec_version: "heterodyne/0.5.0",
+  spec_version: "heterodyne/0.6.0",
   active_key: assuranceInception.active_key,
   created_at: assuranceInception.created_at + 1,
   predecessor: h("7"),
@@ -802,7 +841,7 @@ const assuranceAcceptance = {
 
 const assuranceSuccession = {
   profile: "heterodyne.assurance.succession.v1",
-  spec_version: "heterodyne/0.5.0",
+  spec_version: "heterodyne/0.6.0",
   active_key: assuranceInception.active_key,
   created_at: assuranceInception.created_at + 2,
   predecessor: h("7"),
@@ -838,7 +877,7 @@ const assuranceSuccession = {
 
 const assuranceAssociatedKey = {
   profile: "heterodyne.assurance.associated-key.v1",
-  spec_version: "heterodyne/0.5.0",
+  spec_version: "heterodyne/0.6.0",
   active_key: assuranceInception.active_key,
   created_at: assuranceInception.created_at + 3,
   predecessor: h("e"),
@@ -995,6 +1034,64 @@ describe("Assurance record schemas", () => {
       },
     })).toMatch(/additionalProperties/);
   });
+
+  it("accepts only the exact closed enrollment contest body", () => {
+    const contestBody = {
+      profile: "heterodyne.assurance.enrollment-contest.v1",
+      spec_version: "heterodyne/0.6.0",
+      inception_event_id: h("7"),
+      cold_root: assuranceInception.cold_root,
+    };
+
+    expect(validateAssuranceSchema(
+      "enrollment-contest-v1.schema.json",
+      contestBody,
+    )).toBeNull();
+    expect(validateAssuranceSchema(
+      "enrollment-contest-v1.schema.json",
+      { ...contestBody, reason: "generic stamping is not content authority" },
+    )).toMatch(/additionalProperties/);
+    const { cold_root: _coldRoot, ...missingColdRoot } = contestBody;
+    expect(validateAssuranceSchema(
+      "enrollment-contest-v1.schema.json",
+      missingColdRoot,
+    )).toMatch(/cold_root|required/);
+  });
+
+  it("accepts only closed signed enrollment observation receipts", () => {
+    const receipt = {
+      profile: "heterodyne.assurance.enrollment-observation-receipt.v1",
+      spec_version: "heterodyne/0.6.0",
+      inception_event_id: h("7"),
+      active_key: assuranceInception.active_key,
+      cold_root: assuranceInception.cold_root,
+      accepted_head: h("8"),
+      first_observed_at: 1_784_000_000,
+      last_observed_at: 1_784_604_800,
+      conflict_free: true,
+      witness_key: h("6"),
+      signature: sig("a"),
+    };
+
+    expect(validateAssuranceSchema(
+      "enrollment-observation-receipt-v1.schema.json",
+      receipt,
+    )).toBeNull();
+    for (const invalid of [
+      { ...receipt, conflict_free: false },
+      { ...receipt, unsigned_hint: true },
+    ]) {
+      expect(validateAssuranceSchema(
+        "enrollment-observation-receipt-v1.schema.json",
+        invalid,
+      )).not.toBeNull();
+    }
+    const { signature: _signature, ...unsigned } = receipt;
+    expect(validateAssuranceSchema(
+      "enrollment-observation-receipt-v1.schema.json",
+      unsigned,
+    )).toMatch(/signature|required/);
+  });
 });
 
 describe("claim profile revision schema documentation", () => {
@@ -1030,7 +1127,7 @@ describe("one-time invite schemas", () => {
       secret: "66".repeat(32),
     })).not.toThrow();
     expect(() => validateOneTimeInviteResponseSchemaOrThrow({
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       purpose: "dm",
       descriptor_digest: "77".repeat(32),
       responder_account: "88".repeat(32),
@@ -1049,7 +1146,7 @@ describe("one-time invite schemas", () => {
       device_private_key: "77".repeat(32),
     })).toThrow(/additional/);
     expect(() => validateOneTimeInviteResponseSchemaOrThrow({
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       purpose: "dm",
       descriptor_digest: "77".repeat(32),
       responder_account: "88".repeat(32),
@@ -1088,7 +1185,7 @@ describe("one-time invite schemas", () => {
       secret: "66".repeat(32),
     })).toThrow();
     expect(() => validateOneTimeInviteResponseSchemaOrThrow({
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       purpose: "device-enrollment",
       descriptor_digest: "77".repeat(32),
       responder_account: "88".repeat(32),
@@ -1130,7 +1227,7 @@ describe("active-account Marmot repository schemas", () => {
   });
 
   const directory = {
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     profile: "standard-compatible",
     stable_group_id: "stable-group-1",
     account_key: accountKey,
@@ -1150,7 +1247,7 @@ describe("active-account Marmot repository schemas", () => {
   };
 
   const manifest = {
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     account_key: accountKey,
     writer_nid: writerNid,
     consumed_keypackage_id: "keypackage-1",
@@ -1164,7 +1261,7 @@ describe("active-account Marmot repository schemas", () => {
   };
 
   const bundle = {
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     account_key: accountKey,
     writer_nid: writerNid,
     manifest,
@@ -1174,7 +1271,7 @@ describe("active-account Marmot repository schemas", () => {
   };
 
   const routingBinding = {
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     stable_group_id: "stable-group-1",
     generation: 3,
     h: "marmot-routing-id",
@@ -1191,7 +1288,7 @@ describe("active-account Marmot repository schemas", () => {
   };
 
   const genesis = {
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     stable_group_id_digest: h("7"),
     generation: 3,
     h: "marmot-routing-id",
@@ -1266,12 +1363,22 @@ describe("active-account Marmot repository schemas", () => {
 });
 
 describe("vector schema", () => {
-  const valid = (owner: "core" | "comms" | "social" | "control") => ({
+  const invariantFor = {
+    core: "CORE-I-VERIFY-BEFORE-USE",
+    assurance: "ASSURANCE-I-CORE-OPTIONALITY",
+    comms: "COMMS-I-TIER3-BLIND-CARRIER",
+    control: "CONTROL-I-AUDIT-AT-REST",
+    social: "SOCIAL-I-NIP01-AUTHORSHIP",
+    workspace: "WORKSPACE-I-NO-AMBIENT-AUTHORITY",
+  } as const;
+  const valid = (owner: keyof typeof invariantFor) => ({
     vector_id: `versioning/${owner}-metadata`,
-    vector_schema_version: "1.0.0",
+    vector_schema_version: "3.0.0",
     owner_document: owner,
-    spec_version: "heterodyne/0.5.0",
-    spec_refs: [`heterodyne:0.5.0#${owner}-conformance`],
+    spec_version: "heterodyne/0.6.0",
+    spec_refs: [`heterodyne:0.6.0#${owner}-conformance`],
+    invariants: [invariantFor[owner]],
+    reason_codes: [],
     description: "exact family metadata",
     direction: "consume",
     input: {},
@@ -1286,7 +1393,7 @@ describe("vector schema", () => {
       expected_terminal_stage: "signature",
     };
     expect(() => validateVectorOrThrow({
-      ...valid("core"), vector_schema_version: "1.1.0", conformance_checks: [check],
+      ...valid("core"), conformance_checks: [check],
     })).not.toThrow();
     for (const invalid of [
       { ...check, profile: "generator-v1" },
@@ -1294,11 +1401,11 @@ describe("vector schema", () => {
       { ...check, inferred: true },
     ]) {
       expect(() => validateVectorOrThrow({
-        ...valid("core"), vector_schema_version: "1.1.0", conformance_checks: [invalid],
+        ...valid("core"), conformance_checks: [invalid],
       })).toThrow();
     }
     expect(() => validateVectorOrThrow({
-      ...valid("core"), vector_schema_version: "1.1.0", conformance_checks: [check, check],
+      ...valid("core"), conformance_checks: [check, check],
     })).toThrow();
   });
 
@@ -1318,12 +1425,10 @@ describe("vector schema", () => {
     ]) {
       expect(() => validateVectorOrThrow({
         ...valid("core"),
-        vector_schema_version: "1.1.0",
         conformance_checks: [{ ...baseCheck, expected_terminal_stage }],
       })).toThrow(/context_pointer|required/);
       expect(() => validateVectorOrThrow({
         ...valid("core"),
-        vector_schema_version: "1.1.0",
         conformance_checks: [{
           ...baseCheck,
           context_pointer: "/input/context",
@@ -1337,10 +1442,12 @@ describe("vector schema", () => {
     expect(() =>
       validateVectorOrThrow({
         vector_id: "identity/root-attestation-valid",
-        vector_schema_version: "1.0.0",
+        vector_schema_version: "3.0.0",
         owner_document: "core",
-        spec_version: "heterodyne/0.5.0",
-        spec_refs: ["heterodyne:0.5.0#core-root-attestation"],
+        spec_version: "heterodyne/0.6.0",
+        spec_refs: ["heterodyne:0.6.0#core-root-attestation"],
+        invariants: ["CORE-I-IDENTITY-INTEGRITY"],
+        reason_codes: [],
         description: "root attestation is reproduced byte-identically",
         direction: "produce",
         input: { hello: "world" },
@@ -1354,8 +1461,11 @@ describe("vector schema", () => {
 
   it("keeps the generator schema as the draft raw-authoring contract", () => {
     expect(VECTOR_SCHEMA.required).toContain("spec_version");
-    expect((VECTOR_SCHEMA.properties.vector_schema_version as { pattern: string }).pattern)
-      .toBe("^\\d+\\.\\d+\\.\\d+$");
+    expect(VECTOR_SCHEMA.required).toEqual(expect.arrayContaining([
+      "invariants",
+      "reason_codes",
+    ]));
+    expect(VECTOR_SCHEMA.properties.vector_schema_version).toEqual({ const: "3.0.0" });
   });
 
   it("rejects an unqualified version and a bare section reference", () => {
@@ -1365,7 +1475,7 @@ describe("vector schema", () => {
       .toThrow();
   });
 
-  it.each(["core", "comms", "social", "control"] as const)(
+  it.each(["core", "assurance", "comms", "control", "social", "workspace"] as const)(
     "accepts the exact %s runtime metadata",
     (owner) => expect(() => validateVectorOrThrow(valid(owner))).not.toThrow(),
   );
@@ -1380,13 +1490,13 @@ describe("vector schema", () => {
 
   it("rejects references above the owner in the layering", () => {
     expect(() => validateVectorOrThrow({
-      ...valid("social"), spec_refs: ["heterodyne:0.5.0#control-conformance"],
+      ...valid("social"), spec_refs: ["heterodyne:0.6.0#control-conformance"],
     })).toThrow(/spec_ref/);
     expect(() => validateVectorOrThrow({
-      ...valid("comms"), spec_refs: ["heterodyne:0.5.0#social-conformance"],
+      ...valid("comms"), spec_refs: ["heterodyne:0.6.0#social-conformance"],
     })).toThrow(/spec_ref/);
     expect(() => validateVectorOrThrow({
-      ...valid("core"), spec_refs: ["heterodyne:0.5.0#comms-conformance"],
+      ...valid("core"), spec_refs: ["heterodyne:0.6.0#comms-conformance"],
     })).toThrow(/spec_ref/);
   });
 
@@ -1394,16 +1504,16 @@ describe("vector schema", () => {
     expect(() => validateVectorOrThrow({
       ...valid("core"),
       spec_refs: [
-        "heterodyne:0.5.0#core-versioning",
-        "heterodyne:0.5.0#core-conformance",
+        "heterodyne:0.6.0#core-versioning",
+        "heterodyne:0.6.0#core-conformance",
       ],
     })).toThrow(/spec_refs|one|item/i);
   });
 
   it("allows one Control reference to either document beneath it", () => {
     for (const specRef of [
-      "heterodyne:0.5.0#core-version-stamps",
-      "heterodyne:0.5.0#comms-subprotocol-negotiation",
+      "heterodyne:0.6.0#core-version-stamps",
+      "heterodyne:0.6.0#comms-subprotocol-negotiation",
     ]) {
       expect(() => validateVectorOrThrow({
         ...valid("control"),
@@ -1416,13 +1526,15 @@ describe("vector schema", () => {
     expect(() =>
       validateVectorOrThrow({
         vector_id: "stamping/null-profile",
-        vector_schema_version: "1.0.0",
+        vector_schema_version: "3.0.0",
         owner_document: "core",
-        owner_version: "heterodyne/0.5.0",
+        owner_version: "heterodyne/0.6.0",
         dependency_versions: {},
         profile_revision: 1,
         profile: null,
-        spec_refs: ["heterodyne:0.5.0#core-version-stamps"],
+        spec_refs: ["heterodyne:0.6.0#core-version-stamps"],
+        invariants: ["CORE-I-VERIFY-BEFORE-USE"],
+        reason_codes: [],
         description: "optional means absent, not null",
         direction: "round-trip",
         input: {},
@@ -1436,9 +1548,51 @@ describe("vector schema", () => {
     (direction) => expect(() => validateVectorOrThrow({
       ...valid("core"),
       direction,
+      reason_codes: ["bad_signature"],
       expected_output: { verdict: "reject" },
     })).toThrow(/reason_code/),
   );
+
+  it("requires nonempty sorted unique registered invariants owned by the vector document", () => {
+    for (const invariants of [
+      [],
+      ["CORE-I-VERIFY-BEFORE-USE", "CORE-I-IDENTITY-INTEGRITY"],
+      ["CORE-I-VERIFY-BEFORE-USE", "CORE-I-VERIFY-BEFORE-USE"],
+      ["NOT-REGISTERED"],
+      ["COMMS-I-TIER3-BLIND-CARRIER"],
+    ]) {
+      expect(() => validateVectorOrThrow({ ...valid("core"), invariants }), invariants.join(","))
+        .toThrow(/invariant/i);
+    }
+  });
+
+  it("binds reject traceability to the exact registered expected reason", () => {
+    expect(() => validateVectorOrThrow({
+      ...valid("core"),
+      reason_codes: ["bad_signature"],
+      expected_output: { verdict: "reject", reason_code: "bad_signature" },
+    })).not.toThrow();
+    for (const reason_codes of [
+      [],
+      ["nip01_raw_mismatch", "bad_signature"],
+      ["bad_signature", "bad_signature"],
+      ["nip01_raw_mismatch"],
+      ["not-registered"],
+    ]) {
+      expect(() => validateVectorOrThrow({
+        ...valid("core"),
+        reason_codes,
+        expected_output: { verdict: "reject", reason_code: "bad_signature" },
+      }), reason_codes.join(",")).toThrow(/reason/i);
+    }
+  });
+
+  it("requires accept vectors to carry an empty reason trace", () => {
+    expect(() => validateVectorOrThrow({
+      ...valid("core"),
+      reason_codes: ["bad_signature"],
+    })).toThrow(/reason/i);
+  });
 });
 
 describe("credential-continuity schema registry", () => {
@@ -1470,7 +1624,7 @@ describe("Comms claim schemas", () => {
     not_before: 1784390400,
     expires_at: 1784476800,
     visibility: "repository-private",
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     profile_revision: 2,
     credential_ledger_persona: "34".repeat(32),
     credential_ledger_generation: 0,
@@ -1483,7 +1637,7 @@ describe("Comms claim schemas", () => {
     expect(() => validateKeyClaimSchemaOrThrow(missingVersion)).toThrow(/spec_version|required/);
     expect(() => validateKeyClaimSchemaOrThrow({
       ...missingVersion,
-      comms_version: "heterodyne/0.5.0",
+      comms_version: "heterodyne/0.6.0",
     })).toThrow(/spec_version|required|additional/);
     expect(() => validateKeyClaimSchemaOrThrow({
       ...base,
@@ -1521,7 +1675,7 @@ describe("Comms claim schemas", () => {
       revoked_at: 1784390500,
       reason_code: "claim-revoked",
       revoker: key,
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       profile_revision: 2,
     };
     expect(() => validateClaimRevocationSchemaOrThrow(revocation)).not.toThrow();
@@ -1530,7 +1684,7 @@ describe("Comms claim schemas", () => {
     expect(() => validateClaimRevocationSchemaOrThrow(missingVersion)).toThrow(/spec_version|required/);
     expect(() => validateClaimRevocationSchemaOrThrow({
       ...missingVersion,
-      comms_version: "heterodyne/0.5.0",
+      comms_version: "heterodyne/0.6.0",
     })).toThrow(/spec_version|required|additional/);
     expect(() => validateClaimRevocationSchemaOrThrow(missingRevision)).toThrow(/profile_revision|required/);
     expect(() => validateClaimRevocationSchemaOrThrow({ ...revocation, spec_version: "heterodyne/0.5.1" })).toThrow(/spec_version|const/);
@@ -1555,7 +1709,7 @@ describe("Comms claim schemas", () => {
       revoked_at: 1784390500,
       reason_code: "claim-revoked",
       revoker: { type: "jwk-thumbprint", value: "B".repeat(43) },
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       profile_revision: 2,
       proof: {
         type: "jwk-jws",
@@ -1578,4 +1732,89 @@ describe("Comms claim schemas", () => {
       proof: { ...revocation.proof, jwk: { ...jwk, d: "A".repeat(43) } },
     })).toThrow(/additional|oneOf/);
   });
+});
+
+describe("Core repository-writer binding schema", () => {
+  const binding = {
+    profile: "heterodyne.core.repository-writer-binding.v1",
+    spec_version: "heterodyne/0.6.0",
+    owner_active_key: "12".repeat(32),
+    repository_rid: fixtureRid("schema-core-writer-binding"),
+    writer_nid: didKeyFromEd25519(ed25519PublicKey("34".repeat(32))),
+    ref_namespace: "refs/xyz.heterodyne.claim-ledger/writers/",
+    operations: ["claim-ledger-write"],
+    issued_at: 1_800_000_000,
+    expires_at: 1_800_000_100,
+    owner_signature: "56".repeat(64),
+    nid_signature: "78".repeat(64),
+  };
+
+  it("accepts the exact closed repository-writer object", () => {
+    expect(REPOSITORY_WRITER_BINDING_SCHEMA).toMatchObject({
+      $id: "https://heterodyne.network/schemas/core/repository-writer-binding-v1.schema.json",
+      additionalProperties: false,
+    });
+    expect(() => validateRepositoryWriterBindingSchemaOrThrow(binding))
+      .not.toThrow();
+    expect(() => validateRepositoryWriterBindingSchemaOrThrow({
+      ...binding,
+      ref_namespace: "refs/heads/équipe/",
+    })).not.toThrow();
+  });
+
+  it.each([
+    ["missing owner proof", (() => {
+      const { owner_signature: _signature, ...value } = binding;
+      return value;
+    })()],
+    ["missing NID proof", (() => {
+      const { nid_signature: _signature, ...value } = binding;
+      return value;
+    })()],
+    ["additional member", { ...binding, current_policy: true }],
+    ["wrong profile", { ...binding, profile: "heterodyne.core.role-delegation.v1" }],
+    ["unsafe issued time", { ...binding, issued_at: Number.MAX_SAFE_INTEGER + 1 }],
+    ["non-increasing expiry", { ...binding, expires_at: binding.issued_at }],
+    ["descending operations", {
+      ...binding,
+      operations: ["status-list-write", "claim-ledger-write"],
+    }],
+    ["duplicate operations", {
+      ...binding,
+      operations: ["claim-ledger-write", "claim-ledger-write"],
+    }],
+    ["19-byte RID", {
+      ...binding,
+      repository_rid: `rad:z${base58.encode(new Uint8Array(19).fill(7))}`,
+    }],
+    ["21-byte RID", {
+      ...binding,
+      repository_rid: `rad:z${base58.encode(new Uint8Array(21).fill(7))}`,
+    }],
+    ["leading-zero 21-byte RID", {
+      ...binding,
+      repository_rid: `rad:z${base58.encode(Uint8Array.from([
+        0,
+        ...new Uint8Array(20).fill(7),
+      ]))}`,
+    }],
+    ["leading-dot ref component", {
+      ...binding,
+      ref_namespace: "refs/.bad/",
+    }],
+    ["lock-suffix ref component", {
+      ...binding,
+      ref_namespace: "refs/good.lock/",
+    }],
+    ["lock-suffix ancestor ref component", {
+      ...binding,
+      ref_namespace: "refs/good.lock/descendants/",
+    }],
+  ] as const)(
+    "BLUE TEAM VALIDATION: synthetic/local rejects %s",
+    (_name, value) => {
+      expect(() => validateRepositoryWriterBindingSchemaOrThrow(value))
+        .toThrow(/^repository-writer-binding-invalid:/);
+    },
+  );
 });

@@ -10,9 +10,25 @@ import {
   QUALIFIED_VERSION,
 } from "./family.js";
 import { jcsCanonicalize } from "./jcs.js";
+import {
+  isCanonicalCoreGitRefNamespace,
+  isCanonicalCoreRepositoryRid,
+} from "./core-policy.js";
 import type { DocumentId, Vector } from "./types.js";
 
 const REGISTRY_REASON_CODES = reasonCodeValues();
+const REGISTRY_INVARIANTS = (
+  JSON.parse(readFileSync(resolve(
+    dirname(fileURLToPath(import.meta.url)),
+    "../../../registry/security-invariants.json",
+  ), "utf8")) as {
+    security_invariants: Array<{ id: string; owner: DocumentId }>;
+  }
+).security_invariants;
+const REGISTRY_INVARIANT_IDS = REGISTRY_INVARIANTS.map(({ id }) => id);
+const INVARIANT_OWNER = new Map(REGISTRY_INVARIANTS.map(({ id, owner }) => [id, owner]));
+
+export const CURRENT_VECTOR_SCHEMA_VERSION = "3.0.0" as const;
 
 export const VECTOR_SCHEMA = {
   type: "object",
@@ -23,6 +39,8 @@ export const VECTOR_SCHEMA = {
     "owner_document",
     "spec_version",
     "spec_refs",
+    "invariants",
+    "reason_codes",
     "description",
     "direction",
     "input",
@@ -30,7 +48,7 @@ export const VECTOR_SCHEMA = {
   ],
   properties: {
     vector_id: { type: "string", minLength: 1 },
-    vector_schema_version: { type: "string", pattern: "^\\d+\\.\\d+\\.\\d+$" },
+    vector_schema_version: { const: CURRENT_VECTOR_SCHEMA_VERSION },
     owner_document: {
       type: "string",
       enum: ["core", "assurance", "comms", "control", "social", "workspace"],
@@ -99,6 +117,18 @@ export const VECTOR_SCHEMA = {
         pattern: `^heterodyne:${FAMILY_VERSION.replaceAll(".", "\\.")}#[a-z0-9]+(?:-[a-z0-9]+)*$`,
       },
     },
+    invariants: {
+      type: "array",
+      minItems: 1,
+      uniqueItems: true,
+      items: { type: "string", enum: REGISTRY_INVARIANT_IDS },
+    },
+    reason_codes: {
+      type: "array",
+      maxItems: 1,
+      uniqueItems: true,
+      items: { type: "string", enum: REGISTRY_REASON_CODES },
+    },
     description: { type: "string", minLength: 1 },
     direction: { type: "string", enum: ["produce", "consume", "round-trip"] },
     input: { type: "object", additionalProperties: true, required: [] },
@@ -120,6 +150,7 @@ export const VECTOR_SCHEMA = {
       },
       then: {
         properties: {
+          reason_codes: { type: "array", minItems: 1, maxItems: 1 },
           expected_output: {
             type: "object",
             required: ["verdict", "reason_code"],
@@ -129,6 +160,11 @@ export const VECTOR_SCHEMA = {
             },
             additionalProperties: true,
           },
+        },
+      },
+      else: {
+        properties: {
+          reason_codes: { type: "array", maxItems: 0 },
         },
       },
     },
@@ -142,6 +178,10 @@ const schemasRoot = resolve(
   dirname(fileURLToPath(import.meta.url)),
   "../../../schemas/comms",
 );
+const coreSchemasRoot = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../../schemas/core",
+);
 const controlSchemasRoot = resolve(
   dirname(fileURLToPath(import.meta.url)),
   "../../../schemas/control",
@@ -151,6 +191,12 @@ function readSchema(name: string): AnySchema {
   return JSON.parse(readFileSync(resolve(schemasRoot, name), "utf8")) as AnySchema;
 }
 
+function readCoreSchema(name: string): AnySchema {
+  return JSON.parse(
+    readFileSync(resolve(coreSchemasRoot, name), "utf8"),
+  ) as AnySchema;
+}
+
 function readControlSchema(name: string): AnySchema {
   return JSON.parse(
     readFileSync(resolve(controlSchemasRoot, name), "utf8"),
@@ -158,6 +204,9 @@ function readControlSchema(name: string): AnySchema {
 }
 
 export const KEY_CLAIM_SCHEMA = readSchema("key-claim-v1.schema.json");
+export const REPOSITORY_WRITER_BINDING_SCHEMA = readCoreSchema(
+  "repository-writer-binding-v1.schema.json",
+);
 export const KEY_CLAIM_REVOCATION_SCHEMA = readSchema("key-claim-revocation-v1.schema.json");
 export const CLAIM_LEDGER_RECORD_SCHEMA = readSchema("claim-ledger-record-v1.schema.json");
 export const OIDC_ISSUANCE_RECORD_SCHEMA = readSchema("oidc-issuance-record-v1.schema.json");
@@ -220,6 +269,11 @@ const validateOidcContinuityManifest = commsSchemaAjv.compile(OIDC_CONTINUITY_MA
 const validateOneTimeInvite = commsSchemaAjv.compile(ONE_TIME_INVITE_SCHEMA);
 const validateOneTimeInviteResponse = commsSchemaAjv.compile(ONE_TIME_INVITE_RESPONSE_SCHEMA);
 
+const coreSchemaAjv = new Ajv({ allErrors: true, strict: false });
+const validateRepositoryWriterBinding = coreSchemaAjv.compile(
+  REPOSITORY_WRITER_BINDING_SCHEMA,
+);
+
 const controlSchemaAjv = new Ajv({ allErrors: true, strict: false });
 controlSchemaAjv.addSchema(CONTROL_CAPABILITY_SET_SCHEMA);
 const validateControlCapabilitySet = controlSchemaAjv.getSchema(
@@ -279,7 +333,34 @@ export function validateVectorOrThrow(value: unknown): asserts value is Vector {
   if (!validate(value)) {
     throw new Error(formatErrors(validate.errors ?? []));
   }
+  validateTraceability(value);
   validateFamilyMetadata(value);
+}
+
+function validateTraceability(vector: Vector): void {
+  if (!isStrictlySorted(vector.invariants)) {
+    throw new Error("invariants must be sorted and unique");
+  }
+  if (vector.invariants.some((id) => INVARIANT_OWNER.get(id) !== vector.owner_document)) {
+    throw new Error("invariant owner must match owner_document");
+  }
+  if (!isStrictlySorted(vector.reason_codes)) {
+    throw new Error("reason_codes must be sorted and unique");
+  }
+  const expectedReason = vector.expected_output.verdict === "reject"
+    ? vector.expected_output.reason_code
+    : undefined;
+  if (
+    expectedReason === undefined && vector.reason_codes.length !== 0
+    || typeof expectedReason === "string"
+      && (vector.reason_codes.length !== 1 || vector.reason_codes[0] !== expectedReason)
+  ) {
+    throw new Error("reason_codes must equal the exact expected rejection reason");
+  }
+}
+
+function isStrictlySorted(values: readonly string[]): boolean {
+  return values.every((value, index) => index === 0 || values[index - 1]! < value);
 }
 
 export function validateOneTimeInviteSchemaOrThrow(value: unknown): void {
@@ -293,6 +374,57 @@ export function validateOneTimeInviteResponseSchemaOrThrow(value: unknown): void
   assertJcsInput(value);
   if (!validateOneTimeInviteResponse(value)) {
     throw new Error(`one-time-invite-response-invalid: ${formatErrors(validateOneTimeInviteResponse.errors ?? [])}`);
+  }
+}
+
+export function validateRepositoryWriterBindingSchemaOrThrow(
+  value: unknown,
+): void {
+  try {
+    jcsCanonicalize(value);
+  } catch (error) {
+    throw new Error(
+      `repository-writer-binding-invalid: ${
+        error instanceof Error ? error.message : "invalid JCS value"
+      }`,
+    );
+  }
+  if (!validateRepositoryWriterBinding(value)) {
+    throw new Error(
+      `repository-writer-binding-invalid: ${formatErrors(
+        validateRepositoryWriterBinding.errors ?? [],
+      )}`,
+    );
+  }
+  const binding = value as Readonly<{
+    repository_rid: string;
+    issued_at: number;
+    expires_at: number;
+    operations: readonly string[];
+  }>;
+  if (!isCanonicalCoreRepositoryRid(binding.repository_rid)) {
+    throw new Error(
+      "repository-writer-binding-invalid: repository_rid must be a canonical 20-byte Radicle RID",
+    );
+  }
+  const refNamespace = (value as Readonly<{ ref_namespace: string }>)
+    .ref_namespace;
+  if (!isCanonicalCoreGitRefNamespace(refNamespace)) {
+    throw new Error(
+      "repository-writer-binding-invalid: ref_namespace must be a canonical Git ref namespace",
+    );
+  }
+  if (!Number.isSafeInteger(binding.issued_at) ||
+      !Number.isSafeInteger(binding.expires_at) ||
+      binding.expires_at <= binding.issued_at) {
+    throw new Error(
+      "repository-writer-binding-invalid: expires_at must be greater than issued_at and both times must be safe integers",
+    );
+  }
+  if (!isStrictlySorted(binding.operations)) {
+    throw new Error(
+      "repository-writer-binding-invalid: operations must be sorted and unique",
+    );
   }
 }
 

@@ -3,7 +3,7 @@
 Document ID: `workspace`
 
 Workspace is a section of the Heterodyne specification and is governed by
-[`heterodyne:0.5.0#core-document-conventions`](heterodyne-core.md#core-document-conventions), which fixes the family version,
+[`heterodyne:0.6.0#core-document-conventions`](heterodyne-core.md#core-document-conventions), which fixes the family version,
 the registry pin, release status, BCP 14 usage, and the anchor and reference
 forms.
 
@@ -31,7 +31,7 @@ relays and ordinary Radicle nodes do not interpret Workspace objects.
 <a id="workspace-conventions"></a>
 ## 2. Conventions and data model
 
-Workspace JSON objects follow [`heterodyne:0.5.0#core-canonical-json`](heterodyne-core.md#core-canonical-json).
+Workspace JSON objects follow [`heterodyne:0.6.0#core-canonical-json`](heterodyne-core.md#core-canonical-json).
 
 `workspace_key`, account identifiers, device keys, and signing keys are
 lowercase 64-character hexadecimal secp256k1 x-only public keys. Human-facing
@@ -41,17 +41,130 @@ in a Workspace object. `policy_head`, `authority_checkpoint`, `checkpoint_id`,
 and envelope digests are lowercase 64-character SHA-256 values. Radicle
 repository identifiers begin with `rad:`. Git object IDs are lowercase 40-character
 SHA-1 values because the adopted Radicle substrate uses that object format;
-[`heterodyne:0.5.0#core-security`](heterodyne-core.md#core-security) bounds what that format is trusted for.
+[`heterodyne:0.6.0#core-security`](heterodyne-core.md#core-security) bounds what that format is trusted for.
 
-Every signed object contains `spec_version:"heterodyne/0.5.0"`, its exact
+Every signed object contains `spec_version:"heterodyne/0.6.0"`, its exact
 `object_type`, `workspace_key`, `policy_head`, nullable `predecessor`,
 `authority_checkpoint`, `repository_rid`, `repository_head`, and `issued_at`.
 `workspace_key` is the workspace's current active Nostr public key and the
-exact BIP-340 verification key for `signature`. A bare key with no Assurance
-state is complete baseline authority.
+exact BIP-340 verification key for `signature`.
+
+<a id="workspace-optional-assurance"></a>
+A Workspace MAY be created and operated with its active Nostr persona key and
+no Assurance claim. A Workspace policy MAY activate the closed
+`heterodyne.workspace.assurance.v1` profile after the active key has a
+window-complete verified enrollment. Absence of that profile is baseline, not
+an error.
+
+When present, `workspace-policy-v1.assurance` is a closed object containing
+exactly `profile:"heterodyne.workspace.assurance.v1"`, a lowercase
+64-character-hex `inception_event_id`, and `required_state:"verified"`. It
+does not replace the Workspace active key, governance approvals, or explicit
+authorization objects.
+
+Activation requires both the ordinary valid Workspace policy transition and
+an embedding-supplied verification authority whose current, atomically
+snapshotted result is exactly:
+
+```json
+{
+  "state": "verified",
+  "active_key": "<workspace_key>",
+  "inception_event_id": "<policy assurance inception_event_id>",
+  "evaluated_at": 1720000400
+}
+```
+
+The illustrative `evaluated_at` value above is a nonnegative JSON integer,
+not a string. The verification authority and its trusted clock are local
+embedding inputs, not Workspace request members or wire objects. Their
+identities MUST be fixed when the resolver is configured, each result MUST be
+captured atomically as a closed value, and lazy, substituted, or additional
+members MUST be rejected. A request-provided cold root, state label, proof
+boolean, or evaluation time has no authority and violates a closed request
+shape when present. The embedding also fixes a fourth callback that attests
+completed profile-changing transitions; this callback and the verification,
+removal-authorization, and trusted-clock callbacks are captured once as exact
+own data members of the same opaque authority.
+
+Once the profile is active, a consumer MUST revalidate that exact binding
+when accepting each current Workspace state and immediately before every
+security-sensitive authority effect: grant activation, invitation acceptance,
+policy change, successor reauthorization, resource-key issuance or delivery,
+publicization, federation change, joint or root governance, and archive. A
+missing verification authority or a pending, stale, unavailable, mismatched,
+or non-closed result rejects the state or effect with
+`workspace-assurance-state-required`. A policy without the profile skips this
+optional verification boundary and MUST NOT require that authority.
+
+Ordinary active-key governance alone MUST NOT weaken, replace, or remove an
+active profile. Replacement additionally requires verified activation of the
+new profile. Replacement or removal additionally requires the current
+profile's embedding-supplied authority to return exactly
+`{"authorized":true,"transition_digest":"<digest>","evaluated_at":1720000400}`.
+The `transition_digest` is lowercase-hex SHA-256 of the JCS encoding of this
+exact closed object, where each assurance value is its exact closed policy
+object or JSON `null`:
+
+```json
+{
+  "profile": "heterodyne.workspace.assurance-transition.v1",
+  "workspace_key": "<workspace_key>",
+  "previous_policy_head": "<transition predecessor or null>",
+  "next_policy_head": "<next policy_head>",
+  "previous_assurance": "<previous assurance object or null>",
+  "next_assurance": "<next assurance object or null>"
+}
+```
+
+The illustrative assurance values above stand for JSON object or `null`
+values, not strings. `previous_policy_head` is exactly the transition's
+nullable `predecessor`, `next_policy_head` is exactly its `policy_head`, and
+`previous_assurance` MUST be derived from the exact authenticated history entry
+whose `policy_head` equals that predecessor; it MUST NOT be taken merely from
+the last in-memory view. The assurance values are the profiles in those two
+policy states. The
+ordinary Workspace governance decision and the
+optional authority therefore authorize the same complete canonical policy
+transition; a digest, time, or authorization result for any other transition
+MUST be rejected with `workspace-assurance-state-required`.
+
+After the applicable current enrollment and removal checks succeed, every
+transition that changes `assurance` from one profile value to another,
+including activation, replacement, and removal, MUST obtain a durable result
+from the embedding's transition-attestation callback. The callback input is
+the exact transition object above together with its `transition_digest` and
+the same sampled `evaluated_at`. Its result is this exact closed object:
+
+```json
+{
+  "profile": "heterodyne.workspace.assurance-authorization.v1",
+  "suite": "bip340",
+  "verification_key": "<configured Assurance-history key>",
+  "workspace_key": "<workspace_key>",
+  "previous_policy_head": "<transition predecessor or null>",
+  "next_policy_head": "<next policy_head>",
+  "previous_assurance": "<previous assurance object or null>",
+  "next_assurance": "<next assurance object or null>",
+  "transition_digest": "<digest>",
+  "evaluated_at": 1720000400,
+  "signature": "<BIP-340 signature>"
+}
+```
+
+The illustrative assurance values are again objects or JSON `null`, not
+strings. `signature` is lowercase 128-character hex over
+[`heterodyne:0.6.0#core-proof-bytes`](heterodyne-core.md#core-proof-bytes) for
+domain `heterodyne-workspace-assurance-authorization-v1` and the exact object
+above without `signature`. The receipt MUST exactly repeat every transition
+field, digest, and clock sample supplied to the callback; its key and signature
+MUST be valid; and open, accessor-backed, stale, mismatched, or malformed
+results MUST be rejected. This additional callback and portable signed result
+are an intentional cost of allowing a bare current policy to validate durable
+history without retaining the former live verification authority.
 
 The signature covers the
-[`heterodyne:0.5.0#core-proof-bytes`](heterodyne-core.md#core-proof-bytes) bytes for domain
+[`heterodyne:0.6.0#core-proof-bytes`](heterodyne-core.md#core-proof-bytes) bytes for domain
 `heterodyne-workspace-object-v1`. Its bound members are
 `authority_checkpoint`, `body`, `issued_at`, `object_type`, `policy_head`,
 `predecessor`, `repository_head`, `repository_rid`, `spec_version`, and
@@ -81,13 +194,59 @@ authority. The boundary authenticates one closed
 `spec_version`, `resolver_policy`, `resolver_version`, `workspace_key`,
 `repository_rid`, `canonical_head`, `canonical_ancestry`, `observed_heads`,
 `fork_status`, `policy_head`, nullable `predecessor`, `authority_checkpoint`,
-`object_ids`, `object_set_digest`, `observed_at`, `expires_at`, and
+`policy_history`, `object_ids`, `object_set_digest`, `observed_at`, `expires_at`, and
 `signature`. `signature` is made by a locally configured trusted repository
 verification key over proof bytes for domain
 `heterodyne-workspace-repository-view-v1`. The configured policy and minimum
 resolver version MUST establish the Radicle repository boundary's canonical
 RID, reachable current head, complete fork observation, checkpoint, trusted
-observation time, and complete signed object set.
+observation time, and complete signed object set. It MUST derive every
+`policy_history` entry from the exact closed, active-key-signed historical
+`workspace-policy-v1` on that canonical repository ancestry and MUST reject a
+history whose signature, head, predecessor, or assurance profile disagrees
+with that policy object.
+
+The resolver separately configures the BIP-340 public trust roots permitted to
+verify durable Assurance-history receipts. Those roots MUST be locally fixed,
+closed, unique, and disjoint from repository-view attestation keys. A
+repository signature, repository operator, caller-supplied key, or ordinary
+Workspace governance signature alone MUST NOT create or validate an Assurance
+receipt.
+
+`policy_history` is the nonempty, complete genesis-to-current array of closed
+entries containing exactly `policy_head`, nullable `predecessor`, `assurance`,
+and nullable `authorization`. Each `assurance` value is either JSON `null` or the exact closed
+profile defined at [`heterodyne:0.6.0#workspace-optional-assurance`](#workspace-optional-assurance).
+`authorization` is exactly the signed durable receipt above when that entry
+changes the prior entry's assurance value and is JSON `null` otherwise. A
+receipt's `evaluated_at` MUST be no later than the signed repository view's
+`observed_at`.
+The first entry has null `predecessor`; every later entry's `predecessor` is
+exactly the immediately prior entry's unique `policy_head`; and the final
+entry's head, predecessor, and assurance profile exactly equal the current
+view and current `workspace-policy-v1`. A partial, reordered, duplicated,
+forked, or profile-inconsistent history is invalid. Because the repository
+verification signature covers this complete array and the separately trusted
+receipt signature supplies the optional authority decision, a new resolver can
+verify the same consecutive profile transitions even when it did not observe
+each intermediate current view.
+
+The consumer MUST verify the durable receipt for every assurance-changing
+transition before accepting a fresh view. For a resolver that already accepted
+a generation, that generation's complete policy history MUST be an exact
+prefix of every later accepted history; the consumer MAY trust that exact
+prefix and verify only newly appended receipts. A changed prior profile,
+predecessor, or receipt fails with `workspace_repository_invalid`; a missing,
+extra, forged, wrong-key, stale, or transition-mismatched receipt fails with
+`workspace-assurance-state-required`.
+
+After historical verification, a current policy with an active profile still
+requires live current-state revalidation through the opaque authority. A
+current policy with no profile MUST NOT re-run former enrollment, removal, or
+attestation callbacks: its durable history stands only on the separately
+verified signed receipts. Thus skipping an intermediate view, recreating the
+resolver, or later refreshing a bare policy cannot erase dual authority and
+cannot turn historical Assurance into a permanent live callback dependency.
 
 `object_ids` is the unique, strictly increasing byte-sorted array of SHA-256
 JCS object identifiers; set-equivalent reordering is invalid.
@@ -131,7 +290,7 @@ status are carriers or service roles, not Workspace governance authority.
 ## 3. Workspace identity and governance
 
 A workspace is an independently governed Core active-key account under
-[`heterodyne:0.5.0#core-active-key-persona`](heterodyne-core.md#core-active-key-persona).
+[`heterodyne:0.6.0#core-active-key-persona`](heterodyne-core.md#core-active-key-persona).
 Human and organization accounts use the same wire model. The current
 `workspace_key` is the workspace npub and Marmot account identity. Multiple
 workspaces operated by one organization use distinct active keys when they
@@ -142,7 +301,10 @@ their Nostr identities.
 The stable workspace repository contains exactly one current
 `workspace-manifest-v1`, the root `workspace-policy-v1`, and the append-only
 history from which both are derived. Its canonical authority branch is the one
-unambiguous policy-approved predecessor and checkpoint chain. A public
+unambiguous policy-approved predecessor and checkpoint chain. The repository
+verification boundary exposes that complete consecutive policy/profile chain
+as the signed current view's `policy_history`; an implementation MUST NOT
+substitute a process-local last-seen profile for authenticated history. A public
 workspace MAY advertise this repository
 from its public account profile. A private workspace has no required public
 projection; an invitation or relationship conveys the active workspace key,
@@ -152,13 +314,14 @@ device, and leaf binding needed by the recipient.
 Human delegates and agents request organization-key actions through an exact
 current Workspace policy decision and, where remote signing is used, the
 account-specific NIP-46/OIDC authorization in
-[`heterodyne:0.5.0#control-signer-grants`](heterodyne-control.md#control-signer-grants)
+[`heterodyne:0.6.0#control-signer-grants`](heterodyne-control.md#control-signer-grants)
 and current Comms authorization state. The public Workspace proof remains a
 signature by `workspace_key`; private requester identity remains in protected
 audit state unless policy requires disclosure. A signer MUST NOT use
 cross-account fallback, a broader grant, or stale policy state.
 
-Optional Assurance may prove continuity to a successor active key, but it
+An optional Assurance profile may prove continuity to a successor active key,
+but it
 does not alias the old and new workspaces. Succession transfers no role,
 relationship, resource, repository, seed, host, custody, delegate, or
 group-administrator authority automatically. Every surviving subordinate
@@ -248,12 +411,12 @@ role's active and archived event repositories are private Radicle
 repositories as well.
 
 High-volume Marmot traffic MUST NOT accumulate in the stable authority
-repository. It uses the [`heterodyne:0.5.0#comms-marmot-event-repository`](heterodyne-comms.md#comms-marmot-event-repository)
+repository. It uses the [`heterodyne:0.6.0#comms-marmot-event-repository`](heterodyne-comms.md#comms-marmot-event-repository)
 layout and rotates to a fresh repository when either:
 
 - a membership-changing MLS commit establishes a new group epoch; or
 - the active repository reaches the maximum size that
-  [`heterodyne:0.5.0#comms-marmot-event-repository`](heterodyne-comms.md#comms-marmot-event-repository) fixes.
+  [`heterodyne:0.6.0#comms-marmot-event-repository`](heterodyne-comms.md#comms-marmot-event-repository) fixes.
 
 The stable role repository records the new active locator, the immediately
 prior overlap locator, and retained archives. At most one active repository
@@ -268,7 +431,7 @@ authorized peers. Optional Nostr relays carry the exact same signed Marmot
 event bytes and MUST NOT alter, re-sign, translate, or synthesize them.
 
 A private repository-backed relay composes
-[`heterodyne:0.5.0#comms-trusted-seed-private-relay`](heterodyne-comms.md#comms-trusted-seed-private-relay).
+[`heterodyne:0.6.0#comms-trusted-seed-private-relay`](heterodyne-comms.md#comms-trusted-seed-private-relay).
 Its current ACL `administrator_account` is the active `workspace_key`; the ACL
 MUST exactly bind the authenticated member account, read/write role, Marmot
 `h`, private RID, seed NID and writer ref, predecessor, group transition, and
@@ -297,12 +460,18 @@ governance capabilities:
 - `govern-delegation`; or
 - `govern-lifecycle`.
 
-Effective authorization is the intersection of the current workspace ceiling,
-each role policy on one unambiguous parent path, current account membership or
-qualifying allowance, current device authorization, resource-local policy,
-and time/key-epoch state. A child role or resource MAY narrow inherited
-authority. It MUST NOT widen authority beyond the workspace ceiling. An
-explicit denial, expiry, suspension, or revocation at any level wins.
+The authenticated object set MUST contain exactly one root role. That root
+role's signed `allowed_capabilities` is the workspace-wide capability ceiling.
+The repository resolver MUST derive and retain that ceiling in its opaque
+current-state handle; callers, carriers, hosts, repository writers, locators,
+and transports cannot supply or widen it. Effective authorization is the
+intersection of that retained root ceiling, each signed role policy on one
+unambiguous parent path, one current signed grant or qualifying allowance,
+current device authorization, resource-local policy, and time/key-epoch
+state. A child role, grant, relationship, or resource MAY narrow inherited
+authority. It MUST NOT widen authority beyond the root or any ancestor;
+attempted widening fails with `capability_escalation`. An explicit denial,
+expiry, suspension, or effective revocation at any level wins.
 
 If a client cannot construct one unambiguous current path, or encounters
 conflicting or incomparable valid heads, it MUST reject the operation with
@@ -315,9 +484,10 @@ role membership into resource ACLs. A checkpoint sorts policy heads, active
 grants, revocations, relationships, hosts, trusted-seed NIDs, and resources by
 their binary identifier bytes, then hashes the JCS materialization.
 Every current role has exactly one current checkpoint. The authenticated
-object set may contain multiple roles, but every non-root role MUST resolve a
-complete acyclic parent chain and every grant, resource, relationship, and
-checkpoint MUST bind the role to which it applies. Missing parents, duplicate
+object set may contain multiple roles, but it has exactly one role with a null
+parent and every other role MUST resolve a complete acyclic path to that root.
+Every grant, resource, relationship, and checkpoint MUST bind the role to
+which it applies. Missing or multiple roots, missing parents, duplicate
 checkpoints, cross-role materializations, or a child that widens capability,
 visibility, delegation, history, or selected-snapshot authority fail closed.
 Each checkpoint's `role_policy_heads` is the exact unique byte-sorted set of
@@ -354,7 +524,7 @@ generation and rechecks account, device, resource, activation, expiry,
 earliest transition, and revocation state.
 
 The grant-operation digest is SHA-256 of
-[`heterodyne:0.5.0#core-proof-bytes`](heterodyne-core.md#core-proof-bytes)
+[`heterodyne:0.6.0#core-proof-bytes`](heterodyne-core.md#core-proof-bytes)
 for domain `heterodyne-workspace-grant-operation-v1` over the complete
 closed grant except `signature` and `approval_ids`. This breaks the circular
 dependency while binding every operation term that approvals authorize.
@@ -398,25 +568,53 @@ member with BIP-340 proof bytes for domain
 of proof bytes for domain `heterodyne-workspace-invitation-nonce-v1` over the
 grant ID, workspace key, subject account, exact device and leaf, and nonce
 opening. Every binding MUST equal the current signed grant and authenticated
-repository view. A configured authoritative atomic replay store reserves that
-workspace/grant/commitment tuple while activation is evaluated. It commits
-the reservation atomically only after sampling its configured trusted clock
-inside the commit operation and rerunning one complete pure activation
-validation over the immutable request and exact latest view at that new time.
+repository view. A configured authoritative durable CAS replay store reserves
+that workspace/grant/commitment tuple while activation is evaluated. The
+resolver constructor captures the store callbacks; later replacement of host
+methods cannot alter the authority. Each closed store record binds the exact
+acceptance, resolver-authority fingerprint, root role and capability ceiling,
+policy head, predecessor, authority checkpoint, and repository-view
+fingerprint, as well as the exact store key, activation binding, execution
+token, terminal output, and domain-separated terminal-output digest. Its state
+is `prepared`, `executing`, `committed`, `rejected`, or `indeterminate`. The
+resolver commits the reservation atomically only after
+sampling its configured trusted clock inside the commit operation and
+rerunning one complete pure activation validation over the immutable request
+and exact latest view at that new time.
 That validation rechecks signed policy freshness, effective authorization,
 membership and exact successor bindings, grant activation and expiry,
 grant/account/device/resource/host revocations, capability/resource/
 delegability intersections, and every approval's time, signature, signer, and
-threshold. Only then does the store confirm the exact reserved holder and
-perform the atomic transition. Any failure releases the reservation so a
-still-valid acceptance is not permanently consumed; no partial activation
-takes effect. The store also releases or aborts an uncommitted reservation at
-its signed expiry and never commits after that expiry. The committed
-acceptance is executable exactly once; a caller-supplied acceptance ID,
-consumed-ID list, replay boolean, or cached time has no authority. Invitation
+threshold. Every external store load is followed by exact current-state,
+root-ceiling, checkpoint, and view-fingerprint revalidation before the next
+acquire or activation effect. Only then does the store confirm the exact
+prepared holder, atomically enter `executing`, and persist the terminal. A CAS
+success response has no authority by itself: the resolver MUST reload and
+match the complete closed executing record before any effect and reload the
+complete closed committed record before exposing acceptance. Missing,
+malformed, or binding-unequal readback is indeterminate and cannot activate.
+A validation failure
+records a retryable rejection so a still-valid exact acceptance may prepare
+again; no partial activation takes effect. An unknown acquire response,
+unknown post-effect outcome, callback exception after possible acquisition,
+or terminal-write failure is fail-closed and leaves an absorbing executing or
+`indeterminate` fence. It cannot activate or repeat the effect until bounded
+reconciliation proves an exact terminal. The store never commits after signed
+expiry and retains a committed terminal bound to the exact signed acceptance
+and activation request. Only after revalidating the exact minting authority,
+opaque holder, current root ceiling, checkpoint, repository-view fingerprint,
+and durable terminal does an exact committed retry return a byte-identical
+cached terminal without a second activation. The resolver recomputes that
+exact closed output from current signed state and matches it byte-for-byte;
+a self-consistent stored output and digest alone do not authorize. A changed
+acceptance, mismatched
+request, cross-authority holder, terminal conflict, or already-prepared
+attempt fails with `workspace_replay`. A caller-supplied
+acceptance ID, consumed-ID list, replay boolean, or cached time has no
+authority. Invitation
 material for a private role is delivered through an authenticated two-member
 conversation under
-[`heterodyne:0.5.0#comms-direct-messages`](heterodyne-comms.md#comms-direct-messages) or an existing authorized private
+[`heterodyne:0.6.0#comms-direct-messages`](heterodyne-comms.md#comms-direct-messages) or an existing authorized private
 repository.
 
 A `role-revocation-v1` may revoke a grant, account, device, relationship, host,
@@ -527,7 +725,7 @@ IDs, custody scope, priority, and expiry. `service-advertisement-v1` names its
 operator account separately from workspace governance and advertises the
 higher-level service and native profile. Endpoint strings are data, not
 authorization; consumers apply Core repository and seed trust under
-[`heterodyne:0.5.0#core-seed-nid-trust`](heterodyne-core.md#core-seed-nid-trust) and MUST NOT fetch a locator before its
+[`heterodyne:0.6.0#core-seed-nid-trust`](heterodyne-core.md#core-seed-nid-trust) and MUST NOT fetch a locator before its
 containing private object is authorized and decrypted.
 
 Organization-default hosts are ordered in workspace policy. Roles inherit
@@ -558,7 +756,7 @@ commit. Neither value grants Workspace governance or repository ownership.
 
 A grant belongs to an active account. Each authorized device is a separate,
 device-local MLS leaf bound to that account through standard Marmot account
-proofs under [`heterodyne:0.5.0#comms-marmot-participation`](heterodyne-comms.md#comms-marmot-participation).
+proofs under [`heterodyne:0.6.0#comms-marmot-participation`](heterodyne-comms.md#comms-marmot-participation).
 Devices MUST NOT share leaf private keys. Removing a device advances the role
 MLS epoch; removing an account removes all its leaves and advances the epoch.
 Implementers MUST apply the same section's KeyPackage admission,
@@ -585,7 +783,7 @@ multiple roles may deliver the same current resource key independently
 through each role.
 
 A `resource-key-envelope-v1` is one
-[`heterodyne:0.5.0#core-key-envelope`](heterodyne-core.md#core-key-envelope)
+[`heterodyne:0.6.0#core-key-envelope`](heterodyne-core.md#core-key-envelope)
 key envelope. Workspace supplies the five instantiation choices:
 
 | Choice | Workspace value |
@@ -696,9 +894,10 @@ global deletion.
 <a id="workspace-freshness"></a>
 ## 13. Freshness, offline work, and conflicts
 
-Authority mutations - grants, invitations, policy changes, key issuance,
-publicization, federation, and governance - use the authorization-view window
-defined by [`heterodyne:0.5.0#comms-authorization-freshness`](heterodyne-comms.md#comms-authorization-freshness). Workspace adds one
+Authority mutations - grants, invitations, policy changes, successor
+reauthorization, resource-key issuance and delivery, publicization,
+federation, governance, and archive - use the authorization-view window
+defined by [`heterodyne:0.6.0#comms-authorization-freshness`](heterodyne-comms.md#comms-authorization-freshness). Workspace adds one
 relaxed window for ordinary code, content, and discussion writes: 86,400
 seconds.
 
@@ -707,9 +906,9 @@ and MUST NOT lengthen it. At every effect, the effective maximum age is the
 minimum of the locally configured resolver maximum and the signed
 `ordinary_write_max_age` for ordinary writes or
 `authority_mutation_max_age` for activation, invitations, successor
-reauthorization, joint governance, and other authority effects. Bilateral
-allowance evaluation and resource-key delivery use the ordinary-operation
-bound while still rechecking current signed authority. The operation must
+reauthorization, resource-key delivery, joint governance, and other authority
+effects. Bilateral allowance evaluation uses the ordinary-operation bound
+while still rechecking current signed authority. The operation must
 reach a conforming validator while its referenced signed checkpoint is within
 the effective window. A
 self-declared event time does not extend freshness. A resource-specific
@@ -735,7 +934,7 @@ object types have these responsibilities:
 | Object type | Stable purpose |
 |---|---|
 | `workspace-manifest-v1` | Active workspace-key binding, root-policy locator, visibility, and intentional public role locators. |
-| `workspace-policy-v1` | Governance thresholds, ceilings, creation/federation rules, default hosts, and freshness maxima. |
+| `workspace-policy-v1` | Governance thresholds, ceilings, creation/federation rules, default hosts, freshness maxima, and an optional closed Assurance profile. |
 | `role-manifest-v1` | Opaque role ID, parent, visibility, allowed capabilities, history mode, MLS binding, and event repositories. |
 | `role-grant-v1` | Active-account grant, approvals, delegation, scope, activation, expiry, device/leaf-bound invitation, and evidence. |
 | `role-revocation-v1` | Targeted revocation, effective time, authority evidence, and reason. |
@@ -758,7 +957,10 @@ Comms profile.
 
 Conformance vectors use the registry-allocated reason codes below. Wire
 protocols MAY map them to local or upstream errors, but MUST preserve distinct
-outcomes where disclosure or retry behavior differs.
+outcomes where disclosure or retry behavior differs, except where the
+[`heterodyne:0.6.0#core-conformance`](heterodyne-core.md#core-conformance)
+reason-code granularity rules flag a code `intentionally_coarse`, which
+governs.
 
 | Reason code | Meaning |
 |---|---|
@@ -775,14 +977,15 @@ outcomes where disclosure or retry behavior differs.
 | `resource_unknown` | The authorized responder has no such resource. |
 | `host_unauthorized` | The responder is not an authorized custodian for the resource/checkpoint. |
 | `private_topology_disclosed` | A public projection correlates concealed topology. |
-| `workspace_replay` | A nonce, approval, relationship, grant, or envelope was replayed. |
+| `workspace_replay` | A nonce, approval, relationship, grant, or envelope was reused with mismatched bindings or before a consuming transition reached its exact committed terminal. |
+| `workspace-assurance-state-required` | The optional active Workspace Assurance profile is missing a current exact verified binding or matching dual-authority transition authorization. |
 
 <a id="workspace-security"></a>
 ## 16. Security invariants
 
 The registry binds these exact Workspace invariants. An entry the registry binds to a feature is owed only by an implementation
 claiming that feature, under
-[`heterodyne:0.5.0#core-invariant-scope`](heterodyne-core.md#core-invariant-scope).
+[`heterodyne:0.6.0#core-invariant-scope`](heterodyne-core.md#core-invariant-scope).
 The list below is descriptive:
 
 - **WORKSPACE-I-NO-AMBIENT-AUTHORITY:** Workspace affiliation, Assurance continuity, or active-key succession alone grants no role, relationship, delegate, seed, or resource capability; every subordinate authority requires explicit current-key reauthorization.
@@ -792,10 +995,11 @@ The list below is descriptive:
 - **WORKSPACE-I-AUTHENTICATED-CURRENT-STATE:** Every authority effect consumes only the resolver instance's latest accepted generation and revalidates complete signed Workspace state, transitions, and revocations at effect time.
 - **WORKSPACE-I-INDEPENDENT-RESOURCE-KEYS:** Role MLS state authorizes delivery but never serves as one universal content key for subordinate resources.
 - **WORKSPACE-I-REVOCATION-FUTURE-ONLY:** Revocation blocks future authorization and key delivery without claiming erasure of data or keys already obtained.
-- **WORKSPACE-I-FRESHNESS-BOUNDED:** Ordinary writes use checkpoints no older than 86400 seconds and authority mutations no older than 300 seconds, with policy able only to shorten those bounds.
+- **WORKSPACE-I-FRESHNESS-BOUNDED:** Ordinary writes use checkpoints no older than 86400 seconds and authority mutations no older than the declared authorization-view bound (default 300 seconds, ceiling 86400 seconds), with policy able only to shorten those bounds.
 - **WORKSPACE-I-HOST-AUTHORITY-SEPARATION:** Hosting or trusted-seed availability does not grant governance authority, while key-custody hosts remain explicit confidentiality trust boundaries.
 - **WORKSPACE-I-RADICLE-BACKSTOP:** Every effective role retains an authorized Radicle locator and eligible Radicle-backed relay host independent of optional Nostr relays.
 - **WORKSPACE-I-DEVICE-LEAF-SEPARATION:** Each active-account device has an independently revocable Marmot leaf and receives only envelopes bound to that exact account, device, and leaf.
+- **WORKSPACE-I-OPTIONAL-ASSURANCE:** A Workspace remains valid under a bare active key with no Assurance profile; once an optional Assurance profile is activated, ordinary active-key governance alone cannot weaken, replace, or remove it, and any transition requires matching current Assurance authorization over the same canonical policy-transition digest.
 
 Implementations MUST bound private invitation and KeyPackage processing,
 repository and relay storage, history requests, key-envelope work, and failed
@@ -810,7 +1014,7 @@ inheritance escalation, and joint-governance capture as explicit threats.
 Workspace feature IDs are allocated in
 [`registry/features.json`](registry/features.json), which is the sole
 authority for the set and for each feature's Core and Comms prerequisites.
-Claimed features resolve under [`heterodyne:0.5.0#core-conformance`](heterodyne-core.md#core-conformance).
+Claimed features resolve under [`heterodyne:0.6.0#core-conformance`](heterodyne-core.md#core-conformance).
 
 A Workspace claim that also names Control permits an authorized light device
 to request Workspace operations through Control; Control tokens and RPC
@@ -830,7 +1034,7 @@ transitively includes Core, and adds the baseline Workspace invariants. The
 invariants bound to `workspace.private-role-control.v1`,
 `workspace.resource-key-delivery.v1`, and
 `workspace.radicle-transport-backstop.v1` are owed under
-[`heterodyne:0.5.0#core-invariant-scope`](heterodyne-core.md#core-invariant-scope) whenever those
+[`heterodyne:0.6.0#core-invariant-scope`](heterodyne-core.md#core-invariant-scope) whenever those
 features are claimed, so the profile does not restate them.
 
 <!-- fixture:workspace-strict-profile -->
@@ -847,9 +1051,11 @@ features are claimed, so the profile does not restate them.
     "WORKSPACE-I-INHERITANCE-NARROWS",
     "WORKSPACE-I-PRIVATE-TOPOLOGY",
     "WORKSPACE-I-CARRIER-NOT-AUTHORITY",
+    "WORKSPACE-I-AUTHENTICATED-CURRENT-STATE",
     "WORKSPACE-I-REVOCATION-FUTURE-ONLY",
     "WORKSPACE-I-FRESHNESS-BOUNDED",
-    "WORKSPACE-I-HOST-AUTHORITY-SEPARATION"
+    "WORKSPACE-I-HOST-AUTHORITY-SEPARATION",
+    "WORKSPACE-I-OPTIONAL-ASSURANCE"
   ]
 }
 ```
@@ -860,7 +1066,7 @@ feature and applicable vector is satisfied.
 <a id="workspace-conformance"></a>
 ## 18. Conformance
 
-A Workspace implementation claims the exact `heterodyne/0.5.0` release,
+A Workspace implementation claims the exact `heterodyne/0.6.0` release,
 registry revision and digest, dependencies, provided and required feature IDs,
 and applicable profile IDs. Base conformance requires successful processing
 of every Workspace-owned vector. Optional Control or Social composition is

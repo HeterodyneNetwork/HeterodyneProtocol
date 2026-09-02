@@ -55,7 +55,7 @@ async function signedAcl(
 ): Promise<Record<string, unknown>> {
   const acl = {
     profile: "heterodyne.trusted-seed-acl.v1",
-    spec_version: "heterodyne/0.5.0",
+    spec_version: "heterodyne/0.6.0",
     administrator_account: administratorAccount,
     accounts: [{ account_key: account, roles: ["read", "write"] }],
     h: route,
@@ -193,6 +193,20 @@ describe("trusted private seed admission authority", () => {
     });
     expect(fixture.api.evaluateTrustedSeedAdmission?.(fixture.bundle.authority, capability))
       .toEqual({ verdict: "reject", reason_code: "trusted-seed-request-replay" });
+  });
+
+  it("distinguishes an absent ACL projection from malformed ACL state", async () => {
+    const fixture = await harness();
+    fixture.setState({
+      administrator_account: administratorAccount,
+      acl_candidates: [],
+      previous_acl: null,
+      group_transition: transition,
+      revision: 5,
+    });
+    const capability = fixture.bundle.mintRequestCapability({}, fixture.write);
+    expect(fixture.api.evaluateTrustedSeedAdmission?.(fixture.bundle.authority, capability))
+      .toEqual({ verdict: "reject", reason_code: "trusted-seed-acl-missing" });
   });
 
   it("snapshots every callback result and rejects accessors without invoking them", async () => {

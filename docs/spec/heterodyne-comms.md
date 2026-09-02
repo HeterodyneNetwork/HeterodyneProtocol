@@ -3,7 +3,7 @@
 Document ID: `comms`
 
 Comms is a section of the Heterodyne specification and is governed by
-[`heterodyne:0.5.0#core-document-conventions`](heterodyne-core.md#core-document-conventions), which fixes the family version,
+[`heterodyne:0.6.0#core-document-conventions`](heterodyne-core.md#core-document-conventions), which fixes the family version,
 the registry pin, release status, BCP 14 usage, and the anchor and reference
 forms.
 
@@ -57,10 +57,10 @@ clients MUST NOT silently treat an invalid event as verified. A cold root,
 KERI log, repository ref, storage signer, relay identity, or optional
 Assurance claim MUST NOT substitute for the event's actual NIP-01 author.
 
-Under [`heterodyne:0.5.0#core-version-stamps`](heterodyne-core.md#core-version-stamps), Comms-allocated
-JSON-content kinds carry `"spec_version":"heterodyne/0.5.0"`.
+Under [`heterodyne:0.6.0#core-version-stamps`](heterodyne-core.md#core-version-stamps), Comms-allocated
+JSON-content kinds carry `"spec_version":"heterodyne/0.6.0"`.
 Comms-allocated empty-content kinds carry
-`["spec_version","heterodyne/0.5.0"]`. Adopted upstream events remain unstamped
+`["spec_version","heterodyne/0.6.0"]`. Adopted upstream events remain unstamped
 unless the pinned registry names a stamping profile. Marmot transport and
 unsigned inner application events remain governed by the pinned upstream
 profile and their registered Heterodyne application discriminator.
@@ -69,43 +69,68 @@ profile and their registered Heterodyne application discriminator.
 ## 3. Repository privacy tiers
 
 
-Every repository-carried publication declares one of three trust boundaries,
-which clients MUST present without ambiguity:
+Every repository-carried publication declares one of three confidentiality
+tiers, which clients MUST present without ambiguity. Tier 1 and Tier 2 objects
+are valid Nostr events and are directly cross-compatible with ordinary public
+relays; Tier 3 is defined by Heterodyne private-repository mechanics and has
+no direct Nostr equivalent.
 
-| Tier | Stored form | Trust boundary |
-|---|---|---|
-| Tier 1 | plaintext in a public repository and on ordinary relays | confidential against no one |
-| Tier 2 | plaintext in a private repository | hidden from non-allowed nodes, but readable by every allowed seeder |
-| Tier 3 | NIP-44-v2-profile ciphertext in a public or private repository | confidential against everyone without the audience key, including seeders and full nodes |
+| Tier | Stored form | Nostr analogue | Trust boundary |
+|---|---|---|---|
+| Tier 1 | plaintext in a public repository and on ordinary relays | plaintext post on a public relay | confidential against no one |
+| Tier 2 | NIP-44-v2-profile ciphertext in a public repository and/or on ordinary relays | encrypted post on a public relay | content confidential against everyone without the audience key; distribution graph, membership, timing, and volume public |
+| Tier 3 | NIP-44-v2-profile ciphertext carried only via authorized private-repository interfaces | encrypted post on a members-only relay (no direct equivalent) | content confidential as Tier 2, and ciphertext, audience wraps, rosters, and fetch patterns visible only to allowed nodes |
 
-Before a user relies on a Tier 3 audience, the client MUST disclose that Tier
-3 protects content but not sender identity, recipient identity, audience
+Plaintext in a private repository is a repository-visibility setting, not a
+confidentiality tier. `visibility.allow` mechanics are unchanged: it MUST NOT
+be described as encrypted, end-to-end encrypted, or confidential against
+members; adding an NID to `visibility.allow` grants that node plaintext read
+and replication access and SHOULD require explicit user confirmation; and
+`visibility.allow` MUST NOT be conflated with the repository `delegates`
+governance set. Every allowed seeder reads that plaintext.
+
+Before a user relies on a Tier 2 audience, the client MUST disclose that Tier
+2 protects content but not sender identity, recipient identity, audience
 membership or membership changes, audience-generation linkage, timing, or
-volume. A client MUST NOT label Tier 3 membership-private.
+volume. A client MUST NOT label Tier 2 membership-private.
 
-A client MUST NOT describe Tier 2 as encrypted, end-to-end encrypted, or
-confidential against members. Adding an NID to `visibility.allow` grants that
-node plaintext read and replication access and SHOULD require explicit user
-confirmation. `visibility.allow` MUST NOT be conflated with the repository
-`delegates` governance set.
+Before a user relies on a Tier 3 audience, the client MUST disclose that
+membership, timing, and volume are visible to every allowed node and seeder of
+the repository; that the protocol defines no membership privacy within the
+audience's carrier set; and that Tier 3 has no forward secrecy — a compromised
+audience key decrypts every retained post under its `key_id`, and rotation
+protects only later generations. A client MUST NOT label Tier 3
+membership-private beyond the allowed-node boundary.
 
-Tier 3 content MUST be encrypted before it reaches any repository, full node,
-seed, or relay. Plaintext Tier 3 content MUST NOT be committed or published.
-An individual Tier 3 post outer event exposes only its registered
-profile marker, opaque `key_id`, required Core integrity/identity tags, and
-Comms profile stamp; semantic content and tags, RID, audience association, and
-retrieval hints are encrypted. The surrounding distribution graph is not
-membership-private: `kind:31011` and `kind:31012` expose clear recipient
-`p`/`d` tags and roster changes, the shared `key_id` links wraps, rosters,
-posts, descriptors, and rotations, and carrier observers retain
-timing, size, count, publication, and fetch-cadence metadata.
+Tier 2 and Tier 3 content MUST be encrypted before it reaches any repository,
+full node, seed, or relay. Plaintext Tier 2 or Tier 3 content MUST NOT be
+committed or published. An individual Tier 2 or Tier 3 post outer event
+exposes only its registered profile marker, opaque `key_id`, required Core
+integrity/identity tags, and Comms profile stamp; semantic content and tags,
+RID, audience association, and retrieval hints are encrypted. On public
+carriers the surrounding Tier 2 distribution graph is not membership-private:
+`kind:31011` and `kind:31012` expose clear recipient `p`/`d` tags and roster
+changes, the shared `key_id` links wraps, rosters, posts, descriptors, and
+rotations, and carrier observers retain timing, size, count, publication, and
+fetch-cadence metadata.
+
+<a id="comms-tier3-confinement"></a>
+For a Tier 3 audience, the `kind:31011` audience wraps, the `kind:31012`
+roster, rotation records, and the Tier 3 posts themselves MUST be carried only
+via the private repository's authorized interfaces and MUST NOT be published
+to ordinary public relays. This confines the clear recipient `p` tags,
+`key_id` linkage, and roster changes to allowed nodes. A recipient MUST be an
+allowed node of the private repository before wraps addressed to it are
+published there. Tier 3 improves membership privacy against global observers
+but concentrates audience metadata at the private repository's allowed nodes;
+a compromised or compelled allowed node yields the audience graph.
 
 <a id="comms-audience-keys"></a>
 ### 3.1 Audience key distribution and roster
 
 
 An audience key is one
-[`heterodyne:0.5.0#core-key-envelope`](heterodyne-core.md#core-key-envelope)
+[`heterodyne:0.6.0#core-key-envelope`](heterodyne-core.md#core-key-envelope)
 key generation. Comms supplies the five instantiation choices that primitive
 requires and adds nothing else to its distribution and rotation rules:
 
@@ -134,7 +159,7 @@ exactly the addressing fields represented here:
     ["heterodyne", "audience_key_wrap"],
     ["key_id", "<opaque id with at least 128 bits>"],
     ["p", "<recipient active account pubkey-hex>"],
-    ["spec_version", "heterodyne/0.5.0"]
+    ["spec_version", "heterodyne/0.6.0"]
   ],
   "content": "<NIP-44 wrap of the audience key>"
 }
@@ -143,10 +168,11 @@ exactly the addressing fields represented here:
 The replaceable `kind:31012` roster uses `d = key_id`, the
 `audience_roster` discriminator, the same `key_id`, and one `p` tag per
 recipient active account key. It MUST be signed by the publishing persona's
-active key. A sensitive roster MAY instead be carried inside a Tier 3
-encrypted object.
+active key. A sensitive roster MAY instead be carried inside an
+audience-encrypted object.
 
-Encrypting the roster does not create complete membership privacy.
+For a Tier 2 audience, encrypting the roster does not create complete
+membership privacy.
 Recipient-addressed `kind:31011` events on public carriers still expose the
 clear recipient and generation linkage Core warns of. This release defines no
 membership-private audience-key distribution profile.
@@ -162,7 +188,7 @@ state transition, or the profile's terminal retry-budget outcome. A carrier
 partition is an availability failure, not automatic producer nonconformance.
 
 <a id="comms-tier-three-profile"></a>
-### 3.2 Tier 3 encryption profile
+### 3.2 Audience encryption profile (Tiers 2 and 3)
 
 
 Comms profiles the symmetric ChaCha20/HMAC-SHA256 layer of NIP-44 v2. It does
@@ -185,8 +211,10 @@ ECDH or additional KDF is applied. Every encryption under a derived key MUST
 use a fresh 32-byte NIP-44 nonce, and a producer MUST NOT reuse a nonce with
 the same derived key.
 
-The registry permits Tier 3 wrapping only for this closed stamping
-profile set:
+The registry permits Tier 2 and Tier 3 wrapping only for this closed stamping
+profile set. The registered `tier3` profile identifiers are historical names
+for the shared wrapped-content profile; the tier of a wrapped post is set by
+its carrier boundary, not its profile ID:
 
 | Nostr kind | Profile ID |
 |---|---|
@@ -201,7 +229,7 @@ Every profile uses discriminator `tag:heterodyne_wrap=room_key.v2` and is
 stamping. Another upstream kind MUST NOT use `room_key.v2` until a later
 registry revision allocates its own immutable profile.
 
-A Tier 3 post has this outer shape (kind `1` shown):
+A wrapped Tier 2 or Tier 3 post has this outer shape (kind `1` shown):
 
 ```json
 {
@@ -212,15 +240,15 @@ A Tier 3 post has this outer shape (kind `1` shown):
   "tags": [
     ["heterodyne_wrap", "room_key.v2"],
     ["key_id", "<opaque audience-key generation id>"],
-    ["spec_version", "heterodyne/0.5.0"]
+    ["spec_version", "heterodyne/0.6.0"]
   ],
   "content": "<NIP-44-v2 symmetric ciphertext of the inner payload>",
   "sig": "<BIP-340 signature by the active key>"
 }
 ```
 
-The clear tags of every Tier 3 post MUST include the two wrap tags and
-`spec_version` equal to `heterodyne/0.5.0` as required by its stamping
+The clear tags of every wrapped post MUST include the two wrap tags and
+`spec_version` equal to `heterodyne/0.6.0` as required by its stamping
 profile. For addressable kinds
 `30023` and `30402`, an additional outer `d` tag is REQUIRED and MUST be an
 opaque value derived from at least 128 bits of randomness or a keyed digest;
@@ -243,8 +271,8 @@ key, not current membership metadata, is the cryptographic access test.
 
 
 The `heterodyne-comms-config-repository-v1` protection profile instantiates
-[`heterodyne:0.5.0#core-protected-repository`](heterodyne-core.md#core-protected-repository) with the Tier 3 profile
-above. There is exactly one private,
+[`heterodyne:0.6.0#core-protected-repository`](heterodyne-core.md#core-protected-repository) with the audience
+encryption profile above at Tier 3. There is exactly one private,
 unadvertised config repository per persona; its allow list contains only the
 persona's durable authorized writer NIDs. The RID MUST NOT appear on any
 published profile, event, relay list, or node advertisement. It travels only
@@ -262,7 +290,7 @@ configuration payload.
 Writer authorization comes only from the active persona key's authenticated
 repository policy and each writer NID's proof over the same exact RID, ref,
 and operations under
-[`heterodyne:0.5.0#core-nid-delegation`](heterodyne-core.md#core-nid-delegation).
+[`heterodyne:0.6.0#core-nid-delegation`](heterodyne-core.md#core-nid-delegation).
 A local device inventory is bookkeeping and MUST NOT authorize a writer.
 
 <a id="comms-encrypted-branches"></a>
@@ -279,13 +307,14 @@ On rotation the publisher MUST create the new branch and force-delete the
 retired ref from its signed refs. It MAY re-encrypt retained history, producing
 new events and ids. Cooperating seeds SHOULD reclaim unreachable objects.
 This scrub is cooperative hygiene, not erasure, under
-[`heterodyne:0.5.0#core-non-erasure`](heterodyne-core.md#core-non-erasure).
+[`heterodyne:0.6.0#core-non-erasure`](heterodyne-core.md#core-non-erasure).
 
 Individual deletion uses ordinary Nostr `kind:5`. It signals intent, not
 erasure. Live history MUST NOT be rewritten; deletion of a whole
 retired `enc/<key_id>` ref is the sole sanctioned ref-deletion path.
-Clients MUST warn that Tier 1 and Tier 2 plaintext may persist on every node
-that fetched or seeded it. Tier 3 ciphertext may persist on relays and
+Clients MUST warn that Tier 1 plaintext and private-repository plaintext may
+persist on every node that fetched or seeded it. Tier 2 and Tier 3 ciphertext
+may persist on relays and
 non-cooperating seeds and remains readable to holders of its retired key.
 
 <a id="comms-publishing"></a>
@@ -294,17 +323,19 @@ non-cooperating seeds and remains readable to holders of its retired key.
 
 One publication intent MUST produce exactly one signed Nostr event, computed
 once and fanned out unchanged. Implementations MUST NOT re-sign the same
-intent. Tier 3 encryption precedes signing. The event `id` is the idempotency
+intent. Audience encryption precedes signing. The event `id` is the idempotency
 token across ordinary relays, repo relays, and native repository ingestion;
 receivers MUST deduplicate on it.
 
 The public destination set is the union of the author's selected NIP-65 write
 relays, applicable read relays of tagged recipients, a repo relay already
 listed in the author's kind `10002`, and other explicitly selected ordinary
-relays. Tier 1 plaintext MAY use every public destination. Tier 2 plaintext
-MUST be published only to private-repository allowed writers and interfaces.
-Tier 3 ciphertext MAY use its configured ordinary and repository-backed
-relays. A repository-backed relay receives the same standard NIP-01 `EVENT`
+relays. Tier 1 plaintext and Tier 2 ciphertext MAY use every public
+destination. Private-repository plaintext MUST be published only to
+private-repository allowed writers and interfaces. Tier 3 ciphertext MUST be
+published only via the private repository's authorized interfaces under
+`heterodyne:0.6.0#comms-tier3-confinement`.
+A repository-backed relay receives the same standard NIP-01 `EVENT`
 message and exact event bytes as any ordinary relay; it adds no envelope or
 storage signature to the event.
 
@@ -381,10 +412,11 @@ Repository unavailability leaves relay-derived state fully usable.
 ### 5.3 Tier-specific carrier boundaries
 
 
-Tier 1 filters may query ordinary public relays and public repo relays. Tier 2
-filters may query only authorized private-repository interfaces. Tier 3
-filters retrieve the signed ciphertext events from their configured ordinary
-or repository-backed relays and decrypt only after exact-event verification.
+Tier 1 and Tier 2 filters may query ordinary public relays and public repo
+relays. Private-repository plaintext filters may query only authorized
+private-repository interfaces. Tier 3 filters retrieve the signed ciphertext
+events only from authorized private-repository interfaces. Tier 2 and Tier 3
+retrieval decrypts only after exact-event verification.
 The filter and selected carrier MUST NOT weaken the tier's disclosure rule.
 
 Private audience bootstrap MAY carry an encrypted descriptor that names its
@@ -422,7 +454,8 @@ boundary produces a visible staleness or liveness warning, not invalidity of
 the last correctly signed events. Relay-only retrieval remains a complete and
 conforming public path.
 
-Tier 3 retrieval obtains ciphertext before decryption. Tier 2 retrieval uses
+Tier 2 and Tier 3 retrieval obtain ciphertext before decryption; Tier 3 and
+private-repository plaintext retrieval use
 only an authorized private interface. Marmot history follows the group's
 declared retention and join-epoch rules. Comms defines no mandatory archive
 service, centralized delivery directory, subscriber graph, or social-feed
@@ -517,11 +550,12 @@ Resolution MUST terminate in exactly one visible state:
 - `conflicted` when applicable NIP-01 or addressable-event rules
   identify a conflict;
 - `unavailable` when no queried carrier returns the requested valid event; or
-- `private` for Tier 2 plaintext or Tier 3 ciphertext.
+- `private` for private-repository plaintext or Tier 2/Tier 3 ciphertext.
 
 The client MUST NOT turn a failed fetch into an authoritative empty outbox. It
-MUST NOT render Tier 2 plaintext in public-reader mode and MUST NOT interpret,
-probe, or label Tier 3 ciphertext as public content. Repository confirmation
+MUST NOT render private-repository plaintext in public-reader mode and MUST
+NOT interpret,
+probe, or label Tier 2 or Tier 3 ciphertext as public content. Repository confirmation
 MAY report durability, but its absence MUST NOT demote a relay-verified event.
 
 <a id="comms-public-transition"></a>
@@ -839,7 +873,7 @@ membership. A standard-compatible client may remain Nostr-only.
 The OPTIONAL feature `comms.trusted-seed-private-relay.v1` lets an explicitly
 trusted seed serve one private Marmot routing generation. Trust is anchored to
 the seed's canonical Radicle NID under
-[`heterodyne:0.5.0#core-seed-nid-trust`](heterodyne-core.md#core-seed-nid-trust),
+[`heterodyne:0.6.0#core-seed-nid-trust`](heterodyne-core.md#core-seed-nid-trust),
 not to its relay key, DNS name, TLS certificate, URL, repository head, or mere
 availability. Several seed NIDs MAY be active concurrently. Each has its own
 relay endpoint, Radicle endpoint, grant, permissions, and relay-ingest writer
@@ -987,6 +1021,60 @@ host. For an integrated relay, NIP-01 `OK` MUST NOT be returned until event
 ID, signature, tag cardinality, `h`, and local limits validate and the exact
 bytes are durably committed to the relay ref.
 
+An archival acknowledgement boundary MUST capture its authority identity,
+durable store, current Core writer resolver, and append-and-reachability
+operation once at construction. Each append request is a closed exact input
+containing only the target private RID and writer ref plus either one signed
+Marmot event with its original serialized bytes, or encrypted-media v2
+ciphertext with its signed Marmot media event. The boundary captures that
+complete input before any asynchronous operation. For an event it performs
+duplicate-aware JSON decoding of exactly the seven NIP-01 event members,
+parses the captured bytes as the same closed signed event, recomputes its
+NIP-01 ID, verifies the BIP-340 signature, and requires the closed Marmot
+kind-445 transport profile: one exact lowercase 32-byte `h`, no tag other than
+the optional singleton NIP-40 `expiration`, and canonical padded standard
+base64 content decoding to at least the 12-byte nonce plus 16-byte AEAD tag.
+Every string in the signed event, including content and every tag member, MUST
+be a Unicode scalar sequence and therefore exactly UTF-8 representable; lone
+UTF-16 surrogates are invalid. An `expiration` value MUST be the canonical
+unsigned decimal encoding of a checked uint64, including zero through
+`18446744073709551615`; a sign, fraction, leading zero, unsafe numeric value,
+or larger integer is invalid. For ciphertext it verifies the signed regular
+Marmot kind-9 media event and requires exactly one complete encrypted-media v2
+`imeta` attachment that binds the exact lowercase `ciphertext_sha256`. That
+attachment MUST also carry its singleton version, plaintext digest, nonce,
+canonical media type, and filename fields plus at least one structurally valid
+locator; repeated non-locator fields, an unknown field, any non-scalar string,
+or any missing or malformed required field is invalid. A caller assertion that
+bytes, authorization, reachability, or durability is valid has no effect.
+
+Before append, the boundary MUST resolve authenticated current Core writer
+authority for the exact captured RID and ref. It then acquires a durable
+single-effect binding over its stable authority identity, RID, ref, exact
+repository-object digest, source-event ID or ciphertext digest, and, for
+media, the exact authorization-event ID. Only the captured bytes may be sent
+to the append operation. Its returned object digest MUST equal the SHA-256 of
+those bytes, its commit identity MUST be closed and well formed, and the object
+MUST be reachable from the authorized ref. The boundary commits those values
+and reloads an exact binding-, execution-token-, output-digest-, object-, and
+commit-equal terminal before minting an acknowledgement capability.
+
+That capability is frozen, opaque, implementation-local, and bound to the
+minting authority instance. A lookalike, clone, capability from another
+authority, changed RID, ref, bytes, event, media authorization, object digest,
+or commit grants no acknowledgement authority. Acknowledgement reloads the
+same durable object and commit and succeeds only for a genuine capability and
+an exact committed or expired-but-retained terminal. An exact committed retry,
+including after reconstruction under the same stable authority and store, MAY
+return the cached result without appending again. This remains true when
+acquisition reports that another attempt won: the immediate reload MUST be an
+exact binding-equal committed terminal before a new local receipt is minted.
+An expired-but-retained `available` terminal never remints presentation
+authority. An executing or indeterminate record, unavailable persistence,
+malformed or unequal terminal, thrown append, unreachable object, or unknown
+or conflicting post-effect write is indeterminate with a deterministic
+reconciliation digest and MUST NOT repeat the repository effect.
+
 Only after durable acknowledgement may the sender apply the new Marmot epoch
 and `h` and publish the encrypted directory entry. A standard-compatible
 group MAY try another authorized host, a direct Radicle peer, or an ordinary
@@ -1000,13 +1088,24 @@ Clients and hosts MUST retain the current generation and the prior routing IDs
 required by Marmot's retained-history and rollback horizon. Additional
 archives remain advertised for the signed group retention period.
 
-When an archive expires, conforming hosts remove it from the encrypted active
-directory, stop advertising and seeding its refs, and remove local refs.
-Conforming clients stop requesting or serving it and garbage-collect local
-objects where supported. NIP-40 expiration inside an exact Marmot event
-remains unchanged; repository retention complements it.
+When an archive presentation expires, conforming hosts remove it from the
+encrypted active directory, stop advertising and seeding its active refs, and
+revoke current presentation or fetch authorization. The archival boundary
+MUST record that state transition by compare-and-swap and then reload the same
+retained object digest, source digest, and commit before reporting success. It
+MUST NOT delete or rewrite the retained ciphertext, event bytes, repository
+object, or commit history and MUST expose no deletion operation through an
+append receipt. The same genuine receipt continues to prove only historical
+durability; it does not restore current presentation or authorization.
 
-Expiration is not erasure, under [`heterodyne:0.5.0#core-non-erasure`](heterodyne-core.md#core-non-erasure).
+Conforming clients stop requesting or serving an expired presentation. After
+all independent Marmot retained-history, rollback-horizon, signed-retention,
+and implementation policy obligations end, an implementation MAY remove local
+refs and garbage-collect unreachable objects where supported; neither that
+cleanup nor presentation expiry proves erasure. NIP-40 expiration inside an
+exact Marmot event remains unchanged; repository retention complements it.
+
+Expiration is not erasure, under [`heterodyne:0.6.0#core-non-erasure`](heterodyne-core.md#core-non-erasure).
 
 <a id="comms-marmot-persona-inbox"></a>
 ### 7.11 Persona repository inbox and first contact
@@ -1037,6 +1136,52 @@ not mutate the sender ref and grants no global moderation power.
 A private persona inbox accepts only NIDs already authorized to replicate the
 repository. Unknown first contact uses a public inbox or another authorized
 bootstrap path.
+
+Before admitting a private-inbox contact bundle, the recipient implementation
+MUST capture the complete operation as closed data before any asynchronous
+lookup. It MUST reload the authenticated current inbox checkpoint and its
+NID-bearing repository authorization, require a sender-specific Marmot writer
+or relay ref, bind the exact sender account and persona-or-agent class, and, for
+an agent sender, require the exact current first-contact scope named by the
+request. A missing current recipient NID fails with
+`marmot-private-inbox-nid-required`; a missing agent scope fails with
+`marmot-agent-scope-denied`.
+
+The selected public KeyPackage bytes, their lowercase-hex SHA-256 reference,
+the exact group-transition bytes, sender ref, purpose, recipient, current inbox
+checkpoint, and recipient NID MUST enter one domain-separated durable
+reservation. A KeyPackage already present in current authenticated inbox state
+or any existing durable reservation is consumed and fails with
+`marmot-keypackage-replayed` only when current state or a closed committed or
+available terminal proves consumption. Concurrent attempts have one winner;
+an observed executing or indeterminate reservation remains reasonless
+indeterminate and MUST NOT be mislabeled as replay. Success is exposed only
+after exact binding-, execution-token-, output-digest-, and output-equal
+committed readback. A malformed, unavailable, missing-after-conflict, or
+unknown terminal is likewise indeterminate and MUST NOT repeat consumption. The
+authority constructor captures its trusted-time, current-state, and durable-
+store callbacks once; caller validity or consumption booleans are not
+authority inputs.
+
+The consuming implementation MUST compute a closed fingerprint over the exact
+checkpoint, recipient NID, consumed-KeyPackage list, and allowed-scope list and
+commit it in the durable binding. It MUST reload the same authenticated inbox
+state after durable load, after acquire, immediately before commit, and after
+terminal readback. A changed checkpoint or fingerprint is non-accepting. NID
+or scope removal and authenticated external KeyPackage consumption retain
+their owned rejection reasons; another change or unavailable reload is
+indeterminate. Once acquire succeeds, such a change MUST be recorded as
+absorbing uncertainty before return and no admission output may be exposed.
+
+Before recursive capture or hashing, this reference authority applies a local
+closed-data preflight: each KeyPackage or group-transition byte string is at
+most 1,048,576 bytes and their aggregate is at most 2,097,152 bytes; each
+policy string is at most 256 UTF-8 bytes; consumed-KeyPackage and agent-scope
+lists contain at most 1,024 and 256 dense entries respectively; and operation,
+state, output, and durable-record objects have fixed prototypes and members,
+bounded depth, property counts, node counts, and aggregate string budgets.
+Implementations MAY impose smaller local resource limits without changing
+otherwise valid Marmot wire bytes.
 
 For a public inbox, an unknown ref enters pull-based quarantine. The client
 MUST fetch and validate a bounded manifest conforming to
@@ -1073,7 +1218,7 @@ ordinary Marmot application events. Heterodyne adds no competing DM cipher,
 invitation format, or outer event kind.
 
 Routine light-client, human RPC, and agent RPC use ordinary two-member Marmot
-groups under [`heterodyne:0.5.0#control-frame`](heterodyne-control.md#control-frame). Each participant uses the
+groups under [`heterodyne:0.6.0#control-frame`](heterodyne-control.md#control-frame). Each participant uses the
 exact Marmot account selected by Control and an independent leaf bound through
 the standard account proof. A standard Welcome and valid MLS membership
 authenticate transport identity but grant no application authority.
@@ -1120,7 +1265,7 @@ Comms requires no KERI, cold-root, or epoch-key evidence. Unknown descriptor,
 envelope, authority, or preauthorization members are invalid.
 
 The inviter account produces the BIP-340 `signature` over the SHA-256 digest
-of the [`heterodyne:0.5.0#core-proof-bytes`](heterodyne-core.md#core-proof-bytes) bytes for domain
+of the [`heterodyne:0.6.0#core-proof-bytes`](heterodyne-core.md#core-proof-bytes) bytes for domain
 `heterodyne-one-time-invite-v1`, whose sole bound member `descriptor` is the
 complete descriptor object.
 
@@ -1160,6 +1305,60 @@ establishment spends it. Malformed, expired, revoked, purpose-mismatched,
 capability-incompatible, or unauthenticated traffic MUST NOT reserve or spend
 it.
 
+An issuer-side consuming authority MUST descriptor-capture the closed envelope,
+exact JCS response bytes, expected recipient, exact public KeyPackage bytes,
+purpose, and exact group-transition bytes before any asynchronous lookup. It
+MUST independently verify the descriptor's BIP-340 signature, secret
+commitment, canonical response schema, response HMAC, descriptor digest,
+responder/recipient equality, non-convertible purpose, KeyPackage byte
+equality, signed expiry, and current authenticated revocation revision before
+durable acquire. All such failures use `invite-authentication-invalid` at this
+authority boundary and perform no reservation or group effect.
+
+The reservation key is issuer-local and invite-specific. Its binding MUST
+commit the authority identity, current invite revision, signed descriptor and
+signature, secret commitment, exact response digest, recipient, purpose,
+KeyPackage digest, and group-transition digest. Group establishment receives
+only a copy of the captured transition plus an authority-derived execution
+token that binds that exact state-independent redemption transcript. Its
+returned response digest MUST equal the captured response digest.
+Success is exposed only after exact committed readback. A binding-equal
+committed retry returns the cached output without repeating establishment; a
+different transcript, recipient, purpose, KeyPackage, transition, or secret
+fails authentication. Executing, unavailable, malformed, or unknown post-
+effect state is indeterminate and MUST NOT repeat the effect. Constructor
+callbacks and durable-store methods are captured once. Neither caller validity
+booleans nor the retired device-state DM reasons participate in this boundary.
+
+The consuming implementation MUST bind a closed fingerprint of the exact
+active invite state and revision into the reservation terminal. It MUST reload
+and require that same active revision, and resample trusted time, after durable
+load, after acquire immediately before group establishment, after group
+establishment immediately before commit, and after terminal readback. A
+revocation, revision change, or expiry before establishment causes no group
+effect and leaves an acquired reservation absorbing and non-accepting. A
+change after a possible group effect, including one first observed after exact
+committed readback, is reasonless indeterminate and MUST NOT expose or repeat
+the result. Recording that uncertainty MUST NOT overwrite, erase, or relabel
+the committed terminal. An exact transcript retry after revocation, revision
+change, or expiry derives the same reconciliation digest from the preserved
+terminal and execution token without repeating group establishment.
+
+Before recursive capture, UTF-8 decode, JCS canonicalization, or hashing, this
+reference authority applies a proxy/accessor-safe closed-data preflight. Each
+response, KeyPackage, or group-transition byte string is at most 1,048,576
+bytes and their aggregate is at most 2,097,152 bytes. Descriptor and response
+collections contain at most 16 relay hints and 64 capabilities, methods,
+objects, or limit entries; each ordinary policy string is at most 256 UTF-8
+bytes. The response's canonical unpadded-base64url `mls_key_package` field is
+separately permitted up to the enclosing response limit, and its decoded bytes
+are independently capped at 1,048,576 bytes. Nested inputs, callback results,
+outputs, and durable records have fixed
+prototypes and members, dense arrays, depth at most eight, and bounded
+property, node, and aggregate-string counts. Implementations MAY impose
+smaller local resource limits without changing otherwise valid signed invite
+or Marmot wire bytes.
+
 A valid `dm` redemption creates an ordinary two-member Marmot group and makes
 the Comms-native admission result `accept` for its issuer, subject to an
 absorbing local mute or block. Higher-layer Control profiles define Control
@@ -1174,6 +1373,50 @@ acceptance policy. Neither hook below runs on an invalid KeyPackage, Welcome,
 account-to-leaf proof, group state, membership, or application event. A valid
 Marmot object never grants Control, claim-ledger, repository, or persona
 authority.
+
+An ordinary-conversation admission boundary MUST capture the exact Welcome
+and referenced public KeyPackage bytes before processing them. Its constructor
+MUST capture an implementation-owned private KeyPackage-handle loader and a
+standards-conforming Marmot/MLS Welcome processor; neither the private
+`init_key`, the private handle, nor a validity assertion is a per-operation
+input. The processor performs the standard tentative Welcome join, including
+TLS decoding, GroupInfo decryption, inline ratchet-tree processing, leaf
+signature and `marmot.member.account-identity-proof.v2` validation, resulting
+group-state validation, and Welcome-author authorization. It returns a closed
+authenticated projection binding the inviter and recipient accounts, distinct
+MLS leaf keys, exact group and two-member set, every required capability, and
+the local conversation checkpoint, plus a private tentative-transition handle.
+This adapter boundary does not define a new wire encoding or replace any
+Marmot validation rule.
+
+Successful validation yields only an implementation-local, frozen opaque
+capability. Caller-created objects, copies, capabilities minted by another
+authority instance, accessor-bearing inputs, and inputs changed after capture
+grant no admission authority. Tentative processing MUST preserve the exact
+pre-join KeyPackage and group state unless the outer admission boundary later
+commits the private transition. Rejection before durable reservation rolls the
+tentative transition back; an unknown post-effect outcome is reconciled and
+MUST NOT repeat it.
+
+After restart, the boundary MUST look up an exact committed admission before
+loading a private KeyPackage handle or processing the Welcome again. This
+lookup is keyed by the captured public transport bytes and identifiers plus
+the configured authority identity, and authenticates the committed decision,
+checkpoint, output, request binding, and reconciliation binding. Only an exact,
+closed committed terminal may mint a replay capability. A malformed,
+mismatched, executing, or indeterminate terminal neither grants acceptance nor
+invokes private KeyPackage loading, Welcome processing, or a staged group
+transition.
+
+Before applying a local acceptance or hold decision, the same boundary MUST
+reload authenticated current conversation state and require the checkpoint to
+remain exact. It MUST durably reserve the full Welcome, KeyPackage, account,
+leaf, group, member, capability, checkpoint, and decision binding before it
+commits admission. Acceptance is returned only after a binding-equal committed
+record is readable. Exact committed retries MAY return the cached result;
+mismatched or stale retries reject. An executing or indeterminate retry, an
+unknown post-commit outcome, or a terminal record that cannot be read and
+verified MUST NOT repeat admission or expose acceptance.
 
 <a id="comms-ordinary-conversation-admission"></a>
 ### 8.1 Ordinary-conversation hook
@@ -1207,7 +1450,7 @@ Control invite if present, and an explicit local decision if one exists. It
 returns exactly `accept-enrollment-only`, `accept-authorized`, or `reject`.
 
 `accept-enrollment-only` permits only the methods named by
-[`heterodyne:0.5.0#control-invitation-policy`](heterodyne-control.md#control-invitation-policy) and grants no durable
+[`heterodyne:0.6.0#control-invitation-policy`](heterodyne-control.md#control-invitation-policy) and grants no durable
 authority. `accept-authorized` requires active, non-conflicted private
 entitlement for the authenticated client account. `reject` ends application
 processing without revealing whether another entitlement or private object
@@ -1292,7 +1535,9 @@ MUST NOT activate, replace, or widen that authority.
 An implementation MAY use optional Assurance as additional evidence where an
 owning higher-layer profile explicitly permits it, but it MUST first validate
 the active-key-scoped Comms object and MUST NOT make Assurance a baseline
-registry-admission prerequisite.
+registry-admission prerequisite. A persona holding claim-ledger or OIDC-issuer
+authority SHOULD attach a window-complete Assurance enrollment; a client MUST
+surface an unenrolled high-authority persona distinctly.
 
 <a id="comms-authorization-freshness"></a>
 ### 9.2 Authorization-view freshness
@@ -1301,12 +1546,38 @@ This bound governs every Comms-derived authorization decision and every
 document that composes one; no other document restates it.
 
 Token minting and every privileged use require an authenticated,
-non-conflicted private authorization view no more than 300 seconds old. A
-mutation additionally performs an immediate synchronization attempt against
-the canonical private ledger before authorizing, and fails closed unless it
-establishes that fresh view. A fresh token cannot extend a stale authorization
-view. A composing document or a local policy MAY shorten the window and MUST
-NOT lengthen it.
+non-conflicted private authorization view no older than the deployment's
+declared bound. The declared bound is the signed continuity-manifest member
+`authorization_view_max_age`, in seconds. It is a required member of the
+current manifest's signed bytes and is a JSON integer from 1 through 86,400,
+inclusive. Authoring tools default it to 300 before signing; a verifier never
+supplies a missing signed value. The separate signed
+`max_checkpoint_age_seconds` member retains its inclusive 300-second ceiling.
+The manifest checkpoint age is measured from its authoritative `observed_at`
+to the signed manifest authority's `issued_at`; authorization-view age is
+measured from that authoritative `observed_at` to a trusted local effect time.
+Each bound is enforced independently, and satisfying either one cannot
+compensate for failing the other.
+
+An authorization evaluator is created only with a trusted clock and a current
+private-ledger loader. It binds the exact public repository RID, active persona
+key, and complete signed-manifest digest; the loader returns that exact
+manifest and authoritative validated ledger state. The evaluator re-runs
+issuer continuity, derives conflict and observation time from the validated
+state, and produces an opaque current-authorization-view capability. Callers
+MUST NOT provide evaluation time, checkpoint or authorization age, a freshness
+boolean, or conflict status. Immediately before a privileged effect or durable
+commit, the consumer reloads the bound state, re-runs validation, and requires
+exact manifest and checkpoint equality with the prepared capability. A change,
+conflict, failed load, or stale transition fails closed.
+
+A mutation additionally performs this immediate current-state reload before
+authorizing. A fresh token cannot extend a stale authorization view. A
+composing document or a local policy MAY shorten the effective bound and MUST
+NOT lengthen it beyond the declared value. A relying party MUST be able to read
+the declared bound before trusting a deployment, and clients surface it.
+Revocation latency at honest nodes is bounded by the declared value: declaring
+a long window is declaring slow revocation.
 
 <a id="comms-key-claims"></a>
 ## 10. Atomic typed-key claims
@@ -1315,7 +1586,7 @@ Comms defines an atomic assertion about one typed key. The registry assigns
 `kind:31013` to `heterodyne-comms-key-claim-v1` and `kind:31014` to
 `heterodyne-comms-key-claim-revocation-v1`. Both are addressable events. Their
 sole `d` tag is the lowercase 64-hex claim identifier, and their JSON content
-uses the single `heterodyne/0.5.0` owner stamp. The outer Nostr signer MUST be the
+uses the single `heterodyne/0.6.0` owner stamp. The outer Nostr signer MUST be the
 `nostr-secp256k1` issuer named by the claim. A verifier MUST reject missing,
 duplicate, unknown, or misordered members and tags, an event/content mismatch,
 an unknown profile discriminator, or an event whose BIP-340 signature fails.
@@ -1362,7 +1633,7 @@ Every claim contains exactly one `(namespace, name, value)` assertion, where
 over RFC 8785 JCS bytes of the complete semantic object with only `claim_id`
 omitted. Tags, transport, event id, and signatures are excluded. Reusing an
 address is permitted only for a byte-identical canonical semantic object.
-Selective release selects whole atomic signed claims. Comms 0.5.0 MUST NOT
+Selective release selects whole atomic signed claims. Comms 0.6.0 MUST NOT
 perform SD-JWT disclosure. It MUST NOT automatically bundle multiple claim names
 into one signed claim.
 
@@ -1408,18 +1679,98 @@ Verification is ordered and fail-closed:
 8. return exactly one state: `invalid`, `untrusted`, `provisional`, `active`,
    `expired`, `revoked`, or `conflicted`.
 
+Successful envelope verification MUST mint an opaque, immutable verified-claim
+artifact bound to the exact verified NIP-01 event bytes, event ID, outer
+`pubkey`, canonical semantic bytes, claim ID, issuance time, and declared
+credential-ledger persona and generation. Chain resolution and authorization
+MUST consume only those verifier-minted artifacts and their private snapshots;
+a semantic object, inspection copy, caller assertion, clone, or lookalike MUST
+NOT carry verification authority. Inspection returns an independent immutable
+copy that cannot be supplied back as authority. Signed revocations use the same
+opaque-artifact rule.
+
+The signed NIP-01 `created_at` audit timestamp and the claim semantic
+`issued_at` are independently authenticated artifact fields; they are not
+required to be equal. Revocation `revoked_at` retains its profile-specific
+equality requirement with its signed event timestamp.
+
+`claim-issuer-authority-invalid` means that the implementation did not
+establish the exact verified outer issuer or the explicit verified claim-chain
+authority required at that edge. It MUST NOT treat a KEL identity, recovery
+key, cached persona identity, or caller-supplied boolean as a substitute for
+the signed event's exact outer issuer.
+
 Cryptographic validity is not trust. `untrusted` content MAY be displayed with
 its provenance but MUST NOT authorize. A delivered persona-issued device grant
 is `provisional` until repository-confirmed. Only `active` authorizes.
 
 The proof-of-possession challenge is the
-[`heterodyne:0.5.0#core-proof-bytes`](heterodyne-core.md#core-proof-bytes) construction for domain
+[`heterodyne:0.6.0#core-proof-bytes`](heterodyne-core.md#core-proof-bytes) construction for domain
 `heterodyne-claim-pop-v1`, whose claim binds `claim_id`, `nonce`, `audience`,
 `resource`, `operation`, `issued_at`, and `expires_at`. It MUST be fresh, single-use, audience- and
 operation-bound, and verified by Core's native suite for the subject type:
 BIP-340, Ed25519 with exact NID binding, or JWS with an RFC 7638-matching JWK.
 An authorization claim without valid fresh subject proof is inactive. An
 event signature or an earlier possession proof MUST NOT substitute for it.
+
+Claim-state inspection is non-authorizing. It MAY report `active` for display
+or policy explanation, but it MUST NOT return an effect capability or a
+positive authorization result. Authorization that can cause an effect MUST be
+performed by one authority boundary that owns its trusted clock, trusted
+issuer policy, current canonical claim-ledger and revocation loader, stable
+authority identity, and proof/effect store. Caller-owned nonce sets, a prior
+inspection result, or a callback return value alone MUST NOT authorize.
+
+For each effect attempt, that authority derives a domain-separated single-use
+key from exactly `(issuer, subject, claim_id, audience, resource, operation,
+nonce)`. Its acquired binding additionally commits the complete verified
+artifact-chain digest, subject proof and challenge, current credential-ledger
+binding, canonical checkpoint digest and repository revision, current
+conflicted claim IDs and authenticated revocations, exact request and effect
+digests, stable authority identity, and idempotency key. After initial
+validation, it MUST reload the complete current view immediately before
+acquisition and MUST re-evaluate the chain, repository confirmation,
+conflicts, revocations, proof freshness, and trust policy against that reload.
+
+The reload MUST also carry the exact validated claim-ledger state and MUST
+revalidate every distinct opaque current Core writer binding immediately
+before acquisition. Removal, revocation, conflict, expiry, policy revision or
+checkpoint change, binding mutation, or authority substitution makes the
+prepared view stale and returns `claim-ledger-writer-unauthorized` without
+acquiring or invoking the effect. Repository membership and a record's
+Ed25519 self-signature never substitute for current owner delegation.
+
+Before invoking the effect, one atomic store operation MUST irreversibly
+transition that single-use key from unused to `executing` with the exact
+binding and a fresh opaque unpredictable execution token. The effect MUST be
+idempotent for that token and MUST be invoked at most once by the acquiring
+authority. Production stores MUST preserve acquisition and terminal state
+across process restart and MUST serialize competing workers; a process-local
+store is suitable only for deterministic conformance testing.
+
+That authority MUST also capture a positive bounded effect timeout in
+milliseconds and its relative-duration scheduler at construction. Immediately after `acquired`, it MUST
+reload and verify the exact persisted `executing` record, including both the
+binding digest and execution token, before invoking the effect. An unknown
+acquire reply or a missing, malformed, or substituted record fails closed
+without invoking it. The authority-owned deadline applies to every asynchronous
+effect; expiry transitions the acquired execution to `indeterminate` and never
+reopens it.
+
+The only terminal states are `committed`, containing an immutable defensively
+captured result and its digest, and `indeterminate`, containing a
+reconciliation digest. A positive result MUST be returned only after the
+authority reloads and verifies the exact committed terminal record. If the
+effect throws, times out, reports an unknown outcome, returns a result that
+cannot be safely bounded and captured, or if terminal persistence fails or is
+uncertain, the acquisition remains burned and the result is
+`claim-authorization-effect-indeterminate`; it MUST NOT be reopened or
+reported as allowed. An exact retry returns the cached committed result or the
+same indeterminate reconciliation result without invoking the effect. A
+changed chain, proof, checkpoint, revision, conflict or revocation set,
+request, effect, authority, or idempotency binding is rejected as
+`claim-subject-proof-replayed`. Invalid proof cryptography or challenge
+binding remains `claim-subject-proof-invalid`.
 
 <a id="comms-claim-chain"></a>
 ### 10.2 Issuance chains and attenuation
@@ -1448,12 +1799,12 @@ leaf `invalid`.
 The revocation content is the exact closed object in
 `schemas/comms/key-claim-revocation-v1.schema.json`: `claim_id`, `revoked_at`,
 registered `reason_code`, typed `revoker`, required `spec_version` equal to
-`heterodyne/0.5.0`, required `profile_revision` equal to `2`, and an optional native
+`heterodyne/0.6.0`, required `profile_revision` equal to `2`, and an optional native
 `proof`. `revoked_at` equals the event `created_at`. For both `kind:31013` and
 `kind:31014`, the complete tag array MUST be exactly
 `[["d","<claim_id>"]]`; an extra, duplicate, malformed, or differently ordered
 tag is invalid. A Nostr revoker signs the outer event. A Radicle or JWK revoker
-also supplies its matching [`heterodyne:0.5.0#core-proof-bytes`](heterodyne-core.md#core-proof-bytes) proof for
+also supplies its matching [`heterodyne:0.6.0#core-proof-bytes`](heterodyne-core.md#core-proof-bytes) proof for
 domain `heterodyne-claim-revocation-v1`, whose claim binds `claim_id`,
 `profile_revision`, `reason_code`, `revoked_at`, and `spec_version`. Thus the
 native proof binds the owning Comms profile revision as well as the
@@ -1499,12 +1850,38 @@ ledger generation. Record types are `claim`, `revocation`,
 `payload_digest` and `record_id` are domain-separated JCS SHA-256 digests. The
 writer signature and current Core NID delegation MUST verify before replay.
 
+Replay evidence for every record MUST include one closed record-location value
+containing exactly `record_id`, `repository_rid`, `writer_ref`, `commit`,
+`checkpoint`, `revision`, and the
+`heterodyne.core.repository-writer-binding.v1` object. The record ID, RID,
+canonical replay commit, checkpoint, revision, writer NID, and binding bytes
+MUST equal the independently authenticated record and repository view before
+writer authority is resolved. Caller booleans and `record.created_at` are not
+writer-delegation evidence.
+
+Before a record enters replay, the implementation MUST resolve the binding
+through the current Core repository-writer authority and require both exact
+proofs, `owner_active_key === persona`, the exact claim-ledger RID and writer
+ref, `writer_nid === record.writer_nid`, operation `claim-ledger-write`, and
+current nonexpired, nonrevoked, nonconflicted policy inclusion at the replay
+checkpoint and revision. The validated replay result retains only private
+authority fingerprints and opaque current bindings. A failure at this Comms
+boundary is `claim-ledger-writer-unauthorized`; privileged local audit MAY
+retain the more detailed Core `repository-writer-binding-invalid` cause but
+MUST NOT disclose it through the Comms decision.
+
 Canonical replay verifies commits and parents from genesis, rejects rollback
 or missing history, validates each embedded event and issuance object, and
 derives a checkpoint `(repository_rid, main, commit_oid, observed_at)`. Claims
 and reservations merge by immutable ID. Revocation and authority reduction are
 monotonic and win. Concurrent incompatible policy changes remain `conflicted`
 and fail closed; wall-clock or writer order MUST NOT resolve them.
+
+For every ledger-embedded claim or revocation `{event, semantic}` object,
+replay MUST first verify the exact signed event and then require the duplicate
+`semantic` value to be byte-equivalent to that event's canonical content before
+minting the opaque runtime artifact. The duplicate value is wire material only;
+it is never independent verification or authorization evidence.
 
 Direct fetch, replication, and decryption require an `active`, durable,
 NID-bearing `claim-ledger-reader` authorization. Onboarding uses private
@@ -1514,8 +1891,15 @@ audience-key epoch and wrap, compact-state digest, and Radicle fetch-and-seed
 access. The recipient verifies all bindings before use. A delivered claim not
 reachable from canonical state remains provisional.
 
+Reader claim evaluation is inspection-only and MUST return no positive effect
+authority. A fetch, replication, decryption, or onboarding effect MUST compose
+the opaque verified reader claim through the durable claim-effect authority in
+§9.1. That authority acquires and confirms the exact single-use binding before
+the effect; stale or revoked claims and changed current repository-writer
+authority reject without acquisition or access.
+
 The dedicated ledger audience key is a second
-[`heterodyne:0.5.0#core-key-envelope`](heterodyne-core.md#core-key-envelope)
+[`heterodyne:0.6.0#core-key-envelope`](heterodyne-core.md#core-key-envelope)
 instantiation. Its five choices are: the recipient set is the `active`
 `claim-ledger-reader` authorizations; the reference and wrapping profile are
 `radicle-ed25519-nid` and `heterodyne-claim-ledger-key-wrap-v1`; the carrier is
@@ -1538,7 +1922,7 @@ stops minting immediately.
 
 The signing key MUST NOT be encrypted by or released merely with the ledger
 audience key. It is a third
-[`heterodyne:0.5.0#core-key-envelope`](heterodyne-core.md#core-key-envelope)
+[`heterodyne:0.6.0#core-key-envelope`](heterodyne-core.md#core-key-envelope)
 instantiation. Its five choices are: the recipient set is the NIDs holding
 active `oidc-token-issuer` authority; the reference and wrapping profile are
 `radicle-ed25519-nid` and `heterodyne-oidc-issuer-key-wrap-v1`; the carrier is
@@ -1569,6 +1953,14 @@ ordinary third-party relying party can verify a persona's assertions through
 standard discovery, and an implementation that projects nothing to third
 parties omits them entirely. The prerequisite chain in
 [`registry/features.json`](registry/features.json) fixes who must ship them.
+
+<a id="comms-oidc-non-goals"></a>
+The issuer projection exists for private-network and workload agent
+authentication and for ordinary third-party relying-party verification. It is
+not censorship-resistant: the HTTPS host is an availability and correlation
+chokepoint, accepted as such. Issuer metadata, NIP-05 records, and launcher
+hosts never create identity authority; a client that treats them as more than
+hints reintroduces a central authority and is non-conformant.
 
 A persona has one exact HTTPS issuer:
 
@@ -1652,6 +2044,58 @@ is pairwise by default. Stable key release additionally requires scope
 claims, correlate pairwise subjects across sectors, or treat a descriptive
 claim as authority.
 
+OIDC request validation and claim replay are likewise inspection-only. The
+actual consent-bound release MUST execute through the same durable claim-effect
+authority using the opaque verified consent artifact, exact proof challenge,
+current ledger/revocation view, and current writer revalidation. A validated
+request object, public semantic body, or prior inspection decision alone MUST
+NOT authorize a release or token-producing effect.
+
+Immediately before durable effect acquisition, the implementation MUST
+recompute client registration, consent, and every released source claim from
+the effect-time current view and trusted time. It MUST bind the exact request
+digest and recomputed release digest inside the durable authorization binding;
+a caller-supplied effect digest or earlier release object is not authority.
+Current writer revalidation remains immediately adjacent to acquisition, and
+the effect executes only the captured recomputed release. Authorization-code
+creation, device-code creation, and JWT projection MUST consume the resulting
+opaque durable authorization artifact (or execute inside that authorized
+effect); inspection results remain display-only and MUST NOT be accepted by
+those token-producing interfaces.
+
+Each durable OIDC artifact MUST be process-private, purpose-specific, bound to
+the exact claim-effect authority and authorization binding, bound to an exact
+trusted authorization time, exclusive expiry, and current-view fingerprint,
+and atomically one-shot. Code, device, and JWT purposes are not
+interchangeable. A consumer-supplied time MUST NOT refresh authorization;
+expiry and issuance time come from the bound trusted authority. Direct reuse,
+simultaneous reuse, cross-authority use, cross-binding use, use after expiry,
+and use after a current-view change MUST fail closed. An exact durable-effect
+retry that reads the committed Task 6 terminal result MAY return a new
+one-shot handle to the same already determined issuance output, but MUST NOT
+mint a second grant.
+
+A JWT-projection authorization MUST additionally capture by exact own data
+descriptors and bind, before any semantic read, exactly one complete closed
+projection request and subtype: ID Token, access token, or a JWT assertion
+with its exact registered assertion profile. The captured request includes the
+issuance reservation, current checkpoint and credential generation, issuer
+signing envelope and audience-key binding, client, audiences, scopes, times,
+identity, and status-mirror binding. Accessors, proxies, subclasses, sparse
+containers, cycles, and excess members fail closed without trap invocation.
+The effect-time release and complete captured request determine the internal
+Task 6 authorization binding. Full projection validation and signing occur
+inside the acquired durable effect, and the immutable exact signed output is
+committed as part of its terminal cached result. An exact committed retry
+returns that same byte-identical output without signing again. Signing failure
+is a terminal indeterminate effect and exposes no projection artifact. A
+different subtype, assertion profile, projection input, signing authority,
+released claims, or time MUST fail closed and MUST NOT mint another token.
+Public ID Token, access-token, and assertion projection interfaces consume
+only the exact authority plus opaque purpose-specific artifact to retrieve the
+predetermined output; they accept no caller-selected projection or signing
+data after authorization.
+
 `local-subject` is exactly 64 lowercase hexadecimal characters encoding
 SHA-256 over the RFC 8785 JCS bytes of the exact typed-key subject. The
 pairwise identifier uses HMAC-SHA-256 under the persona's repository-private
@@ -1732,8 +2176,9 @@ The exact manifest schema is
 `schemas/comms/oidc-continuity-manifest-v1.schema.json`. It binds profile,
 public RID, `main`, the active persona npub and raw key, exact issuer, monotonic
 sequence and predecessor digest, checkpoint-age bound, current and retiring
-key IDs/JWK digests, all status paths/URIs/digests, optional successor, and an
-active NID writer/checkpoint. `persona_npub` MUST be the canonical NIP-19
+key IDs/JWK digests, authorization-view-age bound, all status
+paths/URIs/digests, optional successor, and an active NID writer/checkpoint.
+`persona_npub` MUST be the canonical NIP-19
 encoding of `persona_key`, and the issuer's final component MUST equal that
 npub. Its Ed25519 authority proof and that writer's current ledger authority
 for the same active persona MUST verify. HTTPS and repository metadata, JWKS,
@@ -1792,7 +2237,7 @@ consent, reader, issuance mapping, or secret key.
 <a id="comms-token-status"></a>
 ## 14. Token status profile
 
-Comms 0.5.0 freezes the complete behavior used from
+Comms 0.6.0 freezes the complete behavior used from
 `draft-ietf-oauth-status-list-21`; later drafts do not change this profile.
 Each projected JWT contains `status.status_list` with an HTTPS `uri` and
 non-negative `idx`. That URI returns a distinct compact Status List Token with
@@ -1954,6 +2399,105 @@ A projected JWT never replaces canonical private-ledger state. Client
 Credentials remains prohibited; a separately integrated sender-constrained
 HTTPS workload profile is required before that grant can be added.
 
+The v1 workload-registration schema allocates only the DPoP/JWK subject-proof
+form. Consequently the atomic workload-publication boundary in this release
+MUST accept only DPoP with `cnf.jkt`. It MUST reject mutual TLS before reading
+current claim or token state, peer identity, durable state, or signing state.
+Mutual-TLS workload publication requires a future normative registration and
+schema allocation that distinguishes a certificate thumbprint from a JWK
+thumbprint and binds that signed method-specific identity; local configuration
+alone MUST NOT certify that authority.
+
+The workload-publication boundary is one atomic operation equivalent to
+`authorizeAndSignAgentPublication`; no conforming interface returns a
+caller-consumable pre-sign authorization, signing capability, private key, or
+post-validation boolean. Its constructor captures one authority identifier,
+trusted clock, exact issuer and audience, JWKS, current claim-view and token-
+status resolvers, DPoP consumer, future-reserved mutual-TLS peer-identity
+reader, durable execute-once store, and signing callback. The reader is
+captured for interface compatibility but MUST NOT be called or grant authority
+under the v1 DPoP-only registration. Replacing any constructor input or
+callback after construction MUST NOT affect an operation.
+
+For this boundary, `client_id` is the exact requested agent identifier and
+`credential_ledger_persona` is the exact represented persona. The access token
+MUST also carry the private claims
+`https://heterodyne.network/jwt/agent-selected-signer`,
+`https://heterodyne.network/jwt/agent-signer-key-class`, and, when present,
+`https://heterodyne.network/jwt/agent-association`. They respectively equal
+the current workload registration's `selected_signer`, `signer_key_class`,
+and complete optional `agent_association`. The signature-verified token's
+issuer, sole audience, pairwise `sub`, `client_id`, normalized scope, expiry,
+credential-ledger persona and generation, confirmation key, signer fields,
+and association are compared for exact equality with the request, current
+opaque verified workload-registration claim, current credential-ledger view,
+and current token-status result. Its `exp - iat` is at most 300 seconds. The
+current status is `active`, has the same generation, and binds the exact
+current claim-view checkpoint. A conflicted, revoked, expired, absent,
+non-opaque, multiply selected, or writer-unauthorized workload claim grants no
+publication authority.
+
+Selection of the workload leaf is not authorization by itself. The boundary
+MUST resolve its complete root-to-leaf opaque verified-artifact chain from the
+current view, prove every issuer edge and attenuation, and require every
+ancestor and the leaf to be repository-confirmed, current in the exact
+credential-ledger generation, within time, unconflicted, and not validly
+revoked. The trust root is the exact represented persona key. For this
+publication effect the signed outer claim audience is the configured exact
+resource-server audience, the signed outer resource is the exact DPoP target,
+the namespace is `heterodyne.agent`, and the operation/purpose is exactly
+`heterodyne:agent:publish`; the leaf's registered resources and normalized
+scope MUST also include those exact values. The complete ordered chain and
+this authorization context are part of the durable binding.
+
+A DPoP request supplies the exact compact proof bytes plus method, target, and
+nonce to the constructor-captured consuming verifier. Its returned sender key
+MUST equal both `cnf.jkt` and the workload registration's subject thumbprint;
+the SHA-256 digest of the exact compact bytes is part of the durable binding,
+so the same proof cannot authorize a different token, request, publication, or
+authority. A mutual-TLS request is unsupported and fails closed as specified
+above. No peer identity or proof-validity assertion is accepted from the
+publication request.
+
+Before reading current state, the boundary descriptor-captures and bounds the
+complete closed request, including the compact JWT, proof, unsigned Nostr
+event and every nested tag. Before recursive capture, canonicalization,
+cryptographic hashing, or verification, the same rule applies to constructor
+JWKS, decoded JWT claims, current-view data components, token status, DPoP
+consumer results, durable records and outputs, and signer results. Each input
+has fixed depth, node, own-member, dense-array/list, per-string/byte and
+aggregate-string/byte limits; a proxy, accessor, symbol, exotic prototype,
+sparse array, cycle, unexpected key, or exceeded limit fails closed without
+invoking a later callback. It verifies the JWT signature and complete
+bindings, consumes DPoP when applicable, then reloads and revalidates the
+complete claim chain, claim view, and token status immediately before the
+durable acquire/CAS and again after exact `executing` readback immediately
+before invoking the signer. Any
+view, checkpoint, writer set, status, generation, or binding change fails
+closed. Only then does it mint a module-private one-use authorization bound to
+the exact attributed unsigned event. The signer is invoked only after a
+binding-equal `executing` record with the exact execution token is read back,
+and only by consuming that internal authorization inside the same call.
+
+The returned signer value is captured once, strict-verified as a NIP-01 event,
+and required to equal the attributed unsigned event in every unsigned member.
+The boundary durably commits that immutable event and reads back a binding-
+equal terminal before returning it. An exact committed retry returns the
+verified cached event without consuming DPoP or signing again. An executing
+reservation, signer throw, unverifiable signer return, unknown terminal write,
+or unverifiable readback returns a stable indeterminate reconciliation digest
+and never retries the signing effect. A proof conflict or any stale/mismatched
+authorization input rejects without calling the signer.
+
+Every indeterminate reconciliation digest is derived locally with a distinct
+domain from the exact authority, request/durable binding, attributed event,
+current claim/status fingerprints, and either the exact persisted execution
+token or the explicit unresolved-before-execution state. A store-returned
+digest is never authoritative: cached and post-write indeterminate records
+MUST be checked against the local derivation, and a mismatch MUST NOT be
+exposed or permit re-execution. Exact retries with the same persisted execution
+token return the same local digest.
+
 An internal Social publication boundary MUST atomically validate, attribute,
 sign, and verify; it MUST NOT split those actions across caller-consumable
 pre-sign and post-sign capability producers. The embedding supplies a trusted
@@ -2080,9 +2624,10 @@ NIP-32 block followed directly by `agent_action`, or the same block with one
 canonical `heterodyne_agent` association immediately before `agent_action`.
 Neither form makes the association mandatory or permits it in another order.
 
-Tier 1 carries the block publicly. Tier 2 carries it inside the private
-repository trust boundary. Tier 3 carries the same block only inside the
-encrypted logical event and adds no agent marker to the clear wrapper. A
+Tier 1 carries the block publicly. Private-repository plaintext carries it
+inside the private repository trust boundary. Tier 2 and Tier 3 carry the same
+block only inside the
+encrypted logical event and add no agent marker to the clear wrapper. A
 verifier MUST require the event `pubkey` to equal the exact selected signer and
 MUST require the label namespace, class, action, ordering, and any optional
 association to be canonical. Heterodyne clients always render the event as
@@ -2122,11 +2667,12 @@ under a separately bounded encrypted diagnostic policy.
 
 The registry defines these Comms invariants. An entry the registry binds to a feature is owed only by an implementation
 claiming that feature, under
-[`heterodyne:0.5.0#core-invariant-scope`](heterodyne-core.md#core-invariant-scope).
+[`heterodyne:0.6.0#core-invariant-scope`](heterodyne-core.md#core-invariant-scope).
 The list below is descriptive:
 
-- **COMMS-I-TIER3-BLIND-CARRIER:** Tier 3 content is audience-key encrypted before reaching any repository, seed, full node, or relay.
-- **COMMS-I-TIER2-HONESTY:** Tier 2 private repositories are selective-replication boundaries, not encryption, and clients present that trust boundary honestly.
+- **COMMS-I-TIER3-BLIND-CARRIER:** Tier 2 and Tier 3 content is audience-key encrypted before reaching any repository, seed, full node, or relay, and Tier 3 objects reach only authorized private-repository interfaces.
+- **COMMS-I-TIER2-HONESTY:** Private plaintext repositories are selective-replication boundaries, not encryption, and clients present that trust boundary honestly.
+- **COMMS-I-TIER3-CONFINED:** Tier 3 posts, audience wraps, rosters, and rotation records are carried only via the private repository's authorized interfaces, never ordinary public relays, confining audience membership metadata to allowed nodes.
 - **COMMS-I-CONFIG-AT-REST:** Comms-owned non-key private state and audience or group material are encrypted under the Comms repository-encryption profile.
 - **COMMS-I-CLIENT-SIDE-DELIVERY:** Cross-backend Comms processing runs on user-controlled clients; full nodes, repository relays, routing nodes, and Nostr relays are blind carriers for protected plaintext.
 - **COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY:** Feed, outbox, and delivery discovery do not depend on a centralized delivery directory.
@@ -2136,12 +2682,12 @@ The list below is descriptive:
 - **COMMS-I-CLAIM-REVOCATION:** A valid revocation or authority reduction is irreversible, monotonic, and wins concurrent repository merges.
 - **COMMS-I-LEDGER-CONFINEMENT:** Private claim-ledger contents and decryption material are available only to active durable NID-bearing ledger readers.
 - **COMMS-I-ISSUER-KEY-CONFINEMENT:** Shared OIDC signing keys are separately encrypted and released only to nodes with active oidc-token-issuer authority.
-- **COMMS-I-MINT-FRESHNESS:** A node mints only from a synchronized canonical checkpoint no older than the manifest bound, which cannot exceed 300 seconds.
+- **COMMS-I-MINT-FRESHNESS:** A node mints only from a synchronized canonical checkpoint no older than the declared authorization_view_max_age bound, which defaults to 300 seconds and cannot exceed 86400 seconds.
 - **COMMS-I-ISSUER-CONTINUITY:** HTTPS issuer metadata and the active-persona-key-scoped Radicle continuity tree agree on the exact active issuer, keys, status digests, and authorized succession.
 - **COMMS-I-CLAIM-RELEASE:** OIDC projection releases only claims allowed by scope, audience, client policy, consent, active repository state, issuer trust, and proof requirements.
 - **COMMS-I-JWT-TYPE-AUDIENCE:** JWT consumers enforce exact issuer, intended audience, time, signature, nonce when applicable, and token-type separation including typ at+jwt for access tokens.
 - **COMMS-I-STATUS-INTEGRITY:** Draft-21 status lists are signed, fresh, digest-bound across HTTPS and Radicle mirrors, writer-namespaced without index reuse, and never let VALID override other token failures.
-- **COMMS-I-PUBLIC-READER-TIER1-ONLY:** A public-reader implementation consumes only verified Tier 1 content and never renders Tier 2 plaintext or interprets Tier 3 ciphertext as public content.
+- **COMMS-I-PUBLIC-READER-TIER1-ONLY:** A public-reader implementation consumes only verified Tier 1 content and never renders private-repository plaintext or interprets Tier 2 or Tier 3 ciphertext as public content.
 - **COMMS-I-AGENT-SIGNER-BINDING:** Every automated event uses the exact registered signer, key class, and optional association kind/value; an agent key is preferred, while a persona key requires the explicit OIDC persona-signing scope, and the event pubkey remains authoritative.
 - **COMMS-I-AGENT-ATTRIBUTION:** Every agent-authored application event carries the canonical automation attribution block at its tier-appropriate protected location.
 - **COMMS-I-WORKLOAD-TOKEN-CONFINEMENT:** Workload tokens, token identifiers, private source claims, and sender proofs remain confined to the protected authorization and audit boundary.
@@ -2154,7 +2700,8 @@ The list below is descriptive:
 - **COMMS-I-TRUSTED-SEED-CONFINEMENT:** A trusted seed receives only routing metadata and exact encrypted event bytes, writes only its own active authorized NID ref, and gains no persona, repository-owner, group-admin, full-node, or MLS authority.
 - **COMMS-I-PRIVATE-RELAY-ACL:** Every private seed read or write uses embedding-configured seed and administrator trust roots, one-use authenticated request authority, trusted current state and time, and one unique current unexpired administrator-signed ACL head matching the account role, seed grant, `h`, private RID, and Marmot group transition.
 
-Mechanism guarantees MUST remain distinct. Tier 3 has no forward secrecy: a
+Mechanism guarantees MUST remain distinct. Tier 2 and Tier 3 have no forward
+secrecy: a
 compromised audience key decrypts every retained post under its
 `key_id`; rotation protects only later generations. Marmot conversation and
 Control-channel guarantees come only from the pinned Marmot/MLS profile and
@@ -2166,7 +2713,7 @@ another.
 
 The stable Comms strict profile composes the Core strict profile and adds the
 baseline Comms invariants. Under
-[`heterodyne:0.5.0#core-strict-profile`](heterodyne-core.md#core-strict-profile) it does not add or
+[`heterodyne:0.6.0#core-strict-profile`](heterodyne-core.md#core-strict-profile) it does not add or
 require a feature-bound invariant, so claiming it does not oblige an
 implementation to ship claims, the OIDC issuer, token status, or agent
 authorship:
@@ -2185,18 +2732,20 @@ authorship:
     "COMMS-I-TIER2-HONESTY",
     "COMMS-I-CONFIG-AT-REST",
     "COMMS-I-CLIENT-SIDE-DELIVERY",
-    "COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY"
+    "COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY",
+    "COMMS-I-TIER3-CONFINED"
   ]
 }
 ```
 
 A `heterodyne-comms-strict-v1` implementation MUST meet every inherited Core
-obligation, MUST present the Tier 2 plaintext-on-allowed-seeds warning before
+obligation, MUST present the private-repository plaintext-on-allowed-seeds
+warning before
 publication, and MUST retain no retired message keys after the Comms deletion
 points. Its capability advertisement MUST name both profile IDs. An
 implementation missing any condition MUST omit the Comms profile. The
 invariants bound to `comms.public-reader.v1` and
-[`heterodyne:0.5.0#comms-agent-authorship`](#comms-agent-authorship) are owed
+[`heterodyne:0.6.0#comms-agent-authorship`](#comms-agent-authorship) are owed
 by every implementation claiming those features, strict or not.
 
 <a id="comms-conformance"></a>
@@ -2204,7 +2753,7 @@ by every implementation claiming those features, strict or not.
 
 
 A Comms conformance report follows the family requirements in
-[`heterodyne:0.5.0#core-conformance`](heterodyne-core.md#core-conformance) and claims Core+Comms. A base
+[`heterodyne:0.6.0#core-conformance`](heterodyne-core.md#core-conformance) and claims Core+Comms. A base
 implementation MUST implement the envelope, tiers, one-event exact-byte
 publishing and retry, NIP-65 outbox retrieval, source-neutral selection, and
 every baseline Comms invariant. It MUST NOT require Assurance, a cold root,
@@ -2219,7 +2768,7 @@ trusted-seed private relay and agent authorship are each a separately claimed fe
 requirement. A base Comms implementation therefore does not need an RFC 9068
 issuer, JWKS discovery, a continuity manifest, or status lists. The
 invariant scoping in
-[`heterodyne:0.5.0#core-invariant-scope`](heterodyne-core.md#core-invariant-scope) governs what each
+[`heterodyne:0.6.0#core-invariant-scope`](heterodyne-core.md#core-invariant-scope) governs what each
 claim owes. `comms.oidc-jwt-projection.v1` becomes mandatory exactly when an
 implementation claims a feature that requires it, which for Comms means
 `comms.agent-authorship.v1`: an automated principal's registration, consent,
@@ -2240,10 +2789,12 @@ feature, but MUST name the `public-reader` Core role, implement
 pass every public-reader and applicable Core vector, and report reduced
 assurance when Tor is unavailable. Repository unavailability does not demote
 valid relay-derived state. It MUST NOT claim this
-feature after rendering Tier 2 or Tier 3 as public content.
+feature after rendering private-repository plaintext or Tier 2 or Tier 3
+ciphertext as public content.
 
 A report claiming `heterodyne-comms-strict-v1` MUST include the computed
-closure, the Core prerequisite result, the Tier 2 warning result, every
+closure, the Core prerequisite result, the private-repository plaintext
+warning result, every
 applicable strict vector result, and the vector results for every feature it
 also claims. It MUST NOT claim the profile if any item is missing. An
 implementation that exposes an automated publication path outside §15 MUST NOT
@@ -2256,6 +2807,20 @@ definitions only; their normalized `conformance_claimable:false` result is
 part of the case and they do not establish Control or recovery conformance.
 
 Byte-exact wire conformance and unknown-version handling are family-wide
-rules stated once by [`heterodyne:0.5.0#core-conformance`](heterodyne-core.md#core-conformance) and
-[`heterodyne:0.5.0#core-versioning`](heterodyne-core.md#core-versioning); an unknown registry profile is an unknown
+rules stated once by [`heterodyne:0.6.0#core-conformance`](heterodyne-core.md#core-conformance) and
+[`heterodyne:0.6.0#core-versioning`](heterodyne-core.md#core-versioning); an unknown registry profile is an unknown
 stamped version for that purpose.
+
+<a id="comms-retired-semantics"></a>
+## 18. Retired and diagnostic-only semantics
+
+`dm_invite_revoked_device` and `dm_invite_unbound_device` are retained as
+non-wire history, not current executable authority. They MUST NOT provide
+normative executable evidence or current protocol refusals. Their retirement
+does not relax the live Marmot account, device-leaf, invitation authentication,
+or current revocation boundaries specified in this document.
+
+`auth_rejected_permanent` is a local relay-write diagnostic and proves no cryptographic or upstream authority. It is diagnostic-only and non-wire for
+semantic-coverage purposes: an implementation MAY retain it as a terminal
+output classification, but it MUST NOT mint a semantic certificate or satisfy
+a security invariant.

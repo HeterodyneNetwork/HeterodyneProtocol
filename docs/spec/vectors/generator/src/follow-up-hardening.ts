@@ -1,5 +1,14 @@
 const HEX_KEY = /^[0-9a-f]{64}$/;
 
+export {
+  createCanonicalProfileSelectionAuthority,
+  selectCanonicalProfile,
+  type CanonicalProfileSelectionAuthority,
+  type CanonicalProfileSelectionAuthorityConfig,
+  type CanonicalProfileSelectionInput,
+  type CanonicalProfileView,
+} from "./canonical-profile-selection-authority.js";
+
 type Device = {
   persona: string;
   pubkey: string;
@@ -28,6 +37,11 @@ export function resolveTier3Recipients(input: {
   return { verdict: "accept", recipients: [...new Set(recipients)].sort() };
 }
 
+/**
+ * @deprecated Task-15 current-vector projection only. Canonical profile state
+ * is selected from captured signed candidates by selectCanonicalProfile; a
+ * caller assertion cannot establish repository authority.
+ */
 export function validateCanonicalProfile(input: {
   canonicalRepoSelected: boolean;
   publisher: string;

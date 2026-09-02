@@ -1,0 +1,29 @@
+{
+  "vector_id": "control/compromise-reset-closure-required",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "control",
+  "spec_refs": [
+    "heterodyne:control#control-compromise-reset"
+  ],
+  "invariants": [
+    "CONTROL-I-COMPROMISE-RESET",
+    "CONTROL-I-MARMOT-LEAF-COMPROMISE"
+  ],
+  "reason_codes": [
+    "control-compromise-reset-incomplete"
+  ],
+  "description": "A reset without a signed authoritative inventory, successor completion, leaf removals, group advances, and fresh KeyPackages is rejected before state changes.",
+  "direction": "consume",
+  "input": {
+    "grant": {},
+    "completion": {},
+    "authoritative_inventory": {},
+    "authoritative_evidence": {},
+    "pinned_assurance_authority": null,
+    "now": 130
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "control-compromise-reset-incomplete"
+  }
+}

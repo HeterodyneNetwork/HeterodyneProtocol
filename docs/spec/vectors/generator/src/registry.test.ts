@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
@@ -8,6 +9,7 @@ import {
   assertRegistryStatusTransition,
   computeRegistryDigest,
   loadRegistry,
+  validateRegisteredKindProfile,
   resolveStampingProfile,
   type ObjectEntry,
   type Registry,
@@ -17,6 +19,50 @@ import {
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(here, "../../../../../");
+
+const REVISION_15_IDENTITY_FIRST_VERSION_SHA256 =
+  "679e0bfd5b7f020f0c53153e6f8c2dadfe425fcf83b165c22aa5a7068ba8edef";
+
+const REVISION_16_ENTRY_SET_SHA256 =
+  "5ff98ff2af3bcbb413918dc207dcfc5da7035e9751e9836680df9b56a2b2230f";
+
+const REVISION_16_IDENTITY_TUPLES_SHA256 =
+  "852355247956e80edfc1e987d5e46c6f1c15b47c635d2f176d69450967806a26";
+
+const REVISION_17_REASON_REFINEMENTS = [
+  ["agent-attribution-bypass-prohibited", "Retained non-wire history for the retired diagnostic that classified omitted, altered, or falsified canonical agent attribution; current attribution-before-signing is governed by live publication authority.", "heterodyne:0.6.0#control-retired-semantics"],
+  ["agent-human-profile-prohibited", "Retained non-wire history for the retired diagnostic that classified bypass of the selected persona vault, signer, or key class; current signer selection is governed by live publication authority.", "heterodyne:0.6.0#control-retired-semantics"],
+  ["agent-key-access-prohibited", "Retained non-wire history for the retired diagnostic that classified requests for private key material or raw signing authority; current key confinement is governed by live signer boundaries.", "heterodyne:0.6.0#control-retired-semantics"],
+  ["agent-method-prohibited", "Retained non-wire history for the retired diagnostic that classified methods outside the closed agentic Control surface; current method authorization is governed by exact grants.", "heterodyne:0.6.0#control-retired-semantics"],
+  ["agent-resource-denied", "Retained non-wire history for the retired diagnostic that classified operations outside an exact active signer grant; current resource authorization is governed by exact grants.", "heterodyne:0.6.0#control-retired-semantics"],
+  ["agent-sender-proof-invalid", "The required per-use DPoP/JWK proof is missing, replayed, malformed, or mismatched with the verified token, registered sender key, method, target, or nonce.", "heterodyne:0.6.0#comms-agent-token"],
+  ["auth_rejected_permanent", "Local relay-write diagnostic for a repeated post-NIP-42 AUTH rejection; it is diagnostic-only and non-wire for semantic coverage and proves no cryptographic or upstream authority.", "heterodyne:0.6.0#comms-retired-semantics"],
+  ["control-keypackage-replenishment-paused", "Authenticated current enrollment state marks public Control KeyPackage replenishment as paused.", "heterodyne:0.6.0#control-invitation-policy"],
+  ["control-request-id-conflict", "Retained non-wire history for the retired diagnostic that classified request-identifier reuse with different canonical bound bytes; current at-most-once execution is governed by the durable signer fence.", "heterodyne:0.6.0#control-retired-semantics"],
+  ["control-signed-event-invalid", "Retained non-wire history for the retired diagnostic that classified altered or invalid signer output; current signer-output verification is governed by publication and signer-fence boundaries.", "heterodyne:0.6.0#control-retired-semantics"],
+  ["dm_invite_revoked_device", "Retained non-wire history for the retired kind:30078 device-revocation diagnostic; current invitation authentication and revocation boundaries do not emit this code.", "heterodyne:0.6.0#comms-retired-semantics"],
+  ["dm_invite_unbound_device", "Retained non-wire history for the retired kind:30078 device-delegation diagnostic; current invitation authentication and account-binding boundaries do not emit this code.", "heterodyne:0.6.0#comms-retired-semantics"],
+  ["invite-preauthorization-invalid", "The signed Control invite, exact preauthorization template, client binding, purpose, expiry, or current revocation state does not authorize the captured request.", "heterodyne:0.6.0#control-one-time-invites"],
+  ["marmot-agent-scope-denied", "The authenticated current persona-inbox authorization does not permit the captured agent sender, request, or required first-contact scope.", "heterodyne:0.6.0#comms-marmot-persona-inbox"],
+  ["marmot-keypackage-replayed", "The selected Marmot KeyPackage is already durably consumed by authenticated inbox state or a closed available or committed reservation.", "heterodyne:0.6.0#comms-marmot-persona-inbox"],
+  ["marmot-private-inbox-nid-required", "The authenticated current recipient repository authorization lacks the NID binding required for private persona-inbox admission.", "heterodyne:0.6.0#comms-marmot-persona-inbox"],
+  ["profile-repository-selection-required", "The selected canonical profile requires authenticated repository state, but no current writer-authenticated repository candidate supplies it.", "heterodyne:0.6.0#core-persona-profile"],
+  ["relay_profile_mutation", "The retained raw profile-event bytes do not exactly match a valid NIP-01 event identifier, signature, or exposed event fields.", "heterodyne:0.6.0#core-operational-authority-views"],
+  ["retired-key-authority-window-invalid", "Retained non-wire history for retired-key content outside a former key-authority window; current Core verification and source-neutral selection do not emit this code.", "heterodyne:0.6.0#core-retired-semantics"],
+  ["revoked_key_post_compromise", "Retained non-wire history for the retired duplicate classification at or after an accepted compromise_since cutoff; current Assurance uses evaluateAssuranceAuthorityAt.", "heterodyne:0.6.0#assurance-retired-semantics"],
+  ["strict_mode_tor_disabled", "The captured client role claims the strict profile while the current transport route is not Tor.", "heterodyne:0.6.0#core-operational-authority-views"],
+  ["unauthorized_cache_content", "A friend-cache candidate lacks an exact valid NIP-01 signature by the expected persona author.", "heterodyne:0.6.0#core-operational-authority-views"],
+  ["workspace_replay", "A Workspace invitation or other consuming authority input was reused with mismatched bindings or before its exact committed terminal was established.", "heterodyne:0.6.0#workspace-errors"],
+] as const;
+
+const TASK_9_NEW_FIRST_VERSION_ROWS = new Set([
+  "object:repository-writer-binding-v1:heterodyne/0.6.0",
+  "proof-domain:heterodyne-core-repository-writer-binding-v1:heterodyne/0.6.0",
+  "reason-code:repository-writer-binding-invalid:heterodyne/0.6.0",
+  "reason-code:claim-ledger-writer-unauthorized:heterodyne/0.6.0",
+  "reason-code:claim-subject-proof-replayed:heterodyne/0.6.0",
+  "reason-code:claim-authorization-effect-indeterminate:heterodyne/0.6.0",
+]);
 
 function cloneRegistry(registry: Registry): Registry {
   return structuredClone(registry);
@@ -33,8 +79,287 @@ function currentEntrySet(registry: Registry): RegistryEntrySet {
   });
 }
 
+function firstVersionRows(registry: Registry): string[] {
+  return [
+    ...registry.features.map(({ id, first_version }) =>
+      `feature:${id}:${first_version}`),
+    ...registry.kinds.map(({ kind, first_version }) =>
+      `kind:${kind}:${first_version}`),
+    ...registry.kinds.flatMap(({ kind, profiles }) =>
+      profiles.map(({ profile_id, first_version }) =>
+        `kind-profile:${kind}:${profile_id}:${first_version}`)),
+    ...registry.objects.map(({ id, first_version }) =>
+      `object:${id}:${first_version}`),
+    ...registry.proof_domains.map(({ id, first_version }) =>
+      `proof-domain:${id}:${first_version}`),
+    ...registry.reason_codes.map(({ code, first_version }) =>
+      `reason-code:${code}:${first_version}`),
+    ...registry.security_invariants.map(({ id, first_version }) =>
+      `security-invariant:${id}:${first_version}`),
+  ].sort();
+}
+
+function identityTuples(registry: Registry): Array<[string, string, string, string, string]> {
+  return [
+    ...registry.features.map(({ id, owner, status, first_version }) =>
+      ["feature", id, owner, status, first_version] as [string, string, string, string, string]),
+    ...registry.kinds.map(({ kind, allocation_authority, status, first_version }) =>
+      ["kind", String(kind), allocation_authority, status, first_version] as [string, string, string, string, string]),
+    ...registry.kinds.flatMap(({ kind, profiles }) => profiles.map(
+      ({ profile_id, owner, status, first_version }) =>
+        ["kind-profile", `${kind}:${profile_id}`, owner, status, first_version] as [string, string, string, string, string],
+    )),
+    ...registry.objects.map(({ id, owner, status, first_version }) =>
+      ["object", id, owner, status, first_version] as [string, string, string, string, string]),
+    ...registry.proof_domains.map(({ id, owner, status, first_version }) =>
+      ["proof-domain", id, owner, status, first_version] as [string, string, string, string, string]),
+    ...registry.reason_codes.map(({ code, owner, status, first_version }) =>
+      ["reason-code", code, owner, status, first_version] as [string, string, string, string, string]),
+    ...registry.security_invariants.map(({ id, owner, status, first_version }) =>
+      ["security-invariant", id, owner, status, first_version] as [string, string, string, string, string]),
+  ].sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
+}
+
+const NEW_0_6_REGISTRY_IDS = {
+  features: [],
+  kinds: [1040, 31006],
+  kind_profiles: ["heterodyne-assurance-enrollment-contest-profile-v1"],
+  objects: [
+    "enrollment-observation-receipt-v1",
+    "repository-writer-binding-v1",
+  ],
+  proof_domains: [
+    "heterodyne-assurance-enrollment-observation-v1",
+    "heterodyne-workspace-assurance-authorization-v1",
+    "heterodyne-core-repository-writer-binding-v1",
+  ],
+  reason_codes: [
+    "repository-writer-binding-invalid",
+    "claim-subject-proof-replayed",
+    "claim-authorization-effect-indeterminate",
+    "claim-ledger-writer-unauthorized",
+    "core-created-at-premature",
+    "workspace-assurance-state-required",
+    "assurance-enrollment-pending-window",
+    "assurance-enrollment-contested",
+  ],
+  security_invariants: [
+    "WORKSPACE-I-OPTIONAL-ASSURANCE",
+    "ASSURANCE-I-ENROLLMENT-WINDOWED",
+    "COMMS-I-TIER3-CONFINED",
+  ],
+} as const;
+
 describe("revisioned protocol registry", () => {
   const registry = loadRegistry(repositoryRoot);
+
+  it("BLUE TEAM VALIDATION: synthetic/local preserves revision 16 identities in revision 18", () => {
+    expect(registry.manifest.revision).toBe(18);
+    expect(REVISION_16_ENTRY_SET_SHA256).toBe(
+      "5ff98ff2af3bcbb413918dc207dcfc5da7035e9751e9836680df9b56a2b2230f",
+    );
+    const rows = identityTuples(registry);
+    expect(rows).toHaveLength(458);
+    expect(createHash("sha256").update(JSON.stringify(rows)).digest("hex"))
+      .toBe(REVISION_16_IDENTITY_TUPLES_SHA256);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local revision 17 retargets retired security diagnostics and live authority reasons", () => {
+    const reasonByCode = new Map(registry.reason_codes.map((entry) => [entry.code, entry]));
+    for (const [code, description, specRef] of REVISION_17_REASON_REFINEMENTS) {
+      expect(reasonByCode.get(code)).toMatchObject({
+        description,
+        spec_refs: [specRef],
+      });
+    }
+  });
+
+  it("registers the exact public-reader private-content boundary through revision 18", () => {
+    expect(registry.reason_codes.find(
+      ({ code }) => code === "public-reader-private-content",
+    )).toEqual({
+      code: "public-reader-private-content",
+      owner: "comms",
+      status: "draft",
+      first_version: "heterodyne/0.5.0",
+      description: "Public-reader mode was asked to render private-repository plaintext or interpret Tier 2 or Tier 3 ciphertext as public content.",
+      spec_refs: ["heterodyne:0.6.0#comms-retrieval"],
+    });
+  });
+
+  it("preserves the complete Task 2-8 authority set through revision 18", () => {
+    expect(registry.manifest.revision).toBe(18);
+
+    expect(registry.objects.find(
+      ({ id }) => id === "repository-writer-binding-v1",
+    )).toEqual({
+      id: "repository-writer-binding-v1",
+      owner: "core",
+      first_version: "heterodyne/0.6.0",
+      status: "draft",
+      schema: "https://heterodyne.network/schemas/core/repository-writer-binding-v1.schema.json",
+      carriers: ["radicle-authority-file"],
+    });
+
+    expect(registry.proof_domains.find(
+      ({ id }) => id === "heterodyne-core-repository-writer-binding-v1",
+    )).toEqual({
+      id: "heterodyne-core-repository-writer-binding-v1",
+      owner: "core",
+      first_version: "heterodyne/0.6.0",
+      status: "draft",
+      bound_members: [
+        "expires_at",
+        "issued_at",
+        "operations",
+        "owner_active_key",
+        "profile",
+        "ref_namespace",
+        "repository_rid",
+        "spec_version",
+        "writer_nid",
+      ],
+      suites: ["bip340", "ed25519"],
+      description: "Repository owner BIP-340 and writer NID Ed25519 proofs bind the identical closed repository-writer authority body.",
+    });
+
+    expect(registry.proof_domains.find(
+      ({ id }) => id === "heterodyne-assurance-enrollment-observation-v1",
+    )?.bound_members).toEqual([
+      "accepted_head",
+      "active_key",
+      "cold_root",
+      "conflict_free",
+      "first_observed_at",
+      "inception_event_id",
+      "last_observed_at",
+      "profile",
+      "spec_version",
+      "witness_key",
+    ]);
+
+    expect(registry.proof_domains.find(
+      ({ id }) => id === "heterodyne-assurance-downgrade-v1",
+    )?.bound_members).toEqual([
+      "active_key",
+      "assurance_head",
+      "created_at",
+      "inception_event_id",
+      "predecessor",
+    ]);
+    expect(registry.proof_domains.find(
+      ({ id }) => id === "heterodyne-claim-pop-v1",
+    )?.bound_members).toEqual([
+      "audience",
+      "claim_id",
+      "expires_at",
+      "issued_at",
+      "nonce",
+      "operation",
+      "resource",
+    ]);
+
+    const reason = (code: string) =>
+      registry.reason_codes.find((entry) => entry.code === code);
+    expect(reason("repository-writer-binding-invalid")).toEqual({
+      code: "repository-writer-binding-invalid",
+      owner: "core",
+      status: "draft",
+      first_version: "heterodyne/0.6.0",
+      description: "The closed repository-writer binding or its current owner-policy authorization is invalid.",
+      spec_refs: ["heterodyne:0.6.0#core-nid-delegation"],
+      intentionally_coarse: true,
+    });
+    expect(reason("claim-ledger-writer-unauthorized")).toEqual({
+      code: "claim-ledger-writer-unauthorized",
+      owner: "comms",
+      status: "draft",
+      first_version: "heterodyne/0.6.0",
+      description: "A claim-ledger record or prepared claim view lacks current Core repository-writer authorization.",
+      spec_refs: ["heterodyne:0.6.0#comms-claim-ledger"],
+      intentionally_coarse: true,
+    });
+    expect(reason("claim-subject-proof-replayed")).toEqual({
+      code: "claim-subject-proof-replayed",
+      owner: "comms",
+      status: "draft",
+      first_version: "heterodyne/0.6.0",
+      description: "The claim subject proof single-use key was already acquired or conflicts with a different authorization-effect binding.",
+      spec_refs: ["heterodyne:0.6.0#comms-claim-verification"],
+    });
+    expect(reason("claim-authorization-effect-indeterminate")).toEqual({
+      code: "claim-authorization-effect-indeterminate",
+      owner: "comms",
+      status: "draft",
+      first_version: "heterodyne/0.6.0",
+      description: "The acquired claim authorization effect has no safely confirmed terminal result and requires reconciliation.",
+      spec_refs: ["heterodyne:0.6.0#comms-claim-verification"],
+    });
+    expect(reason("claim-issuer-authority-invalid")).toMatchObject({
+      first_version: "heterodyne/0.5.0",
+      description: "The exact verified outer issuer or explicit verified claim-chain authority required at the edge was not established.",
+    });
+
+    for (const code of [
+      "org_member_add_unauthorized",
+      "role-delegation-address-invalid",
+      "role-delegation-key-proof-invalid",
+    ]) {
+      expect(reason(code)).toMatchObject({
+        first_version: "heterodyne/0.5.0",
+        spec_refs: [
+          "heterodyne:0.6.0#core-retired-member-kel-and-role-delegation",
+        ],
+      });
+    }
+  });
+
+  it("preserves every revision-15 entry identity and first_version exactly", () => {
+    const historicalRows = firstVersionRows(registry)
+      .filter((row) => !TASK_9_NEW_FIRST_VERSION_ROWS.has(row));
+    expect(historicalRows).toHaveLength(452);
+    expect(createHash("sha256").update(JSON.stringify(historicalRows)).digest("hex"))
+      .toBe(REVISION_15_IDENTITY_FIRST_VERSION_SHA256);
+  });
+
+  it("preserves historical first versions and closes the new 0.6 ID set", () => {
+    const at06 = {
+      features: registry.features
+        .filter(({ first_version }) => first_version === "heterodyne/0.6.0")
+        .map(({ id }) => id),
+      kinds: registry.kinds
+        .filter(({ first_version }) => first_version === "heterodyne/0.6.0")
+        .map(({ kind }) => kind),
+      kind_profiles: registry.kinds
+        .flatMap(({ profiles }) => profiles)
+        .filter(({ first_version }) => first_version === "heterodyne/0.6.0")
+        .map(({ profile_id }) => profile_id),
+      objects: registry.objects
+        .filter(({ first_version }) => first_version === "heterodyne/0.6.0")
+        .map(({ id }) => id),
+      proof_domains: registry.proof_domains
+        .filter(({ first_version }) => first_version === "heterodyne/0.6.0")
+        .map(({ id }) => id),
+      reason_codes: registry.reason_codes
+        .filter(({ first_version }) => first_version === "heterodyne/0.6.0")
+        .map(({ code }) => code),
+      security_invariants: registry.security_invariants
+        .filter(({ first_version }) => first_version === "heterodyne/0.6.0")
+        .map(({ id }) => id),
+    };
+
+    expect(at06).toEqual(NEW_0_6_REGISTRY_IDS);
+    expect(registry.kinds
+      .flatMap(({ profiles }) => profiles)
+      .find(({ profile_id }) =>
+        profile_id === "heterodyne-assurance-enrollment-inception-v1"
+      )?.first_version).toBe("heterodyne/0.5.0");
+    expect(registry.kinds
+      .flatMap(({ profiles }) => profiles)
+      .find(({ profile_id }) =>
+        profile_id === "heterodyne-assurance-enrollment-contest-profile-v1"
+      )?.first_version).toBe("heterodyne/0.6.0");
+  });
 
   it("assigns node-scoped JWT ownership only to Control", () => {
     const featureIds = registry.features.map(({ id }) => id);
@@ -90,6 +415,8 @@ describe("revisioned protocol registry", () => {
       "active-key-acceptance-v1",
       "succession-v1",
       "associated-key-v1",
+      "enrollment-observation-receipt-v1",
+      "repository-writer-binding-v1",
       "trusted-seed-acl-v1",
       "workspace-manifest-v1",
       "workspace-policy-v1",
@@ -148,6 +475,24 @@ describe("revisioned protocol registry", () => {
     expect(registry.kinds.find((entry) => entry.kind === 30078)).toBeUndefined();
   });
 
+  it("validates an exact registered kind-profile tuple", () => {
+    const profile = registry.kinds
+      .flatMap(({ kind, profiles }) => profiles.map((entry) => ({ kind, ...entry })))
+      .find(({ profile_id }) => profile_id === "heterodyne-core-rotation-breadcrumb-profile-v1")!;
+    expect(validateRegisteredKindProfile(registry, profile)).toEqual({
+      verdict: "accept",
+      normalized: profile,
+    });
+    expect(validateRegisteredKindProfile(registry, {
+      ...profile,
+      discriminator: `${profile.discriminator}:substituted`,
+    })).toEqual({ verdict: "reject", reason: "profile-metadata-mismatch" });
+    expect(validateRegisteredKindProfile(registry, {
+      ...profile,
+      profile_id: "unregistered-profile",
+    })).toEqual({ verdict: "reject", reason: "profile-not-registered" });
+  });
+
   it("allocates the optional Assurance records without reviving retired discovery kinds", () => {
     const allocations = [
       [31002, "heterodyne-assurance-enrollment-inception-v1"],
@@ -177,6 +522,21 @@ describe("revisioned protocol registry", () => {
         profiles: [],
       });
     }
+
+    expect(registry.kinds.find((entry) => entry.kind === 31006)).toMatchObject({
+      allocation_authority: "heterodyne",
+      base_schema_owner: "assurance",
+      status: "draft",
+      first_version: "heterodyne/0.6.0",
+      profiles: [{
+        profile_id: "heterodyne-assurance-enrollment-contest-profile-v1",
+        owner: "assurance",
+        discriminator: "content.profile=heterodyne.assurance.enrollment-contest.v1",
+        stamping: false,
+        first_version: "heterodyne/0.6.0",
+        status: "draft",
+      }],
+    });
   });
 
   it("registers Social as a vanilla-Nostr extension without feed-index or KEL prerequisites", () => {
@@ -350,6 +710,25 @@ describe("revisioned protocol registry", () => {
       ],
     });
     expect(registry.proof_domains.find(
+      ({ id }) => id === "heterodyne-workspace-assurance-authorization-v1",
+    )).toMatchObject({
+      owner: "workspace",
+      first_version: "heterodyne/0.6.0",
+      suites: ["bip340"],
+      bound_members: [
+        "evaluated_at",
+        "next_assurance",
+        "next_policy_head",
+        "previous_assurance",
+        "previous_policy_head",
+        "profile",
+        "suite",
+        "transition_digest",
+        "verification_key",
+        "workspace_key",
+      ],
+    });
+    expect(registry.proof_domains.find(
       ({ id }) => id === "heterodyne-workspace-successor-reauthorization-v1",
     )).toMatchObject({
       owner: "workspace",
@@ -417,12 +796,14 @@ describe("revisioned protocol registry", () => {
       "active-key-acceptance-v1",
       "succession-v1",
       "associated-key-v1",
+      "enrollment-observation-receipt-v1",
     ]);
     expect(assuranceObjects.map(({ carriers }) => carriers)).toEqual([
       ["nostr-event"],
       ["nostr-event"],
       ["nostr-event"],
       ["nostr-event"],
+      ["radicle-authority-file"],
     ]);
 
     const assuranceCarrier: ObjectEntry["carriers"][number] = "nostr-event";
@@ -435,6 +816,7 @@ describe("revisioned protocol registry", () => {
       "heterodyne-assurance-succession-transition-v1",
       "heterodyne-assurance-associated-key-record-v1",
       "heterodyne-assurance-downgrade-v1",
+      "heterodyne-assurance-enrollment-observation-v1",
     ]));
     expect(assuranceProofs).not.toContain("heterodyne-assurance-succession-v1");
     expect(assuranceProofs).not.toContain("heterodyne-assurance-associated-key-subject-v1");
@@ -482,6 +864,24 @@ describe("revisioned protocol registry", () => {
       "subject_key",
       "visibility",
     ]);
+    expect(registry.proof_domains.find(
+      ({ id }) => id === "heterodyne-assurance-enrollment-observation-v1",
+    )).toMatchObject({
+      owner: "assurance",
+      suites: ["bip340"],
+      bound_members: [
+        "accepted_head",
+        "active_key",
+        "cold_root",
+        "conflict_free",
+        "first_observed_at",
+        "inception_event_id",
+        "last_observed_at",
+        "profile",
+        "spec_version",
+        "witness_key",
+      ],
+    });
 
     const assuranceReasons = registry.reason_codes
       .filter(({ owner }) => owner === "assurance")
@@ -497,6 +897,8 @@ describe("revisioned protocol registry", () => {
       "assurance-associated-key-revoked",
       "assurance-downgrade-consent-required",
       "assurance-pin-conflict",
+      "assurance-enrollment-pending-window",
+      "assurance-enrollment-contested",
     ]));
 
     const assuranceInvariants = registry.security_invariants
@@ -512,7 +914,14 @@ describe("revisioned protocol registry", () => {
       "ASSURANCE-I-COMPROMISE-CUTOFF",
       "ASSURANCE-I-NO-IMPLICIT-CONTINUATION",
       "ASSURANCE-I-ASSOCIATED-KEY-BOUNDS",
+      "ASSURANCE-I-ENROLLMENT-WINDOWED",
     ]));
+    expect(registry.security_invariants.find(
+      ({ id }) => id === "ASSURANCE-I-ENROLLMENT-WINDOWED",
+    )?.description).toMatch(/observation.*604800|604800.*observation/i);
+    expect(registry.security_invariants.find(
+      ({ id }) => id === "ASSURANCE-I-ENROLLMENT-WINDOWED",
+    )?.description).not.toMatch(/OpenTimestamp|OTS|tiebreak|materially earlier/i);
   });
 
   it("composes public Comms and Marmot from Core Nostr and repository primitives", () => {
@@ -554,7 +963,7 @@ describe("revisioned protocol registry", () => {
         "core.repo-relay-client.v1",
         "comms.radicle-backed-marmot-relay.v1",
       ],
-      spec_ref: "heterodyne:0.5.0#comms-trusted-seed-private-relay",
+      spec_ref: "heterodyne:0.6.0#comms-trusted-seed-private-relay",
     });
     expect(feature("comms.agent-authorship.v1").prerequisites)
       .toEqual(["comms.oidc-jwt-projection.v1"]);
@@ -637,14 +1046,14 @@ describe("revisioned protocol registry", () => {
     expect(feature("control.multi-persona-vaults.v1")).toMatchObject({
       owner: "control",
       prerequisites: ["comms.marmot-conversations.v1"],
-      spec_ref: "heterodyne:0.5.0#control-persona-vaults",
+      spec_ref: "heterodyne:0.6.0#control-persona-vaults",
     });
     expect(feature("control.nip46-oidc-signing.v1")).toMatchObject({
       prerequisites: [
         "comms.oidc-jwt-projection.v1",
         "control.multi-persona-vaults.v1",
       ],
-      spec_ref: "heterodyne:0.5.0#control-nip46-signing",
+      spec_ref: "heterodyne:0.6.0#control-nip46-signing",
     });
     expect(feature("control.agent-workload-publication.v1").prerequisites)
       .toEqual([
@@ -913,8 +1322,8 @@ describe("revisioned protocol registry", () => {
     ]));
   });
 
-  it("keeps baseline and historical reason ownership at revision 14", () => {
-    expect(registry.manifest.revision).toBe(14);
+  it("keeps baseline and historical reason ownership through revision 18", () => {
+    expect(registry.manifest.revision).toBe(18);
     const reasons = new Map(
       registry.reason_codes.map((entry) => [entry.code, entry]),
     );

@@ -1,0 +1,26 @@
+{
+  "vector_id": "core/profile-publisher-delegation-invalid",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "core",
+  "spec_refs": [
+    "heterodyne:core#core-persona-profile"
+  ],
+  "invariants": [
+    "CORE-I-IDENTITY-INTEGRITY"
+  ],
+  "reason_codes": [
+    "profile-publisher-delegation-invalid"
+  ],
+  "description": "A profile event signed by a key other than the active delegated publisher is rejected.",
+  "direction": "consume",
+  "input": {
+    "canonicalRepoSelected": true,
+    "publisher": "1697ffa6fd9de627c077e3d2fe541084ce13300b0bec1146f95ae57f0d0bd6a5",
+    "delegatedPublisher": "0000000000000000000000000000000000000000000000000000000000000000",
+    "nip05Present": false
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "profile-publisher-delegation-invalid"
+  }
+}

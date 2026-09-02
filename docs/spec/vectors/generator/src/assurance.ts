@@ -14,6 +14,21 @@ import {
   type VerifiedNostrEvent,
 } from "./nostr.js";
 
+export {
+  assuranceEnrollmentWitnessPolicyDigest,
+  createAssuranceEnrollmentObservationAuthority,
+  evaluateEnrollmentEligibility,
+} from "./assurance-observation.js";
+export type {
+  AssuranceEnrollmentAuthoritativePin,
+  AssuranceEnrollmentObservationAuthority,
+  EnrollmentEvidenceInput,
+  EnrollmentObservationAuthorityConfig,
+  EnrollmentObservationJournal,
+  EnrollmentObservationJournalEntry,
+  EnrollmentWitnessPolicy,
+} from "./assurance-observation.js";
+
 export type EpochPolicy = {
   mode: "none" | "pre-rotation";
   current_keys: string[];
@@ -30,7 +45,7 @@ export type AssociatedKeyPolicy = {
 
 export type EnrollmentInception = {
   profile: "heterodyne.assurance.enrollment-inception.v1";
-  spec_version: "heterodyne/0.5.0";
+  spec_version: "heterodyne/0.6.0";
   active_key: string;
   created_at: number;
   predecessor: null;
@@ -67,7 +82,7 @@ export type SubordinateReauthorization = {
 };
 export type SuccessionRecord = {
   profile: "heterodyne.assurance.succession.v1";
-  spec_version: "heterodyne/0.5.0";
+  spec_version: "heterodyne/0.6.0";
   active_key: string;
   created_at: number;
   predecessor: string;
@@ -100,7 +115,7 @@ export type SuccessionResult = {
 
 export type AssociatedKeyRecord = {
   profile: "heterodyne.assurance.associated-key.v1";
-  spec_version: "heterodyne/0.5.0";
+  spec_version: "heterodyne/0.6.0";
   active_key: string;
   created_at: number;
   predecessor: string;
@@ -142,7 +157,7 @@ export type AssociatedKeyVerdict = AssuranceVerdict<AssociatedKeyState> | {
 
 type ActiveKeyAcceptance = {
   profile: "heterodyne.assurance.active-key-acceptance.v1";
-  spec_version: "heterodyne/0.5.0";
+  spec_version: "heterodyne/0.6.0";
   active_key: string;
   created_at: number;
   predecessor: string;
@@ -151,11 +166,39 @@ type ActiveKeyAcceptance = {
   cold_root_signature: string;
   assurance_head: string;
   state: "assured" | "downgraded";
+  downgrade_consent?: {
+    recovery_authority: string;
+    signature: string;
+  };
 };
 
 export type AssuranceVerdict<T> =
   | { verdict: "accept"; normalized: T }
   | { verdict: "reject"; reason_code: string };
+
+export type EnrollmentObservationReceipt = {
+  profile: "heterodyne.assurance.enrollment-observation-receipt.v1";
+  spec_version: "heterodyne/0.6.0";
+  inception_event_id: string;
+  active_key: string;
+  cold_root: string;
+  accepted_head: string;
+  first_observed_at: number;
+  last_observed_at: number;
+  conflict_free: true;
+  witness_key: string;
+  signature: string;
+};
+
+export type AssuranceEnrollmentEligibility = {
+  state: "pending" | "verified" | "contested" | "downgraded";
+  reason: "assurance-enrollment-pending-window" |
+    "assurance-enrollment-contested" | null;
+  warnings: Array<"assurance-enrollment-contested">;
+  normalized: AssuranceHeadState;
+  retained_pin: import("./assurance-observation.js")
+    .AssuranceEnrollmentAuthoritativePin | null;
+};
 
 const ajv = new Ajv({ allErrors: true, strict: false });
 const validateInception = ajv.compile(inceptionSchema as AnySchema);
@@ -167,9 +210,33 @@ export function evaluateEnrollment(input: {
   inception: NostrSignedEvent;
   acceptance: NostrSignedEvent;
 }): AssuranceVerdict<AssuranceHeadState> {
-  const inceptionEvent = snapshotAndVerifyNostrEvent(input.inception);
-  const acceptanceEvent = snapshotAndVerifyNostrEvent(input.acceptance);
-  if (inceptionEvent === null || acceptanceEvent === null) return reciprocalReject();
+  const candidate = snapshotEnrollmentCandidate(input);
+  if (candidate === null) return reciprocalReject();
+  return evaluateVerifiedEnrollment(candidate.inception, candidate.acceptance);
+}
+
+function snapshotEnrollmentCandidate(input: {
+  inception: NostrSignedEvent;
+  acceptance: NostrSignedEvent;
+}): { inception: VerifiedNostrEvent; acceptance: VerifiedNostrEvent } | null {
+  let inceptionInput: NostrSignedEvent;
+  let acceptanceInput: NostrSignedEvent;
+  try {
+    inceptionInput = input.inception;
+    acceptanceInput = input.acceptance;
+  } catch {
+    return null;
+  }
+  const inception = snapshotAndVerifyNostrEvent(inceptionInput);
+  const acceptance = snapshotAndVerifyNostrEvent(acceptanceInput);
+  if (inception === null || acceptance === null) return null;
+  return Object.freeze({ inception, acceptance });
+}
+
+function evaluateVerifiedEnrollment(
+  inceptionEvent: VerifiedNostrEvent,
+  acceptanceEvent: VerifiedNostrEvent,
+): AssuranceVerdict<AssuranceHeadState> {
   const inception = parseRecord<EnrollmentInception>(
     inceptionEvent,
     31002,

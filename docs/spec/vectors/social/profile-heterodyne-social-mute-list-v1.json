@@ -1,0 +1,43 @@
+{
+  "vector_id": "social/profile-heterodyne-social-mute-list-v1",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "social",
+  "profile": "heterodyne-social-mute-list-v1",
+  "spec_refs": [
+    "heterodyne:social#social-security"
+  ],
+  "invariants": [
+    "SOCIAL-I-PRIVATE-STATE-AT-REST"
+  ],
+  "reason_codes": [],
+  "description": "The fixed heterodyne-social-mute-list-v1 allocation is checked separately from its live semantic boundary.",
+  "direction": "consume",
+  "input": {
+    "kind": 10000,
+    "profile_id": "heterodyne-social-mute-list-v1",
+    "owner": "social",
+    "discriminator": "tag:heterodyne=social-mute-list-v1",
+    "stamping": true,
+    "first_version": "heterodyne/0.5.0",
+    "status": "draft",
+    "wire_probe": {
+      "content_is_heterodyne_json": false,
+      "is_dr_outer": false,
+      "tags": [
+        [
+          "heterodyne",
+          "social-mute-list-v1"
+        ]
+      ]
+    },
+    "config_audience_key": "4242424242424242424242424242424242424242424242424242424242424242",
+    "key_id": "current-social-mute-state",
+    "plaintext": "{\"muted_pubkeys\":[\"2222222222222222222222222222222222222222222222222222222222222222\"]}"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "derived_key": "65b579787a14a1890031517e0d78df12e0188d2cd171a245f9424b36b7958a3d",
+    "ciphertext": "AmBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgmZsXPUUQmrRUhi6kEsm8QckLPQ5O+IOU/bUH2tYGOVv9vHhPb5r+Gf8aBsfKbZIQ35JcauK+E6yiIjdT+FCwujMeji+SApr0habz8ApF7aGdHzL8ZHDS7EBCvwpyLVVl0bmI1OuezYvaY6lZup2+qAKXZ5JU8tNPKNEMKvwlJOarwA==",
+    "recovered_plaintext": "{\"muted_pubkeys\":[\"2222222222222222222222222222222222222222222222222222222222222222\"]}"
+  }
+}

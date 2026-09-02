@@ -226,6 +226,9 @@
      "items": {
       "$ref": "#/definitions/qualified_reference"
      }
+    },
+    "intentionally_coarse": {
+     "type": "boolean"
     }
    }
   },

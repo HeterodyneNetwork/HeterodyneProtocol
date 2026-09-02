@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://heterodyne.network/schemas/assurance/enrollment-observation-receipt-v1.schema.json",
+  "title": "Heterodyne Assurance enrollment observation receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "profile",
+    "spec_version",
+    "inception_event_id",
+    "active_key",
+    "cold_root",
+    "accepted_head",
+    "first_observed_at",
+    "last_observed_at",
+    "conflict_free",
+    "witness_key",
+    "signature"
+  ],
+  "properties": {
+    "profile": {
+      "const": "heterodyne.assurance.enrollment-observation-receipt.v1"
+    },
+    "spec_version": {
+      "const": "heterodyne/0.6.0"
+    },
+    "inception_event_id": {
+      "$ref": "#/definitions/hex32"
+    },
+    "active_key": {
+      "$ref": "#/definitions/hex32"
+    },
+    "cold_root": {
+      "$ref": "#/definitions/hex32"
+    },
+    "accepted_head": {
+      "$ref": "#/definitions/hex32"
+    },
+    "first_observed_at": {
+      "$ref": "#/definitions/unix_time"
+    },
+    "last_observed_at": {
+      "$ref": "#/definitions/unix_time"
+    },
+    "conflict_free": {
+      "const": true
+    },
+    "witness_key": {
+      "$ref": "#/definitions/hex32"
+    },
+    "signature": {
+      "$ref": "#/definitions/signature"
+    }
+  },
+  "definitions": {
+    "hex32": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{128}$"
+    },
+    "unix_time": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "vector_id": "core/profile-nip05-key-mismatch",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "core",
+  "spec_refs": [
+    "heterodyne:core#core-persona-profile"
+  ],
+  "invariants": [
+    "CORE-I-IDENTITY-INTEGRITY"
+  ],
+  "reason_codes": [
+    "profile-nip05-key-mismatch"
+  ],
+  "description": "Optional NIP-05 profile resolution cannot substitute a key other than the designated publisher.",
+  "direction": "consume",
+  "input": {
+    "canonicalRepoSelected": true,
+    "publisher": "1697ffa6fd9de627c077e3d2fe541084ce13300b0bec1146f95ae57f0d0bd6a5",
+    "delegatedPublisher": "1697ffa6fd9de627c077e3d2fe541084ce13300b0bec1146f95ae57f0d0bd6a5",
+    "nip05Present": true,
+    "nip05ResolvedKey": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "profile-nip05-key-mismatch"
+  }
+}

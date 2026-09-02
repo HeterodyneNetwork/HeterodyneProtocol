@@ -1,0 +1,24 @@
+{
+  "vector_id": "assurance/authority-at-compromise-cutoff",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "assurance",
+  "spec_refs": [
+    "heterodyne:assurance#assurance-compromise"
+  ],
+  "invariants": [
+    "ASSURANCE-I-COMPROMISE-CUTOFF"
+  ],
+  "reason_codes": [
+    "assurance-compromise-cutoff"
+  ],
+  "description": "Assurance authority is rejected at the exact inclusive compromise cutoff.",
+  "direction": "consume",
+  "input": {
+    "created_at": 1785000002,
+    "compromise_cutoff": 1785000002
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "assurance-compromise-cutoff"
+  }
+}

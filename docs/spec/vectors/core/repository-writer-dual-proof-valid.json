@@ -1,0 +1,42 @@
+{
+  "vector_id": "core/repository-writer-dual-proof-valid",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "core",
+  "spec_refs": [
+    "heterodyne:core#core-nid-delegation"
+  ],
+  "invariants": [
+    "CORE-I-NID-DELEGATION-DUAL-PROOF"
+  ],
+  "reason_codes": [],
+  "description": "The current Core writer boundary verifies owner and writer-NID proofs over the same closed binding and revalidates it against current policy.",
+  "direction": "consume",
+  "input": {
+    "binding": {
+      "profile": "heterodyne.core.repository-writer-binding.v1",
+      "spec_version": "heterodyne/0.6.0",
+      "owner_active_key": "6930f46dd0b16d866d59d1054aa63298b357499cd1862ef16f3f55f1cafceb82",
+      "repository_rid": "rad:z2UarttdYHskRJfCcJnwaohV2H93c",
+      "writer_nid": "did:key:z6MkknhhwAGsRrcTTthPSsBbQtrNX6CMqt4poro5jdP6uCue",
+      "ref_namespace": "refs/xyz.heterodyne.claim-ledger/writers/",
+      "operations": [
+        "claim-ledger-write"
+      ],
+      "issued_at": 1799999990,
+      "expires_at": 1800000100,
+      "owner_signature": "0b84e142ba0a2d461df314b484eed74a03ac84cc75793c22b237530908785f93f7eac22d89e5aad4667b9288b8aee4e52a393696552212db9edeb6014884946a",
+      "nid_signature": "e117378ab3f2b1ec124bfd90fad8815352e857adb7c3ccd23a52dec381d8a980e38823dc9e35556a8a356128e45463394b35fc8747c8da38a39a96cfbf3c4e0f"
+    },
+    "request": {
+      "owner_active_key": "6930f46dd0b16d866d59d1054aa63298b357499cd1862ef16f3f55f1cafceb82",
+      "repository_rid": "rad:z2UarttdYHskRJfCcJnwaohV2H93c",
+      "writer_nid": "did:key:z6MkknhhwAGsRrcTTthPSsBbQtrNX6CMqt4poro5jdP6uCue",
+      "writer_ref": "refs/xyz.heterodyne.claim-ledger/writers/writer-one",
+      "operation": "claim-ledger-write"
+    }
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "current_writer_binding": "opaque"
+  }
+}

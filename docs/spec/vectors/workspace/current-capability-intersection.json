@@ -1,0 +1,39 @@
+{
+  "vector_id": "workspace/current-capability-intersection",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "workspace",
+  "spec_refs": [
+    "heterodyne:workspace#workspace-role-policy"
+  ],
+  "invariants": [
+    "WORKSPACE-I-AUTHENTICATED-CURRENT-STATE",
+    "WORKSPACE-I-INHERITANCE-NARROWS",
+    "WORKSPACE-I-NO-AMBIENT-AUTHORITY"
+  ],
+  "reason_codes": [],
+  "description": "Authenticated current Workspace state and one explicit grant intersect the workspace, every role path, and grant ceiling before authorizing read.",
+  "direction": "consume",
+  "input": {
+    "actor_account": "4d4b6cd1361032ca9bd2aeb9d900aa4d45d9ead80ac9423374c451a7254d0766",
+    "requested_capabilities": [
+      "invite",
+      "read"
+    ],
+    "requested_resources": [
+      "6161616161616161616161616161616161616161616161616161616161616161"
+    ],
+    "current_state": "authenticated-private"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "active": true,
+      "approval_count": 1,
+      "approver_keys": [
+        "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f"
+      ],
+      "grant_id": "5151515151515151515151515151515151515151515151515151515151515151",
+      "operation_digest": "0e70ce4a77bd653f632f3768d78e89f24b708e8dcd3ae1cb56641484cbfaaf1b"
+    }
+  }
+}

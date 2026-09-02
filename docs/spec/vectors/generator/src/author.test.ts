@@ -1,6 +1,16 @@
-import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
+import {
+  access,
+  copyFile,
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   authorAllVectors,
@@ -42,6 +52,42 @@ afterEach(async () => {
 });
 
 describe("author mode", () => {
+  it("rejects every unresolved owner fragment before mutating the destination", async () => {
+    const sourceRoot = await mkdtemp(join(tmpdir(), "heterodyne-current-traceability-source-"));
+    const outputRoot = await mkdtemp(join(tmpdir(), "heterodyne-current-traceability-output-"));
+    tempDirs.push(sourceRoot, outputRoot);
+    const liveRoot = resolve(import.meta.dirname, "../../../../../");
+    const specificationRoot = join(sourceRoot, "docs/spec");
+    await mkdir(specificationRoot, { recursive: true });
+    for (const owner of ["core", "assurance", "comms", "control", "social", "workspace"]) {
+      await copyFile(
+        join(liveRoot, "docs/spec", `heterodyne-${owner}.md`),
+        join(specificationRoot, `heterodyne-${owner}.md`),
+      );
+    }
+    for (const [owner, anchor] of [
+      ["assurance", "assurance-scope"],
+      ["comms", "comms-agent-attribution"],
+    ]) {
+      const path = join(specificationRoot, `heterodyne-${owner}.md`);
+      await writeFile(
+        path,
+        (await readFile(path, "utf8")).replace(`<a id="${anchor}"></a>`, ""),
+        "utf8",
+      );
+    }
+    const sentinel = join(outputRoot, "sentinel.txt");
+    await writeFile(sentinel, "untouched\n", "utf8");
+
+    await expect(authorAllVectors(outputRoot, sourceRoot)).rejects.toThrow([
+      "unresolved current vector specification references:",
+      "assurance/persona-author-mismatch :: heterodyne:0.6.0#assurance-scope",
+      "comms/agent-attribution-encrypted-inner :: heterodyne:0.6.0#comms-agent-attribution",
+    ].join("\n"));
+    expect(await readFile(sentinel, "utf8")).toBe("untouched\n");
+    await expect(access(join(outputRoot, "fixtures.json"))).rejects.toMatchObject({ code: "ENOENT" });
+  }, 60_000);
+
   it("validates raw schema before normalization and schema 2 after packaging", async () => {
     const rawRoot = await mkdtemp(join(tmpdir(), "heterodyne-raw-package-"));
     const snapshotRoot = await mkdtemp(join(tmpdir(), "heterodyne-snapshot-package-"));

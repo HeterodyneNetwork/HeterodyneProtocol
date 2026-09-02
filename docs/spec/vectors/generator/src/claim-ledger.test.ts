@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { sha256 } from "@noble/hashes/sha2";
 import {
   activeCanonicalClaimSemanticsAt,
+  authorizeReaderOnboardingBundle,
   buildLedgerRepositoryEvidence,
   buildReaderOnboardingBundle,
   canMint,
@@ -11,6 +12,7 @@ import {
   createIssuerKeyEpochPayload,
   createSignedLedgerRecord,
   createStatusInvalidationRecords,
+  currentAuthorizationLedgerView,
   deriveActiveIssuerNids,
   determineHistoricalTokenReturnability,
   evaluateMintingAttempt,
@@ -24,11 +26,13 @@ import {
   validateIssuanceRecordOrThrow,
   validateLedgerRecordOrThrow,
   validateReaderOnboardingBundle,
+  validateAuthorizedReaderOnboardingBundle,
   type LedgerRecord,
   type LedgerRecordValidationEvidence,
   type LedgerValidationContext,
   type ReaderAccessRequest,
 } from "./claim-ledger.js";
+import { authorizeReaderAccessEffect } from "./claim-authorization.js";
 import { buildFixtures } from "./fixtures.js";
 import {
   buildClaimLedgerScenario,
@@ -271,12 +275,178 @@ describe("canonical repository evidence and convergence", () => {
 });
 
 describe("reader authorization and effect precedence", () => {
-  it("requires the exact signed reader claim, trust, current state, and fresh subject PoP", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local retains immutable outer claim and revocation record authority", () => {
+    // BLUE TEAM VALIDATION: synthetic/local mutates only bounded in-memory fixture fields after validation and never contacts an external target.
+    const active = mergeClaimLedger(
+      [s.claimRecordOne, s.claimRecordTwo], [],
+      s.baseRepository.checkpoint, contextFor(s.baseRepository.repository),
+    );
+    const activeClaim = active.records.find(({ record_id }) =>
+      record_id === s.claimRecordOne.record_id)!;
+    const claimId = s.claimOne.artifact.semantic.claim_id;
+    const originalClaimType = activeClaim.record_type;
+    const originalClaimGeneration = activeClaim.credential_ledger_generation;
+    try {
+      activeClaim.record_type = "revocation";
+      expect(resolveAuthoritativeClaimState(claimId, active)).toBe("active");
+      const request = s.requestFor(s.claimRecordOne, s.claimOne);
+      request.verification_context.now = s.baseRepository.checkpoint.observed_at;
+      expect(evaluateReaderAccess(s.writerOne.did_key, active, request)).toMatchObject({
+        allowed: false,
+        state: "active",
+      });
+      activeClaim.credential_ledger_generation = 1;
+      expect(resolveAuthoritativeClaimState(claimId, active)).toBe("active");
+    } finally {
+      activeClaim.record_type = originalClaimType;
+      activeClaim.credential_ledger_generation = originalClaimGeneration;
+    }
+
+    const revoked = mergeClaimLedger(
+      [s.claimRecordOne, s.claimRecordTwo], [s.revocationRecord],
+      s.baseRepository.checkpoint, contextFor(s.baseRepository.repository),
+    );
+    const reduction = revoked.records.find(({ record_id }) =>
+      record_id === s.revocationRecord.record_id)!;
+    const originalReductionType = reduction.record_type;
+    const originalReductionTime = reduction.created_at;
+    try {
+      reduction.record_type = "claim";
+      expect(resolveAuthoritativeClaimState(claimId, revoked)).toBe("revoked");
+      reduction.created_at = s.baseRepository.checkpoint.observed_at + 1;
+      expect(resolveAuthoritativeClaimState(claimId, revoked)).toBe("revoked");
+    } finally {
+      reduction.record_type = originalReductionType;
+      reduction.created_at = originalReductionTime;
+    }
+
+    const readerRecords = [
+      s.claimRecordOne,
+      s.claimRecordTwo,
+      s.epochOneRecord,
+      s.removalRecord,
+      s.epochTwoRecord,
+    ];
+    const readerRepository = buildLedgerRepositoryEvidence({
+      repository_rid: s.rid,
+      confirmed_records: readerRecords,
+      observed_at: s.now + 70,
+      prior: s.epochOneRepository.repository,
+    });
+    const removed = mergeClaimLedger(
+      readerRecords, [], readerRepository.checkpoint,
+      contextFor(readerRepository.repository),
+    );
+    const removal = removed.records.find(({ record_id }) =>
+      record_id === s.removalRecord.record_id)!;
+    const removalPayload = removal.payload as Record<string, unknown>;
+    const originalAction = removalPayload.action;
+    try {
+      removalPayload.action = "grant";
+      expect(resolveAuthoritativeClaimState(claimId, removed)).toBe("revoked");
+    } finally {
+      removalPayload.action = originalAction;
+    }
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local requires durable reader authority to mint and validate onboarding", async () => {
+    // BLUE TEAM VALIDATION: synthetic/local uses one deterministic in-memory CAS authority, fixture key, and compact state only.
+    const state = mergeClaimLedger(
+      [s.claimRecordOne, s.claimRecordTwo, s.epochOneRecord], [],
+      s.epochOneRepository.checkpoint, contextFor(s.epochOneRepository.repository),
+    );
+    const request = s.requestFor(s.claimRecordOne, s.claimOne);
+    request.verification_context.now = s.epochOneRepository.checkpoint.observed_at;
+    const input = {
+      reader_nid: s.writerOne.did_key,
+      request,
+      audience_key: s.audienceKeyOne,
+      compact_state: { confirmed_claim_ids: [s.claimOne.artifact.semantic.claim_id] },
+      idempotency_key: "synthetic-local-reader-onboarding-0001",
+    };
+    expect(evaluateReaderAccess(input.reader_nid, state, request)).toMatchObject({
+      allowed: false,
+      state: "active",
+    });
+    expect(() => buildReaderOnboardingBundle(input, state)).toThrow(/durable|effect|authorization/i);
+
+    const harness = s.makeClaimAuthorizationHarness({ load_state: () => state });
+    const first = await authorizeReaderOnboardingBundle(harness.authority, input, state);
+    expect(first).toMatchObject({
+      verdict: "accept",
+      allowed: true,
+      disposition: "executed",
+    });
+    if (first.verdict !== "accept") throw new Error("expected accepted onboarding");
+    expect(() => validateReaderOnboardingBundle(
+      first.result,
+      state,
+      request,
+    )).toThrow(/durable|effect|authorization/i);
+    await expect(validateAuthorizedReaderOnboardingBundle(
+      harness.authority, first, state, request,
+    )).resolves.toBeUndefined();
+
+    const retry = await authorizeReaderOnboardingBundle(harness.authority, input, state);
+    expect(retry).toMatchObject({
+      verdict: "accept",
+      allowed: true,
+      disposition: "cached",
+      result: first.verdict === "accept" ? first.result : undefined,
+    });
+    await expect(validateAuthorizedReaderOnboardingBundle(
+      harness.authority, retry, state, request,
+    )).resolves.toBeUndefined();
+    expect(harness.calls.acquire).toBe(2);
+
+    const wrongPurposeHarness = s.makeClaimAuthorizationHarness({ load_state: () => state });
+    const wrongPurpose = await authorizeReaderAccessEffect(wrongPurposeHarness.authority, {
+      reader_nid: input.reader_nid,
+      state,
+      request,
+      idempotency_key: "synthetic-local-reader-other-effect-0001",
+      effect_digest: "99".repeat(32),
+      effect: () => ({ status: "completed", result: first.result }),
+    });
+    expect(wrongPurpose.verdict).toBe("accept");
+    await expect(validateAuthorizedReaderOnboardingBundle(
+      wrongPurposeHarness.authority,
+      wrongPurpose,
+      state,
+      request,
+    )).rejects.toThrow(/purpose|authorization/i);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local authorizes one active reader effect through the durable Task 6 boundary", async () => {
+    // BLUE TEAM VALIDATION: synthetic/local uses deterministic fixture claims, an in-memory CAS store, and one inert effect counter only.
     const records = [s.claimRecordOne, s.claimRecordTwo];
     const state = mergeClaimLedger(records, [], s.baseRepository.checkpoint, contextFor(s.baseRepository.repository));
     const request = s.requestFor(s.claimRecordOne, s.claimOne);
     request.verification_context.now = s.baseRepository.checkpoint.observed_at;
-    expect(evaluateReaderAccess(s.writerOne.did_key, state, request).allowed).toBe(true);
+    expect(evaluateReaderAccess(s.writerOne.did_key, state, request)).toMatchObject({
+      allowed: false,
+      state: "active",
+    });
+    const harness = s.makeClaimAuthorizationHarness({ load_state: () => state });
+    let effects = 0;
+    await expect(authorizeReaderAccessEffect(harness.authority, {
+      reader_nid: s.writerOne.did_key,
+      state,
+      request,
+      idempotency_key: "synthetic-local-reader-effect-0001",
+      effect_digest: "71".repeat(32),
+      effect: () => {
+        effects += 1;
+        return { status: "completed", result: { access: "granted" } };
+      },
+    })).resolves.toMatchObject({
+      verdict: "accept",
+      allowed: true,
+      disposition: "executed",
+      result: { access: "granted" },
+    });
+    expect(harness.calls.acquire).toBe(1);
+    expect(effects).toBe(1);
     expect(evaluateReaderAccess(null, state, request).reason_code).toBe("claim-ledger-reader-unauthorized");
     expect(evaluateReaderAccess(s.writerTwo.did_key, state, request).allowed).toBe(false);
     expect(evaluateReaderAccess(s.writerOne.did_key, state).allowed).toBe(false);
@@ -313,12 +483,81 @@ describe("reader authorization and effect precedence", () => {
 
     const expiredRequest = cloneRequest(request);
     expiredRequest.verification_context.now = s.claimOne.artifact.semantic.expires_at!;
-    expiredRequest.verification_context.claim_authority_evidence.get(
-      s.claimOne.artifact.semantic.claim_id,
-    )!.valid_until = expiredRequest.verification_context.now + 1;
     expect(evaluateReaderAccess(s.writerOne.did_key, mergeClaimLedger(
       [s.claimRecordOne, s.claimRecordTwo], [], s.baseRepository.checkpoint, contextFor(s.baseRepository.repository),
     ), expiredRequest).state).toBe("expired");
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local denies stale, revoked, and writer-removed reader effects before acquire", async () => {
+    // BLUE TEAM VALIDATION: synthetic/local mutates only bounded process-local proof time and writer-policy fixtures; no external effect or target exists.
+    const activeState = mergeClaimLedger(
+      [s.claimRecordOne, s.claimRecordTwo], [],
+      s.baseRepository.checkpoint, contextFor(s.baseRepository.repository),
+    );
+    const attempt = async (
+      request: ReaderAccessRequest,
+      state: typeof activeState,
+      suffix: string,
+    ) => {
+      const harness = s.makeClaimAuthorizationHarness({ load_state: () => state });
+      const result = await authorizeReaderAccessEffect(harness.authority, {
+        reader_nid: s.writerOne.did_key,
+        state,
+        request,
+        idempotency_key: `synthetic-local-reader-${suffix}`,
+        effect_digest: "72".repeat(32),
+        effect: () => ({ status: "completed", result: { access: "unexpected" } }),
+      });
+      expect(result).toMatchObject({ verdict: "reject", allowed: false });
+      expect(harness.calls.acquire).toBe(0);
+    };
+    const stale = s.requestFor(s.claimRecordOne, s.claimOne);
+    stale.verification_context.now = stale.verification_context.subject_proof!.challenge.expires_at;
+    await attempt(stale, activeState, "stale-0001");
+
+    const revokedState = mergeClaimLedger(
+      [s.claimRecordOne, s.claimRecordTwo], [s.revocationRecord],
+      s.baseRepository.checkpoint, contextFor(s.baseRepository.repository),
+    );
+    const revoked = s.requestFor(s.claimRecordOne, s.claimOne);
+    revoked.verification_context.now = s.baseRepository.checkpoint.observed_at;
+    await attempt(revoked, revokedState, "revoked-0001");
+
+    const current = s.requestFor(s.claimRecordOne, s.claimOne);
+    current.verification_context.now = s.baseRepository.checkpoint.observed_at;
+    let loads = 0;
+    const writerHarness = s.makeClaimAuthorizationHarness({
+      load_state: () => {
+        loads += 1;
+        if (loads === 2) {
+          s.setCurrentWriterPolicy({
+            ...s.activeWriterPolicy(),
+            writers: s.activeWriterPolicy().writers.map((writer) => ({
+              ...writer,
+              state: "revoked" as const,
+            })),
+          });
+        }
+        return activeState;
+      },
+    });
+    try {
+      await expect(authorizeReaderAccessEffect(writerHarness.authority, {
+        reader_nid: s.writerOne.did_key,
+        state: activeState,
+        request: current,
+        idempotency_key: "synthetic-local-reader-writer-removed-0001",
+        effect_digest: "73".repeat(32),
+        effect: () => ({ status: "completed", result: { access: "unexpected" } }),
+      })).resolves.toMatchObject({
+        verdict: "reject",
+        allowed: false,
+        reason_code: "claim-ledger-writer-unauthorized",
+      });
+      expect(writerHarness.calls.acquire).toBe(0);
+    } finally {
+      s.resetCurrentWriterPolicy();
+    }
   });
 
   it("applies authenticated reduction before widening conflict and isolates status invalidation", () => {
@@ -411,29 +650,41 @@ describe("reader lifecycle and metadata privacy", () => {
     expectInvalidRotation(resign(s.epochTwoRecord, tamperedWrap as never));
   });
 
-  it("builds and executably validates the exact current-epoch onboarding bundle", () => {
+  it("builds and executably validates the exact current-epoch onboarding bundle", async () => {
     const records = [s.claimRecordOne, s.claimRecordTwo, s.epochOneRecord];
     const state = mergeClaimLedger(records, [], s.epochOneRepository.checkpoint, contextFor(s.epochOneRepository.repository));
     const request = s.requestFor(s.claimRecordOne, s.claimOne);
     request.verification_context.now = s.now + 60;
-    const bundle = buildReaderOnboardingBundle({
+    const harness = s.makeClaimAuthorizationHarness({ load_state: () => state });
+    const authorization = await authorizeReaderOnboardingBundle(harness.authority, {
       reader_nid: s.writerOne.did_key,
       request,
       audience_key: s.audienceKeyOne,
       compact_state: { confirmed_claim_ids: [s.claimOne.artifact.semantic.claim_id] },
+      idempotency_key: "synthetic-local-current-epoch-onboarding-0001",
     }, state);
-    expect(() => validateReaderOnboardingBundle(bundle, state, request)).not.toThrow();
+    expect(authorization.verdict).toBe("accept");
+    if (authorization.verdict !== "accept") throw new Error("expected accepted onboarding");
+    const bundle = authorization.result;
+    await expect(validateAuthorizedReaderOnboardingBundle(
+      harness.authority, authorization, state, request,
+    )).resolves.toBeUndefined();
     for (const mutation of [
       { ...bundle, bundle_digest: "00".repeat(32) },
       { ...bundle, compact_state_digest: "00".repeat(32) },
       { ...bundle, key_epoch: { ...bundle.key_epoch, epoch: 2 } },
       { ...bundle, radicle_access: { ...bundle.radicle_access, nid: s.writerTwo.did_key } },
     ]) {
-      expect(() => validateReaderOnboardingBundle(mutation, state, request)).toThrow(/onboarding|binding|authorization/);
+      await expect(validateAuthorizedReaderOnboardingBundle(
+        harness.authority,
+        { ...authorization, result: mutation },
+        state,
+        request,
+      )).rejects.toThrow(/onboarding|binding|authorization/);
     }
   });
 
-  it("rejects an accessor-backed stored claim event without invoking it", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local — rejects an accessor-backed stored claim event without invoking it", () => {
     const records = [s.claimRecordOne, s.claimRecordTwo, s.epochOneRecord];
     const state = mergeClaimLedger(
       records,
@@ -470,7 +721,7 @@ describe("reader lifecycle and metadata privacy", () => {
     expect(getterCalls).toBe(0);
   });
 
-  it("keeps the verified claim event ID stable after later source mutation", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local — rejects accessor-driven compact state before later source mutation", async () => {
     const records = [s.claimRecordOne, s.claimRecordTwo, s.epochOneRecord];
     const state = mergeClaimLedger(
       records,
@@ -482,7 +733,6 @@ describe("reader lifecycle and metadata privacy", () => {
     const artifact = (hostileRecord.payload as Record<string, unknown>)
       .claim_artifact as Record<string, unknown>;
     const event = artifact.event as Record<string, unknown>;
-    const originalEventId = event.id as string;
     const hostileState = {
       ...state,
       records: state.records.map((record) =>
@@ -497,13 +747,228 @@ describe("reader lifecycle and metadata privacy", () => {
     });
     const request = s.requestFor(s.claimRecordOne, s.claimOne);
     request.verification_context.now = s.now + 60;
-    const bundle = buildReaderOnboardingBundle({
+    const harness = s.makeClaimAuthorizationHarness({ load_state: () => state });
+    await expect(authorizeReaderOnboardingBundle(harness.authority, {
       reader_nid: s.writerOne.did_key,
       request,
       audience_key: s.audienceKeyOne,
       compact_state: compactState,
-    }, hostileState);
-    expect(bundle.authorization.event_id).toBe(originalEventId);
+      idempotency_key: "synthetic-local-accessor-onboarding-0001",
+    }, hostileState)).rejects.toThrow(/compact state|data/i);
+    expect(event.id).not.toBe("00".repeat(32));
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local retains snapshotted claim authorization after source-event mutation", async () => {
+    // BLUE TEAM VALIDATION: synthetic/local mutates one in-memory fixture source after validation; no external target or reusable payload exists.
+    const state = mergeClaimLedger(
+      [s.claimRecordOne, s.claimRecordTwo, s.epochOneRecord],
+      [],
+      s.epochOneRepository.checkpoint,
+      contextFor(s.epochOneRepository.repository),
+    );
+    const claimRecord = state.records.find(({ record_id }) =>
+      record_id === s.claimRecordOne.record_id)!;
+    const artifact = (claimRecord.payload as Record<string, unknown>)
+      .claim_artifact as Record<string, unknown>;
+    const event = artifact.event as Record<string, unknown>;
+    const originalEventId = event.id;
+    try {
+      event.id = "00".repeat(32);
+      const request = s.requestFor(s.claimRecordOne, s.claimOne);
+      request.verification_context.now = s.now + 60;
+      const harness = s.makeClaimAuthorizationHarness({ load_state: () => state });
+      const authorization = await authorizeReaderOnboardingBundle(harness.authority, {
+        reader_nid: s.writerOne.did_key,
+        request,
+        audience_key: s.audienceKeyOne,
+        compact_state: {
+          confirmed_claim_ids: [s.claimOne.artifact.semantic.claim_id],
+        },
+        idempotency_key: "synthetic-local-mutated-event-onboarding-0001",
+      }, state);
+      expect(authorization.verdict).toBe("reject");
+      expect(resolveAuthoritativeClaimState(
+        s.claimOne.artifact.semantic.claim_id,
+        state,
+      )).toBe("active");
+    } finally {
+      event.id = originalEventId;
+    }
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local retains signed claim expiry after duplicate-semantic mutation", () => {
+    // BLUE TEAM VALIDATION: synthetic/local mutates one in-memory duplicate semantic after merge; no external target or reusable payload exists.
+    const state = mergeClaimLedger(
+      [s.claimRecordOne, s.claimRecordTwo],
+      [],
+      s.baseRepository.checkpoint,
+      contextFor(s.baseRepository.repository),
+    );
+    const claimRecord = state.records.find(({ record_id }) =>
+      record_id === s.claimRecordOne.record_id)!;
+    const artifact = (claimRecord.payload as Record<string, unknown>)
+      .claim_artifact as Record<string, unknown>;
+    const semantic = artifact.semantic as Record<string, unknown>;
+    const signedExpiresAt = semantic.expires_at as number;
+    expect(resolveAuthoritativeClaimState(
+      s.claimOne.artifact.semantic.claim_id,
+      state,
+      signedExpiresAt,
+    )).toBe("expired");
+    try {
+      semantic.expires_at = signedExpiresAt + 1_000;
+      expect(resolveAuthoritativeClaimState(
+        s.claimOne.artifact.semantic.claim_id,
+        state,
+        signedExpiresAt,
+      )).toBe("expired");
+    } finally {
+      semantic.expires_at = signedExpiresAt;
+    }
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local retains signed revocation identity after duplicate-semantic mutation", () => {
+    // BLUE TEAM VALIDATION: synthetic/local mutates one in-memory duplicate revocation semantic after merge; no external target or reusable payload exists.
+    const state = mergeClaimLedger(
+      [s.claimRecordOne, s.claimRecordTwo],
+      [s.revocationRecord],
+      s.baseRepository.checkpoint,
+      contextFor(s.baseRepository.repository),
+    );
+    const revocationRecord = state.records.find(({ record_id }) =>
+      record_id === s.revocationRecord.record_id)!;
+    const artifact = (revocationRecord.payload as Record<string, unknown>)
+      .revocation_artifact as Record<string, unknown>;
+    const semantic = artifact.semantic as Record<string, unknown>;
+    const signedClaimId = semantic.claim_id as string;
+    expect(resolveAuthoritativeClaimState(signedClaimId, state)).toBe("revoked");
+    try {
+      semantic.claim_id = "ff".repeat(32);
+      expect(resolveAuthoritativeClaimState(signedClaimId, state)).toBe("revoked");
+    } finally {
+      semantic.claim_id = signedClaimId;
+    }
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local revalidates an in-place writer-signed claim record replacement", () => {
+    // BLUE TEAM VALIDATION: synthetic/local replaces one process-local record with a deterministic invalid-event record signed by the fixture writer.
+    const state = mergeClaimLedger(
+      [s.claimRecordOne, s.claimRecordTwo],
+      [],
+      s.baseRepository.checkpoint,
+      contextFor(s.baseRepository.repository),
+    );
+    const record = state.records.find(({ record_id }) =>
+      record_id === s.claimRecordOne.record_id)!;
+    const original = structuredClone(record);
+    const evidence = s.evidence.get(original.record_id)!;
+    const payload = structuredClone(record.payload) as Record<string, unknown>;
+    const artifact = payload.claim_artifact as Record<string, unknown>;
+    (artifact.event as Record<string, unknown>).id = "00".repeat(32);
+    const replacement = resign(
+      record,
+      payload as LedgerRecord["payload"],
+      s.writerOne,
+    );
+    try {
+      Object.assign(record, replacement);
+      expect(() => validateLedgerRecordOrThrow(
+        record,
+        new Map([[record.record_id, record]]),
+        boundEvidence(record, evidence),
+        bindingFor(record),
+      )).toThrow(/signature|event/);
+    } finally {
+      Object.assign(record, original);
+    }
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local revalidates an in-place writer-signed revocation record replacement", () => {
+    // BLUE TEAM VALIDATION: synthetic/local replaces one process-local revocation record with a deterministic invalid-event record signed by the fixture writer.
+    const state = mergeClaimLedger(
+      [s.claimRecordOne, s.claimRecordTwo],
+      [s.revocationRecord],
+      s.baseRepository.checkpoint,
+      contextFor(s.baseRepository.repository),
+    );
+    const record = state.records.find(({ record_id }) =>
+      record_id === s.revocationRecord.record_id)!;
+    const original = structuredClone(record);
+    const evidence = s.evidence.get(original.record_id)!;
+    const payload = structuredClone(record.payload) as Record<string, unknown>;
+    const artifact = payload.revocation_artifact as Record<string, unknown>;
+    (artifact.event as Record<string, unknown>).id = "00".repeat(32);
+    const replacement = resign(
+      record,
+      payload as LedgerRecord["payload"],
+      s.writerTwo,
+    );
+    try {
+      Object.assign(record, replacement);
+      expect(() => validateLedgerRecordOrThrow(
+        record,
+        new Map([
+          [s.claimRecordOne.record_id, s.claimRecordOne],
+          [record.record_id, record],
+        ]),
+        boundEvidence(record, evidence),
+        bindingFor(record),
+      )).toThrow(/signature|event/);
+    } finally {
+      Object.assign(record, original);
+    }
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local retains claim state after artifact removal or replacement", () => {
+    // BLUE TEAM VALIDATION: synthetic/local changes only one process-local duplicate artifact reference after validation.
+    const state = mergeClaimLedger(
+      [s.claimRecordOne, s.claimRecordTwo],
+      [],
+      s.baseRepository.checkpoint,
+      contextFor(s.baseRepository.repository),
+    );
+    const record = state.records.find(({ record_id }) =>
+      record_id === s.claimRecordOne.record_id)!;
+    const payload = record.payload as Record<string, unknown>;
+    const artifact = payload.claim_artifact;
+    const claimId = s.claimOne.artifact.semantic.claim_id;
+    let afterRemoval: ReturnType<typeof resolveAuthoritativeClaimState>;
+    let afterReplacement: ReturnType<typeof resolveAuthoritativeClaimState>;
+    try {
+      delete payload.claim_artifact;
+      afterRemoval = resolveAuthoritativeClaimState(claimId, state);
+      payload.claim_artifact = { event: {}, semantic: {} };
+      afterReplacement = resolveAuthoritativeClaimState(claimId, state);
+    } finally {
+      payload.claim_artifact = artifact;
+    }
+    expect([afterRemoval!, afterReplacement!]).toEqual(["active", "active"]);
+  });
+
+  it("BLUE TEAM VALIDATION: synthetic/local retains revocation state after artifact removal or replacement", () => {
+    // BLUE TEAM VALIDATION: synthetic/local changes only one process-local duplicate revocation artifact reference after validation.
+    const state = mergeClaimLedger(
+      [s.claimRecordOne, s.claimRecordTwo],
+      [s.revocationRecord],
+      s.baseRepository.checkpoint,
+      contextFor(s.baseRepository.repository),
+    );
+    const record = state.records.find(({ record_id }) =>
+      record_id === s.revocationRecord.record_id)!;
+    const payload = record.payload as Record<string, unknown>;
+    const artifact = payload.revocation_artifact;
+    const claimId = s.claimOne.artifact.semantic.claim_id;
+    let afterRemoval: ReturnType<typeof resolveAuthoritativeClaimState>;
+    let afterReplacement: ReturnType<typeof resolveAuthoritativeClaimState>;
+    try {
+      delete payload.revocation_artifact;
+      afterRemoval = resolveAuthoritativeClaimState(claimId, state);
+      payload.revocation_artifact = { event: {}, semantic: {} };
+      afterReplacement = resolveAuthoritativeClaimState(claimId, state);
+    } finally {
+      payload.revocation_artifact = artifact;
+    }
+    expect([afterRemoval!, afterReplacement!]).toEqual(["revoked", "revoked"]);
   });
 
   it("materializes all fixed-size opaque buckets and changes every bucket per commit", () => {
@@ -814,6 +1279,40 @@ describe("multi-writer OIDC issuer authority", () => {
     }
   });
 
+  it("derives authorization-view observation and conflict only from validated ledger state", () => {
+    const active = currentAuthorizationLedgerView(s.issuerKeyEpochOneState);
+    expect(active).toEqual({
+      checkpoint: s.issuerKeyEpochOneState.checkpoint,
+      conflicted: false,
+      state: s.issuerKeyEpochOneState,
+    });
+
+    const records = [
+      ...s.issuerKeyEpochOneState.records,
+      s.grantOne,
+      s.grantDivergent,
+    ];
+    const repository = buildLedgerRepositoryEvidence({
+      repository_rid: s.rid,
+      confirmed_records: records,
+      observed_at: s.issuerKeyEpochOneState.checkpoint.observed_at + 1,
+      prior: s.issuerKeyEpochOneRepository.repository,
+    });
+    const conflicted = mergeClaimLedger(
+      records,
+      [],
+      repository.checkpoint,
+      s.makeTask5Context(repository.repository),
+    );
+    expect(currentAuthorizationLedgerView(conflicted)).toEqual({
+      checkpoint: repository.checkpoint,
+      conflicted: true,
+      state: conflicted,
+    });
+    expect(() => currentAuthorizationLedgerView(structuredClone(conflicted)))
+      .toThrow(/canonical merged ledger state/);
+  });
+
   it("persists the exact mint bound and permits zero only at the checkpoint instant", () => {
     const checkpoint = s.baseRepository.checkpoint;
     expect(canMint(checkpoint.observed_at, checkpoint, 0, "active", true)).toMatchObject({ allowed: true });
@@ -929,7 +1428,8 @@ describe("multi-writer OIDC issuer authority", () => {
     });
   });
 
-  it("rejects canonical token return from an unauthorized writer or unbound signing key", () => {
+  it("BLUE TEAM VALIDATION: synthetic/local rejects an unauthorized writer before token return and an unbound signing key", () => {
+    // BLUE TEAM VALIDATION: synthetic/local keys and records are deterministic, non-deployable fixtures and never contact an external system.
     const bob = fixtures.ed25519_nids.bob_device_1;
     const authorityRecords = [
       s.claimRecordOne, s.claimRecordTwo, s.issuerClaimRecordOne, s.issuerClaimRecordTwo,
@@ -960,16 +1460,52 @@ describe("multi-writer OIDC issuer authority", () => {
     });
     const context = s.makeTask5Context(repository.repository);
     context.record_evidence.set(record.record_id, boundEvidence(record));
-    const state = mergeClaimLedger([...authorityRecords, record], [], repository.checkpoint, context);
+    expect(() => mergeClaimLedger(
+      [...authorityRecords, record], [], repository.checkpoint, context,
+    )).toThrow(/^claim-ledger-writer-unauthorized:/);
+
+    const authorizedIssuance = {
+      ...issuance,
+      reservation: reserveStatusIndex(s.writerTwo.did_key, s.now + 3_600, 0, []),
+    };
+    const authorizedRecord = createSignedLedgerRecord({
+      record_type: "issuance-reservation",
+      persona: s.persona,
+      credential_ledger_generation: 0,
+      writer_nid: s.writerTwo.did_key,
+      created_at: s.now + 70,
+      parents: [s.claimRecordOne.record_id],
+      payload: authorizedIssuance as never,
+    }, s.writerTwo.private_key);
+    const authorizedRepository = buildLedgerRepositoryEvidence({
+      repository_rid: s.rid,
+      confirmed_records: [...authorityRecords, authorizedRecord],
+      observed_at: s.now + 100,
+      prior: s.issuerKeyEpochOneRepository.repository,
+    });
+    const authorizedContext = s.makeTask5Context(authorizedRepository.repository);
+    authorizedContext.record_evidence.set(
+      authorizedRecord.record_id,
+      boundEvidence(authorizedRecord),
+    );
+    const authorizedState = mergeClaimLedger(
+      [...authorityRecords, authorizedRecord],
+      [],
+      authorizedRepository.checkpoint,
+      authorizedContext,
+    );
     expect(canReturnToken(
-      record.record_id, state, s.issuerKeyEnvelopeOne, s.issuerAudienceKeyOne,
-    )).toMatchObject({ allowed: false, reason_code: "oidc-issuer-authority-invalid" });
+      authorizedRecord.record_id,
+      authorizedState,
+      s.issuerKeyEnvelopeOne,
+      s.issuerAudienceKeyOne,
+    )).toMatchObject({ allowed: false, reason_code: "oidc-signing-key-unavailable" });
     expect(createStatusInvalidationRecords({
-      state,
+      state: authorizedState,
       writer_nid: s.writerTwo.did_key,
       writer_secret_key: s.writerTwo.private_key,
-      created_at: repository.checkpoint.observed_at + 1,
-      compromised_signing_key_ids: [issuance.signing_key_id],
+      created_at: authorizedRepository.checkpoint.observed_at + 1,
+      compromised_signing_key_ids: [authorizedIssuance.signing_key_id],
     })).toEqual([]);
   });
 

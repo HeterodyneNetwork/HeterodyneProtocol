@@ -1,0 +1,115 @@
+{
+  "vector_id": "assurance/profile-heterodyne-assurance-associated-key-v1",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "assurance",
+  "profile": "heterodyne-assurance-associated-key-v1",
+  "spec_refs": [
+    "heterodyne:assurance#assurance-security"
+  ],
+  "invariants": [
+    "ASSURANCE-I-ASSOCIATED-KEY-BOUNDS"
+  ],
+  "reason_codes": [],
+  "description": "The fixed heterodyne-assurance-associated-key-v1 allocation is checked separately from its live semantic boundary.",
+  "direction": "consume",
+  "input": {
+    "kind": 31001,
+    "profile_id": "heterodyne-assurance-associated-key-v1",
+    "owner": "assurance",
+    "discriminator": "content.profile=heterodyne.assurance.associated-key.v1",
+    "stamping": false,
+    "first_version": "heterodyne/0.5.0",
+    "status": "draft",
+    "wire_probe": {
+      "content_is_heterodyne_json": true,
+      "is_dr_outer": false,
+      "content_profile": "heterodyne.assurance.associated-key.v1"
+    },
+    "current": {
+      "active_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "head": "5e42684ee4f5c3c754487dff44d8b5ffec5b601d5893e34bb726a6ec3b846e66",
+      "head_created_at": 1785000001,
+      "inception_event_id": "619aac8e3a4f2771819f16c1f27512f4dccc7e881de6b5c5399fce6b0041f3f9",
+      "inception_signature": "3d9c8a39fbddba60213a4876914a196b2f64a5b38302c9809e986aeca20bf8113ede674eed791bd188328d768f7609e7290b87996c4cd706f3ab56bdca48ba20",
+      "cold_root": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "succession_authority": "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9",
+      "epoch_policy": {
+        "current_keys": [
+          "e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13"
+        ],
+        "mode": "pre-rotation",
+        "next_key_commitments": [
+          "cd9177582b93ca2144ee27a0ecf19741ebab70464aafe6686843d8c4f08d9c8f"
+        ]
+      },
+      "witnesses": [
+        {
+          "key": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+          "weight": 1
+        }
+      ],
+      "thresholds": {
+        "epoch": 1,
+        "witness": 1
+      },
+      "associated_key_policy": {
+        "active_key": [
+          {
+            "role": "agent",
+            "scope": [
+              "nostr:kind:1"
+            ]
+          }
+        ],
+        "epoch_threshold": [
+          {
+            "role": "client",
+            "scope": [
+              "repository:read"
+            ]
+          }
+        ]
+      },
+      "compromise_cutoff": null
+    },
+    "event": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1785000003,
+      "kind": 31001,
+      "tags": [
+        [
+          "d",
+          "assurance-associated:c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5:agent:a0434d9e47f3c86235477c7b1ae6ae5d3442d49b1943c2b752a68e2a47e247c7"
+        ],
+        [
+          "profile",
+          "heterodyne.assurance.associated-key.v1"
+        ],
+        [
+          "p",
+          "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+        ]
+      ],
+      "content": "{\"active_key\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",\"assurance_head\":\"5e42684ee4f5c3c754487dff44d8b5ffec5b601d5893e34bb726a6ec3b846e66\",\"created_at\":1785000003,\"expires_at\":1785000101,\"issuer\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",\"issuer_authority\":{\"authority_proofs\":[],\"class\":\"active-key\"},\"predecessor\":\"5e42684ee4f5c3c754487dff44d8b5ffec5b601d5893e34bb726a6ec3b846e66\",\"profile\":\"heterodyne.assurance.associated-key.v1\",\"role\":\"agent\",\"scope\":[\"nostr:kind:1\"],\"spec_version\":\"heterodyne/0.6.0\",\"state\":\"active\",\"subject_key\":\"a0434d9e47f3c86235477c7b1ae6ae5d3442d49b1943c2b752a68e2a47e247c7\",\"subject_proof\":\"885dda84a133f2b1541891c4e8ac2f45587efec552060f5669d877b6bde243174a79a4a569509f06361a011fa36770479a4dce55e15bd4301b33d3dfb2fbaad5\",\"visibility\":\"public\"}",
+      "id": "8a73fe40bc15ef903573519d09ee514c4cc52f735ec6e94db7b677ae8e86d35a",
+      "sig": "b6451ac0d602ba918d4cb5ad5d77338944b7a928447ae028d45e3e04133e35ce6c3bac41d3838bc3943b81e0eca61c08dc8451ca29bd0437ee088da09d30a8fc"
+    },
+    "now": 1785000003,
+    "previous": null
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "event_id": "8a73fe40bc15ef903573519d09ee514c4cc52f735ec6e94db7b677ae8e86d35a",
+      "state": "active",
+      "active_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "assurance_head": "5e42684ee4f5c3c754487dff44d8b5ffec5b601d5893e34bb726a6ec3b846e66",
+      "role": "agent",
+      "scope": [
+        "nostr:kind:1"
+      ],
+      "issuer": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "subject_key": "a0434d9e47f3c86235477c7b1ae6ae5d3442d49b1943c2b752a68e2a47e247c7"
+    }
+  }
+}

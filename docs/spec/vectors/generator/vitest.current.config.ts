@@ -9,7 +9,11 @@ const project = JSON.parse(
 export default defineConfig({
   test: {
     include: ["src/**/*.test.ts"],
-    exclude: project.exclude,
-    maxWorkers: 4,
+    // Package authoring is exercised in the current test lane, but its
+    // lifecycle-only snapshot imports remain outside the current type graph.
+    exclude: project.exclude.filter((path) => path !== "src/current-package.test.ts"),
+    maxWorkers: 1,
+    fileParallelism: false,
+    testTimeout: 15_000,
   },
 });

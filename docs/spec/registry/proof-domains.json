@@ -135,6 +135,50 @@
       "description": "Current recovery-authority consent over an active-key-authored Assurance downgrade."
     },
     {
+      "id": "heterodyne-assurance-enrollment-observation-v1",
+      "owner": "assurance",
+      "first_version": "heterodyne/0.6.0",
+      "status": "draft",
+      "bound_members": [
+        "accepted_head",
+        "active_key",
+        "cold_root",
+        "conflict_free",
+        "first_observed_at",
+        "inception_event_id",
+        "last_observed_at",
+        "profile",
+        "spec_version",
+        "witness_key"
+      ],
+      "suites": [
+        "bip340"
+      ],
+      "description": "A configured Assurance witness signs the domain-separated JCS digest of every closed enrollment observation receipt member except signature."
+    },
+    {
+      "id": "heterodyne-workspace-assurance-authorization-v1",
+      "owner": "workspace",
+      "first_version": "heterodyne/0.6.0",
+      "status": "draft",
+      "bound_members": [
+        "evaluated_at",
+        "next_assurance",
+        "next_policy_head",
+        "previous_assurance",
+        "previous_policy_head",
+        "profile",
+        "suite",
+        "transition_digest",
+        "verification_key",
+        "workspace_key"
+      ],
+      "suites": [
+        "bip340"
+      ],
+      "description": "An embedding-supplied Assurance-history key signs the exact closed Workspace Assurance transition authorization, binding both policy heads, both optional profiles, transition digest, and evaluation time."
+    },
+    {
       "id": "heterodyne-node-advert-v1",
       "owner": "core",
       "first_version": "heterodyne/0.5.0",
@@ -150,6 +194,28 @@
         "ed25519"
       ],
       "description": "NID proof over a kind:31010 node and repository advertisement."
+    },
+    {
+      "id": "heterodyne-core-repository-writer-binding-v1",
+      "owner": "core",
+      "first_version": "heterodyne/0.6.0",
+      "status": "draft",
+      "bound_members": [
+        "expires_at",
+        "issued_at",
+        "operations",
+        "owner_active_key",
+        "profile",
+        "ref_namespace",
+        "repository_rid",
+        "spec_version",
+        "writer_nid"
+      ],
+      "suites": [
+        "bip340",
+        "ed25519"
+      ],
+      "description": "Repository owner BIP-340 and writer NID Ed25519 proofs bind the identical closed repository-writer authority body."
     },
     {
       "id": "heterodyne-claim-pop-v1",

@@ -1,0 +1,23 @@
+{
+  "vector_id": "workspace/invitation-replay",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "workspace",
+  "spec_refs": [
+    "heterodyne:workspace#workspace-grants"
+  ],
+  "invariants": [
+    "WORKSPACE-I-NO-AMBIENT-AUTHORITY"
+  ],
+  "reason_codes": [
+    "workspace_replay"
+  ],
+  "description": "The current Workspace semantic boundary rejects invitation replay.",
+  "direction": "consume",
+  "input": {
+    "evidence": "genuine first consume and activation followed by mismatched second acceptance"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "workspace_replay"
+  }
+}

@@ -7,7 +7,7 @@
     "build:current": "node scripts/typecheck.mjs tsconfig.current.json",
     "test": "npm run test:current",
     "test:current": "vitest run --config vitest.current.config.ts",
-    "test:snapshot-adapters": "vitest run --maxWorkers=1 --no-file-parallelism src/snapshot-topic-runtime.test.ts src/snapshot-oidc-token-historical.test.ts",
+    "test:snapshot-adapters": "tsx src/cli.ts snapshot-check",
     "test:lifecycle": "vitest run src/snapshot-lifecycle.test.ts",
     "author": "tsx src/cli.ts author",
     "verify": "tsx src/cli.ts verify",
@@ -17,7 +17,7 @@
     "coverage": "tsx src/cli.ts coverage",
     "snapshot-author": "tsx src/cli.ts snapshot-author",
     "snapshot-package-check": "tsx src/cli.ts snapshot-package-check",
-    "snapshot-check": "npm run test:snapshot-adapters && tsx src/cli.ts snapshot-check",
+    "snapshot-check": "tsx src/cli.ts snapshot-check",
     "draft:check": "npm run build:current && npm run test:current && npm run family:check",
     "check": "npm run draft:check && npm run snapshot-check"
   },

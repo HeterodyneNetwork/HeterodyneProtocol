@@ -1,0 +1,23 @@
+{
+  "vector_id": "control/token-invalid",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "control",
+  "spec_refs": [
+    "heterodyne:control#control-token"
+  ],
+  "invariants": [
+    "CONTROL-I-CLIENT-KEY-CONFINEMENT"
+  ],
+  "reason_codes": [
+    "control-token-invalid"
+  ],
+  "description": "The current Control policy boundary rejects token invalid.",
+  "direction": "consume",
+  "input": {
+    "evidence": "verified current JWT and grant reject the exact per-use proof before operation"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "control-token-invalid"
+  }
+}

@@ -8,12 +8,20 @@ when the specification reaches `1.0.0`.
 ## [Unreleased]
 
 The specification is prepared as six documents at one version,
-`heterodyne/0.5.0`. Their contents are current normative authority at their
+`heterodyne/0.6.0`. Their contents are current normative authority at their
 repository paths, but the version remains untagged and unreleased pending
 explicit release approval.
 [`docs/spec/heterodyne.md`](docs/spec/heterodyne.md) is the non-normative
 family map, and the single registry pin is
 [`docs/spec/registry/manifest.json`](docs/spec/registry/manifest.json).
+
+## heterodyne/0.6.0 (draft)
+
+Security-review closure follows the approved
+[`2026-08-27 closure design`](docs/superpowers/specs/2026-08-27-heterodyne-0.6-pr28-closure-design.md).
+It preserves optional Workspace Assurance and treats NIP-03 advisory material
+as non-authoritative. ADR-048 remains Proposed until the complete 0.6 closure
+matrix, including current conformance vectors, is green.
 
 ### Nostr-first family integration
 
@@ -26,7 +34,7 @@ family map, and the single registry pin is
   repository selection, warning-only seven-day staleness, concurrent trusted
   seeds, optional full-node relay service, pre-signing automation attribution,
   and complete compromise reset.
-- Separated live-draft validation from the 482-vector rolling historical
+- Separated live-draft validation from the rolling historical
   snapshot. Current checks no longer execute the frozen pre-redesign topic
   projection; `snapshot-check` continues to materialize and verify its pinned
   historical source independently.
@@ -45,7 +53,7 @@ family map, and the single registry pin is
 - [ADR-047](docs/adr/archive/2026-08-24-047-nostr-first-interoperability.md)
   records the accepted Nostr-first semantic replacement. The live six-document
   family and normative machine-readable artifacts are self-contained, while
-  the frozen 482-vector snapshot remains historical and unreconciled.
+  the rolling snapshot remains historical and independently reproducible.
 - [ADR-045](docs/adr/archive/2026-08-15-045-conformance-harness-independence.md)
   records the accepted independent conformance gate. Acceptance followed
   implementation, security and specification review waves,
@@ -58,11 +66,11 @@ family map, and the single registry pin is
   generator and independent conformance checks in a fixed, fail-fast order.
   The gate performs no publishing, deployment, release, tag, push, or remote
   configuration operation.
-- No pre-1.0 release manifest exists. The rolling, non-normative snapshot pins
-  source commit `2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43` and contains 482
-  vectors, 493 digest-bound artifacts, and zero executable declarations.
-  Reconciliation is author, review, commit, then `snapshot-check`; ordinary
-  draft changes remain independent of it.
+- No pre-1.0 release manifest exists. The rolling, non-normative snapshot gets
+  its exact mutable facts from `docs/spec/vectors/snapshot.json`.
+  `snapshot-check` derives snapshot identity from the last commit that changed
+  that manifest. Reconciliation is author, review, commit, then the read-only
+  history check; ordinary current-draft changes remain independent of it.
 
 ### Accepted protocol stabilization
 
@@ -83,7 +91,7 @@ family map, and the single registry pin is
   `terminal_cause` was conditional.
 
 - Made all 58 normative cross-references clickable. A reference is now
-  ``[`heterodyne:0.5.0#anchor`](heterodyne-<doc>.md#anchor)``, keeping the
+  ``[`heterodyne:0.6.0#anchor`](heterodyne-<doc>.md#anchor)``, keeping the
   version in the link text while the target resolves in a rendered document.
   The lint inverted accordingly: it used to forbid links in normative text,
   and now requires them and checks that the text anchor, the target anchor,
@@ -120,7 +128,7 @@ family map, and the single registry pin is
   restating feature sets. Workspace named three feature IDs that were never
   allocated; Core claimed five when six exist.
 - Collapsed the five per-document version lineages into the single family
-  version `heterodyne/0.5.0`. Nothing was independent: every document had to
+  version `heterodyne/0.6.0`. Nothing was independent: every document had to
   pin its dependencies at exactly the current version and all five pinned the
   same registry revision, so the dependency graph forced lockstep while giving
   version five places to disagree. It did: the Core header said registry
@@ -134,9 +142,9 @@ family map, and the single registry pin is
   distinguished by a paragraph of prose.
 - Moved the BCP 14 keywords, anchor convention, qualified-reference form,
   release status, and layering rule into
-  `heterodyne:0.5.0#core-document-conventions`; the other four documents
+  `heterodyne:0.6.0#core-document-conventions`; the other four documents
   reference it instead of restating it. The generic conformance-report
-  requirements now live only in `heterodyne:0.5.0#core-conformance`.
+  requirements now live only in `heterodyne:0.6.0#core-conformance`.
 - Deleted the five per-document manifests and `docs/spec/registry/history/`.
   No pre-1.0 release manifest replaces them; pre-1.0 registry history snapshots
   would enforce immutability over revisions that never shipped.
@@ -159,7 +167,7 @@ family map, and the single registry pin is
   feature in the registry; an invariant with no `feature` member is baseline
   and one with a `feature` member binds only implementations claiming it. The
   new rule lives once at
-  `heterodyne:0.5.0#core-invariant-scope`. Baseline Comms is now the five
+  `heterodyne:0.6.0#core-invariant-scope`. Baseline Comms is now the five
   envelope, tier, and delivery invariants, and the OIDC stack becomes
   mandatory exactly where something requires it, which for Comms means
   `comms.agent-authorship.v1`.
@@ -174,7 +182,7 @@ family map, and the single registry pin is
   obligation lost: a feature's invariants are owed whenever the feature is
   claimed, strict or not.
 - Unified three key-envelope mechanisms into one Core primitive at
-  `heterodyne:0.5.0#core-key-envelope`. Comms audience keys, Comms
+  `heterodyne:0.6.0#core-key-envelope`. Comms audience keys, Comms
   claim-ledger reader keys, and Workspace resource-key envelopes solved the
   same problem, with the same rotate-on-removal semantics and the same
   non-erasure caveat, in three sets of prose. Each site now supplies exactly

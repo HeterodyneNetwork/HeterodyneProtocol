@@ -1,5 +1,6 @@
 {
-  "vector_schema_version": "2.0.0",
+  "vector_schema_version": "3.0.0",
+  "registry_sha256": "068c36d589bd2eac4a65245c93095beca4134bbdfae9dabc845485a71c58933f",
   "test_epoch": 1767225600,
   "pinned_randomness": {
     "schnorr_aux_rand": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -43,122 +44,6 @@
           "pubkey": "acd484e2f0c7f65309ad178a9f559abde09796974c57e714c35f110dfc27ccbe",
           "valid_from": 1767225600
         }
-      }
-    }
-  },
-  "kel": {
-    "alice": {
-      "inception_event": {
-        "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-        "created_at": 1767225600,
-        "kind": 31002,
-        "tags": [
-          [
-            "d",
-            ""
-          ],
-          [
-            "heterodyne",
-            "keri_inception"
-          ],
-          [
-            "p",
-            "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
-          ],
-          [
-            "s",
-            "0"
-          ],
-          [
-            "epoch_key",
-            "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
-          ],
-          [
-            "spec_version",
-            "heterodyne/0.5.0"
-          ]
-        ],
-        "content": ""
-      },
-      "head": {
-        "id": "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf",
-        "seq": 0
-      }
-    },
-    "bob": {
-      "inception_event": {
-        "pubkey": "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9",
-        "created_at": 1767225600,
-        "kind": 31002,
-        "tags": [
-          [
-            "d",
-            ""
-          ],
-          [
-            "heterodyne",
-            "keri_inception"
-          ],
-          [
-            "p",
-            "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9"
-          ],
-          [
-            "s",
-            "0"
-          ],
-          [
-            "epoch_key",
-            "e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13"
-          ],
-          [
-            "spec_version",
-            "heterodyne/0.5.0"
-          ]
-        ],
-        "content": ""
-      },
-      "head": {
-        "id": "2ede1d0072fd5e630bb4093a56db710c733f8088cde71ae11b159157f4f41e06",
-        "seq": 0
-      }
-    },
-    "carol": {
-      "inception_event": {
-        "pubkey": "2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01",
-        "created_at": 1767225600,
-        "kind": 31002,
-        "tags": [
-          [
-            "d",
-            ""
-          ],
-          [
-            "heterodyne",
-            "keri_inception"
-          ],
-          [
-            "p",
-            "2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01"
-          ],
-          [
-            "s",
-            "0"
-          ],
-          [
-            "epoch_key",
-            "acd484e2f0c7f65309ad178a9f559abde09796974c57e714c35f110dfc27ccbe"
-          ],
-          [
-            "spec_version",
-            "heterodyne/0.5.0"
-          ]
-        ],
-        "content": ""
-      },
-      "head": {
-        "id": "528caf6a8e2b777cad2bdf6b0116ad71c5490083ae094d85f14af9e49ed405af",
-        "seq": 0
       }
     }
   },

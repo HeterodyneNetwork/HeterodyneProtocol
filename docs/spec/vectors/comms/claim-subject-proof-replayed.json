@@ -1,0 +1,74 @@
+{
+  "vector_id": "comms/claim-subject-proof-replayed",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-conformance"
+  ],
+  "invariants": [
+    "COMMS-I-CLAIM-AUTHENTICITY"
+  ],
+  "reason_codes": [
+    "claim-subject-proof-replayed"
+  ],
+  "description": "A durable subject-proof authorization succeeds once and rejects a second execution of the same exact proof.",
+  "direction": "consume",
+  "input": {
+    "claim": {
+      "event": {
+        "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+        "created_at": 1767245600,
+        "kind": 31013,
+        "tags": [
+          [
+            "d",
+            "ad47df49d87e3390ca4653be89a5f4120f8d76c2b6fbc08be4b09c5c8ec09ea0"
+          ]
+        ],
+        "content": "{\"audience\":[\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"],\"claim_class\":\"authorization\",\"claim_id\":\"ad47df49d87e3390ca4653be89a5f4120f8d76c2b6fbc08be4b09c5c8ec09ea0\",\"credential_ledger_generation\":0,\"credential_ledger_persona\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",\"expires_at\":1767249200,\"issued_at\":1767245600,\"issuer\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"},\"name\":\"claim-ledger-reader\",\"namespace\":\"heterodyne.device\",\"not_before\":1767245600,\"profile_revision\":2,\"resources\":[\"rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#claim-ledger\"],\"spec_version\":\"heterodyne/0.6.0\",\"subject\":{\"type\":\"radicle-ed25519-nid\",\"value\":\"did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC\"},\"value\":true,\"visibility\":\"repository-private\"}",
+        "id": "e36d53160932776c4082ab08ab14392b1376f88c92ba54e5e125d43b733b7d6d",
+        "sig": "f0b3510cc60dbad4f45883c46b6d7316082abdd15fe685f9eb35e8f924900613363d3b1c88ef5ac2716dfde9bbbb84523ec2ee763416b1b4001f019931b9158c"
+      },
+      "semantic": {
+        "claim_id": "ad47df49d87e3390ca4653be89a5f4120f8d76c2b6fbc08be4b09c5c8ec09ea0",
+        "issuer": {
+          "type": "nostr-secp256k1",
+          "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+        },
+        "subject": {
+          "type": "radicle-ed25519-nid",
+          "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
+        },
+        "claim_class": "authorization",
+        "credential_ledger_persona": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+        "credential_ledger_generation": 0,
+        "namespace": "heterodyne.device",
+        "name": "claim-ledger-reader",
+        "value": true,
+        "issued_at": 1767245600,
+        "not_before": 1767245600,
+        "expires_at": 1767249200,
+        "audience": [
+          "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+        ],
+        "resources": [
+          "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#claim-ledger"
+        ],
+        "visibility": "repository-private",
+        "spec_version": "heterodyne/0.6.0",
+        "profile_revision": 2
+      }
+    },
+    "nonce": "0102030405060708090a0b0c0d0e0f10",
+    "idempotency_keys": [
+      "current-claim-subject-proof-replayed:current-vector",
+      "current-claim-subject-proof-replayed:current-vector:replay"
+    ]
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "allowed": false,
+    "state": "invalid",
+    "reason_code": "claim-subject-proof-replayed"
+  }
+}

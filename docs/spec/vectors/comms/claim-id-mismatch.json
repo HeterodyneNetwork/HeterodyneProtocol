@@ -1,0 +1,51 @@
+{
+  "vector_id": "comms/claim-id-mismatch",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-conformance"
+  ],
+  "invariants": [
+    "COMMS-I-CLAIM-AUTHENTICITY"
+  ],
+  "reason_codes": [
+    "claim-id-mismatch"
+  ],
+  "description": "A claim identifier must equal the lowercase SHA-256 digest of its canonical semantic body.",
+  "direction": "consume",
+  "input": {
+    "claim": {
+      "audience": [
+        "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+      ],
+      "claim_class": "authorization",
+      "claim_id": "0000000000000000000000000000000000000000000000000000000000000000",
+      "credential_ledger_generation": 0,
+      "credential_ledger_persona": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "expires_at": 1767249200,
+      "issued_at": 1767245600,
+      "issuer": {
+        "type": "nostr-secp256k1",
+        "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+      },
+      "name": "claim-ledger-reader",
+      "namespace": "heterodyne.device",
+      "not_before": 1767245600,
+      "profile_revision": 2,
+      "resources": [
+        "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#claim-ledger"
+      ],
+      "spec_version": "heterodyne/0.6.0",
+      "subject": {
+        "type": "radicle-ed25519-nid",
+        "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
+      },
+      "value": true,
+      "visibility": "repository-private"
+    }
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "claim-id-mismatch"
+  }
+}

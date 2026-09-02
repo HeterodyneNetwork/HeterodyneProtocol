@@ -7,6 +7,7 @@
   "required": [
     "profile", "repository_rid", "branch", "persona_npub", "persona_key",
     "issuer", "sequence", "predecessor_digest", "max_checkpoint_age_seconds",
+    "authorization_view_max_age",
     "current_jwks_sha256", "current_signing_key_id", "current_signing_jwk_sha256",
     "retiring_signing_key_ids", "retiring_jwks_sha256", "status_lists",
     "successor", "authority", "authority_proof"
@@ -21,6 +22,7 @@
     "sequence": { "$ref": "#/definitions/json_safe_integer" },
     "predecessor_digest": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
     "max_checkpoint_age_seconds": { "type": "integer", "minimum": 0, "maximum": 300 },
+    "authorization_view_max_age": { "type": "integer", "minimum": 1, "maximum": 86400 },
     "current_jwks_sha256": { "$ref": "#/definitions/sha256" },
     "current_signing_key_id": { "$ref": "#/definitions/jwk_thumbprint" },
     "current_signing_jwk_sha256": { "$ref": "#/definitions/sha256" },

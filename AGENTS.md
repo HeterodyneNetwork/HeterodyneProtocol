@@ -140,20 +140,20 @@ that order, then builds and tests the independent conformance package:
 scripts/conformance-ci.sh
 ```
 
-The snapshot lane derives the snapshot commit from the last commit that
-changed `docs/spec/vectors/snapshot.json`; it does not trust an uncommitted
+The closed `docs/spec/vectors/snapshot.json` manifest is the exact source of
+mutable snapshot facts: source pin, vector-schema version, vector count,
+artifact paths, and digests. `snapshot-check` derives snapshot identity from
+the last commit that changed that manifest; it does not trust an uncommitted
 snapshot as history. A reconciliation maintainer selects a stable full source
 commit, runs `snapshot-author`, reviews the replacement, commits it, and only
 then runs `snapshot-check`. Authoring and baseline/report commands are never CI
 steps. GitHub checks out full history; Radicle must make the pinned object
 available or the lane fails with an actionable full-history error.
 
-The current frozen snapshot contains exactly 482 vectors, pins source commit
-`2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43`, and is bound by history to
-snapshot commit `5d4bb5fb58b35c88d8a9db120a09f1087237f35c`. `draft:check`
-validates current live prose, schemas, registry, and reference semantics
-without executing frozen topic projections; historical generation and
-packaging belong only to `snapshot-check` against those pinned inputs.
+`draft:check` validates current live prose, schemas, registry, and reference
+semantics without executing frozen topic projections. The current-draft lane
+and history-bound snapshot lane remain independent; historical generation and
+packaging belong only to `snapshot-check` against the manifest-pinned inputs.
 
 Before merging a Radicle patch, require a green `scripts/conformance-ci.sh` run
 through a delegate-operated, isolated podman adapter. GitHub repository

@@ -1,6 +1,11 @@
 export type OrdinaryOutcome = "accept" | "hold-as-message-request" | "reject";
 export type ControlOutcome = "accept-enrollment-only" | "accept-authorized" | "reject";
 
+/**
+ * Legacy pure-policy projection used by authored vector topics. It cannot
+ * establish cryptographic validity or consume a Welcome. Runtime admission
+ * uses the opaque boundary in marmot-admission-authority.ts.
+ */
 export type OrdinaryAdmissionInput = {
   cryptographic_valid: boolean;
   inviter_account: string;
@@ -25,7 +30,11 @@ export function ordinaryConversationAdmission(input: OrdinaryAdmissionInput):
     return { outcome: "reject", policy_hook_invoked: true };
   }
   if (input.explicit_local_decision === "reject") {
-    return { outcome: "reject", policy_hook_invoked: true };
+    return {
+      outcome: "reject",
+      policy_hook_invoked: true,
+      reason_code: "conversation-rejected",
+    };
   }
   if (input.prior_local_acceptance
     || input.one_time_dm_invite_valid

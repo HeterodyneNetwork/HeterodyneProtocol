@@ -127,7 +127,7 @@ describe("provider-independent one-time invites", () => {
     const signature = Buffer.from(schnorr.sign(descriptorDigest(descriptor), secretKey, new Uint8Array(32))).toString("hex");
     const fragment = encodeInviteFragment({ descriptor, signature, secret });
     expect(fragment).toMatch(/^#v1\.[A-Za-z0-9_-]+$/);
-    expect(new URL(`https://heterodyne.network/client/${fragment}`).hash).toBe(fragment);
+    expect(new URL(`/client/${fragment}`, "https://client.example").hash).toBe(fragment);
   });
 
   it("binds the response proof to the secret and canonical response", () => {

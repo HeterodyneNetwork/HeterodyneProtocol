@@ -1,0 +1,23 @@
+{
+  "vector_id": "control/attribution-binding-mismatch",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "control",
+  "spec_refs": [
+    "heterodyne:control#control-agent-requirements"
+  ],
+  "invariants": [
+    "CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING"
+  ],
+  "reason_codes": [
+    "control-attribution-binding-mismatch"
+  ],
+  "description": "The live Control authorization boundary rejects attribution binding mismatch.",
+  "direction": "consume",
+  "input": {
+    "agent_class": "programmatic"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "control-attribution-binding-mismatch"
+  }
+}

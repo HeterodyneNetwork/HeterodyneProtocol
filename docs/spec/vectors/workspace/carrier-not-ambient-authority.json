@@ -1,0 +1,26 @@
+{
+  "vector_id": "workspace/carrier-not-ambient-authority",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "workspace",
+  "spec_refs": [
+    "heterodyne:workspace#workspace-security"
+  ],
+  "invariants": [
+    "WORKSPACE-I-CARRIER-NOT-AUTHORITY",
+    "WORKSPACE-I-NO-AMBIENT-AUTHORITY"
+  ],
+  "reason_codes": [
+    "policy_denied"
+  ],
+  "description": "Carrier-only evidence cannot replace an explicit current Workspace grant.",
+  "direction": "consume",
+  "input": {
+    "actor_account": "a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2",
+    "actor_source": "carrier",
+    "current_state": "authenticated-private"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "policy_denied"
+  }
+}

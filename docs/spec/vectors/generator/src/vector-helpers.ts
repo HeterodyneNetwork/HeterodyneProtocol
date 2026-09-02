@@ -46,7 +46,7 @@ export function baseVector(vector: DirectionalVectorBody): Vector {
     ...metadata,
     ...body,
     input: normalizedInput,
-  };
+  } as unknown as Vector;
 }
 
 export function produceVector(vector: VectorBody): Vector {

@@ -1,0 +1,31 @@
+{
+  "vector_id": "comms/claim-delegation-not-authorized",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-conformance"
+  ],
+  "invariants": [
+    "COMMS-I-CLAIM-ATTENUATION"
+  ],
+  "reason_codes": [
+    "claim-delegation-not-authorized"
+  ],
+  "description": "A supplied chain that does not terminate at the requested leaf cannot delegate authority.",
+  "direction": "consume",
+  "input": {
+    "leaf_claim_id": "c77f09098be4032419fb74b4b7695c19a300a73d611d1b850f22ab57c40f7754",
+    "chain_claim_ids": [
+      "ad47df49d87e3390ca4653be89a5f4120f8d76c2b6fbc08be4b09c5c8ec09ea0"
+    ]
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "claim-delegation-not-authorized",
+    "evaluator_output": {
+      "allowed": false,
+      "state": "invalid",
+      "reason_code": "claim-delegation-not-authorized"
+    }
+  }
+}

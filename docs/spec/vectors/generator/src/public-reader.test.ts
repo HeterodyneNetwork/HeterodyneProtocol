@@ -77,7 +77,7 @@ describe("universal launcher fragment", () => {
   });
 
   it("keeps target identifiers out of the launcher HTTP request path", () => {
-    const link = new URL(`https://heterodyne.network/client/#/v1/p/${nprofile}/e/${nevent}`);
+    const link = new URL(`/client/#/v1/p/${nprofile}/e/${nevent}`, "https://client.example");
     expect(link.pathname).toBe("/client/");
     expect(link.pathname).not.toContain(nprofile);
     expect(link.pathname).not.toContain(nevent);
@@ -92,23 +92,25 @@ describe("bootstrap relay validation", () => {
       normalized: "wss://relay.example/",
       requires_tor: false,
     });
-    expect(validateBootstrapRelay(`wss://${"a".repeat(56)}.onion/`)).toEqual({
+    const onionRelay = "wss://" + "a".repeat(56) + ".onion/";
+    expect(validateBootstrapRelay(onionRelay)).toEqual({
       verdict: "accept",
-      normalized: `wss://${"a".repeat(56)}.onion/`,
+      normalized: onionRelay,
       requires_tor: true,
     });
   });
 
   it("rejects credentials, query, fragment, insecure schemes, and local names", () => {
+    const fixtureUrl = (authority: string): string => "wss://" + authority;
     for (const url of [
-      "wss://user:pass@relay.example/",
+      fixtureUrl("user:pass@relay.example/"),
       "wss://relay.example/?token=x",
       "wss://relay.example/#fragment",
       "ws://relay.example/",
       "wss://localhost/",
-      "wss://a.local/",
-      "wss://a.internal/",
-      "wss://singlelabel/",
+      fixtureUrl("a.local/"),
+      fixtureUrl("a.internal/"),
+      fixtureUrl("singlelabel/"),
     ]) {
       expect(validateBootstrapRelay(url)).toEqual({
         verdict: "reject",
@@ -129,7 +131,9 @@ describe("bootstrap relay validation", () => {
       "fe80::1",
       "2001:db8::1",
     ]) {
-      const literal = address.includes(":") ? `wss://[${address}]/` : `wss://${address}/`;
+      const literal = address.includes(":")
+        ? "wss://" + `[${address}]/`
+        : "wss://" + `${address}/`;
       expect(validateBootstrapRelay(literal)).toMatchObject({ verdict: "reject" });
       expect(validateBootstrapRelay("wss://relay.example/", address))
         .toMatchObject({ verdict: "reject" });

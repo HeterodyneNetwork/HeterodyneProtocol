@@ -26,9 +26,9 @@ export const vectorPath = "docs/spec/vectors/core/001-valid.json";
 export const sourceCommit = "1".repeat(40);
 export const snapshotCommit = "2".repeat(40);
 export const registryEntrySetDigest =
-  "32579526a345b75cf11b3892b01928794c57c0318b8ae5194208f1d76c13df69";
+  "0250925c750aa782924c6ebc6eebd4d085f7c16dc72175077b9e5188b251ace9";
 
-const snapshotSupportPaths = [
+const historicalSnapshotSupportPaths = [
   fixturesPath,
   vectorSchemaPath,
   "docs/spec/vectors/schema/reason-codes.json",
@@ -41,6 +41,20 @@ const snapshotSupportPaths = [
   "docs/spec/vectors/coverage/workspace.md",
   "docs/spec/vectors/coverage/family.md",
 ] as const;
+
+const historicalVectorSchemaFixturePath = resolve(
+  import.meta.dirname,
+  "fixtures/vector-schema-2.0.0.json",
+);
+
+function snapshotSupportPathsFor(vectorSchemaVersion: string): string[] {
+  return vectorSchemaVersion === "3.0.0"
+    ? [
+      ...historicalSnapshotSupportPaths,
+      "docs/spec/vectors/coverage/assurance.md",
+    ].sort()
+    : [...historicalSnapshotSupportPaths];
+}
 
 export type TestCorpus = LoadCorpusOptions & { root: string };
 
@@ -125,7 +139,7 @@ export function refreshSnapshotManifest(
   if (typeof vectorSchemaVersion !== "string") {
     throw new Error("synthetic packaged vector schema has no version const");
   }
-  const paths = [...vectors, ...snapshotSupportPaths].sort();
+  const paths = [...vectors, ...snapshotSupportPathsFor(vectorSchemaVersion)].sort();
   writeJson(root, snapshotManifestPath, {
     snapshot_schema: "1",
     source_commit: pinnedSourceCommit,
@@ -164,9 +178,9 @@ function writeSource(root: string, withAssurance: boolean): void {
       code: "bad_signature",
       owner: "core",
       status: "draft",
-      first_version: "heterodyne/0.5.0",
+      first_version: "heterodyne/0.6.0",
       description: "Nostr event id or BIP-340 signature verification failed.",
-      spec_refs: ["heterodyne:0.5.0#core-conformance"],
+      spec_refs: ["heterodyne:0.6.0#core-conformance"],
     }],
   });
   writeJson(root, securityInvariantsPath, {
@@ -174,7 +188,7 @@ function writeSource(root: string, withAssurance: boolean): void {
       id: "CORE-I-VERIFY-BEFORE-USE",
       owner: "core",
       status: "draft",
-      first_version: "heterodyne/0.5.0",
+      first_version: "heterodyne/0.6.0",
       description: "Verify signed input before use.",
     }],
   });
@@ -188,12 +202,7 @@ function writeSource(root: string, withAssurance: boolean): void {
 }
 
 function writeSnapshot(root: string, withVector: boolean): void {
-  const repositoryRoot = resolve(import.meta.dirname, "../../../..");
-  writeText(
-    root,
-    vectorSchemaPath,
-    readFileSync(resolve(repositoryRoot, vectorSchemaPath), "utf8"),
-  );
+  writeText(root, vectorSchemaPath, readFileSync(historicalVectorSchemaFixturePath, "utf8"));
   writeJson(root, fixturesPath, {
     audience_keys: {},
     category_keysets: {},

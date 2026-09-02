@@ -1,0 +1,23 @@
+{
+  "vector_id": "control/signing-grant-inactive",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "control",
+  "spec_refs": [
+    "heterodyne:control#control-signer-grants"
+  ],
+  "invariants": [
+    "CONTROL-I-EXACT-SIGNER-GRANT"
+  ],
+  "reason_codes": [
+    "control-signing-grant-inactive"
+  ],
+  "description": "The live Control authorization boundary rejects signing grant inactive.",
+  "direction": "consume",
+  "input": {
+    "now": 200
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "control-signing-grant-inactive"
+  }
+}

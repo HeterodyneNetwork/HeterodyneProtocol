@@ -1,0 +1,53 @@
+{
+  "vector_id": "workspace/assurance-verified-activation",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "workspace",
+  "spec_refs": [
+    "heterodyne:workspace#workspace-optional-assurance"
+  ],
+  "invariants": [
+    "WORKSPACE-I-OPTIONAL-ASSURANCE"
+  ],
+  "reason_codes": [],
+  "description": "A current verified enrollment activates optional Workspace Assurance with a durable signed authorization.",
+  "direction": "consume",
+  "input": {
+    "transition": {
+      "workspace_key": "1111111111111111111111111111111111111111111111111111111111111111",
+      "previous_policy_head": "3333333333333333333333333333333333333333333333333333333333333333",
+      "next_policy_head": "4444444444444444444444444444444444444444444444444444444444444444",
+      "previous_assurance": null,
+      "next_assurance": {
+        "profile": "heterodyne.workspace.assurance.v1",
+        "inception_event_id": "2222222222222222222222222222222222222222222222222222222222222222",
+        "required_state": "verified"
+      }
+    },
+    "enrollment_resolution": {
+      "state": "verified",
+      "active_key": "1111111111111111111111111111111111111111111111111111111111111111",
+      "inception_event_id": "2222222222222222222222222222222222222222222222222222222222222222",
+      "evaluated_at": 1720000400
+    }
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "authorization": {
+      "profile": "heterodyne.workspace.assurance-authorization.v1",
+      "suite": "bip340",
+      "verification_key": "9ac20335eb38768d2052be1dbbc3c8f6178407458e51e6b4ad22f1d91758895b",
+      "workspace_key": "1111111111111111111111111111111111111111111111111111111111111111",
+      "previous_policy_head": "3333333333333333333333333333333333333333333333333333333333333333",
+      "next_policy_head": "4444444444444444444444444444444444444444444444444444444444444444",
+      "previous_assurance": null,
+      "next_assurance": {
+        "profile": "heterodyne.workspace.assurance.v1",
+        "inception_event_id": "2222222222222222222222222222222222222222222222222222222222222222",
+        "required_state": "verified"
+      },
+      "transition_digest": "cc102b7fd74f8faff6862a63c1e90033fce745c5192d2ca7dd182fa7da0cb3db",
+      "evaluated_at": 1720000400,
+      "signature": "b68264f0e77953e1423e1de5248fa028cca73f3e5982e5d46d44d75752443ba9b72cd28b024daf49bb6eaa3822a77531486d6f748f88d33a45ec3e401d274e27"
+    }
+  }
+}

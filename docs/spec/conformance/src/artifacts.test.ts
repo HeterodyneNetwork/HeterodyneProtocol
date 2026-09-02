@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync, realpathSync, rmSync, symlinkSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -32,7 +33,69 @@ function corpus(options: { withVector?: boolean; withAssurance?: boolean } = {})
   return value;
 }
 
+function upgradeSnapshotToSchema3(input: TestCorpus): void {
+  const schema = readJson(input.snapshotRoot, vectorSchemaPath);
+  const properties = schema.properties as Record<string, unknown>;
+  const required = schema.required as string[];
+  properties.vector_schema_version = { const: "3.0.0" };
+  properties.invariants = {
+    type: "array",
+    minItems: 1,
+    uniqueItems: true,
+    items: { type: "string" },
+  };
+  properties.reason_codes = {
+    type: "array",
+    uniqueItems: true,
+    items: { type: "string" },
+  };
+  required.push("invariants", "reason_codes");
+  writeJson(input.snapshotRoot, vectorSchemaPath, schema);
+  const vector = readJson(input.snapshotRoot, vectorPath);
+  vector.vector_schema_version = "3.0.0";
+  vector.invariants = ["CORE-I-VERIFY-BEFORE-USE"];
+  vector.reason_codes = [];
+  writeJson(input.snapshotRoot, vectorPath, vector);
+  writeText(input.snapshotRoot, "docs/spec/vectors/coverage/assurance.md", "# assurance\n");
+  refreshSnapshotManifest(input.snapshotRoot);
+}
+
 describe("loadCorpus split roots", () => {
+  it("copies the exact complete historical schema-2 contract", () => {
+    const input = corpus();
+    const schemaBytes = readFileSync(resolve(input.snapshotRoot, vectorSchemaPath));
+    const schema = readJson(input.snapshotRoot, vectorSchemaPath);
+    const schemaVersion = (schema.properties as Record<string, Record<string, unknown>>)
+      .vector_schema_version?.const;
+
+    expect(createHash("sha256").update(schemaBytes).digest("hex"))
+      .toBe("4331e2c8ae53d89bfdec913bd43c85d9f0ebeadcc3ad42950e08050a6284a1d6");
+    expect(schema.allOf).toBeDefined();
+    expect(schemaVersion).toBe("2.0.0");
+    expect(readTestManifest(input.snapshotRoot)).toMatchObject({
+      vector_schema_version: "2.0.0",
+      vector_count: 1,
+    });
+    expect(readJson(input.snapshotRoot, vectorPath)).toMatchObject({
+      vector_id: "core.valid",
+      vector_schema_version: "2.0.0",
+    });
+    expect(existsSync(resolve(
+      input.snapshotRoot,
+      "docs/spec/vectors/coverage/assurance.md",
+    ))).toBe(false);
+  });
+
+  it("constructs schema-3 fixtures with the complete six-owner coverage projection", () => {
+    const input = corpus({ withAssurance: true });
+    const assuranceCoveragePath = "docs/spec/vectors/coverage/assurance.md";
+    upgradeSnapshotToSchema3(input);
+
+    expect(existsSync(resolve(input.snapshotRoot, assuranceCoveragePath))).toBe(true);
+    expect((readTestManifest(input.snapshotRoot).artifacts as Array<{ path: string }>)
+      .map(({ path }) => path)).toContain(assuranceCoveragePath);
+  });
+
   it("loads the live six-document source family", () => {
     const input = corpus({ withAssurance: true });
 
@@ -85,6 +148,58 @@ describe("loadCorpus split roots", () => {
     expect(loaded.corpus).not.toHaveProperty("registryDigest");
     expect(loaded.corpus?.vectorSchemaVersion).toBe("2.0.0");
     expect(loaded.corpus?.vectors.map(({ value }) => value.vector_id)).toEqual(["core.valid"]);
+    expect(loaded.corpus?.vectors[0]?.value).not.toHaveProperty("invariants");
+    expect(loaded.corpus?.vectors[0]?.value).not.toHaveProperty("reason_codes");
+  });
+
+  it("rejects a historical consume rejection without its required reason code", () => {
+    const input = corpus();
+    const vector = readJson(input.snapshotRoot, vectorPath);
+    vector.expected_output = { verdict: "reject" };
+    writeJson(input.snapshotRoot, vectorPath, vector);
+    refreshSnapshotManifest(input.snapshotRoot);
+
+    expect(loadCorpus(input).issues).toContainEqual({
+      code: "invalid-document-shape",
+      path: vectorPath,
+      message: "vector does not match vector.schema.json",
+    });
+  });
+
+  it("loads schema-3 traceability without backfilling historical vectors", () => {
+    const input = corpus({ withAssurance: true });
+    upgradeSnapshotToSchema3(input);
+
+    const loaded = loadCorpus(input);
+
+    expect(loaded.issues).toEqual([]);
+    expect(loaded.corpus?.vectorSchemaVersion).toBe("3.0.0");
+    expect(loaded.corpus?.vectors[0]?.value).toMatchObject({
+      vector_schema_version: "3.0.0",
+      invariants: ["CORE-I-VERIFY-BEFORE-USE"],
+      reason_codes: [],
+    });
+  });
+
+  it("rejects schema-3 vectors without sorted exact traceability even under a permissive schema", () => {
+    const input = corpus({ withAssurance: true });
+    upgradeSnapshotToSchema3(input);
+    const schema = readJson(input.snapshotRoot, vectorSchemaPath);
+    schema.required = (schema.required as string[]).filter((member) =>
+      member !== "invariants" && member !== "reason_codes"
+    );
+    writeJson(input.snapshotRoot, vectorSchemaPath, schema);
+    const vector = readJson(input.snapshotRoot, vectorPath);
+    delete vector.invariants;
+    delete vector.reason_codes;
+    writeJson(input.snapshotRoot, vectorPath, vector);
+    refreshSnapshotManifest(input.snapshotRoot);
+
+    expect(loadCorpus(input).issues).toContainEqual({
+      code: "invalid-document-shape",
+      path: vectorPath,
+      message: "vector does not match the 3.0.0 snapshot corpus shape",
+    });
   });
 
   it("rejects a legacy version reference even when a permissive snapshot schema allows it", () => {
@@ -94,7 +209,7 @@ describe("loadCorpus split roots", () => {
     properties.spec_refs = { type: "array", minItems: 1, items: { type: "string" } };
     writeJson(input.snapshotRoot, vectorSchemaPath, schema);
     const vector = readJson(input.snapshotRoot, vectorPath);
-    vector.spec_refs = ["heterodyne:0.5.0#core-conformance"];
+    vector.spec_refs = ["heterodyne:0.6.0#core-conformance"];
     writeJson(input.snapshotRoot, vectorPath, vector);
     refreshSnapshotManifest(input.snapshotRoot);
 

@@ -1,0 +1,57 @@
+{
+  "vector_id": "comms/agent-workload-token-accepted",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-agent-fail-closed"
+  ],
+  "invariants": [
+    "COMMS-I-AGENT-SIGNER-BINDING",
+    "COMMS-I-WORKLOAD-TOKEN-CONFINEMENT"
+  ],
+  "reason_codes": [],
+  "description": "A closed finite workload registration and exact sender-constrained token resolve one registered automated signer without exposing private claims.",
+  "direction": "consume",
+  "input": {
+    "represented_persona": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+    "signer": "531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337",
+    "sender_proof_kind": "dpop",
+    "publication_kind": 1
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "output": {
+      "pubkey": "531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337",
+      "created_at": 1767245700,
+      "kind": 1,
+      "tags": [
+        [
+          "t",
+          "synthetic-local"
+        ],
+        [
+          "L",
+          "network.heterodyne.agent"
+        ],
+        [
+          "l",
+          "ai",
+          "network.heterodyne.agent"
+        ],
+        [
+          "heterodyne_agent",
+          "v1",
+          "key",
+          "531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337"
+        ],
+        [
+          "agent_action",
+          "publish"
+        ]
+      ],
+      "content": "synthetic local current agent publication",
+      "id": "c2d1ae23e5b6083e037b443498aac96a74626191b6c112c7b15ac536208c8979",
+      "sig": "9ef1c92d5e6da470c80b72b7beb43befbb2a7e296da58be0d2bd164110ea531b4da2b011bb2ba343f791ee585e3d39ea959166d08d8fa37e7f16a8074c58223b"
+    }
+  }
+}

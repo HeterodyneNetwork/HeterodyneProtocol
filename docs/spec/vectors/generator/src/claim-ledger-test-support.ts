@@ -1,4 +1,5 @@
 import { ed25519 } from "@noble/curves/ed25519";
+import { schnorr } from "@noble/curves/secp256k1";
 import { sha256 } from "@noble/hashes/sha2";
 import {
   buildLedgerRepositoryEvidence,
@@ -6,6 +7,7 @@ import {
   createIssuerKeyEnvelope,
   createIssuerKeyEpochPayload,
   createSignedLedgerRecord,
+  currentClaimAuthorizationView,
   mergeClaimLedger,
   reserveStatusIndex,
   type ClaimArtifact,
@@ -18,10 +20,22 @@ import {
   type RevocationArtifact,
 } from "./claim-ledger.js";
 import {
+  createClaimAuthorizationAuthority,
+  type CurrentClaimAuthorizationView,
+  type ClaimEffectRecord,
+  type ClaimEffectStore,
+} from "./claim-authorization.js";
+import {
+  createCoreRepositoryWriterAuthority,
+  type RepositoryWriterBindingV1,
+} from "./core-writer-binding.js";
+import type { CurrentRepositoryPolicy } from "./core-policy.js";
+import {
   CLAIM_REVOCATION_PROFILE,
   computeClaimId,
   subjectProofPayload,
-  type ClaimAuthorityEvidence,
+  verifyClaimEnvelope,
+  verifyClaimRevocationEnvelope,
   type ClaimRevocation,
   type ClaimSemanticBody,
   type ClaimVerificationContext,
@@ -34,6 +48,7 @@ import { jcsCanonicalize } from "./jcs.js";
 import { signEvent } from "./nostr.js";
 import { AUX_RAND } from "./vector-helpers.js";
 import { OIDC_RSA_ONE, OIDC_RSA_TWO } from "./oidc-rsa-fixtures.js";
+import { proofBytes } from "./proof-bytes.js";
 
 export type ClaimLedgerScenario = Awaited<ReturnType<typeof buildClaimLedgerScenario>>;
 
@@ -45,6 +60,136 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
   const writerTwo = fixtures.ed25519_nids.alice_device_2;
   const rid = fixtures.radicle_rids.alice;
   const resource = `${rid}#claim-ledger`;
+  const writerRefNamespace = "refs/xyz.heterodyne.claim-ledger/writers/";
+  const writerRefs = new Map([
+    [writerOne.did_key, `${writerRefNamespace}writer-one`],
+    [writerTwo.did_key, `${writerRefNamespace}writer-two`],
+  ]);
+  const makeWriterBinding = (
+    writer: typeof writerOne,
+  ): RepositoryWriterBindingV1 => {
+    const body = {
+      profile: "heterodyne.core.repository-writer-binding.v1" as const,
+      spec_version: "heterodyne/0.6.0" as const,
+      owner_active_key: persona,
+      repository_rid: rid,
+      writer_nid: writer.did_key,
+      ref_namespace: writerRefNamespace,
+      operations: ["claim-ledger-write"],
+      issued_at: now - 10,
+      expires_at: now + 10_000,
+    };
+    const payload = proofBytes(
+      "heterodyne-core-repository-writer-binding-v1",
+      body,
+    );
+    return {
+      ...body,
+      owner_signature: bytesToHex(schnorr.sign(
+        sha256(payload),
+        hexToBytes(issuer.private_key),
+        hexToBytes(AUX_RAND),
+      )),
+      nid_signature: bytesToHex(ed25519.sign(
+        payload,
+        hexToBytes(writer.private_key),
+      )),
+    };
+  };
+  const writerBindings = new Map([
+    [writerOne.did_key, makeWriterBinding(writerOne)],
+    [writerTwo.did_key, makeWriterBinding(writerTwo)],
+  ]);
+  const activeWriterPolicy = (): CurrentRepositoryPolicy => ({
+    repository_rid: rid,
+    owner_active_key: persona,
+    revision: 7,
+    checkpoint: "a7".repeat(20),
+    predecessor: "a6".repeat(20),
+    state: "active",
+    writers: [writerOne, writerTwo].map((writer) => ({
+      writer_nid: writer.did_key,
+      ref_namespace: writerRefNamespace,
+      operations: ["claim-ledger-write"],
+      state: "active" as const,
+    })),
+  });
+  let currentWriterPolicy = activeWriterPolicy();
+  const writerAuthority = createCoreRepositoryWriterAuthority({
+    authority_id: "synthetic-local-claim-ledger-writer-authority",
+    trusted_now: () => now + 50,
+    load_current_policy: () => currentWriterPolicy,
+  });
+  const setCurrentWriterPolicy = (policy: CurrentRepositoryPolicy): void => {
+    currentWriterPolicy = policy;
+  };
+  const resetCurrentWriterPolicy = (): void => {
+    currentWriterPolicy = activeWriterPolicy();
+  };
+  const makeClaimAuthorizationHarness = (options: Readonly<{
+    load_state: () => ReturnType<typeof mergeClaimLedger>;
+    trusted_now?: () => number;
+    transform_view?: (view: CurrentClaimAuthorizationView) => CurrentClaimAuthorizationView;
+  }>) => {
+    const records = new Map<string, ClaimEffectRecord>();
+    const calls = { load: 0, acquire: 0, commit: 0, mark: 0 };
+    const store: ClaimEffectStore = {
+      load(singleUseKey) {
+        calls.load += 1;
+        return records.get(singleUseKey) ?? null;
+      },
+      acquire(singleUseKey, bindingDigest, executionToken) {
+        calls.acquire += 1;
+        if (records.has(singleUseKey)) return "replay";
+        records.set(singleUseKey, {
+          state: "executing",
+          binding_digest: bindingDigest,
+          execution_token: executionToken,
+        });
+        return "acquired";
+      },
+      commit(executionToken, resultDigest, cachedResult) {
+        calls.commit += 1;
+        const entry = [...records.entries()].find(([, value]) =>
+          value.execution_token === executionToken);
+        if (entry === undefined || entry[1].state !== "executing") return "conflict";
+        records.set(entry[0], {
+          state: "committed",
+          binding_digest: entry[1].binding_digest,
+          execution_token: executionToken,
+          result_digest: resultDigest,
+          cached_result: structuredClone(cachedResult),
+        });
+        return "committed";
+      },
+      markIndeterminate(executionToken, reconciliationDigest) {
+        calls.mark += 1;
+        const entry = [...records.entries()].find(([, value]) =>
+          value.execution_token === executionToken);
+        if (entry === undefined || entry[1].state !== "executing") return "conflict";
+        records.set(entry[0], {
+          state: "indeterminate",
+          binding_digest: entry[1].binding_digest,
+          execution_token: executionToken,
+          reconciliation_digest: reconciliationDigest,
+        });
+        return "indeterminate";
+      },
+    };
+    const authority = createClaimAuthorizationAuthority({
+      authority_id: "synthetic-local-claim-ledger-effect-authority",
+      trusted_now: options.trusted_now ?? (() => options.load_state().checkpoint.observed_at),
+      trusted_issuers: [{ type: "nostr-secp256k1", value: persona }],
+      load_current_view: () => {
+        const view = currentClaimAuthorizationView(options.load_state());
+        return options.transform_view?.(view) ?? view;
+      },
+      store,
+      effect_timeout_ms: 60_000,
+      schedule_effect_deadline: { schedule: () => () => {} },
+    });
+    return { authority, records, calls };
+  };
   const audienceKeyOne = Uint8Array.from({ length: 32 }, () => 0x51);
   const audienceKeyTwo = Uint8Array.from({ length: 32 }, () => 0x52);
   const issuerAudienceKeyOne = Uint8Array.from({ length: 32 }, () => 0x71);
@@ -71,7 +216,7 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
       audience: [persona],
       resources: [resource],
       visibility: "repository-private",
-      spec_version: "heterodyne/0.5.0",
+      spec_version: "heterodyne/0.6.0",
       profile_revision: 2,
       ...overrides,
     };
@@ -84,7 +229,19 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
       tags: [["d", semantic.claim_id]],
       content: jcsCanonicalize(semantic),
     });
-    return { artifact: { event, semantic } satisfies ClaimArtifact, reader };
+    const envelopeContext = {
+      profile_revision: 2,
+      credential_ledger: {
+        credential_ledger_persona: persona,
+        credential_ledger_generation: 0,
+      },
+    } as const;
+    const verifiedArtifact = verifyClaimEnvelope(event, envelopeContext);
+    return {
+      artifact: { event, semantic } satisfies ClaimArtifact,
+      verified_artifact: verifiedArtifact,
+      reader,
+    };
   };
 
   const claimOne = await makeClaim(writerOne);
@@ -93,15 +250,15 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
   const issuerClaimTwo = await makeClaim(writerTwo, { name: "oidc-token-issuer", resources: [`${rid}#oidc-issuer`] });
   const alternateClaimOne = await makeClaim(writerOne, { expires_at: now + 1_800 });
   const temporalClaim = await makeClaim(writerOne, { not_before: now + 55, expires_at: now + 65 });
-  const allClaims = new Map([
-    [claimOne.artifact.semantic.claim_id, claimOne.artifact.semantic],
-    [claimTwo.artifact.semantic.claim_id, claimTwo.artifact.semantic],
-    [alternateClaimOne.artifact.semantic.claim_id, alternateClaimOne.artifact.semantic],
+  const allClaims = new Map<string, unknown>([
+    [claimOne.artifact.semantic.claim_id, claimOne.verified_artifact],
+    [claimTwo.artifact.semantic.claim_id, claimTwo.verified_artifact],
+    [alternateClaimOne.artifact.semantic.claim_id, alternateClaimOne.verified_artifact],
   ]);
-  const issuerClaimsById = new Map([
+  const issuerClaimsById = new Map<string, unknown>([
     ...allClaims,
-    [issuerClaimOne.artifact.semantic.claim_id, issuerClaimOne.artifact.semantic] as const,
-    [issuerClaimTwo.artifact.semantic.claim_id, issuerClaimTwo.artifact.semantic] as const,
+    [issuerClaimOne.artifact.semantic.claim_id, issuerClaimOne.verified_artifact] as const,
+    [issuerClaimTwo.artifact.semantic.claim_id, issuerClaimTwo.verified_artifact] as const,
   ]);
 
   const makeVerification = (
@@ -124,17 +281,6 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
       subjectProofPayload(challenge),
       hexToBytes(claim.reader.private_key),
     ));
-    const authority: ClaimAuthorityEvidence = {
-      claim_id: semantic.claim_id,
-      issuer: semantic.issuer,
-      event_id: claim.artifact.event.id,
-      event_author: semantic.issuer.type === "nostr-secp256k1" ? semantic.issuer.value : "",
-      envelope_valid: true,
-      credential_ledger_persona: semantic.credential_ledger_persona,
-      credential_ledger_generation: semantic.credential_ledger_generation,
-      verified_at: now + 5,
-      valid_until: now + 300,
-    };
     return {
       now: now + 20,
       audience: persona,
@@ -148,8 +294,6 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
         credential_ledger_persona: persona,
         credential_ledger_generation: 0,
       },
-      claim_authority_evidence: new Map([[semantic.claim_id, authority]]),
-      revocation_authority_evidence: new Map(),
       repository_confirmed: confirmed,
       repository_conflicted: new Set(),
       revocations: [],
@@ -164,14 +308,13 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
   const requestFor = (record: LedgerRecord, claim: typeof claimOne): ReaderAccessRequest => ({
     claim_record_id: record.record_id,
     envelope_context: {
-      issuer_authorized: true,
       profile_revision: 2,
       credential_ledger: {
         credential_ledger_persona: persona,
         credential_ledger_generation: 0,
       },
     },
-    claims_by_id: new Map(allClaims),
+    claims_by_id: new Map(),
     verification_context: makeVerification(claim),
   });
 
@@ -228,6 +371,7 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
     content: jcsCanonicalize(revocationSemantic),
   });
   const revocationArtifact: RevocationArtifact = { event: revocationEvent, semantic: revocationSemantic as unknown as JsonValue };
+  const verifiedRevocationArtifact = verifyClaimRevocationEnvelope(revocationEvent);
   const revocationRecord = signRecord("revocation", { revocation_artifact: revocationArtifact }, writerTwo, [claimRecordOne.record_id], now + 31);
   const reductionRecord = signRecord("authority-reduction", {
     role: "claim-ledger-reader", subject_nid: writerOne.did_key, revocation_artifact: revocationArtifact,
@@ -263,14 +407,13 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
     record_id: record.record_id,
     payload_digest: record.payload_digest,
     claim_envelope_context: {
-      issuer_authorized: true,
       profile_revision: 2,
       credential_ledger: {
         credential_ledger_persona: persona,
         credential_ledger_generation: 0,
       },
     },
-    claims_by_id: new Map(allClaims),
+    claims_by_id: new Map(),
     claim_verification_context: makeVerification(claim),
   });
   addClaimEvidence(claimRecordOne, claimOne);
@@ -283,28 +426,26 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
     record_id: temporalClaimRecord.record_id,
     payload_digest: temporalClaimRecord.payload_digest,
     claim_envelope_context: {
-      issuer_authorized: true,
       profile_revision: 2,
       credential_ledger: {
         credential_ledger_persona: persona,
         credential_ledger_generation: 0,
       },
     },
-    claims_by_id: new Map([[temporalClaim.artifact.semantic.claim_id, temporalClaim.artifact.semantic]]),
+    claims_by_id: new Map(),
     claim_verification_context: temporalVerification,
   };
   const grantOnlyEvidence: LedgerRecordValidationEvidence = {
     record_id: grantOnly.record_id,
     payload_digest: grantOnly.payload_digest,
     claim_envelope_context: {
-      issuer_authorized: true,
       profile_revision: 2,
       credential_ledger: {
         credential_ledger_persona: persona,
         credential_ledger_generation: 0,
       },
     },
-    claims_by_id: new Map(allClaims),
+    claims_by_id: new Map(),
     claim_verification_context: makeVerification(claimOne),
   };
   const revocationVerification = makeVerification(claimOne);
@@ -351,14 +492,13 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
     record_id: record.record_id,
     payload_digest: record.payload_digest,
     claim_envelope_context: {
-      issuer_authorized: true,
       profile_revision: 2,
       credential_ledger: {
         credential_ledger_persona: persona,
         credential_ledger_generation: 0,
       },
     },
-    claims_by_id: new Map(issuerClaimsById),
+    claims_by_id: new Map(),
     claim_verification_context: makeVerification(claim),
   });
   addIssuerEvidence(issuerClaimRecordOne, issuerClaimOne);
@@ -395,6 +535,18 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
       repository,
       reader_requests: new Map([[claimRecordOne.record_id, requestOne], [claimRecordTwo.record_id, requestTwo]]),
       audience_keys_by_epoch: new Map([[1, audienceKeyOne], [2, audienceKeyTwo]]),
+      writer_authority: writerAuthority,
+      load_record_location(record) {
+        return {
+          record_id: record.record_id,
+          repository_rid: repository.repository_rid,
+          writer_ref: writerRefs.get(record.writer_nid) ?? `${writerRefNamespace}unknown`,
+          commit: repository.canonical_head,
+          checkpoint: repository.canonical_head,
+          revision: repository.commits.length,
+          writer_binding: writerBindings.get(record.writer_nid) ?? writerBindings.get(writerOne.did_key)!,
+        };
+      },
     };
   };
   const authorityState = mergeClaimLedger(
@@ -564,6 +716,18 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
         [claimRecordTwo.record_id, requestTwo],
       ]),
       audience_keys_by_epoch: new Map([[1, audienceKeyOne], [2, audienceKeyTwo]]),
+      writer_authority: writerAuthority,
+      load_record_location(record) {
+        return {
+          record_id: record.record_id,
+          repository_rid: repository.repository_rid,
+          writer_ref: writerRefs.get(record.writer_nid) ?? `${writerRefNamespace}unknown`,
+          commit: repository.canonical_head,
+          checkpoint: repository.canonical_head,
+          revision: repository.commits.length,
+          writer_binding: writerBindings.get(record.writer_nid) ?? writerBindings.get(writerOne.did_key)!,
+        };
+      },
     };
   };
   const makeTask5Context = (repository: LedgerRepositoryEvidence): LedgerValidationContext => ({
@@ -577,8 +741,9 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
 
   return {
     now, persona, issuer, writerOne, writerTwo, rid, resource, audienceKeyOne, audienceKeyTwo, issuerAudienceKeyOne, issuerAudienceKeyTwo,
+    writerRefNamespace, writerRefs, writerBindings, writerAuthority, activeWriterPolicy, setCurrentWriterPolicy, resetCurrentWriterPolicy, makeClaimAuthorizationHarness,
     claimOne, claimTwo, issuerClaimOne, issuerClaimTwo, alternateClaimOne, temporalClaim, allClaims, makeClaim, makeVerification, requestFor, signRecord, evidence, temporalRecordEvidence, grantOnlyEvidence, makeContext, makeTask5Context,
-    claimRecordOne, claimRecordTwo, temporalClaimRecord, grantOne, grantDivergent, grantOnly, revocationRecord, reductionRecord, removalRecord,
+    claimRecordOne, claimRecordTwo, temporalClaimRecord, grantOne, grantDivergent, grantOnly, revocationRecord, verifiedRevocationArtifact, reductionRecord, removalRecord,
     issuerClaimRecordOne, issuerClaimRecordTwo, issuerAuthorityRecordOne, issuerAuthorityRecordTwo, issuerRemovalRecord,
     epochOneRecord, epochTwoRecord, signingJwk, issuerKeyEnvelopeOne, issuerKeyEnvelopeTwo,
     issuerKeyEpochRecordOne, issuerKeyEpochRecordTwo, issuerKeyEpochOneState, issuerKeyEpochTwoState,

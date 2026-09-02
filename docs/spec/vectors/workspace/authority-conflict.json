@@ -1,0 +1,40 @@
+{
+  "vector_id": "workspace/authority-conflict",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "workspace",
+  "spec_refs": [
+    "heterodyne:workspace#workspace-role-repositories"
+  ],
+  "invariants": [
+    "WORKSPACE-I-AUTHENTICATED-CURRENT-STATE"
+  ],
+  "reason_codes": [
+    "authority_conflict"
+  ],
+  "description": "The current Workspace semantic boundary rejects authority conflict.",
+  "direction": "consume",
+  "input": {
+    "object": {},
+    "expected_object_id": "8888888888888888888888888888888888888888888888888888888888888888",
+    "current": {
+      "workspace_key": "1111111111111111111111111111111111111111111111111111111111111111",
+      "policy_head": "3333333333333333333333333333333333333333333333333333333333333333",
+      "predecessor": null,
+      "authority_checkpoint": "2222222222222222222222222222222222222222222222222222222222222222",
+      "repository_rid": "rad:zWorkspaceHostA",
+      "repository_head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "repository_ancestry": [
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      ],
+      "authority_checkpoint_candidates": [
+        "2222222222222222222222222222222222222222222222222222222222222222",
+        "7777777777777777777777777777777777777777777777777777777777777777"
+      ],
+      "competing_repository_heads": []
+    }
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "authority_conflict"
+  }
+}

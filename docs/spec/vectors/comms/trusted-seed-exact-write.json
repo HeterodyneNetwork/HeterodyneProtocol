@@ -1,0 +1,78 @@
+{
+  "vector_id": "comms/trusted-seed-exact-write",
+  "vector_schema_version": "3.0.0",
+  "owner_document": "comms",
+  "spec_refs": [
+    "heterodyne:comms#comms-trusted-seed-private-relay"
+  ],
+  "invariants": [
+    "COMMS-I-MARMOT-EXACT-BYTES",
+    "COMMS-I-PRIVATE-RELAY-ACL",
+    "COMMS-I-TRUSTED-SEED-CONFINEMENT"
+  ],
+  "reason_codes": [],
+  "description": "A one-use NIP-42-authenticated capability admits one exact signed Marmot event under the unique current administrator ACL and configured seed writer ref.",
+  "direction": "consume",
+  "input": {
+    "request": {
+      "operation": "write",
+      "h": "routing-generation-current",
+      "private_rid": "rad:zCurrentMarmotRoute",
+      "writer_ref": "refs/xyz.heterodyne.marmot/relays/current-seed",
+      "nip01_raw": "{\"pubkey\":\"57eb3638f51f4dc5c8d5a7324b47df99e816cfcc5b5eb1245bc8c98029f9e674\",\"created_at\":1799999999,\"kind\":445,\"tags\":[[\"h\",\"routing-generation-current\"]],\"content\":\"AmFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhUW4KWs60x4wLQEtvD2/BQiMrgZ8WNw5aDr9fYR+74LEmG4P8Ra1QTzQ4Rvt3QUvGOYZaYLrH1JOXgv7dhSNjlPhGgtAzTqR4N/0qh4nqBQ8VbS2osPG5L9QLq6hIlCoygZk=\",\"id\":\"a72a92e8385b873713f8589be8b60a6409ec57b18aaf6999c96f46436700bad5\",\"sig\":\"664be45dd645c7d1a642673ec7996cd5598d9a79b76441187c02941e7975fd8689f85ee3b305de2f9fbe3fc67f4ed0e300528bcb3e7e67791a564095ee88f2bc\"}"
+    },
+    "acl": {
+      "profile": "heterodyne.trusted-seed-acl.v1",
+      "spec_version": "heterodyne/0.6.0",
+      "administrator_account": "6360e856310ce5d294e8be33fc807077dc56ac80d95d9cd4ddbd21325eff73f7",
+      "accounts": [
+        {
+          "account_key": "1111111111111111111111111111111111111111111111111111111111111111",
+          "roles": [
+            "read",
+            "write"
+          ]
+        }
+      ],
+      "h": "routing-generation-current",
+      "private_rid": "rad:zCurrentMarmotRoute",
+      "seed_grants": [
+        {
+          "seed_nid": "did:key:z6MkwQp8f8Y11L3WJYJ4hXa1",
+          "relay_endpoint": "wss://seed.example/group",
+          "radicle_endpoint": "rad:zCurrentMarmotRoute",
+          "writer_ref": "refs/xyz.heterodyne.marmot/relays/current-seed",
+          "roles": [
+            "read",
+            "write"
+          ],
+          "state": "active"
+        }
+      ],
+      "sequence": 0,
+      "predecessor": null,
+      "group_transition": {
+        "generation": 7,
+        "marmot_routing_event_id": "4545454545454545454545454545454545454545454545454545454545454545",
+        "routing_binding_sha256": "4646464646464646464646464646464646464646464646464646464646464646"
+      },
+      "issued_at": 1799999900,
+      "expires_at": 1800001000,
+      "signature": "850846ce0666bb1b938156a6e7ca7bd32dcef693e38b05a150321963c0847e84641517273068f63a1fd0c661a305dee6eac8a59695f282d5c9228c7d0f61c283"
+    },
+    "transition": {
+      "generation": 7,
+      "marmot_routing_event_id": "4545454545454545454545454545454545454545454545454545454545454545",
+      "routing_binding_sha256": "4646464646464646464646464646464646464646464646464646464646464646"
+    }
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "acl_digest": "9bf1606640503ab14302357c73650430c55bfcde7853d6ed0deca2f47fdf655d",
+    "seed_nid": "did:key:z6MkwQp8f8Y11L3WJYJ4hXa1",
+    "h": "routing-generation-current",
+    "private_rid": "rad:zCurrentMarmotRoute",
+    "writer_ref": "refs/xyz.heterodyne.marmot/relays/current-seed",
+    "nip01_raw": "{\"pubkey\":\"57eb3638f51f4dc5c8d5a7324b47df99e816cfcc5b5eb1245bc8c98029f9e674\",\"created_at\":1799999999,\"kind\":445,\"tags\":[[\"h\",\"routing-generation-current\"]],\"content\":\"AmFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhUW4KWs60x4wLQEtvD2/BQiMrgZ8WNw5aDr9fYR+74LEmG4P8Ra1QTzQ4Rvt3QUvGOYZaYLrH1JOXgv7dhSNjlPhGgtAzTqR4N/0qh4nqBQ8VbS2osPG5L9QLq6hIlCoygZk=\",\"id\":\"a72a92e8385b873713f8589be8b60a6409ec57b18aaf6999c96f46436700bad5\",\"sig\":\"664be45dd645c7d1a642673ec7996cd5598d9a79b76441187c02941e7975fd8689f85ee3b305de2f9fbe3fc67f4ed0e300528bcb3e7e67791a564095ee88f2bc\"}"
+  }
+}

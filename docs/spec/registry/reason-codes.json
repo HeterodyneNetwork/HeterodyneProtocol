@@ -7,7 +7,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "Nostr event id or BIP-340 signature verification failed.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-conformance"
+        "heterodyne:0.6.0#core-conformance"
       ]
     },
     {
@@ -17,7 +17,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "Missing or non-byte-equal raw NIP-01 input.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-verification"
+        "heterodyne:0.6.0#core-verification"
       ]
     },
     {
@@ -27,7 +27,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "An Assurance event content object or required addressable-event binding is not in its exact registered closed profile.",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-record-envelope"
+        "heterodyne:0.6.0#assurance-record-envelope"
       ]
     },
     {
@@ -37,7 +37,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "Cold-root inception and active-key acceptance do not reciprocally bind the same exact active key, inception event, and cold-root signature.",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-reciprocal-enrollment"
+        "heterodyne:0.6.0#assurance-reciprocal-enrollment"
       ]
     },
     {
@@ -47,7 +47,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "An Assurance record predecessor does not equal the event ID required by the accepted chain or associated-key state.",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-chain-validation"
+        "heterodyne:0.6.0#assurance-chain-validation"
       ]
     },
     {
@@ -57,7 +57,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "An Assurance acceptance, succession, or associated-key record binds a head other than the verifier's accepted head.",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-chain-validation"
+        "heterodyne:0.6.0#assurance-chain-validation"
       ]
     },
     {
@@ -67,7 +67,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The current Assurance policy does not authorize the presented succession, recovery, epoch, associated-key issuer, or downgrade proof.",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-succession"
+        "heterodyne:0.6.0#assurance-succession"
       ]
     },
     {
@@ -77,7 +77,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "Distinct valid witness receipts do not reach the threshold fixed by the predecessor Assurance state.",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-keri-policy"
+        "heterodyne:0.6.0#assurance-keri-policy"
       ]
     },
     {
@@ -87,7 +87,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "Competing individually authorized successors of one accepted Assurance head cannot be uniquely selected.",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-chain-validation"
+        "heterodyne:0.6.0#assurance-chain-validation"
       ]
     },
     {
@@ -97,7 +97,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The proposed successor key did not prove acceptance of the exact authorized succession claim.",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-succession"
+        "heterodyne:0.6.0#assurance-succession"
       ]
     },
     {
@@ -107,7 +107,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "Assurance authority is requested for material at or after the accepted compromise cutoff.",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-compromise"
+        "heterodyne:0.6.0#assurance-compromise"
       ]
     },
     {
@@ -117,7 +117,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A compromise succession carries a subordinate reauthorization or a consumer attempts an implicit subordinate continuation.",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-compromise"
+        "heterodyne:0.6.0#assurance-compromise"
       ]
     },
     {
@@ -127,7 +127,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "An active public-agent grant omits the subject key's required proof of possession and consent; issuer-authorized revocation never requires subject cooperation.",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-associated-keys"
+        "heterodyne:0.6.0#assurance-associated-keys"
       ]
     },
     {
@@ -137,7 +137,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "An associated-key subject proof does not verify over the exact registered Assurance binding.",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-associated-keys"
+        "heterodyne:0.6.0#assurance-associated-keys"
       ]
     },
     {
@@ -147,7 +147,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "Verifier time is at or after an associated key's optional exclusive expiry bound.",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-associated-keys"
+        "heterodyne:0.6.0#assurance-associated-keys"
       ]
     },
     {
@@ -157,7 +157,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The selected head-bound associated-key state is revoked and grants no authority.",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-associated-keys"
+        "heterodyne:0.6.0#assurance-associated-keys"
       ]
     },
     {
@@ -167,7 +167,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A pinned Assurance downgrade lacks either active-key NIP-01 consent or current recovery-authority proof.",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-downgrade-resistance"
+        "heterodyne:0.6.0#assurance-downgrade-resistance"
       ]
     },
     {
@@ -177,7 +177,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "Presented Assurance hints or state conflict with a locally retained valid pin and cannot advance or downgrade it.",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-pinning"
+        "heterodyne:0.6.0#assurance-pinning"
       ]
     },
     {
@@ -187,7 +187,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A rotation breadcrumb names a successor outside the accepted rotation.",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-retired-wire-profiles"
+        "heterodyne:0.6.0#assurance-retired-wire-profiles"
       ]
     },
     {
@@ -197,7 +197,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A retiring profile carries a NIP-05 identifier already repointed to the successor.",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-retired-wire-profiles"
+        "heterodyne:0.6.0#assurance-retired-wire-profiles"
       ]
     },
     {
@@ -207,7 +207,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A compromise-driven rotation attempts to produce a v1 breadcrumb.",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-retired-wire-profiles"
+        "heterodyne:0.6.0#assurance-retired-wire-profiles"
       ]
     },
     {
@@ -217,7 +217,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The presented publishing key, subject, role, or delegation identifier does not match the active Core delegation.",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-retired-wire-profiles"
+        "heterodyne:0.6.0#assurance-retired-wire-profiles"
       ]
     },
     {
@@ -227,7 +227,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "An event signed by a revoked epoch key was created after revoked_at.",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-retired-wire-profiles"
+        "heterodyne:0.6.0#assurance-retired-wire-profiles"
       ]
     },
     {
@@ -237,7 +237,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The verifier clock is after the delegation valid_until bound.",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-retired-wire-profiles"
+        "heterodyne:0.6.0#assurance-retired-wire-profiles"
       ]
     },
     {
@@ -247,7 +247,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A KERI threshold is satisfied only if advisory vouches are counted.",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-keri-policy"
+        "heterodyne:0.6.0#assurance-keri-policy"
       ]
     },
     {
@@ -257,7 +257,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A private broadcast post used the withdrawn NIP-59 wrapping path.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
+        "heterodyne:0.6.0#comms-conformance"
       ]
     },
     {
@@ -265,9 +265,9 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Relay rejected the write after NIP-42 AUTH, so the failure is permanent.",
+      "description": "Local relay-write diagnostic for a repeated post-NIP-42 AUTH rejection; it is diagnostic-only and non-wire for semantic coverage and proves no cryptographic or upstream authority.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
+        "heterodyne:0.6.0#comms-retired-semantics"
       ]
     },
     {
@@ -277,7 +277,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A .onion host was sent to a clearnet resolver instead of Tor.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-conformance"
+        "heterodyne:0.6.0#core-conformance"
       ]
     },
     {
@@ -285,9 +285,9 @@
       "owner": "core",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Strict mode started with egress-over-Tor disabled without explicit user choice.",
+      "description": "The captured client role claims the strict profile while the current transport route is not Tor.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-conformance"
+        "heterodyne:0.6.0#core-operational-authority-views"
       ]
     },
     {
@@ -295,9 +295,9 @@
       "owner": "core",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Friend-cache content was not owner-signed non-KERI content.",
+      "description": "A friend-cache candidate lacks an exact valid NIP-01 signature by the expected persona author.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-conformance"
+        "heterodyne:0.6.0#core-operational-authority-views"
       ]
     },
     {
@@ -305,9 +305,9 @@
       "owner": "core",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "A Heterodyne-aware relay profile changed vanilla NIP-01 read/write behavior.",
+      "description": "The retained raw profile-event bytes do not exactly match a valid NIP-01 event identifier, signature, or exposed event fields.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-conformance"
+        "heterodyne:0.6.0#core-operational-authority-views"
       ]
     },
     {
@@ -317,7 +317,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A receiver encountered an incompatible future major version.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-conformance"
+        "heterodyne:0.6.0#core-conformance"
       ]
     },
     {
@@ -327,7 +327,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "Version-stamp policy failed because a required stamp was absent; a present stamp was duplicated, malformed, or not the exact supported non-future-major family version; or the event class forbids any stamp.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-verification"
+        "heterodyne:0.6.0#core-verification"
       ]
     },
     {
@@ -337,7 +337,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A kind:31001 NID delegation lacked the epoch-key Schnorr sig or the NID Ed25519 nid_proof.",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-retired-wire-profiles"
+        "heterodyne:0.6.0#assurance-retired-wire-profiles"
       ]
     },
     {
@@ -347,8 +347,19 @@
       "first_version": "heterodyne/0.5.0",
       "description": "An Ed25519 nid_proof did not verify against the advertised NID over the pinned binding payload.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-conformance"
+        "heterodyne:0.6.0#core-conformance"
       ]
+    },
+    {
+      "code": "repository-writer-binding-invalid",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "heterodyne/0.6.0",
+      "description": "The closed repository-writer binding or its current owner-policy authorization is invalid.",
+      "spec_refs": [
+        "heterodyne:0.6.0#core-nid-delegation"
+      ],
+      "intentionally_coarse": true
     },
     {
       "code": "node_advert_expired",
@@ -357,7 +368,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A kind:31010 node advertisement was past its expiry.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-conformance"
+        "heterodyne:0.6.0#core-conformance"
       ]
     },
     {
@@ -367,7 +378,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A NID revoked by the KEL was used as a delegate despite the identity document still listing it.",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-retired-wire-profiles"
+        "heterodyne:0.6.0#assurance-retired-wire-profiles"
       ]
     },
     {
@@ -377,7 +388,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "An org member NID add carried only one of the required member-KEL and org-admin-threshold authorizations.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-conformance"
+        "heterodyne:0.6.0#core-retired-member-kel-and-role-delegation"
       ]
     },
     {
@@ -387,7 +398,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A Social candidate fails its canonical NIP-01 event-id or BIP-340 signature verification.",
       "spec_refs": [
-        "heterodyne:0.5.0#social-interactions"
+        "heterodyne:0.6.0#social-interactions"
       ]
     },
     {
@@ -397,7 +408,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "An event does not use the represented persona active key or an explicitly authorized actual signer with mandatory Comms automation attribution.",
       "spec_refs": [
-        "heterodyne:0.5.0#social-interactions"
+        "heterodyne:0.6.0#social-interactions"
       ]
     },
     {
@@ -407,7 +418,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A Social replaceable candidate does not match the requested NIP-01 author, kind, and parameterized d-tag coordinate.",
       "spec_refs": [
-        "heterodyne:0.5.0#social-feed-presentation"
+        "heterodyne:0.6.0#social-feed-presentation"
       ]
     },
     {
@@ -415,9 +426,9 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "A kind:30078 DM invite was signed by a publishing key with no valid kind:31001 delegation to the persona.",
+      "description": "Retained non-wire history for the retired kind:30078 device-delegation diagnostic; current invitation authentication and account-binding boundaries do not emit this code.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
+        "heterodyne:0.6.0#comms-retired-semantics"
       ]
     },
     {
@@ -425,9 +436,9 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "A kind:30078 DM invite was signed by a device whose kind:31001 delegation is revoked.",
+      "description": "Retained non-wire history for the retired kind:30078 device-revocation diagnostic; current invitation authentication and revocation boundaries do not emit this code.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
+        "heterodyne:0.6.0#comms-retired-semantics"
       ]
     },
     {
@@ -437,7 +448,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The config repository RID appeared on a published surface (kind:31005, kind:31010, kind:0, NIP-65, or a NIP-51 list).",
       "spec_refs": [
-        "heterodyne:0.5.0#core-conformance"
+        "heterodyne:0.6.0#core-conformance"
       ]
     },
     {
@@ -447,7 +458,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A kind:4550 approval's moderator is not listed in the kind:34550 declaration resolved as-of the approval's anchor.",
       "spec_refs": [
-        "heterodyne:0.5.0#social-conformance"
+        "heterodyne:0.6.0#social-conformance"
       ]
     },
     {
@@ -457,7 +468,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "An epoch-key-signed Heterodyne event required to carry kel_head does not carry exactly one well-formed instance (absent, duplicate, or malformed).",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-retired-wire-profiles"
+        "heterodyne:0.6.0#assurance-retired-wire-profiles"
       ]
     },
     {
@@ -467,7 +478,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The kel_head tag's decimal seq does not equal the s value of the KEL event it names once that event is resolved on the accepted KEL.",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-retired-wire-profiles"
+        "heterodyne:0.6.0#assurance-retired-wire-profiles"
       ]
     },
     {
@@ -477,7 +488,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A kel_head tag appears on an event class whose Core applicability rules forbid it (kind:31002/31003 KEL events, Marmot outer or inner events, or non-stamping rotation breadcrumbs).",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-retired-wire-profiles"
+        "heterodyne:0.6.0#assurance-retired-wire-profiles"
       ]
     },
     {
@@ -487,7 +498,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A structurally valid kel_head names an event that is not on the persona's accepted KEL; the verifier flags equivocation and surfaces it through the \u00a713 security-warning interface.",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-retired-wire-profiles"
+        "heterodyne:0.6.0#assurance-retired-wire-profiles"
       ]
     },
     {
@@ -497,7 +508,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The signing epoch key is retroactively non-authoritative at the event's created_at: an accepted compromise-declaring rotation covers created_at under effective_compromise_since - 300 seconds.",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-retired-wire-profiles"
+        "heterodyne:0.6.0#assurance-retired-wire-profiles"
       ]
     },
     {
@@ -507,7 +518,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "Acceptance rests on relay-only key-material state (kind:31002/31003/31001); under deny-until-repo policy the event does not take effect until repo-carried, and provisional-accept results MUST NOT be reported as final.",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-retired-wire-profiles"
+        "heterodyne:0.6.0#assurance-retired-wire-profiles"
       ]
     },
     {
@@ -517,7 +528,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A prior provisional or \u00a74.5.1-accelerator acceptance is withdrawn after convergence-gated repo reconciliation, a KEL update, or later full verification contradicts it.",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-retired-wire-profiles"
+        "heterodyne:0.6.0#assurance-retired-wire-profiles"
       ]
     },
     {
@@ -527,7 +538,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A repo presented a key-material head regressing below a previously finalized canonical head without an authenticated re-anchor.",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-retired-wire-profiles"
+        "heterodyne:0.6.0#assurance-retired-wire-profiles"
       ]
     },
     {
@@ -537,7 +548,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "KERI export failed because accepted Assurance state uses a construct with no semantics-preserving canonical-KERI mapping (UNMAPPABLE_FEATURE).",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-keri-export"
+        "heterodyne:0.6.0#assurance-keri-export"
       ]
     },
     {
@@ -547,7 +558,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "KERI export failed because a mapping exists but the target cryptographic suite is unavailable locally (UNSUPPORTED_CRYPTO_SUITE).",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-keri-export"
+        "heterodyne:0.6.0#assurance-keri-export"
       ]
     },
     {
@@ -557,7 +568,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "KERI export failed because required accepted Assurance events or attachments are unavailable (INCOMPLETE_EXPORT).",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-keri-export"
+        "heterodyne:0.6.0#assurance-keri-export"
       ]
     },
     {
@@ -567,7 +578,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A KEL event or stream was presented in KERI10JSON/CESR on the Heterodyne wire or as storage; NIP-01 with nip01_raw is the only wire and storage format.",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-keri-export"
+        "heterodyne:0.6.0#assurance-keri-export"
       ]
     },
     {
@@ -577,7 +588,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A derived export AID or its did:webs DID was substituted for the persona npub where the spec requires the npub; the export identity is never an alternate authoritative identity.",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-keri-export"
+        "heterodyne:0.6.0#assurance-keri-export"
       ]
     },
     {
@@ -587,7 +598,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The claim or revocation does not satisfy its registered Comms schema.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
+        "heterodyne:0.6.0#comms-conformance"
       ]
     },
     {
@@ -597,7 +608,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The claim_id does not equal the lowercase SHA-256 digest of the canonical semantic body.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
+        "heterodyne:0.6.0#comms-conformance"
       ]
     },
     {
@@ -607,7 +618,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "An issuer, subject, or proof key reference is malformed or uses an unregistered type.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
+        "heterodyne:0.6.0#comms-conformance"
       ]
     },
     {
@@ -617,7 +628,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The outer Nostr claim or revocation event signature is invalid.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
+        "heterodyne:0.6.0#comms-conformance"
       ]
     },
     {
@@ -625,9 +636,9 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Core/KEL validation does not establish the issuer's claimed authority at issuance time.",
+      "description": "The exact verified outer issuer or explicit verified claim-chain authority required at the edge was not established.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
+        "heterodyne:0.6.0#comms-conformance"
       ]
     },
     {
@@ -637,7 +648,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The claim is cryptographically valid but its issuer is outside the verifier's trust policy.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
+        "heterodyne:0.6.0#comms-conformance"
       ]
     },
     {
@@ -647,7 +658,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The claim issuance chain contains a repeated claim identifier.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
+        "heterodyne:0.6.0#comms-conformance"
       ]
     },
     {
@@ -657,7 +668,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The claim issuance chain exceeds the strict eight-edge limit.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
+        "heterodyne:0.6.0#comms-conformance"
       ]
     },
     {
@@ -667,7 +678,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The parent claim does not authorize the child issuer to redelegate.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
+        "heterodyne:0.6.0#comms-conformance"
       ]
     },
     {
@@ -677,7 +688,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A child claim widens scope, audience, resources, validity, or delegation depth.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
+        "heterodyne:0.6.0#comms-conformance"
       ]
     },
     {
@@ -687,7 +698,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "Authorization use requires a fresh proof of possession that was not supplied.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
+        "heterodyne:0.6.0#comms-conformance"
       ]
     },
     {
@@ -697,7 +708,27 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The registered native proof profile did not validate possession of the subject key.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
+        "heterodyne:0.6.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "claim-subject-proof-replayed",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "heterodyne/0.6.0",
+      "description": "The claim subject proof single-use key was already acquired or conflicts with a different authorization-effect binding.",
+      "spec_refs": [
+        "heterodyne:0.6.0#comms-claim-verification"
+      ]
+    },
+    {
+      "code": "claim-authorization-effect-indeterminate",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "heterodyne/0.6.0",
+      "description": "The acquired claim authorization effect has no safely confirmed terminal result and requires reconciliation.",
+      "spec_refs": [
+        "heterodyne:0.6.0#comms-claim-verification"
       ]
     },
     {
@@ -707,7 +738,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A persona-issued authorization is not reachable from authoritative canonical repository state.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
+        "heterodyne:0.6.0#comms-conformance"
       ]
     },
     {
@@ -717,7 +748,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "Concurrent non-monotonic claim-ledger state remains unresolved and cannot authorize.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
+        "heterodyne:0.6.0#comms-conformance"
       ]
     },
     {
@@ -727,7 +758,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The claim's bounded validity interval has ended.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
+        "heterodyne:0.6.0#comms-conformance"
       ]
     },
     {
@@ -737,7 +768,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "An irreversible valid revocation covers the claim.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
+        "heterodyne:0.6.0#comms-conformance"
       ]
     },
     {
@@ -747,7 +778,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The signer is not permitted to revoke this authorization or descriptive assertion.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
+        "heterodyne:0.6.0#comms-conformance"
       ]
     },
     {
@@ -757,8 +788,19 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A device lacks an active durable NID-bearing claim-ledger-reader authorization.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
+        "heterodyne:0.6.0#comms-conformance"
       ]
+    },
+    {
+      "code": "claim-ledger-writer-unauthorized",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "heterodyne/0.6.0",
+      "description": "A claim-ledger record or prepared claim view lacks current Core repository-writer authorization.",
+      "spec_refs": [
+        "heterodyne:0.6.0#comms-claim-ledger"
+      ],
+      "intentionally_coarse": true
     },
     {
       "code": "claim-ledger-rollback",
@@ -767,7 +809,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "Presented claim-ledger state regresses below a previously finalized checkpoint.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
+        "heterodyne:0.6.0#comms-conformance"
       ]
     },
     {
@@ -777,7 +819,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The minting node lacks active oidc-token-issuer authority for the persona.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
+        "heterodyne:0.6.0#comms-conformance"
       ]
     },
     {
@@ -787,7 +829,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The minting node cannot decrypt or use an active shared issuer signing key.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
+        "heterodyne:0.6.0#comms-conformance"
       ]
     },
     {
@@ -797,7 +839,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The authoritative ledger checkpoint exceeds the issuer manifest's at-most-300-second freshness bound.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
+        "heterodyne:0.6.0#comms-conformance"
       ]
     },
     {
@@ -807,7 +849,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The requesting OAuth/OIDC client is not explicitly registered.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
+        "heterodyne:0.6.0#comms-conformance"
       ]
     },
     {
@@ -817,7 +859,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The request uses Client Credentials, implicit, password, or another prohibited grant.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
+        "heterodyne:0.6.0#comms-conformance"
       ]
     },
     {
@@ -827,7 +869,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The requested claim release lacks the required persona consent.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
+        "heterodyne:0.6.0#comms-conformance"
       ]
     },
     {
@@ -837,7 +879,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "Requested claims exceed the intersection of scope, audience, policy, consent, trust, and active state.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
+        "heterodyne:0.6.0#comms-conformance"
       ]
     },
     {
@@ -847,7 +889,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "Discovery metadata, JWT iss, or continuity state names a different exact issuer URL.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
+        "heterodyne:0.6.0#comms-conformance"
       ]
     },
     {
@@ -857,7 +899,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A JWT is missing or misuses the token-type separation required by the profile.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
+        "heterodyne:0.6.0#comms-conformance"
       ]
     },
     {
@@ -867,7 +909,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The JWT audience does not authorize the relying party or protected resource.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
+        "heterodyne:0.6.0#comms-conformance"
       ]
     },
     {
@@ -877,7 +919,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The referenced status evidence does not establish VALID: it is INVALID, stale, outside ttl, digest-mismatched, out of index bounds, or otherwise unverifiable.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
+        "heterodyne:0.6.0#comms-conformance"
       ]
     },
     {
@@ -887,7 +929,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A role-addressed delegation does not use the exact registered namespace and role identifier syntax.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-nid-delegation"
+        "heterodyne:0.6.0#core-retired-member-kel-and-role-delegation"
       ]
     },
     {
@@ -897,7 +939,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The registered role-key proof is missing, malformed, or invalid over the profile binding.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-nid-delegation"
+        "heterodyne:0.6.0#core-retired-member-kel-and-role-delegation"
       ]
     },
     {
@@ -907,7 +949,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A universal-launcher fragment is unknown, malformed, oversized, or contains an invalid NIP-19 entity.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-retrieval"
+        "heterodyne:0.6.0#comms-retrieval"
       ]
     },
     {
@@ -917,7 +959,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A public-reader bootstrap hint violates the normalized relay URL or local-network exclusion rules.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-retrieval"
+        "heterodyne:0.6.0#comms-retrieval"
       ]
     },
     {
@@ -925,9 +967,9 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Public-reader mode was asked to render Tier 2 plaintext or interpret Tier 3 ciphertext as public content.",
+      "description": "Public-reader mode was asked to render private-repository plaintext or interpret Tier 2 or Tier 3 ciphertext as public content.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-retrieval"
+        "heterodyne:0.6.0#comms-retrieval"
       ]
     },
     {
@@ -937,7 +979,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The agent workload registration is malformed, incompatible, non-final, or grants unbounded automated publication.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-key-claims"
+        "heterodyne:0.6.0#comms-key-claims"
       ]
     },
     {
@@ -947,8 +989,8 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The workload access token is not usable: it fails signature, type, issuer, client, identity, audience, scope, role, ledger, status, lifetime, or structural validation. The specific condition is recorded only in the encrypted audit.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-jwt-projection",
-        "heterodyne:0.5.0#comms-token-status"
+        "heterodyne:0.6.0#comms-jwt-projection",
+        "heterodyne:0.6.0#comms-token-status"
       ]
     },
     {
@@ -956,9 +998,9 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "The per-use workload JWK proof is missing, replayed, malformed, or mismatched with cnf.jkt.",
+      "description": "The required per-use DPoP/JWK proof is missing, replayed, malformed, or mismatched with the verified token, registered sender key, method, target, or nonce.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-jwt-projection"
+        "heterodyne:0.6.0#comms-agent-token"
       ]
     },
     {
@@ -968,7 +1010,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The token, registration, selected signing key, key class, optional association kind/value, or event pubkey disagrees with current authorization.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-agent-authorship"
+        "heterodyne:0.6.0#comms-agent-authorship"
       ]
     },
     {
@@ -978,7 +1020,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "An automated publication selected the persona key without the exact explicit OIDC persona-signing scope.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-agent-authorship"
+        "heterodyne:0.6.0#comms-agent-authorship"
       ]
     },
     {
@@ -988,7 +1030,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "An agent-authored event has missing, malformed, reordered, or identity-mismatched canonical attribution.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-publishing"
+        "heterodyne:0.6.0#comms-publishing"
       ]
     },
     {
@@ -998,7 +1040,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The requested authored event kind has no active revision-3 agent-attribution profile.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-publishing"
+        "heterodyne:0.6.0#comms-publishing"
       ]
     },
     {
@@ -1008,7 +1050,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A one-time invitation or response was processed at or after its signed expiry.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-one-time-invites"
+        "heterodyne:0.6.0#comms-one-time-invites"
       ]
     },
     {
@@ -1018,7 +1060,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "Local ordinary-conversation policy explicitly rejects an otherwise valid Marmot Welcome.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-ordinary-conversation-admission"
+        "heterodyne:0.6.0#comms-ordinary-conversation-admission"
       ]
     },
     {
@@ -1028,7 +1070,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A one-time invitation was presented or redeemed for a purpose other than its exact signed purpose.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-one-time-invites"
+        "heterodyne:0.6.0#comms-one-time-invites"
       ]
     },
     {
@@ -1038,7 +1080,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A one-time invite descriptor signature, NIP-59 responder binding, secret proof, or capability binding is invalid.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-one-time-invites"
+        "heterodyne:0.6.0#comms-one-time-invites"
       ]
     },
     {
@@ -1048,7 +1090,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A different authenticated account or canonical response already reserved the one-time invitation.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-one-time-invites"
+        "heterodyne:0.6.0#comms-one-time-invites"
       ]
     },
     {
@@ -1056,9 +1098,9 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "A preauthorized Control invite exceeds its exact bound signer-grant template, persona, client, signer, method, kind, limit, or prompt-free policy.",
+      "description": "The signed Control invite, exact preauthorization template, client binding, purpose, expiry, or current revocation state does not authorize the captured request.",
       "spec_refs": [
-        "heterodyne:0.5.0#control-one-time-invites"
+        "heterodyne:0.6.0#control-one-time-invites"
       ]
     },
     {
@@ -1068,8 +1110,9 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A full node accepts no new enrollment for this request. Disabled policy, exhausted capacity, and expired enrollment state are indistinguishable to the requester.",
       "spec_refs": [
-        "heterodyne:0.5.0#control-invitation-policy"
-      ]
+        "heterodyne:0.6.0#control-invitation-policy"
+      ],
+      "intentionally_coarse": true
     },
     {
       "code": "control-enrollment-rate-limited",
@@ -1078,7 +1121,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "Finite Welcome-processing or KeyPackage-replenishment rate or burst capacity is exhausted.",
       "spec_refs": [
-        "heterodyne:0.5.0#control-invitation-policy"
+        "heterodyne:0.6.0#control-invitation-policy"
       ]
     },
     {
@@ -1086,9 +1129,9 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "The node cannot replenish the public Control KeyPackage pool while its global pending-enrollment cap is full.",
+      "description": "Authenticated current enrollment state marks public Control KeyPackage replenishment as paused.",
       "spec_refs": [
-        "heterodyne:0.5.0#control-invitation-policy"
+        "heterodyne:0.6.0#control-invitation-policy"
       ]
     },
     {
@@ -1098,7 +1141,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A Device Authorization user code is not usable, whether malformed, unknown, or atomically invalidated after five failed guesses.",
       "spec_refs": [
-        "heterodyne:0.5.0#control-device-authorization"
+        "heterodyne:0.6.0#control-device-authorization"
       ]
     },
     {
@@ -1108,7 +1151,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A Device Authorization guess or poll violates per-code, node-wide, interval, or slow-down limits.",
       "spec_refs": [
-        "heterodyne:0.5.0#control-device-authorization"
+        "heterodyne:0.6.0#control-device-authorization"
       ]
     },
     {
@@ -1118,7 +1161,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The approving and initiating displays do not show the identical user code and client fingerprint.",
       "spec_refs": [
-        "heterodyne:0.5.0#control-device-authorization"
+        "heterodyne:0.6.0#control-device-authorization"
       ]
     },
     {
@@ -1126,9 +1169,9 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "The authenticated private authorization view is conflicted, older than 300 seconds, or not freshly synchronized for mutation.",
+      "description": "The authenticated private authorization view is conflicted, older than the declared authorization-view bound, or not freshly synchronized for mutation.",
       "spec_refs": [
-        "heterodyne:0.5.0#control-token"
+        "heterodyne:0.6.0#control-token"
       ]
     },
     {
@@ -1138,7 +1181,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The selected Control KeyPackage is malformed, expired, unsupported, or does not belong to the advertised full-node account.",
       "spec_refs": [
-        "heterodyne:0.5.0#control-invitation-policy"
+        "heterodyne:0.6.0#control-invitation-policy"
       ]
     },
     {
@@ -1148,7 +1191,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The Control group is enrollment-only and the requested method requires an active exact signer grant.",
       "spec_refs": [
-        "heterodyne:0.5.0#control-enrollment"
+        "heterodyne:0.6.0#control-enrollment"
       ]
     },
     {
@@ -1158,7 +1201,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The inner Control application event or canonical frame violates its closed kind, tag, version, profile, member, or payload rules.",
       "spec_refs": [
-        "heterodyne:0.5.0#control-frame"
+        "heterodyne:0.6.0#control-frame"
       ]
     },
     {
@@ -1168,7 +1211,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The private server-side signer grant is missing, stale beyond policy, unauthorized, forked, revoked, or contains a conflicting expansion.",
       "spec_refs": [
-        "heterodyne:0.5.0#control-entitlement"
+        "heterodyne:0.6.0#control-entitlement"
       ]
     },
     {
@@ -1178,7 +1221,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The Control access token is not usable: it fails type, signature, issuer, time, client, exact audience, sender constraint, grant, scope, private-state checkpoint, or structural validation. The specific condition is recorded only in the encrypted audit.",
       "spec_refs": [
-        "heterodyne:0.5.0#control-token"
+        "heterodyne:0.6.0#control-token"
       ]
     },
     {
@@ -1188,7 +1231,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A Control client requested or presented a refresh token even though the profile requires fresh node-local issuance.",
       "spec_refs": [
-        "heterodyne:0.5.0#control-token"
+        "heterodyne:0.6.0#control-token"
       ]
     },
     {
@@ -1198,7 +1241,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A logical operation identifier was reused for a different method, object, or canonical payload.",
       "spec_refs": [
-        "heterodyne:0.5.0#control-request-processing"
+        "heterodyne:0.6.0#control-request-processing"
       ]
     },
     {
@@ -1208,7 +1251,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A prior node may have committed the mutation, but no authoritative result proves whether repeating it is safe.",
       "spec_refs": [
-        "heterodyne:0.5.0#control-failover"
+        "heterodyne:0.6.0#control-failover"
       ]
     },
     {
@@ -1218,7 +1261,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The authenticated Control request expired before reservation or execution.",
       "spec_refs": [
-        "heterodyne:0.5.0#control-request-processing"
+        "heterodyne:0.6.0#control-request-processing"
       ]
     },
     {
@@ -1226,9 +1269,9 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "A request identifier was reused with different canonical bound bytes in the same persona vault.",
+      "description": "Retained non-wire history for the retired diagnostic that classified request-identifier reuse with different canonical bound bytes; current at-most-once execution is governed by the durable signer fence.",
       "spec_refs": [
-        "heterodyne:0.5.0#control-request-processing"
+        "heterodyne:0.6.0#control-retired-semantics"
       ]
     },
     {
@@ -1236,9 +1279,9 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "An automated principal requested a method outside its closed agentic Control surface.",
+      "description": "Retained non-wire history for the retired diagnostic that classified methods outside the closed agentic Control surface; current method authorization is governed by exact grants.",
       "spec_refs": [
-        "heterodyne:0.5.0#control-agent-requirements"
+        "heterodyne:0.6.0#control-retired-semantics"
       ]
     },
     {
@@ -1246,9 +1289,9 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "An automated principal requested private key material or raw signing authority.",
+      "description": "Retained non-wire history for the retired diagnostic that classified requests for private key material or raw signing authority; current key confinement is governed by live signer boundaries.",
       "spec_refs": [
-        "heterodyne:0.5.0#control-agent-requirements"
+        "heterodyne:0.6.0#control-retired-semantics"
       ]
     },
     {
@@ -1256,9 +1299,9 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "An automated principal attempted to bypass its selected persona vault, signing key, or key class.",
+      "description": "Retained non-wire history for the retired diagnostic that classified bypass of the selected persona vault, signer, or key class; current signer selection is governed by live publication authority.",
       "spec_refs": [
-        "heterodyne:0.5.0#control-agent-requirements"
+        "heterodyne:0.6.0#control-retired-semantics"
       ]
     },
     {
@@ -1266,9 +1309,9 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "An automated principal attempted to omit, alter, or falsify canonical agent attribution.",
+      "description": "Retained non-wire history for the retired diagnostic that classified omitted, altered, or falsified canonical agent attribution; current attribution-before-signing is governed by live publication authority.",
       "spec_refs": [
-        "heterodyne:0.5.0#control-agent-requirements"
+        "heterodyne:0.6.0#control-retired-semantics"
       ]
     },
     {
@@ -1276,9 +1319,9 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "The requested method, event kind, value, destination, or object is outside the exact active signer grant.",
+      "description": "Retained non-wire history for the retired diagnostic that classified operations outside an exact active signer grant; current resource authorization is governed by exact grants.",
       "spec_refs": [
-        "heterodyne:0.5.0#control-agent-requirements"
+        "heterodyne:0.6.0#control-retired-semantics"
       ]
     },
     {
@@ -1288,7 +1331,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The attributed unsigned event exceeds the exact grant's finite event-byte ceiling.",
       "spec_refs": [
-        "heterodyne:0.5.0#control-agent-requirements"
+        "heterodyne:0.6.0#control-agent-requirements"
       ]
     },
     {
@@ -1298,7 +1341,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The publication intent exceeds the exact grant's finite request window or request-count limit.",
       "spec_refs": [
-        "heterodyne:0.5.0#control-agent-requirements"
+        "heterodyne:0.6.0#control-agent-requirements"
       ]
     },
     {
@@ -1308,7 +1351,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "Evidence indicates an automated publication omitted mandatory agent attribution.",
       "spec_refs": [
-        "heterodyne:0.5.0#social-labels"
+        "heterodyne:0.6.0#social-labels"
       ]
     },
     {
@@ -1318,7 +1361,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "Evidence indicates an automated publication falsified mandatory agent attribution.",
       "spec_refs": [
-        "heterodyne:0.5.0#social-labels"
+        "heterodyne:0.6.0#social-labels"
       ]
     },
     {
@@ -1328,7 +1371,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "Evidence indicates an automated principal bypassed the required token and intent-level publication path.",
       "spec_refs": [
-        "heterodyne:0.5.0#social-labels"
+        "heterodyne:0.6.0#social-labels"
       ]
     },
     {
@@ -1338,7 +1381,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "An agent-policy receipt is malformed, unverifiable, secret-bearing, or does not bind exactly one actual event author, verified agent association, policy version, decision, and evidence set.",
       "spec_refs": [
-        "heterodyne:0.5.0#social-labels"
+        "heterodyne:0.6.0#social-labels"
       ]
     },
     {
@@ -1348,7 +1391,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A policy-list entry does not bind the same actual event author, receipt identifier, and reason code.",
       "spec_refs": [
-        "heterodyne:0.5.0#social-mute-profile"
+        "heterodyne:0.6.0#social-mute-profile"
       ]
     },
     {
@@ -1358,7 +1401,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A Heterodyne-private group has no currently authorized Radicle route and cannot use a public fallback.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-marmot-groups"
+        "heterodyne:0.6.0#comms-marmot-groups"
       ]
     },
     {
@@ -1367,7 +1410,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "No trusted-seed ACL projection is available for the requested private route.",
-      "spec_refs": ["heterodyne:0.5.0#comms-trusted-seed-private-relay"]
+      "spec_refs": ["heterodyne:0.6.0#comms-trusted-seed-private-relay"]
     },
     {
       "code": "trusted-seed-acl-invalid",
@@ -1375,7 +1418,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "A trusted-seed ACL is malformed, future-issued, incorrectly signed, or otherwise invalid.",
-      "spec_refs": ["heterodyne:0.5.0#comms-trusted-seed-private-relay"]
+      "spec_refs": ["heterodyne:0.6.0#comms-trusted-seed-private-relay"]
     },
     {
       "code": "trusted-seed-acl-expired",
@@ -1383,7 +1426,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "The selected trusted-seed ACL has reached its signed expiry.",
-      "spec_refs": ["heterodyne:0.5.0#comms-trusted-seed-private-relay"]
+      "spec_refs": ["heterodyne:0.6.0#comms-trusted-seed-private-relay"]
     },
     {
       "code": "trusted-seed-acl-stale",
@@ -1391,7 +1434,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "The selected trusted-seed ACL is not newer than accepted state or names an older Marmot group transition.",
-      "spec_refs": ["heterodyne:0.5.0#comms-trusted-seed-private-relay"]
+      "spec_refs": ["heterodyne:0.6.0#comms-trusted-seed-private-relay"]
     },
     {
       "code": "trusted-seed-acl-conflict",
@@ -1399,7 +1442,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "More than one distinct valid trusted-seed ACL claims the same greatest sequence.",
-      "spec_refs": ["heterodyne:0.5.0#comms-trusted-seed-private-relay"]
+      "spec_refs": ["heterodyne:0.6.0#comms-trusted-seed-private-relay"]
     },
     {
       "code": "trusted-seed-acl-ambiguous",
@@ -1407,7 +1450,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "Trusted-seed ACL state has no unique predecessor-linked head, seed grant, account entry, or writer ref.",
-      "spec_refs": ["heterodyne:0.5.0#comms-trusted-seed-private-relay"]
+      "spec_refs": ["heterodyne:0.6.0#comms-trusted-seed-private-relay"]
     },
     {
       "code": "trusted-seed-unauthorized",
@@ -1415,7 +1458,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "The authenticated account, seed NID, operation, or target writer ref is outside the current ACL.",
-      "spec_refs": ["heterodyne:0.5.0#comms-trusted-seed-private-relay"]
+      "spec_refs": ["heterodyne:0.6.0#comms-trusted-seed-private-relay"]
     },
     {
       "code": "trusted-seed-revoked",
@@ -1423,7 +1466,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "The requested seed NID is explicitly revoked by the current ACL projection.",
-      "spec_refs": ["heterodyne:0.5.0#comms-trusted-seed-private-relay"]
+      "spec_refs": ["heterodyne:0.6.0#comms-trusted-seed-private-relay"]
     },
     {
       "code": "trusted-seed-nip42-required",
@@ -1431,7 +1474,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "Private relay admission lacks successful NIP-42 authentication by the account being authorized.",
-      "spec_refs": ["heterodyne:0.5.0#comms-trusted-seed-private-relay"]
+      "spec_refs": ["heterodyne:0.6.0#comms-trusted-seed-private-relay"]
     },
     {
       "code": "trusted-seed-route-mismatch",
@@ -1439,7 +1482,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "The request and ACL disagree on h, private RID, current Marmot transition, or the selected seed route.",
-      "spec_refs": ["heterodyne:0.5.0#comms-trusted-seed-private-relay"]
+      "spec_refs": ["heterodyne:0.6.0#comms-trusted-seed-private-relay"]
     },
     {
       "code": "trusted-seed-event-invalid",
@@ -1447,7 +1490,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "A trusted-seed write does not carry one complete signed kind-445 Nostr event with a valid identifier and BIP-340 signature.",
-      "spec_refs": ["heterodyne:0.5.0#comms-trusted-seed-private-relay"]
+      "spec_refs": ["heterodyne:0.6.0#comms-trusted-seed-private-relay"]
     },
     {
       "code": "trusted-seed-request-invalid",
@@ -1455,7 +1498,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "Private relay admission metadata contains a missing, malformed, alternate, or additional request member.",
-      "spec_refs": ["heterodyne:0.5.0#comms-trusted-seed-private-relay"]
+      "spec_refs": ["heterodyne:0.6.0#comms-trusted-seed-private-relay"]
     },
     {
       "code": "trusted-seed-request-replay",
@@ -1463,7 +1506,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "A private relay request capability or its authenticated consume binding was already used.",
-      "spec_refs": ["heterodyne:0.5.0#comms-trusted-seed-private-relay"]
+      "spec_refs": ["heterodyne:0.6.0#comms-trusted-seed-private-relay"]
     },
     {
       "code": "marmot-routing-binding-invalid",
@@ -1472,7 +1515,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A routing binding has the wrong administrator, canonical Marmot routing commit, h value, or repository genesis digest.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-marmot-routing-generation"
+        "heterodyne:0.6.0#comms-marmot-routing-generation"
       ]
     },
     {
@@ -1482,7 +1525,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "Different otherwise valid routing bindings claim the same canonical Marmot h.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-marmot-host-authority"
+        "heterodyne:0.6.0#comms-marmot-host-authority"
       ]
     },
     {
@@ -1492,7 +1535,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A writer or relay ref is not authorized to contribute objects to the routing-generation union.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-marmot-event-repository"
+        "heterodyne:0.6.0#comms-marmot-event-repository"
       ]
     },
     {
@@ -1502,7 +1545,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A publisher or relay acknowledged a Marmot object before the required exact-byte durability boundary.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-marmot-rotation"
+        "heterodyne:0.6.0#comms-marmot-rotation"
       ]
     },
     {
@@ -1510,9 +1553,9 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "A sender NID is not authorized to contribute a contact bundle to the private persona repository.",
+      "description": "The authenticated current recipient repository authorization lacks the NID binding required for private persona-inbox admission.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-marmot-persona-inbox"
+        "heterodyne:0.6.0#comms-marmot-persona-inbox"
       ]
     },
     {
@@ -1520,9 +1563,9 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "A persona-inbox bootstrap attempts to consume a Marmot KeyPackage already consumed by another accepted or quarantined bundle.",
+      "description": "The selected Marmot KeyPackage is already durably consumed by authenticated inbox state or a closed available or committed reservation.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-marmot-persona-inbox"
+        "heterodyne:0.6.0#comms-marmot-persona-inbox"
       ]
     },
     {
@@ -1530,9 +1573,9 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "An automated Marmot operation requests a group, application kind, media type, size, rate, or burst outside its workload token.",
+      "description": "The authenticated current persona-inbox authorization does not permit the captured agent sender, request, or required first-contact scope.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-agent-authorship"
+        "heterodyne:0.6.0#comms-marmot-persona-inbox"
       ]
     },
     {
@@ -1542,7 +1585,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A Tier 3 audience-key recipient is not an active delegated human-device publishing key in the effective audience.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-audience-keys"
+        "heterodyne:0.6.0#comms-audience-keys"
       ]
     },
     {
@@ -1550,9 +1593,9 @@
       "owner": "core",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Relay state was presented as canonical profile state without repository selection.",
+      "description": "The selected canonical profile requires authenticated repository state, but no current writer-authenticated repository candidate supplies it.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-persona-profile"
+        "heterodyne:0.6.0#core-persona-profile"
       ]
     },
     {
@@ -1562,7 +1605,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The claimed vanilla profile publisher is not the one active delegated profile-publisher key.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-persona-profile"
+        "heterodyne:0.6.0#core-persona-profile"
       ]
     },
     {
@@ -1572,7 +1615,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "Optional NIP-05 resolution did not return the designated profile publisher key.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-persona-profile"
+        "heterodyne:0.6.0#core-persona-profile"
       ]
     },
     {
@@ -1580,9 +1623,9 @@
       "owner": "core",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Retired-key content claims a created_at outside that key's authority window.",
+      "description": "Retained non-wire history for retired-key content outside a former key-authority window; current Core verification and source-neutral selection do not emit this code.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-retired-key-observation"
+        "heterodyne:0.6.0#core-retired-semantics"
       ]
     },
     {
@@ -1590,9 +1633,9 @@
       "owner": "assurance",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Retired-key content falls at or after the accepted compromise_since cutoff.",
+      "description": "Retained non-wire history for the retired duplicate classification at or after an accepted compromise_since cutoff; current Assurance uses evaluateAssuranceAuthorityAt.",
       "spec_refs": [
-        "heterodyne:0.5.0#assurance-retired-wire-profiles"
+        "heterodyne:0.6.0#assurance-retired-semantics"
       ]
     },
     {
@@ -1602,7 +1645,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A newly accepted node advertisement is more than 300 seconds from verifier time.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-node-advertisement"
+        "heterodyne:0.6.0#core-node-advertisement"
       ]
     },
     {
@@ -1612,7 +1655,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "Known verifier clock uncertainty exceeds the 300-second acceptance window.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-node-advertisement"
+        "heterodyne:0.6.0#core-node-advertisement"
       ]
     },
     {
@@ -1622,7 +1665,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A node advertisement expiry is not strictly after created_at.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-node-advertisement"
+        "heterodyne:0.6.0#core-node-advertisement"
       ]
     },
     {
@@ -1632,7 +1675,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A node advertisement lifetime exceeds 86400 seconds.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-node-advertisement"
+        "heterodyne:0.6.0#core-node-advertisement"
       ]
     },
     {
@@ -1642,7 +1685,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A Workspace object or its canonical encoding does not match its closed schema.",
       "spec_refs": [
-        "heterodyne:0.5.0#workspace-errors"
+        "heterodyne:0.6.0#workspace-errors"
       ]
     },
     {
@@ -1652,7 +1695,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A Workspace active-key signature or its exact policy, predecessor, checkpoint, or repository binding is invalid.",
       "spec_refs": [
-        "heterodyne:0.5.0#workspace-errors"
+        "heterodyne:0.6.0#workspace-errors"
       ]
     },
     {
@@ -1662,7 +1705,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The configured trusted repository verification boundary did not authenticate one complete exact current Workspace repository view.",
       "spec_refs": [
-        "heterodyne:0.5.0#workspace-errors"
+        "heterodyne:0.6.0#workspace-errors"
       ]
     },
     {
@@ -1672,7 +1715,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "Required authority heads or role paths conflict or are incomparable.",
       "spec_refs": [
-        "heterodyne:0.5.0#workspace-errors"
+        "heterodyne:0.6.0#workspace-errors"
       ]
     },
     {
@@ -1682,7 +1725,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "Inheritance, a grant, or delegation attempts to widen an applicable ceiling.",
       "spec_refs": [
-        "heterodyne:0.5.0#workspace-errors"
+        "heterodyne:0.6.0#workspace-errors"
       ]
     },
     {
@@ -1692,7 +1735,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "Current effective Workspace policy denies the operation.",
       "spec_refs": [
-        "heterodyne:0.5.0#workspace-errors"
+        "heterodyne:0.6.0#workspace-errors"
       ]
     },
     {
@@ -1702,7 +1745,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The configured resolver handle is not the latest accepted generation, is superseded, not yet observed, expired, or exceeds its maximum age.",
       "spec_refs": [
-        "heterodyne:0.5.0#workspace-errors"
+        "heterodyne:0.6.0#workspace-errors"
       ]
     },
     {
@@ -1712,7 +1755,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A bilateral source affiliation exceeds its proof and grace bounds.",
       "spec_refs": [
-        "heterodyne:0.5.0#workspace-errors"
+        "heterodyne:0.6.0#workspace-errors"
       ]
     },
     {
@@ -1722,7 +1765,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The target or requesting device is not currently authorized.",
       "spec_refs": [
-        "heterodyne:0.5.0#workspace-errors"
+        "heterodyne:0.6.0#workspace-errors"
       ]
     },
     {
@@ -1732,7 +1775,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A requested historical key falls outside the active grant history mode.",
       "spec_refs": [
-        "heterodyne:0.5.0#workspace-errors"
+        "heterodyne:0.6.0#workspace-errors"
       ]
     },
     {
@@ -1742,7 +1785,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "An authorized responder has no resource matching the requested identifier.",
       "spec_refs": [
-        "heterodyne:0.5.0#workspace-errors"
+        "heterodyne:0.6.0#workspace-errors"
       ]
     },
     {
@@ -1752,7 +1795,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "The responder is not an authorized key custodian for the resource and checkpoint.",
       "spec_refs": [
-        "heterodyne:0.5.0#workspace-errors"
+        "heterodyne:0.6.0#workspace-errors"
       ]
     },
     {
@@ -1762,7 +1805,7 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A public projection correlates a concealed workspace, role, relationship, repository, or resource.",
       "spec_refs": [
-        "heterodyne:0.5.0#workspace-errors"
+        "heterodyne:0.6.0#workspace-errors"
       ]
     },
     {
@@ -1770,9 +1813,9 @@
       "owner": "workspace",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "A Workspace nonce, approval, relationship, grant, or key envelope was replayed.",
+      "description": "A Workspace invitation or other consuming authority input was reused with mismatched bindings or before its exact committed terminal was established.",
       "spec_refs": [
-        "heterodyne:0.5.0#workspace-errors"
+        "heterodyne:0.6.0#workspace-errors"
       ]
     },
     {
@@ -1781,7 +1824,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "A request does not resolve exactly one vault for its exact active persona key.",
-      "spec_refs": ["heterodyne:0.5.0#control-persona-vaults"]
+      "spec_refs": ["heterodyne:0.6.0#control-persona-vaults"]
     },
     {
       "code": "control-signer-unavailable",
@@ -1789,7 +1832,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "The exact selected signer and key class are unavailable in the selected persona vault; no fallback is attempted.",
-      "spec_refs": ["heterodyne:0.5.0#control-signer-selection"]
+      "spec_refs": ["heterodyne:0.6.0#control-signer-selection"]
     },
     {
       "code": "control-signer-binding-mismatch",
@@ -1797,7 +1840,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "A presented or requested signer binding differs from the authoritative server-side grant.",
-      "spec_refs": ["heterodyne:0.5.0#control-signer-grants"]
+      "spec_refs": ["heterodyne:0.6.0#control-signer-grants"]
     },
     {
       "code": "control-signing-grant-inactive",
@@ -1805,7 +1848,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "The selected signer grant is not yet issued, expired, revoked, or otherwise inactive.",
-      "spec_refs": ["heterodyne:0.5.0#control-signer-grants"]
+      "spec_refs": ["heterodyne:0.6.0#control-signer-grants"]
     },
     {
       "code": "control-client-metadata-widening",
@@ -1813,7 +1856,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "NIP-46 client metadata or requested permissions exceed the exact server-side methods, kinds, audience, or limits.",
-      "spec_refs": ["heterodyne:0.5.0#control-nip46-signing"]
+      "spec_refs": ["heterodyne:0.6.0#control-nip46-signing"]
     },
     {
       "code": "control-persona-authority-required",
@@ -1821,7 +1864,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "Persona-key signing lacks an explicit grant authorized by the active persona account.",
-      "spec_refs": ["heterodyne:0.5.0#control-signer-selection"]
+      "spec_refs": ["heterodyne:0.6.0#control-signer-selection"]
     },
     {
       "code": "control-connection-secret-invalid",
@@ -1829,7 +1872,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "A pending OIDC authorization cannot activate the presented NIP-46 connection secret.",
-      "spec_refs": ["heterodyne:0.5.0#control-oidc-activation"]
+      "spec_refs": ["heterodyne:0.6.0#control-oidc-activation"]
     },
     {
       "code": "control-connection-secret-reused",
@@ -1837,7 +1880,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "A consumed one-use NIP-46 connection secret was presented again.",
-      "spec_refs": ["heterodyne:0.5.0#control-oidc-activation"]
+      "spec_refs": ["heterodyne:0.6.0#control-oidc-activation"]
     },
     {
       "code": "control-attribution-required",
@@ -1845,7 +1888,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "An automated publication cannot receive a signature because valid Comms automation attribution was not produced first.",
-      "spec_refs": ["heterodyne:0.5.0#control-agent-requirements"]
+      "spec_refs": ["heterodyne:0.6.0#control-agent-requirements"]
     },
     {
       "code": "control-compromise-reset-incomplete",
@@ -1853,7 +1896,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "A compromise completion omits or changes a required grant, client, delegate, node, agent, seed, Marmot leaf, group transition, or fresh KeyPackage action.",
-      "spec_refs": ["heterodyne:0.5.0#control-compromise-reset"]
+      "spec_refs": ["heterodyne:0.6.0#control-compromise-reset"]
     },
     {
       "code": "control-subordinate-reauthorization-required",
@@ -1861,103 +1904,127 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "A continuing subordinate authority lacks a fresh explicit post-compromise authorization.",
-      "spec_refs": ["heterodyne:0.5.0#control-compromise-reset"]
+      "spec_refs": ["heterodyne:0.6.0#control-compromise-reset"]
     },
     {
       "code": "control-signing-grant-invalid",
       "owner": "control", "status": "draft", "first_version": "heterodyne/0.5.0",
       "description": "The authoritative signer grant, request limits, or usage record is structurally invalid.",
-      "spec_refs": ["heterodyne:0.5.0#control-signer-grants"]
+      "spec_refs": ["heterodyne:0.6.0#control-signer-grants"]
     },
     {
       "code": "control-signing-grant-unauthenticated",
       "owner": "control", "status": "draft", "first_version": "heterodyne/0.5.0",
       "description": "A signer grant fails its domain-separated BIP-340 authorization signature.",
-      "spec_refs": ["heterodyne:0.5.0#control-signer-grants"]
+      "spec_refs": ["heterodyne:0.6.0#control-signer-grants"]
     },
     {
       "code": "control-signing-grant-stale",
       "owner": "control", "status": "draft", "first_version": "heterodyne/0.5.0",
       "description": "The presented signer grant is not the unique authenticated predecessor/revocation head.",
-      "spec_refs": ["heterodyne:0.5.0#control-signer-grants"]
+      "spec_refs": ["heterodyne:0.6.0#control-signer-grants"]
     },
     {
       "code": "control-signing-rate-limited",
       "owner": "control", "status": "draft", "first_version": "heterodyne/0.5.0",
       "description": "The authoritative per-grant usage record has exhausted its finite request window.",
-      "spec_refs": ["heterodyne:0.5.0#control-request-processing"]
+      "spec_refs": ["heterodyne:0.6.0#control-request-processing"]
     },
     {
       "code": "control-operation-reservation-required",
       "owner": "control", "status": "draft", "first_version": "heterodyne/0.5.0",
       "description": "The authoritative per-grant usage state does not prove that the exact request ID and canonical digest were durably reserved before signing.",
-      "spec_refs": ["heterodyne:0.5.0#control-request-processing"]
+      "spec_refs": ["heterodyne:0.6.0#control-request-processing"]
     },
     {
       "code": "control-operation-execution-fence-required",
       "owner": "control", "status": "draft", "first_version": "heterodyne/0.5.0",
       "description": "The signer invocation was attempted without authoritative persisted executing state and its grant-bound idempotency token.",
-      "spec_refs": ["heterodyne:0.5.0#control-request-processing"]
+      "spec_refs": ["heterodyne:0.6.0#control-request-processing"]
     },
     {
       "code": "control-nip46-request-invalid",
       "owner": "control", "status": "draft", "first_version": "heterodyne/0.5.0",
       "description": "The presented NIP-46 request has an invalid bounded wire ID or its sign_event parameter is not one unambiguous closed standard EventTemplate.",
-      "spec_refs": ["heterodyne:0.5.0#control-request-processing"]
+      "spec_refs": ["heterodyne:0.6.0#control-request-processing"]
     },
     {
       "code": "control-usage-binding-mismatch",
       "owner": "control", "status": "draft", "first_version": "heterodyne/0.5.0",
       "description": "Authoritative usage or replay state is not bound to the collision-resistant digest and complete authority tuple of the authenticated current grant.",
-      "spec_refs": ["heterodyne:0.5.0#control-request-processing"]
+      "spec_refs": ["heterodyne:0.6.0#control-request-processing"]
     },
     {
       "code": "control-signer-effect-indeterminate",
       "owner": "control", "status": "draft", "first_version": "heterodyne/0.5.0",
       "description": "An executing signing operation produced an invalid, failed, timed-out, or otherwise uncertain signer effect and requires a durable non-reusable indeterminate transition.",
-      "spec_refs": ["heterodyne:0.5.0#control-agent-requirements"]
+      "spec_refs": ["heterodyne:0.6.0#control-agent-requirements"]
     },
     {
       "code": "control-activation-binding-mismatch",
       "owner": "control", "status": "draft", "first_version": "heterodyne/0.5.0",
       "description": "A NIP-46 activation differs from its exact approved OIDC, grant, persona, client, audience, signer, or key-class binding.",
-      "spec_refs": ["heterodyne:0.5.0#control-oidc-activation"]
+      "spec_refs": ["heterodyne:0.6.0#control-oidc-activation"]
     },
     {
       "code": "control-attribution-binding-mismatch",
       "owner": "control", "status": "draft", "first_version": "heterodyne/0.5.0",
       "description": "Caller attribution hints differ from the authenticated workload policy bound by the signer grant.",
-      "spec_refs": ["heterodyne:0.5.0#control-agent-requirements"]
+      "spec_refs": ["heterodyne:0.6.0#control-agent-requirements"]
     },
     {
       "code": "control-agent-intent-invalid",
       "owner": "control", "status": "draft", "first_version": "heterodyne/0.5.0",
       "description": "An automated publication intent violates its single closed unsigned-intent contract.",
-      "spec_refs": ["heterodyne:0.5.0#control-agent-requirements"]
+      "spec_refs": ["heterodyne:0.6.0#control-agent-requirements"]
     },
     {
       "code": "control-signed-event-invalid",
       "owner": "control", "status": "draft", "first_version": "heterodyne/0.5.0",
-      "description": "The signer returned altered event fields or an invalid canonical NIP-01 event ID or BIP-340 signature.",
-      "spec_refs": ["heterodyne:0.5.0#control-agent-requirements"]
+      "description": "Retained non-wire history for the retired diagnostic that classified altered or invalid signer output; current signer-output verification is governed by publication and signer-fence boundaries.",
+      "spec_refs": ["heterodyne:0.6.0#control-retired-semantics"]
     },
     {
       "code": "control-compromise-reset-unauthenticated",
       "owner": "control", "status": "draft", "first_version": "heterodyne/0.5.0",
       "description": "A reset grant or completion lacks its required domain-separated BIP-340 authority signature or pinned Assurance binding.",
-      "spec_refs": ["heterodyne:0.5.0#control-compromise-reset"]
+      "spec_refs": ["heterodyne:0.6.0#control-compromise-reset"]
     },
     {
       "code": "control-compromise-reset-inventory-mismatch",
       "owner": "control", "status": "draft", "first_version": "heterodyne/0.5.0",
       "description": "The signed reset grant does not exactly bind the authoritative pre-reset persona-vault inventory and revision.",
-      "spec_refs": ["heterodyne:0.5.0#control-compromise-reset"]
+      "spec_refs": ["heterodyne:0.6.0#control-compromise-reset"]
     },
     {
       "code": "control-compromise-reset-evidence-invalid",
       "owner": "control", "status": "draft", "first_version": "heterodyne/0.5.0",
       "description": "Reset completion evidence is not authoritative, exact, fresh, consecutive, successor-bound, or cryptographically transition-complete.",
-      "spec_refs": ["heterodyne:0.5.0#control-compromise-reset"]
+      "spec_refs": ["heterodyne:0.6.0#control-compromise-reset"]
+    },
+    {
+      "code": "core-created-at-premature",
+      "owner": "core", "status": "draft", "first_version": "heterodyne/0.6.0",
+      "description": "Replaceable-selection candidate quarantined because its created_at exceeds trusted verifier time by more than the 900 second premature bound.",
+      "spec_refs": ["heterodyne:0.6.0#core-created-at-bound"]
+    },
+    {
+      "code": "workspace-assurance-state-required",
+      "owner": "workspace", "status": "draft", "first_version": "heterodyne/0.6.0",
+      "description": "An optional active Workspace Assurance profile lacks a current exact verified binding, or its replacement or removal lacks matching authorization over the same canonical policy-transition digest.",
+      "spec_refs": ["heterodyne:0.6.0#workspace-optional-assurance"]
+    },
+    {
+      "code": "assurance-enrollment-pending-window",
+      "owner": "assurance", "status": "draft", "first_version": "heterodyne/0.6.0",
+      "description": "Reciprocal enrollment is valid but its 604800 second conflict-free observation window has not elapsed, so it is not pin-eligible.",
+      "spec_refs": ["heterodyne:0.6.0#assurance-enrollment-window"]
+    },
+    {
+      "code": "assurance-enrollment-contested",
+      "owner": "assurance", "status": "draft", "first_version": "heterodyne/0.6.0",
+      "description": "An active-key-authenticated contest or fully reciprocal competing enrollment was observed during the observation window; the candidate is permanently non-pin-eligible and the persona remains baseline.",
+      "spec_refs": ["heterodyne:0.6.0#assurance-enrollment-window"]
     }
   ]
 }
