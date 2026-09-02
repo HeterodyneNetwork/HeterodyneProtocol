@@ -49,7 +49,7 @@ const VECTOR_PATHS = [
   "workspace/001-second.json",
 ] as const;
 const SOURCE_COMMIT = "1".repeat(40);
-const RECONCILIATION_SOURCE_COMMIT = "bfb71fbff0a7753db56146bf0d5b49534c06af9d";
+const RECONCILIATION_SOURCE_COMMIT = "c72f5ccdf855069550511d8e3e837dae55ed299c";
 const RECONCILIATION_VECTOR_COUNT = 267;
 const SNAPSHOT_OWNERS = [
   "assurance",
