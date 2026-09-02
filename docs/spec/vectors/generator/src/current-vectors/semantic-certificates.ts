@@ -134,7 +134,7 @@ const TASK_FIFTEEN_SEMANTIC_BOUNDARIES: Readonly<Record<string, Readonly<{
   "workspace/current-capability-intersection": { boundary_id: "workspace.authenticateWorkspaceRepositoryView+resolveWorkspaceEffectiveAuthorization+consumeWorkspaceInvitationAcceptance+evaluateGrantActivation", postcondition: "task15-workspace-authority" },
   "workspace/inheritance-escalation-rejected": { boundary_id: "workspace.authenticateWorkspaceRepositoryView+resolveWorkspaceEffectiveAuthorization", postcondition: "task15-workspace-authority" },
   "workspace/invitation-replay": { boundary_id: "workspace.authenticateWorkspaceRepositoryView+resolveWorkspaceEffectiveAuthorization+consumeWorkspaceInvitationAcceptance+evaluateGrantActivation+consumeWorkspaceInvitationAcceptance", postcondition: "task15-workspace-authority" },
-  "workspace/revocation-blocks-future-effect": { boundary_id: "workspace.authenticateWorkspaceRepositoryView+resolveWorkspaceEffectiveAuthorization", postcondition: "task15-workspace-authority" },
+  "workspace/revocation-blocks-future-effect": { boundary_id: "workspace.authenticateWorkspaceRepositoryView+resolveWorkspaceEffectiveAuthorization+evaluateGrantActivation", postcondition: "task15-workspace-authority" },
   "social/profile-heterodyne-social-agent-policy-list-v1": { boundary_id: "social-subscription-authority.resolveSubscribedAgentPolicy+applySubscribedAgentPolicy", postcondition: "task15-social-subscription" },
   "social/profile-heterodyne-social-agent-policy-receipt-v1": { boundary_id: "social-subscription-authority.resolveSubscribedAgentPolicy+applySubscribedAgentPolicy", postcondition: "task15-social-subscription" },
 });
@@ -1558,14 +1558,37 @@ function taskFifteenPostcondition(
             evaluator === invocations[3]?.evaluator
           ).length === 1;
       }
-      const exactReason = fixture.vector_id === "workspace/carrier-not-ambient-authority"
-        ? "policy_denied"
-        : fixture.vector_id === "workspace/inheritance-escalation-rejected"
-          ? "capability_escalation"
-          : fixture.vector_id === "workspace/revocation-blocks-future-effect"
-            ? "policy_denied"
-            : undefined;
-      return terminal.reason_code === exactReason
+      if (fixture.vector_id === "workspace/inheritance-escalation-rejected") {
+        return terminal.verdict === "reject"
+          && terminal.reason_code === "capability_escalation"
+          && sameStrings(Reflect.ownKeys(terminal).map(String).sort(), ["reason_code", "verdict"])
+          && invocations.length === 2
+          && sameStrings(stringMembers(resolveInput?.requested_capabilities) ?? [], ["write"])
+          && raw.authorization === undefined
+          && raw.activation === undefined
+          && raw.resolution === undefined;
+      }
+      if (fixture.vector_id === "workspace/revocation-blocks-future-effect") {
+        const resolution = record(raw.resolution);
+        const authorization = record(resolution?.authorization);
+        const activationInput = record(invocations[2]?.args[0]);
+        return resolution?.verdict === "accept"
+          && authorization !== undefined
+          && Reflect.ownKeys(authorization).length === 0
+          && Object.isFrozen(authorization)
+          && terminal.verdict === "reject"
+          && terminal.reason_code === "policy_denied"
+          && sameStrings(Reflect.ownKeys(terminal).map(String).sort(), ["reason_code", "verdict"])
+          && invocations.length === 3
+          && activationInput?.authority === resolveInput?.authority
+          && activationInput?.current_state === authenticated.state
+          && activationInput?.authorization === resolution.authorization
+          && activationInput?.invitation_acceptance === null
+          && raw.activation === undefined
+          && terminal.normalized === undefined
+          && terminal.output === undefined;
+      }
+      return terminal.reason_code === "policy_denied"
         && invocations.length === 2
         && raw.authorization === undefined
         && raw.activation === undefined;

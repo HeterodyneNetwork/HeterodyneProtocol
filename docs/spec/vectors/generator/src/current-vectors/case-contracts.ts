@@ -3481,7 +3481,7 @@ const TASK_FIFTEEN_BOUNDARIES: Readonly<Record<string, string>> = Object.freeze(
   "workspace/current-capability-intersection": "workspace.authenticateWorkspaceRepositoryView+resolveWorkspaceEffectiveAuthorization+consumeWorkspaceInvitationAcceptance+evaluateGrantActivation",
   "workspace/inheritance-escalation-rejected": "workspace.authenticateWorkspaceRepositoryView+resolveWorkspaceEffectiveAuthorization",
   "workspace/invitation-replay": "workspace.authenticateWorkspaceRepositoryView+resolveWorkspaceEffectiveAuthorization+consumeWorkspaceInvitationAcceptance+evaluateGrantActivation+consumeWorkspaceInvitationAcceptance",
-  "workspace/revocation-blocks-future-effect": "workspace.authenticateWorkspaceRepositoryView+resolveWorkspaceEffectiveAuthorization",
+  "workspace/revocation-blocks-future-effect": "workspace.authenticateWorkspaceRepositoryView+resolveWorkspaceEffectiveAuthorization+evaluateGrantActivation",
 });
 
 const RESOLVED_CURRENT_CASE_CONTRACTS = new Map<string, CurrentCaseContract>();

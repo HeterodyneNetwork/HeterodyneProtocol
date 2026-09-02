@@ -259,59 +259,60 @@ export function buildWorkspaceCases(): CurrentCaseFixture[] {
         ancestor_capabilities: [],
         grant_capabilities: ["invite", "read"],
         revoked: true,
+        trusted_now: 1_720_000_399,
+        revocation_effective_at: 1_720_000_400,
+        activation: "approval-threshold",
     });
-    const securityView = securityFixture.signed_repository_view as Readonly<{
-        evidence: Readonly<Record<string, unknown>>;
-        objects: readonly Readonly<Record<string, unknown>>[];
-    }>;
-    const securityGrant = securityView.objects.find((object) =>
-        object.object_type === "role-grant-v1"
-    );
-    if (securityGrant === undefined) throw new Error("Workspace security fixture grant missing");
-    const grantOperation = { ...securityGrant };
-    delete grantOperation.signature;
-    delete grantOperation.approval_ids;
-    const grantOperationDigest = bytesToHex(sha256(proofBytes(
-        "heterodyne-workspace-grant-operation-v1",
-        grantOperation,
-    )));
     const workspaceDevice = "81".repeat(32);
     const workspaceLeaf = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-    const approvalUnsigned = {
-        profile: "heterodyne.workspace-grant-approval.v1",
-        spec_version: QUALIFIED_VERSION,
-        workspace_key: securityGrant.workspace_key,
-        policy_head: securityGrant.policy_head,
-        predecessor: securityGrant.predecessor,
-        authority_checkpoint: securityGrant.authority_checkpoint,
-        operation_digest: grantOperationDigest,
-        approver_key: bytesToHex(schnorr.getPublicKey("01".repeat(32))),
-        issued_at: 1_720_000_200,
-        expires_at: 1_720_000_650,
-    };
-    const securityApproval = {
-        ...approvalUnsigned,
-        signature: bytesToHex(schnorr.sign(
-            proofBytes("heterodyne-workspace-grant-approval-v1", approvalUnsigned),
-            "01".repeat(32),
-            AUX_RAND,
-        )),
-    };
-    const makeAcceptance = (issued_at: number) => {
-        const invitation = securityGrant.invitation as Readonly<Record<string, unknown>>;
+    const securityArtifacts = (fixture: WorkspaceSecurityFixture) => {
+        const view = fixture.signed_repository_view as Readonly<{
+            evidence: Readonly<Record<string, unknown>>;
+            objects: readonly Readonly<Record<string, unknown>>[];
+        }>;
+        const grant = view.objects.find((object) => object.object_type === "role-grant-v1");
+        if (grant === undefined) throw new Error("Workspace security fixture grant missing");
+        const operation = { ...grant };
+        delete operation.signature;
+        delete operation.approval_ids;
+        const operationDigest = bytesToHex(sha256(proofBytes(
+            "heterodyne-workspace-grant-operation-v1", operation,
+        )));
+        const approvalUnsigned = {
+            profile: "heterodyne.workspace-grant-approval.v1",
+            spec_version: QUALIFIED_VERSION,
+            workspace_key: grant.workspace_key,
+            policy_head: grant.policy_head,
+            predecessor: grant.predecessor,
+            authority_checkpoint: grant.authority_checkpoint,
+            operation_digest: operationDigest,
+            approver_key: bytesToHex(schnorr.getPublicKey("01".repeat(32))),
+            issued_at: 1_720_000_200,
+            expires_at: 1_720_000_650,
+        };
+        const approval = {
+            ...approvalUnsigned,
+            signature: bytesToHex(schnorr.sign(
+                proofBytes("heterodyne-workspace-grant-approval-v1", approvalUnsigned),
+                "01".repeat(32), AUX_RAND,
+            )),
+        };
+        const makeAcceptance = (issued_at: number) => {
+            const invitation = grant.invitation as Readonly<Record<string, unknown>>;
+            if (invitation === null) return null;
         const unsigned = {
             profile: "heterodyne.workspace-invitation-acceptance.v1",
             spec_version: QUALIFIED_VERSION,
-            grant_id: securityFixture.grant_id,
-            grant_operation_digest: grantOperationDigest,
-            workspace_key: securityGrant.workspace_key,
-            subject_account: securityFixture.subject,
+            grant_id: fixture.grant_id,
+            grant_operation_digest: operationDigest,
+            workspace_key: grant.workspace_key,
+            subject_account: fixture.subject,
             target_device: workspaceDevice,
             target_leaf: workspaceLeaf,
-            policy_head: securityGrant.policy_head,
-            predecessor: securityGrant.predecessor,
-            authority_checkpoint: securityGrant.authority_checkpoint,
-            repository_view_id: workspaceObjectId(securityView.evidence),
+            policy_head: grant.policy_head,
+            predecessor: grant.predecessor,
+            authority_checkpoint: grant.authority_checkpoint,
+            repository_view_id: workspaceObjectId(view.evidence),
             nonce_opening: "b1".repeat(32),
             nonce_commitment: invitation.nonce_commitment,
             issued_at,
@@ -325,9 +326,13 @@ export function buildWorkspaceCases(): CurrentCaseFixture[] {
                 AUX_RAND,
             )),
         };
+        };
+        return { operationDigest, approval, makeAcceptance };
     };
-    const securityAcceptance = makeAcceptance(1_720_000_200);
-    const mismatchedSecurityAcceptance = makeAcceptance(1_720_000_201);
+    const security = securityArtifacts(securityFixture);
+    const revokedSecurity = securityArtifacts(revokedSecurityFixture);
+    const securityAcceptance = security.makeAcceptance(1_720_000_200);
+    const mismatchedSecurityAcceptance = security.makeAcceptance(1_720_000_201);
     const deliveryInput = {
         resource_id: "resource-a",
         known_resource_ids: ["resource-a"],
@@ -366,16 +371,16 @@ export function buildWorkspaceCases(): CurrentCaseFixture[] {
             "workspace/inheritance-escalation-rejected", "workspace/invitation-replay"] as const)
             .map((vectorId) => [vectorId, [
                 securityFixture,
-                grantOperationDigest,
-                securityApproval,
+                security.operationDigest,
+                security.approval,
                 securityAcceptance,
                 mismatchedSecurityAcceptance,
                 workspaceDevice,
                 workspaceLeaf,
             ]] as const),
         ["workspace/revocation-blocks-future-effect",
-            [revokedSecurityFixture, grantOperationDigest, securityApproval, securityAcceptance,
-                mismatchedSecurityAcceptance, workspaceDevice, workspaceLeaf],
+            [revokedSecurityFixture, revokedSecurity.operationDigest, revokedSecurity.approval, null,
+                null, workspaceDevice, workspaceLeaf],
         ],
     ]);
     const boundaryArgs = new Map<string, readonly unknown[]>([

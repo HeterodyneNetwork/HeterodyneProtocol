@@ -1397,7 +1397,7 @@ The exact replacement map is:
 | `control/signer-effect-indeterminate` | `control-signing.executePersistedAutomatedSigning` | `CONTROL-I-OPERATION-AT-MOST-ONCE`; `control-signer-effect-indeterminate` | persisted execution becomes absorbing indeterminate and signer is not repeated |
 | `control/token-invalid` | `verifyControlToken` → `consumeVerifiedControlToken` | `CONTROL-I-CLIENT-KEY-CONFINEMENT`; matching reason | actual JWT/current grant/per-use proof rejects before operation |
 | `workspace/carrier-not-ambient-authority` | authenticate view → `resolveWorkspaceEffectiveAuthorization` | `WORKSPACE-I-CARRIER-NOT-AUTHORITY`, `WORKSPACE-I-NO-AMBIENT-AUTHORITY`; `policy_denied` | carrier/host/writer principal has no qualifying signed grant |
-| `workspace/inheritance-escalation-rejected` | authenticate view → resolve → `evaluateGrantActivation` | `WORKSPACE-I-INHERITANCE-NARROWS`; `capability_escalation` | child/grant request exceeds root/ancestor intersection |
+| `workspace/inheritance-escalation-rejected` | authenticate view → `resolveWorkspaceEffectiveAuthorization` | `WORKSPACE-I-INHERITANCE-NARROWS`; `capability_escalation` | complete signed view rejects the out-of-intersection request before any authorization exists |
 | `workspace/invitation-replay` | `consumeWorkspaceInvitationAcceptance` → activation → identical second consume | `WORKSPACE-I-NO-AMBIENT-AUTHORITY`; `workspace_replay` | first terminal is committed; replay performs no second activation |
 | `workspace/revocation-blocks-future-effect` | authenticate view → resolve → activation | `WORKSPACE-I-REVOCATION-FUTURE-ONLY`; `policy_denied` | current signed revocation excludes the future effect |
 | `core/friend-cache-unsigned` | `core-operational-assurance-authority.verifyCacheCandidate` | `CORE-I-IDENTITY-INTEGRITY`; `unauthorized_cache_content` | cache candidate lacks exact verified persona authorship |
@@ -1409,6 +1409,11 @@ The exact replacement map is:
 | `comms/marmot-expiration-not-erasure` | append → `expireMarmotPresentation` → archive reload | `COMMS-I-RADICLE-NON-ERASURE` | presentation expires while ciphertext/history remains reachable |
 | `comms/marmot-ordinary-welcome-held` | `verifyMarmotWelcome` → `admitOrdinaryMarmotWelcome` | `COMMS-I-MARMOT-ACCOUNT-IDENTITY`, `COMMS-I-MARMOT-SECRET-CONFINEMENT`, `COMMS-I-MARMOT-UPSTREAM-AUTHORITY` | exact account/group/member/leaf bindings accept once under local authority |
 | `workspace/current-capability-intersection` | authenticate view → resolve → activation | `WORKSPACE-I-AUTHENTICATED-CURRENT-STATE`, `WORKSPACE-I-INHERITANCE-NARROWS`, `WORKSPACE-I-NO-AMBIENT-AUTHORITY` | output equals root ∩ ancestors ∩ current grant/relationship/resource constraints |
+
+The inheritance negative is intentionally fail-early under the current complete-view API: an
+out-of-intersection request cannot produce the opaque authorization required by
+`evaluateGrantActivation`. Its evidence therefore proves that resolution rejects and that no
+authorization or activation exists; fabricating an activation handle would invalidate the test.
 
 - [ ] **Step 1: Preserve and re-run the dispatcher RED/GREEN evidence**
 

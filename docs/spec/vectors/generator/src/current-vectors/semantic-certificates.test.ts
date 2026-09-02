@@ -88,7 +88,7 @@ const TASK_FIFTEEN_REAL_MAPPINGS = {
   "workspace/current-capability-intersection": "workspace.authenticateWorkspaceRepositoryView+resolveWorkspaceEffectiveAuthorization+consumeWorkspaceInvitationAcceptance+evaluateGrantActivation",
   "workspace/inheritance-escalation-rejected": "workspace.authenticateWorkspaceRepositoryView+resolveWorkspaceEffectiveAuthorization",
   "workspace/invitation-replay": "workspace.authenticateWorkspaceRepositoryView+resolveWorkspaceEffectiveAuthorization+consumeWorkspaceInvitationAcceptance+evaluateGrantActivation+consumeWorkspaceInvitationAcceptance",
-  "workspace/revocation-blocks-future-effect": "workspace.authenticateWorkspaceRepositoryView+resolveWorkspaceEffectiveAuthorization",
+  "workspace/revocation-blocks-future-effect": "workspace.authenticateWorkspaceRepositoryView+resolveWorkspaceEffectiveAuthorization+evaluateGrantActivation",
 } as const;
 
 const TASK_FIFTEEN_SOCIAL_COMPOSITES = {
@@ -541,6 +541,121 @@ describe("semantic boundary certificates", () => {
       expect(currentCaseContract(vectorId).boundary_id, vectorId).toBe(boundaryId);
     }
   });
+
+  it("BLUE TEAM VALIDATION: synthetic/local reaches Workspace activation only after a prepared grant becomes revoked", async () => {
+    // BLUE TEAM VALIDATION: one deterministic in-memory clock crosses one signed revocation boundary; no external targets, real credentials, or reusable payloads are used.
+    const vectorId = "workspace/revocation-blocks-future-effect";
+    const fixture = await matrixFixture("workspace-revocation-effect", vectorId);
+    const contract = currentCaseContract(vectorId);
+    expect(contract.boundary_id).toBe(
+      "workspace.authenticateWorkspaceRepositoryView+resolveWorkspaceEffectiveAuthorization+evaluateGrantActivation",
+    );
+
+    const execution = await invokeCurrentBoundary(contract.boundary_id, fixture);
+    const record = inspectCurrentBoundaryExecution(execution, contract.boundary_id, fixture);
+    const semanticInvocations = record.evaluator_invocations.filter(({ step_id }) =>
+      step_id.startsWith("semantic:")
+    );
+    const raw = execution.raw_result as Readonly<{
+      authenticated: Readonly<{ verdict: string }>;
+      resolution: Readonly<{ verdict: string; authorization?: object }>;
+      terminal: Readonly<Record<string, unknown>>;
+    }>;
+    expect(raw.authenticated.verdict).toBe("accept");
+    expect(raw.resolution.verdict).toBe("accept");
+    expect(raw.resolution.authorization).toEqual(expect.any(Object));
+    expect(raw.terminal).toEqual({ verdict: "reject", reason_code: "policy_denied" });
+    expect(semanticInvocations).toHaveLength(3);
+    const activationInput = semanticInvocations[2]?.args[0] as Readonly<Record<string, unknown>>;
+    expect(activationInput.authorization).toBe(raw.resolution.authorization);
+    expect(activationInput.current_state).toBe(
+      (raw.authenticated as Readonly<{ state?: unknown }>).state,
+    );
+    expect(activationInput.invitation_acceptance).toBeNull();
+    expect(() => certifyBoundaryExecution(contract, fixture, execution)).not.toThrow();
+
+    const omittedFixture = await matrixFixture("workspace-revocation-omission", vectorId);
+    await expect(invokeCurrentBoundaryWithTestPlanOmission(
+      contract.boundary_id,
+      omittedFixture,
+      2,
+    )).rejects.toThrow(/invocation (?:exceeded plan|order mismatch)|plan incomplete/u);
+
+    const clonedAuthorizationFixture = await matrixFixture(
+      "workspace-revocation-cloned-authorization", vectorId,
+    );
+    const clonedAuthorization = await invokeCurrentBoundaryWithTestEvaluatorSubstitution(
+      contract.boundary_id,
+      clonedAuthorizationFixture,
+      {
+        composite_step: {
+          index: 2,
+          evaluator: (...args: readonly unknown[]) => {
+            const input = args[0] as Readonly<Record<string, unknown>>;
+            return Reflect.apply(semanticInvocations[2]!.evaluator, undefined, [{
+              ...input,
+              authorization: structuredClone(input.authorization),
+            }]);
+          },
+        },
+      },
+    );
+    expect(clonedAuthorization.projected_output).toEqual({
+      verdict: "reject",
+      reason_code: "workspace_schema_invalid",
+    });
+    expect(() => certifyBoundaryExecution(
+      contract, clonedAuthorizationFixture, clonedAuthorization,
+    )).toThrow(/exact evaluator implementation|postcondition failed/u);
+
+    const substitutedFixture = await matrixFixture("workspace-revocation-substitution", vectorId);
+    const substituted = await invokeCurrentBoundaryWithTestEvaluatorSubstitution(
+      contract.boundary_id,
+      substitutedFixture,
+      {
+        composite_step: {
+          index: 2,
+          evaluator: () => ({ verdict: "reject", reason_code: "policy_denied" }),
+        },
+      },
+    );
+    expect(substituted.projected_output).toEqual({
+      verdict: "reject",
+      reason_code: "policy_denied",
+    });
+    expect(() => certifyBoundaryExecution(contract, substitutedFixture, substituted))
+      .toThrow(/exact evaluator implementation|postcondition failed/u);
+  }, 120_000);
+
+  it("BLUE TEAM VALIDATION: synthetic/local proves Workspace inheritance rejection is fail-early and cannot mint activation authority", async () => {
+    // BLUE TEAM VALIDATION: this uses one complete signed local view and an inert out-of-ceiling request only.
+    const vectorId = "workspace/inheritance-escalation-rejected";
+    const fixture = await matrixFixture("workspace-inheritance-fail-early", vectorId);
+    const contract = currentCaseContract(vectorId);
+    expect(contract.boundary_id).toBe(
+      "workspace.authenticateWorkspaceRepositoryView+resolveWorkspaceEffectiveAuthorization",
+    );
+    const execution = await invokeCurrentBoundary(contract.boundary_id, fixture);
+    const record = inspectCurrentBoundaryExecution(execution, contract.boundary_id, fixture);
+    const semanticInvocations = record.evaluator_invocations.filter(({ step_id }) =>
+      step_id.startsWith("semantic:")
+    );
+    const raw = execution.raw_result as Readonly<{
+      authenticated: Readonly<{ verdict: string }>;
+      terminal: Readonly<Record<string, unknown>>;
+      authorization?: unknown;
+      activation?: unknown;
+    }>;
+    expect(raw.authenticated.verdict).toBe("accept");
+    expect(raw.terminal).toEqual({ verdict: "reject", reason_code: "capability_escalation" });
+    expect(raw).not.toHaveProperty("authorization");
+    expect(raw).not.toHaveProperty("activation");
+    expect(semanticInvocations).toHaveLength(2);
+    expect(semanticInvocations[1]?.args[0]).toMatchObject({
+      requested_capabilities: ["write"],
+    });
+    expect(() => certifyBoundaryExecution(contract, fixture, execution)).not.toThrow();
+  }, 60_000);
 
   it.each(TASK_FIFTEEN_HOSTILE_MATRIX)(
     "BLUE TEAM VALIDATION: synthetic/local rejects the complete hostile matrix for %s",

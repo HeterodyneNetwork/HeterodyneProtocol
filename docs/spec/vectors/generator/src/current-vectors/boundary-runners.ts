@@ -567,6 +567,12 @@ function actualEvaluatorFunctions(
         workspace.authenticateWorkspaceRepositoryView,
         workspace.resolveWorkspaceEffectiveAuthorization,
       ];
+    case "workspace.authenticateWorkspaceRepositoryView+resolveWorkspaceEffectiveAuthorization+evaluateGrantActivation":
+      return [
+        workspace.authenticateWorkspaceRepositoryView,
+        workspace.resolveWorkspaceEffectiveAuthorization,
+        workspace.evaluateGrantActivation,
+      ];
     case "workspace.authenticateWorkspaceRepositoryView+resolveWorkspaceEffectiveAuthorization+consumeWorkspaceInvitationAcceptance+evaluateGrantActivation":
       return [
         workspace.authenticateWorkspaceRepositoryView,
@@ -1212,6 +1218,7 @@ async function executeCurrentBoundary(
       device, leaf] = fixture.boundary_args ?? [];
     const security = securityFixture as Readonly<{
       authority: object;
+      clock: { now: number };
       signed_repository_view: object;
       grant_id: string;
       subject: string;
@@ -1242,6 +1249,27 @@ async function executeCurrentBoundary(
       return {
         raw_result: { authenticated, terminal: resolution },
         projected_output: resolution,
+      };
+    }
+    if (fixture.vector_id === "workspace/revocation-blocks-future-effect") {
+      security.clock.now += 1;
+      const terminal = await callStep<ReturnType<typeof workspace.evaluateGrantActivation>>(2, [{
+        authority: security.authority,
+        current_state: authenticated.state,
+        authorization: resolution.authorization,
+        invitation_acceptance: null,
+        successor_reauthorization: null,
+        grant_id: security.grant_id,
+        membership: {
+          authenticated_account: security.subject,
+          accepted_device: device,
+          accepted_leaf: leaf,
+        },
+        approvals: [approval],
+      }]);
+      return {
+        raw_result: { authenticated, resolution, terminal },
+        projected_output: terminal,
       };
     }
     const consumed = await callStep<ReturnType<

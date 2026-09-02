@@ -13,6 +13,7 @@ import {
 
 export type WorkspaceSecurityFixture = Readonly<{
   authority: WorkspaceRepositoryResolverAuthority;
+  clock: { now: number };
   signed_repository_view: Readonly<Record<string, unknown>>;
   grant_id: string;
   subject: string;
@@ -66,12 +67,16 @@ type WorkspaceSecurityFixtureInput = Readonly<{
   ancestor_capabilities: readonly (readonly string[])[];
   grant_capabilities: readonly string[];
   revoked: boolean;
+  trusted_now?: number;
+  revocation_effective_at?: number;
+  activation?: "subject-acceptance" | "approval-threshold";
 }>;
 
 function buildFixture(
   input: WorkspaceSecurityFixtureInput,
   invitationStore: ReferenceWorkspaceInvitationAcceptanceStore,
 ): WorkspaceSecurityFixture {
+  const clock = { now: input.trusted_now ?? NOW };
   const common = {
     spec_version: "heterodyne/0.6.0",
     workspace_key: WORKSPACE_KEY,
@@ -133,15 +138,15 @@ function buildFixture(
     capabilities: [...input.grant_capabilities],
     resource_scope: [RESOURCE_ID],
     delegable: false,
-    activation: "subject-acceptance",
+    activation: input.activation ?? "subject-acceptance",
     activates_at: OBSERVED_AT,
     expires_at: EXPIRES_AT,
     approval_ids: [],
-    invitation: {
+    invitation: (input.activation ?? "subject-acceptance") === "subject-acceptance" ? {
       nonce_commitment: invitationNonceCommitment(nonceOpening),
       expires_at: EXPIRES_AT,
       history_mode: "from-admission",
-    },
+    } : null,
     evidence_ids: [],
   };
   const grantOperation: Record<string, unknown> = { ...unsignedGrant };
@@ -180,7 +185,7 @@ function buildFixture(
     revocation_id: REVOCATION_ID,
     target_type: "grant",
     target_id: GRANT_ID,
-    effective_at: input.revoked ? NOW : EXPIRES_AT + 1,
+    effective_at: input.revocation_effective_at ?? (input.revoked ? NOW : EXPIRES_AT + 1),
     reason: "synthetic fixture revocation",
   }, WORKSPACE_SECRET);
   const resource = signWorkspaceObject({
@@ -310,12 +315,13 @@ function buildFixture(
       repository_rid: "rad:zWorkspaceSecurityFixture",
       pinned_head: REPOSITORY_HEAD,
     }],
-    trusted_now: () => NOW,
+    trusted_now: () => clock.now,
     invitation_store: invitationStore,
   });
   const signedRepositoryView = Object.freeze({ authority, evidence, objects });
   return Object.freeze({
     authority,
+    clock,
     signed_repository_view: signedRepositoryView,
     grant_id: GRANT_ID,
     subject: SUBJECT,
