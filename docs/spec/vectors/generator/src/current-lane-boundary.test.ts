@@ -63,6 +63,7 @@ describe("current-draft compiler and Vitest boundary", () => {
         "list",
         "--config",
         "vitest.current.config.ts",
+        "--filesOnly",
       ],
       { cwd: generatorRoot, encoding: "utf8" },
     );
