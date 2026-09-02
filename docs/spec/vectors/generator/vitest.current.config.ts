@@ -12,6 +12,8 @@ export default defineConfig({
     // Package authoring is exercised in the current test lane, but its
     // lifecycle-only snapshot imports remain outside the current type graph.
     exclude: project.exclude.filter((path) => path !== "src/current-package.test.ts"),
-    maxWorkers: 4,
+    maxWorkers: 1,
+    fileParallelism: false,
+    testTimeout: 15_000,
   },
 });

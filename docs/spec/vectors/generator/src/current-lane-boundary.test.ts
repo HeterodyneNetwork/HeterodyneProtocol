@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
+import currentVitestConfig from "../vitest.current.config.js";
 import { assertExactCurrentModuleGraph } from "./current-import-graph.js";
 import { CURRENT_MODULE_ALLOWLIST } from "./current-module-allowlist.js";
 
@@ -18,6 +19,14 @@ const retiredCurrentSources = [
 ] as const;
 
 describe("current-draft compiler and Vitest boundary", () => {
+  it("bounds current-draft file execution to one worker", () => {
+    expect(currentVitestConfig.test).toMatchObject({
+      maxWorkers: 1,
+      fileParallelism: false,
+      testTimeout: 15_000,
+    });
+  });
+
   it("matches the exact reviewed current-source module graph", () => {
     expect(() => assertExactCurrentModuleGraph(
       currentCatalogEntry,
