@@ -19,6 +19,7 @@ import {
   inspectCurrentBoundaryExecution,
   invokeCurrentBoundary,
   invokeCurrentBoundaryWithTestEvaluatorSubstitution,
+  invokeCurrentBoundaryWithTestNonRevocationDenial,
   invokeCurrentBoundaryWithTestPlanOmission,
   registeredPrivateCurrentFixtureIds,
 } from "./boundary-runners.js";
@@ -607,6 +608,21 @@ describe("semantic boundary certificates", () => {
     expect(() => certifyBoundaryExecution(
       contract, clonedAuthorizationFixture, clonedAuthorization,
     )).toThrow(/exact evaluator implementation|postcondition failed/u);
+
+    const nonRevocationFixture = await matrixFixture(
+      "workspace-revocation-same-terminal-counterexample", vectorId,
+    );
+    const nonRevocationDenial = await invokeCurrentBoundaryWithTestNonRevocationDenial(
+      contract.boundary_id,
+      nonRevocationFixture,
+    );
+    expect(nonRevocationDenial.projected_output).toEqual({
+      verdict: "reject",
+      reason_code: "policy_denied",
+    });
+    expect(() => certifyBoundaryExecution(
+      contract, nonRevocationFixture, nonRevocationDenial,
+    )).toThrow(/postcondition failed/u);
 
     const substitutedFixture = await matrixFixture("workspace-revocation-substitution", vectorId);
     const substituted = await invokeCurrentBoundaryWithTestEvaluatorSubstitution(

@@ -1252,6 +1252,7 @@ async function executeCurrentBoundary(
       };
     }
     if (fixture.vector_id === "workspace/revocation-blocks-future-effect") {
+      const preparedAt = security.clock.now;
       security.clock.now += 1;
       const terminal = await callStep<ReturnType<typeof workspace.evaluateGrantActivation>>(2, [{
         authority: security.authority,
@@ -1268,7 +1269,15 @@ async function executeCurrentBoundary(
         approvals: [approval],
       }]);
       return {
-        raw_result: { authenticated, resolution, terminal },
+        raw_result: {
+          authenticated,
+          resolution,
+          revocation_timing: Object.freeze({
+            prepared_at: preparedAt,
+            activation_at: security.clock.now,
+          }),
+          terminal,
+        },
         projected_output: terminal,
       };
     }
@@ -1869,6 +1878,34 @@ export async function invokeCurrentBoundaryWithTestEvaluatorSubstitution(
     // the independently captured evaluator-step identity check.
     invokeCurrentBoundary,
   );
+}
+
+/** BLUE TEAM VALIDATION: synthetic/local same-terminal non-revocation counterexample. */
+export async function invokeCurrentBoundaryWithTestNonRevocationDenial(
+  boundaryId: string,
+  fixture: CurrentCaseFixture,
+): Promise<CurrentBoundaryExecution> {
+  if (boundaryId !== "workspace.authenticateWorkspaceRepositoryView+resolveWorkspaceEffectiveAuthorization+evaluateGrantActivation"
+    || fixture.vector_id !== "workspace/revocation-blocks-future-effect") {
+    throw new Error("test non-revocation denial requires the Workspace revocation boundary");
+  }
+  const privateArgs = resolvePrivateCurrentBoundaryArgs(fixture);
+  const security = privateArgs?.[0] as { clock?: { now: number } } | undefined;
+  const activation = actualEvaluatorFunctions(boundaryId, fixture)[2];
+  if (security?.clock === undefined || activation === undefined) {
+    throw new Error("test non-revocation denial fixture is unavailable");
+  }
+  return await invokeCurrentBoundaryWithTestEvaluatorSubstitution(boundaryId, fixture, {
+    composite_step: {
+      index: 2,
+      evaluator: (...args: readonly unknown[]) => {
+        security.clock!.now -= 1;
+        const input = args[0] as { approvals: unknown[] };
+        input.approvals = [];
+        return Reflect.apply(activation, undefined, [input]);
+      },
+    },
+  });
 }
 
 /** BLUE TEAM VALIDATION: synthetic/local test seam; incomplete plans never mint executions. */

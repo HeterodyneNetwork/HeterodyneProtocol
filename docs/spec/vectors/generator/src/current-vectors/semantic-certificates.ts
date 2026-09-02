@@ -8,7 +8,8 @@ import { schnorr } from "@noble/curves/secp256k1";
 import { sha256 } from "@noble/hashes/sha2";
 import { base58 } from "@scure/base";
 import { repositoryWriterBindingProofBytes } from "../core-writer-binding.js";
-import { hexToBytes, utf8Bytes } from "../hex.js";
+import { bytesToHex, hexToBytes, utf8Bytes } from "../hex.js";
+import { proofBytes } from "../proof-bytes.js";
 import { nodeAdvertPayload } from "../radicle.js";
 import {
   assertCurrentCaseContractIdentity,
@@ -1075,6 +1076,84 @@ function independentlyDerivedWorkspaceCapabilities(
   ).sort();
 }
 
+function independentlyValidWorkspaceRevocationEffect(
+  repositoryView: unknown,
+  resolveInputValue: unknown,
+  activationInputValue: unknown,
+  timingValue: unknown,
+): boolean {
+  const view = record(repositoryView);
+  const evidence = record(view?.evidence);
+  const objects = recordMembers(view?.objects);
+  const resolveInput = record(resolveInputValue);
+  const activationInput = record(activationInputValue);
+  const timing = record(timingValue);
+  const grantId = activationInput?.grant_id;
+  const grant = objects.find((value) => value.object_type === "role-grant-v1"
+    && value.grant_id === grantId);
+  const revocation = objects.find((value) => value.object_type === "role-revocation-v1"
+    && value.target_type === "grant" && value.target_id === grantId);
+  const policy = objects.find((value) => value.object_type === "workspace-policy-v1"
+    && value.policy_id === grant?.policy_head);
+  const governance = record(policy?.governance);
+  const approvals = recordMembers(activationInput?.approvals);
+  const approval = approvals[0];
+  const preparedAt = timing?.prepared_at;
+  const activationAt = timing?.activation_at;
+  if (grant === undefined || revocation === undefined || policy === undefined
+    || approval === undefined || approvals.length !== 1
+    || grant.activation !== "approval-threshold" || grant.invitation !== null
+    || typeof grantId !== "string" || resolveInput?.operation_digest === undefined
+    || typeof preparedAt !== "number" || typeof activationAt !== "number"
+    || typeof revocation.effective_at !== "number"
+    || !(preparedAt < revocation.effective_at && revocation.effective_at <= activationAt)
+    || typeof evidence?.observed_at !== "number" || typeof evidence.expires_at !== "number"
+    || typeof policy.authority_mutation_max_age !== "number"
+    || preparedAt < evidence.observed_at || activationAt < preparedAt
+    || activationAt - evidence.observed_at > policy.authority_mutation_max_age
+    || activationAt >= evidence.expires_at
+    || approval.profile !== "heterodyne.workspace-grant-approval.v1"
+    || approval.workspace_key !== grant.workspace_key
+    || approval.policy_head !== grant.policy_head
+    || approval.predecessor !== grant.predecessor
+    || approval.authority_checkpoint !== grant.authority_checkpoint
+    || typeof approval.approver_key !== "string" || typeof approval.signature !== "string"
+    || typeof approval.issued_at !== "number" || typeof approval.expires_at !== "number"
+    || approval.issued_at > activationAt || activationAt >= approval.expires_at
+    || !Array.isArray(governance?.controllers)
+    || !governance.controllers.includes(approval.approver_key)
+    || governance.threshold !== 1) return false;
+  const operation = { ...grant };
+  delete operation.signature;
+  delete operation.approval_ids;
+  const operationDigest = bytesToHex(sha256(proofBytes(
+    "heterodyne-workspace-grant-operation-v1", operation,
+  )));
+  const unsignedApproval = { ...approval };
+  delete unsignedApproval.signature;
+  try {
+    return resolveInput.operation_digest === operationDigest
+      && approval.operation_digest === operationDigest
+      && Array.isArray(grant.approval_ids)
+      && grant.approval_ids.length === 1
+      && grant.approval_ids[0] === workspaceObjectId(approval)
+      && schnorr.verify(
+        approval.signature,
+        proofBytes("heterodyne-workspace-grant-approval-v1", unsignedApproval),
+        approval.approver_key,
+      )
+      && typeof revocation.signature === "string"
+      && typeof revocation.workspace_key === "string"
+      && schnorr.verify(
+        revocation.signature,
+        workspaceSigningPayload(revocation as Record<string, unknown>),
+        revocation.workspace_key,
+      );
+  } catch {
+    return false;
+  }
+}
+
 function taskFifteenPostcondition(
   allocation: SemanticAllocation,
   fixture: CurrentCaseFixture,
@@ -1571,6 +1650,7 @@ function taskFifteenPostcondition(
       if (fixture.vector_id === "workspace/revocation-blocks-future-effect") {
         const resolution = record(raw.resolution);
         const authorization = record(resolution?.authorization);
+        const normalized = record(resolution?.normalized);
         const activationInput = record(invocations[2]?.args[0]);
         return resolution?.verdict === "accept"
           && authorization !== undefined
@@ -1584,6 +1664,13 @@ function taskFifteenPostcondition(
           && activationInput?.current_state === authenticated.state
           && activationInput?.authorization === resolution.authorization
           && activationInput?.invitation_acceptance === null
+          && activationInput?.grant_id === normalized?.qualifying_grant_id
+          && independentlyValidWorkspaceRevocationEffect(
+            invocations[0]?.args[0],
+            invocations[1]?.args[0],
+            invocations[2]?.args[0],
+            raw.revocation_timing,
+          )
           && raw.activation === undefined
           && terminal.normalized === undefined
           && terminal.output === undefined;
