@@ -239,6 +239,26 @@ test("compareProjections keeps exact anchored edits bounded to changed anchors",
   assert.equal(diff.unresolved.some((entry) => entry.kind === "document_level_impact"), false);
 });
 
+test("compareProjections masks nested anchor spans as one covered interval", () => {
+  const beforeText = "Preamble.\n\n<a id=\"identity\"></a>\n# Identity\nIntro.\n\n<a id=\"detail\"></a>\n## Detail\nOld detail.\n\n# Next\nNext text.\n";
+  const afterText = beforeText.replace("Old detail.", "New detail.");
+  const baseItems = graph().items.filter((entry) => entry.semantic_id !== "heterodyne:core#identity");
+  const anchors = [
+    ...baseItems,
+    item("heterodyne:core#identity", "spec_anchor", "docs/spec/heterodyne-core.md", { owner: "core", source_digest: "identity-digest" }),
+    item("heterodyne:core#detail", "spec_anchor", "docs/spec/heterodyne-core.md", { owner: "core", source_digest: "detail-digest" }),
+  ];
+  const before = withSourceContents(graph({ items: anchors }), beforeText);
+  const after = withSourceContents(graph({
+    items: anchors.map((entry) => entry.semantic_id === "heterodyne:core#detail" ? { ...entry, source_digest: "detail-v2" } : entry),
+    receipt: { ...graph().receipt, inputs: graph().receipt.inputs.map((input) => input.path === "docs/spec/heterodyne-core.md" ? { ...input, sha256: "core-v2" } : input) },
+  }), beforeText, afterText);
+  const diff = compareProjections(before, after);
+  assert.ok(diff.modified.some((entry) => entry.semantic_id === "heterodyne:core#detail"));
+  assert.equal(diff.changed.some((entry) => entry.semantic_id === "document:docs/spec/heterodyne-core.md"), false);
+  assert.equal(diff.unresolved.some((entry) => entry.kind === "document_level_impact"), false);
+});
+
 test("compareProjections falls back to document scope for preamble-only and mixed edits", () => {
   const original = "Preamble.\n\n<a id=\"identity\"></a>\n# Identity\nRequirement.\n\n<a id=\"other\"></a>\n# Other\nOther requirement.\n";
   const preamble = "New preamble.\n\nPreamble.\n\n<a id=\"identity\"></a>\n# Identity\nRequirement.\n\n<a id=\"other\"></a>\n# Other\nOther requirement.\n";

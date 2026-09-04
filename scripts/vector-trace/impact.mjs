@@ -282,13 +282,23 @@ function projectionAnchorSpans(projection, path, content, items) {
 function maskedDocument(projection, path, content, items) {
   const spans = projectionAnchorSpans(projection, path, content, items);
   if (!spans || spans.length !== items.length || spans.some((span) => !Number.isInteger(span.start) || !Number.isInteger(span.end))) return null;
+  const ranges = [];
+  for (const span of [...spans].sort((a, b) => a.start - b.start || a.end - b.end)) {
+    if (span.start < 0 || span.end < span.start || span.end > content.length) return null;
+    const prior = ranges[ranges.length - 1];
+    if (prior && span.start <= prior.end) {
+      prior.end = Math.max(prior.end, span.end);
+      prior.ids.add(span.semantic_id);
+    } else {
+      ranges.push({ start: span.start, end: span.end, ids: new Set([span.semantic_id]) });
+    }
+  }
   let cursor = 0;
   let result = "";
-  for (const span of [...spans].sort((a, b) => a.start - b.start)) {
-    if (span.start < cursor || span.end < span.start || span.end > content.length) return null;
-    result += content.slice(cursor, span.start);
-    result += `\u0000${span.semantic_id}\u0000`;
-    cursor = span.end;
+  for (const range of ranges) {
+    result += content.slice(cursor, range.start);
+    result += `\u0000${[...range.ids].sort(compareStrings).join(",")}\u0000`;
+    cursor = range.end;
   }
   return result + content.slice(cursor);
 }
