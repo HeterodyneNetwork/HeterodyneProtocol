@@ -65,26 +65,26 @@ regardless of elapsed time.
 
 ## Baseline and pending readiness
 
-The redacted August 28 archive establishes 1,882 outer
-tool/orchestration calls, 332 nested patch operations, approximately 600
-read/search-bearing shell commands, 16 explicit compactions, and at least 14
-explicit full-gate launches. These are separate counting levels; they are not
-summed. Process time must use real process start-to-exit timestamps, not a
-yield wrapper or poll duration. Full-gate process/lane/CPU/memory/dependency
-readiness profiling remains pending and is not represented as an acceptance
-result here.
-
-Archive-parser correction (2026-09-04): the 332 patch operations and gate
-launch estimate above came from orchestration source, not observed nested
-runtime events. The archive has 1,882 observed outer calls (1,562 `exec`, 226
-`wait`, 88 `send_message`, and 6 `wait_agent`) and a static lower bound of
+The redacted August 28 archive has 1,882 observed outer calls (1,562 `exec`,
+226 `wait`, 88 `send_message`, and 6 `wait_agent`) and a static lower bound of
 1,599 direct `tools.*` call sites (1,073 `exec_command`, 163 `write_stdin`, 332
 `apply_patch`, 22 `mcp__semble__search`, and 9 `update_plan`). Those static
-sites are not execution or process evidence. Ten `turn_id` task pairs report
-28,227,508 ms total duration; their separately retained outer-event spans sum
-28,227,438 ms. The archive provides no structured process start/exit
-instrumentation, so process count and duration remain unknown and zero gate
-launches are explicitly confirmed; the total launch count is unknown.
+sites are not observed nested runtime events, executions, or processes. A
+prior manual source audit identified approximately 600 read/search-bearing
+shell-command candidates and at least 14 full-gate command candidates; it did
+not instrument or confirm their launches. The archive also contains 16
+explicit compaction records.
+
+Ten matched `turn_id` task pairs have provider-reported
+`task_complete.duration_ms` values totaling 28,227,508 ms. The corresponding
+spans between matched outer-record timestamps total 28,227,438 ms; this is a
+separate timing definition. The archive provides no structured process
+start/exit instrumentation, so process count and duration remain unknown.
+Zero gate launches are confirmed by instrumentation, which does not imply
+that zero launches occurred. Process time requires real process start-to-exit
+timestamps, not a yield wrapper or poll duration. Full-gate
+process/lane/CPU/memory/dependency readiness profiling remains pending and is
+not represented as an acceptance result here.
 
 ## Exploratory readiness profile
 

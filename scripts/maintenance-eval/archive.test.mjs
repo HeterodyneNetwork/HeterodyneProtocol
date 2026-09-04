@@ -62,6 +62,28 @@ test('wrapper session fields and source mentions do not become processes or laun
   assert.equal(result.provenance.counts.processes.status, 'unknown');
 });
 
+test('a direct exec_command record leaves process count unknown without instrumentation', () => {
+  const result = summarizeArchive([
+    { line: 1, timestamp: 1000, type: 'function_call', payload: {
+      call_id: 'exec-command-1', name: 'exec_command', arguments: { cmd: 'npm test' },
+    } },
+  ]);
+
+  assert.equal(result.processes, null);
+  assert.equal(result.provenance.counts.processes.status, 'unknown');
+});
+
+test('an exec record with unavailable source leaves process count unknown', () => {
+  const result = summarizeArchive([
+    { line: 1, timestamp: 1000, type: 'custom_tool_call', payload: {
+      call_id: 'exec-opaque-1', name: 'exec',
+    } },
+  ]);
+
+  assert.equal(result.processes, null);
+  assert.equal(result.provenance.counts.processes.status, 'unknown');
+});
+
 test('an orphan write_stdin result does not fabricate a process start', () => {
   const result = summarizeArchive([
     { line: 1, timestamp: 1000, type: 'response_item', payload: { type: 'function_call', call_id: 'poll-1', name: 'write_stdin', arguments: { session_id: 'orphan-session', chars: '' } } },

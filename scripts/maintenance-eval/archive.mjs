@@ -122,17 +122,6 @@ function directToolCallSites(source) {
   return sites;
 }
 
-function callArguments(payload) {
-  const raw = payload.arguments;
-  return typeof raw === 'string' ? safeJson(raw) : (raw && typeof raw === 'object' ? raw : {});
-}
-
-function hasWrapperProcessReference(payload) {
-  if (payload.session_id != null || payload.cell_id != null) return true;
-  const args = callArguments(payload);
-  return args.session_id != null || args.cell_id != null;
-}
-
 function explicitProcessDetails(payload, type) {
   const embedded = payload.process && typeof payload.process === 'object' ? payload.process : null;
   const isProcessEvent = String(type).startsWith('process_');
@@ -172,7 +161,6 @@ export function summarizeArchive(records) {
   const tasks = new Map();
   const timestamps = [];
   const confirmedGateProcessIds = new Set();
-  let unsupportedProcessEvidence = false;
 
   records.forEach((record, index) => {
     const payload = payloadOf(record);
@@ -196,13 +184,10 @@ export function summarizeArchive(records) {
           for (const siteName of directToolCallSites(source)) {
             increment(staticSitesByKind, siteName);
             staticSites.push({ outerCallId: id, line, name: siteName });
-            if (siteName === 'exec_command' || siteName === 'write_stdin') unsupportedProcessEvidence = true;
           }
         }
       }
     }
-
-    if (hasWrapperProcessReference(payload)) unsupportedProcessEvidence = true;
 
     const process = explicitProcessDetails(payload, type);
     if (process) {
@@ -279,10 +264,10 @@ export function summarizeArchive(records) {
 
   const processCount = instrumentedProcesses.size > 0
     ? instrumentedProcesses.size
-    : (unsupportedProcessEvidence ? null : 0);
+    : null;
   const processStatus = instrumentedProcesses.size > 0
     ? 'observed-instrumented-lower-bound'
-    : (unsupportedProcessEvidence ? 'unknown' : 'known-absent');
+    : 'unknown';
   const spanMs = timestamps.length ? Math.max(...timestamps) - Math.min(...timestamps) : 0;
   return {
     spanMs,
