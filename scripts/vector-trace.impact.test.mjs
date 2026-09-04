@@ -55,6 +55,13 @@ function graph(overrides = {}) {
   };
 }
 
+function withSourceContents(projection, before, after = before) {
+  Object.defineProperty(projection, "sourceContents", { value: new Map([
+    ["docs/spec/heterodyne-core.md", after],
+  ]), enumerable: false });
+  return projection;
+}
+
 test("queryPacket follows direct contracts and imports, including reverse dependent tests", () => {
   const packet = queryPacket(graph(), "heterodyne:core#identity");
   assert.ok(packet.changed.some((entry) => entry.semantic_id === "heterodyne:core#identity"));
@@ -80,10 +87,8 @@ test("queryPacket honors upstream/downstream direction and preserves missing lin
   assert.throws(() => queryPacket(projection, "heterodyne:core#deleted"), /unknown semantic id/);
 });
 
-test("queryPacket follows cyclic and transitive imports once without shared-fixture fan-out", () => {
-  const projection = graph({ edges: [
-    { from: "source:docs/spec/vectors/generator/src/shared-fixture.ts", to: "source:docs/spec/vectors/generator/src/current-vectors/identity.ts", relation: "imports", source_path: "shared-fixture.ts" },
-  ] });
+test("queryPacket follows transitive imports once without shared-fixture fan-out", () => {
+  const projection = graph();
   const packet = queryPacket(projection, "source:docs/spec/vectors/generator/src/current-vectors/identity.ts");
   assert.ok(packet.related.some((entry) => entry.semantic_id === "source:docs/spec/vectors/generator/src/shared-fixture.ts"));
   assert.ok(packet.related.some((entry) => entry.semantic_id === "source:docs/spec/vectors/generator/src/identity.test.ts"));
@@ -190,6 +195,21 @@ test("queryPacket traverses cyclic reverse imports without losing non-test inter
   assert.ok(fixture.related.some((entry) => entry.semantic_id === "source:case.test"));
 });
 
+test("queryPacket keeps independent traversal modes for cyclic dependencies and transitive tests", () => {
+  const items = [
+    item("source:a", "source_module", "src/a.ts"),
+    item("source:b", "source_module", "src/b.ts"),
+    item("source:b.test", "source_module", "src/b.test.ts"),
+  ];
+  const edges = [
+    { from: "source:a", to: "source:b", relation: "imports", source_path: "src/a.ts" },
+    { from: "source:b", to: "source:a", relation: "imports", source_path: "src/b.ts" },
+    { from: "source:b.test", to: "source:b", relation: "imports", source_path: "src/b.test.ts" },
+  ];
+  const packet = queryPacket({ items, edges, receipt: {} }, "source:a");
+  assert.ok(packet.related.some((entry) => entry.semantic_id === "source:b.test"));
+});
+
 test("compareProjections reports deterministic edge provenance changes", () => {
   const before = graph();
   const after = graph({
@@ -199,6 +219,40 @@ test("compareProjections reports deterministic edge provenance changes", () => {
   const diff = compareProjections(before, after);
   assert.equal(diff.edge_changes.removed.some((edge) => edge.relation === "declares" && edge.raw_ref === undefined), true);
   assert.equal(diff.edge_changes.added.some((edge) => edge.relation === "declares" && edge.raw_ref === "heterodyne:0.6.0#new-anchor"), true);
+});
+
+test("compareProjections keeps exact anchored edits bounded to changed anchors", () => {
+  const beforeText = "Preamble.\n\n<a id=\"identity\"></a>\n# Identity\nOld requirement.\n\n<a id=\"other\"></a>\n# Other\nUnchanged requirement.\n";
+  const afterText = beforeText.replace("Old requirement.", "New requirement.");
+  const anchors = [...graph().items, item("heterodyne:core#other", "spec_anchor", "docs/spec/heterodyne-core.md", { owner: "core", source_digest: "other-digest" })];
+  const before = withSourceContents(graph({ items: anchors }), beforeText);
+  const after = withSourceContents(graph({
+    items: anchors.map((entry) => entry.semantic_id === "heterodyne:core#identity"
+      ? { ...entry, source_digest: "identity-v2" }
+      : entry),
+    receipt: { ...graph().receipt, inputs: graph().receipt.inputs.map((input) => input.path === "docs/spec/heterodyne-core.md" ? { ...input, sha256: "core-v2" } : input) },
+  }), beforeText, afterText);
+  const diff = compareProjections(before, after);
+  assert.ok(diff.modified.some((entry) => entry.semantic_id === "heterodyne:core#identity"));
+  assert.equal(diff.modified.some((entry) => entry.semantic_id === "heterodyne:core#other"), false);
+  assert.equal(diff.changed.some((entry) => entry.semantic_id === "document:docs/spec/heterodyne-core.md"), false);
+  assert.equal(diff.unresolved.some((entry) => entry.kind === "document_level_impact"), false);
+});
+
+test("compareProjections falls back to document scope for preamble-only and mixed edits", () => {
+  const original = "Preamble.\n\n<a id=\"identity\"></a>\n# Identity\nRequirement.\n\n<a id=\"other\"></a>\n# Other\nOther requirement.\n";
+  const preamble = "New preamble.\n\nPreamble.\n\n<a id=\"identity\"></a>\n# Identity\nRequirement.\n\n<a id=\"other\"></a>\n# Other\nOther requirement.\n";
+  const mixed = preamble.replace("Requirement.", "Changed requirement.");
+  const build = (text, digest, identityDigest = "heterodyne:core#identity-digest") => withSourceContents(graph({
+    items: graph().items.map((entry) => entry.semantic_id === "heterodyne:core#identity" ? { ...entry, source_digest: identityDigest } : entry),
+    receipt: { ...graph().receipt, inputs: graph().receipt.inputs.map((input) => input.path === "docs/spec/heterodyne-core.md" ? { ...input, sha256: digest } : input) },
+  }), original, text);
+  const preambleDiff = compareProjections(build(original, "core-v1"), build(preamble, "core-v2"));
+  assert.equal(preambleDiff.changed.some((entry) => entry.semantic_id === "document:docs/spec/heterodyne-core.md"), true);
+  assert.equal(preambleDiff.unresolved.some((entry) => entry.kind === "document_level_impact"), true);
+  const mixedDiff = compareProjections(build(original, "core-v1"), build(mixed, "core-v3", "identity-v2"));
+  assert.equal(mixedDiff.changed.some((entry) => entry.semantic_id === "document:docs/spec/heterodyne-core.md"), true);
+  assert.equal(mixedDiff.unresolved.some((entry) => entry.kind === "document_level_impact"), true);
 });
 
 test("coverage and matrix distinguish declared coverage from execution", () => {

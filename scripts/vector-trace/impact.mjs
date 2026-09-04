@@ -155,14 +155,12 @@ export function queryPacket(projection, id, { direction = "both" } = {}) {
         const allow = (side === "outgoing" && current.mode !== "dependent")
           || (side === "incoming" && ["root", "structural", "dependent"].includes(current.mode));
         if (!allow) continue;
-        if (!related.has(nextId)) {
-          related.set(nextId, next);
-          queue.push({
-            id: nextId,
-            depth: current.depth + 1,
-            mode: side === "outgoing" ? "dependency" : "dependent",
-          });
-        }
+        related.set(nextId, next);
+        queue.push({
+          id: nextId,
+          depth: current.depth + 1,
+          mode: side === "outgoing" ? "dependency" : "dependent",
+        });
       } else if (current.depth < 2) {
         const structural = currentItem?.type === "spec_anchor"
           || currentItem?.type === "draft_case"
@@ -171,10 +169,8 @@ export function queryPacket(projection, id, { direction = "both" } = {}) {
           || currentItem?.type === "registry_artifact"
           || (currentItem?.type === "source_module" && (current.mode === "root" || current.mode === "structural" || current.mode === "dependent"));
         if (structural && edge.relation !== IMPORT) {
-          if (!related.has(nextId)) {
-            related.set(nextId, next);
-            queue.push({ id: nextId, depth: current.depth + 1, mode: "structural" });
-          }
+          related.set(nextId, next);
+          queue.push({ id: nextId, depth: current.depth + 1, mode: "structural" });
         }
       }
     }
@@ -221,6 +217,97 @@ function diffInputs(before, after) {
   return { added, removed, modified, changed_paths: [...new Set([...added, ...removed, ...modified])].sort(compareStrings) };
 }
 
+function derivedAnchorSpans(content, items) {
+  if (typeof content !== "string") return null;
+  const normalized = content.replaceAll("\r\n", "\n");
+  const lines = normalized.split("\n");
+  const offsets = [];
+  let offset = 0;
+  for (const line of lines) {
+    offsets.push(offset);
+    offset += line.length + 1;
+  }
+  const markers = [];
+  for (let line = 0; line < lines.length; line += 1) {
+    const match = lines[line].match(/^<a id="([a-z0-9-]+)"><\/a>\s*$/);
+    if (match) markers.push({ id: match[1], line });
+  }
+  if (!markers.length) return [];
+  return markers.map((marker, index) => {
+    const next = markers[index + 1];
+    let start = marker.line + 1;
+    while (lines[start]?.trim() === "") start += 1;
+    let heading = lines[start]?.match(/^(#{1,6})\s+(.+?)\s*$/);
+    const headingAfter = Boolean(heading);
+    if (!heading) {
+      for (let line = marker.line - 1; line >= 0; line -= 1) {
+        heading = lines[line].match(/^(#{1,6})\s+(.+?)\s*$/);
+        if (heading) break;
+      }
+    }
+    let endLine = lines.length;
+    if (heading) {
+      const level = heading[1].length;
+      for (let line = start + (headingAfter ? 1 : 0); line < lines.length; line += 1) {
+        if (!headingAfter && /^<a id="[a-z0-9-]+"><\/a>\s*$/.test(lines[line])) { endLine = line; break; }
+        const candidate = lines[line].match(/^(#{1,6})\s+/);
+        if (candidate && candidate[1].length <= level) {
+          endLine = line;
+          let prior = line - 1;
+          while (prior >= start && lines[prior].trim() === "") prior -= 1;
+          if (/^<a id="[a-z0-9-]+"><\/a>\s*$/.test(lines[prior] ?? "")) endLine = prior;
+          break;
+        }
+      }
+    } else if (next) {
+      endLine = next.line;
+    }
+    const semantic = items.find((item) => item.semantic_id?.endsWith(`#${marker.id}`));
+    return { semantic_id: semantic?.semantic_id, start: offsets[marker.line], end: offsets[endLine] ?? normalized.length };
+  }).filter((span) => span.semantic_id);
+}
+
+function projectionAnchorSpans(projection, path, content, items) {
+  const supplied = projection?.anchorSpans;
+  if (supplied instanceof Map) {
+    const spans = supplied.get(path);
+    if (Array.isArray(spans)) return spans;
+  } else if (Array.isArray(supplied)) {
+    const spans = supplied.filter((span) => span?.source_path === path);
+    if (spans.length) return spans;
+  }
+  return derivedAnchorSpans(content, items);
+}
+
+function maskedDocument(projection, path, content, items) {
+  const spans = projectionAnchorSpans(projection, path, content, items);
+  if (!spans || spans.length !== items.length || spans.some((span) => !Number.isInteger(span.start) || !Number.isInteger(span.end))) return null;
+  let cursor = 0;
+  let result = "";
+  for (const span of [...spans].sort((a, b) => a.start - b.start)) {
+    if (span.start < cursor || span.end < span.start || span.end > content.length) return null;
+    result += content.slice(cursor, span.start);
+    result += `\u0000${span.semantic_id}\u0000`;
+    cursor = span.end;
+  }
+  return result + content.slice(cursor);
+}
+
+function documentHasUnanchoredChanges(before, after, path, ids) {
+  const beforeContent = before?.sourceContents instanceof Map ? before.sourceContents.get(path)?.replaceAll("\r\n", "\n") : undefined;
+  const afterContent = after?.sourceContents instanceof Map ? after.sourceContents.get(path)?.replaceAll("\r\n", "\n") : undefined;
+  if (typeof beforeContent !== "string" || typeof afterContent !== "string") return null;
+  const anchorItemsBefore = graphIndex(before).items;
+  const anchorItemsAfter = graphIndex(after).items;
+  const beforeItems = ids.map((id) => anchorItemsBefore.get(id)).filter((item) => item?.type === "spec_anchor");
+  const afterItems = ids.map((id) => anchorItemsAfter.get(id)).filter((item) => item?.type === "spec_anchor");
+  if (beforeItems.length !== ids.length || afterItems.length !== ids.length) return null;
+  const maskedBefore = maskedDocument(before, path, beforeContent, beforeItems);
+  const maskedAfter = maskedDocument(after, path, afterContent, afterItems);
+  if (maskedBefore === null || maskedAfter === null) return null;
+  return maskedBefore !== maskedAfter;
+}
+
 function itemDiff(before, after) {
   const left = graphIndex(before).items;
   const right = graphIndex(after).items;
@@ -257,12 +344,15 @@ export function compareProjections(before, after) {
   for (const path of input_changes.changed_paths) {
     const ids = [...new Set([...graphPathToIds(before, path), ...graphPathToIds(after, path)])];
     const documentScope = path.startsWith("docs/spec/") && path.endsWith(".md");
-    if (ids.length === 0 || documentScope) {
+    const uncovered = documentScope ? documentHasUnanchoredChanges(before, after, path, ids) : null;
+    const documentFallback = ids.length === 0 || (documentScope && uncovered !== false);
+    if (documentFallback) {
       const record = { semantic_id: `document:${path}`, type: "document", source_path: path, change_kind: "document_changed", source_digest: inputInventory(after).get(path)?.sha256 ?? null, evidence_kind: "unresolved_document_impact" };
       changed.push(record); seeds.add(record.semantic_id); traversalSeeds.add(record.semantic_id);
       uniqueUnresolved.push({ kind: "document_level_impact", path, reason: "input changed without an anchor-bounded graph change" });
     }
-    for (const id of ids) traversalSeeds.add(id);
+    const changedAnchors = new Set(items.changed.filter((value) => value.source_path === path).map((value) => value.semantic_id));
+    for (const id of documentFallback && documentScope ? ids : documentScope ? changedAnchors : ids) traversalSeeds.add(id);
   }
 
   const related = new Map();
