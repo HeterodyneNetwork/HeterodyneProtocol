@@ -96,8 +96,13 @@ The acceptance contract must include all ten rounds, not just the first
 44-minute task. It must account for the final temporary current-draft corpus,
 boundary execution, certificate identity, valid specification references,
 negative conformance, and preservation of the independently pinned snapshot.
-Historical counts such as 275 temporary current vectors and 482 frozen vectors
-belong to this fixture, not the current main's 267-vector snapshot.
+Historical counts are stage-specific: the starting tree has 482 frozen vectors;
+the external snapshot handoff at `0efa4a9` replaces that snapshot with 275 vectors
+from source `08ac4418b14586b0053829349ee7173febeb806e`. The final worker endpoint
+therefore has a 275-vector snapshot as well as its temporary current corpus.
+Preservation checks must follow the selected external-input stage, not require
+482 vectors at the final endpoint. These counts are distinct from main's
+267-vector snapshot.
 The latter count is pinned here to reviewed main
 `adda8b522f9cb558b31cb27ac0f7e4f1150d5fac`, not a permanent repository property.
 
