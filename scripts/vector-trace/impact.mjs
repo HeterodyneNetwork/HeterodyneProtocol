@@ -25,6 +25,25 @@ function sameValue(left, right) {
   return JSON.stringify(canonical(left)) === JSON.stringify(canonical(right));
 }
 
+const LOCATION_ONLY_KEYS = new Set([
+  "line",
+  "column",
+  "source_line",
+  "source_column",
+  "declaration_location",
+  "runtime_override_location",
+]);
+
+function semanticItem(value) {
+  if (Array.isArray(value)) return value.map(semanticItem);
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value)
+      .filter(([key]) => !LOCATION_ONLY_KEYS.has(key) && !(value.type === "draft_case" && key === "source_digest"))
+      .map(([key, entry]) => [key, semanticItem(entry)]));
+  }
+  return value;
+}
+
 function graphIndex(projection) {
   if (!projection || !Array.isArray(projection.items) || !Array.isArray(projection.edges)) {
     throw new TypeError("projection must contain items and edges arrays");
@@ -134,22 +153,28 @@ export function queryPacket(projection, id, { direction = "both" } = {}) {
         // a source reached through an explicit case boundary; this avoids
         // fanning out from a shared fixture into every unrelated test.
         const allow = (side === "outgoing" && current.mode !== "dependent")
-          || (side === "incoming"
-            && (current.mode === "root" || current.mode === "structural" || current.mode === "dependent")
-            && testPath(next.source_path));
+          || (side === "incoming" && ["root", "structural", "dependent"].includes(current.mode));
         if (!allow) continue;
-        related.set(nextId, next);
-        queue.push({ id: nextId, depth: current.depth + 1, mode: side === "outgoing" ? "dependency" : "dependent" });
-      } else if (current.depth < 2 && current.mode !== "dependent") {
+        if (!related.has(nextId)) {
+          related.set(nextId, next);
+          queue.push({
+            id: nextId,
+            depth: current.depth + 1,
+            mode: side === "outgoing" ? "dependency" : "dependent",
+          });
+        }
+      } else if (current.depth < 2) {
         const structural = currentItem?.type === "spec_anchor"
           || currentItem?.type === "draft_case"
           || currentItem?.type === "vector"
           || currentItem?.type === "schema_artifact"
           || currentItem?.type === "registry_artifact"
-          || (currentItem?.type === "source_module" && (current.mode === "root" || current.mode === "structural"));
+          || (currentItem?.type === "source_module" && (current.mode === "root" || current.mode === "structural" || current.mode === "dependent"));
         if (structural && edge.relation !== IMPORT) {
-          related.set(nextId, next);
-          queue.push({ id: nextId, depth: current.depth + 1, mode: "structural" });
+          if (!related.has(nextId)) {
+            related.set(nextId, next);
+            queue.push({ id: nextId, depth: current.depth + 1, mode: "structural" });
+          }
         }
       }
     }
@@ -180,7 +205,8 @@ function changeRecord(before, after, changeKind) {
 }
 
 function edgeKey(edge) {
-  return JSON.stringify(canonical({ from: edge.from, to: edge.to, relation: edge.relation, source_path: edge.source_path }));
+  return JSON.stringify(canonical(Object.fromEntries(Object.entries(edge)
+    .filter(([key]) => !LOCATION_ONLY_KEYS.has(key)))));
 }
 
 function diffInputs(before, after) {
@@ -201,7 +227,7 @@ function itemDiff(before, after) {
   const added = [], removed = [], modified = [], changed = [];
   for (const [id, value] of right) {
     if (!left.has(id)) { const record = changeRecord(null, value, "added"); added.push(record); changed.push(record); }
-    else if (!sameValue(left.get(id), value)) { const record = changeRecord(left.get(id), value, "modified"); modified.push(record); changed.push(record); }
+    else if (!sameValue(semanticItem(left.get(id)), semanticItem(value))) { const record = changeRecord(left.get(id), value, "modified"); modified.push(record); changed.push(record); }
   }
   for (const [id, value] of left) if (!right.has(id)) { const record = changeRecord(value, null, "removed"); removed.push(record); changed.push(record); }
   return { added: sortItems(added), removed: sortItems(removed), modified: sortItems(modified), changed: sortItems(changed) };
@@ -230,8 +256,9 @@ export function compareProjections(before, after) {
   const graphPathToIds = (projection, path) => graphIndex(projection).items.values().filter((value) => value.source_path === path).map((value) => value.semantic_id);
   for (const path of input_changes.changed_paths) {
     const ids = [...new Set([...graphPathToIds(before, path), ...graphPathToIds(after, path)])];
-    if (ids.length === 0 || (path.startsWith("docs/spec/") && path.endsWith(".md") && !items.changed.some((value) => value.source_path === path))) {
-      const record = { semantic_id: `document:${path}`, type: "document", source_path: path, change_kind: "document_changed", source_digest: null, evidence_kind: "unresolved_document_impact" };
+    const documentScope = path.startsWith("docs/spec/") && path.endsWith(".md");
+    if (ids.length === 0 || documentScope) {
+      const record = { semantic_id: `document:${path}`, type: "document", source_path: path, change_kind: "document_changed", source_digest: inputInventory(after).get(path)?.sha256 ?? null, evidence_kind: "unresolved_document_impact" };
       changed.push(record); seeds.add(record.semantic_id); traversalSeeds.add(record.semantic_id);
       uniqueUnresolved.push({ kind: "document_level_impact", path, reason: "input changed without an anchor-bounded graph change" });
     }

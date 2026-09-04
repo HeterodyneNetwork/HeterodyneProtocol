@@ -14,7 +14,8 @@ function projectionFixture() {
     ["docs/spec/vectors/generator/src/current-vectors/case-contracts.ts", `
       const CURRENT_CASE_CONTRACTS = (({
         "comms/base-case": { boundary_id: "boundary.original", owner_document: "comms", spec_refs: ["heterodyne:0.6.0#anchor"], invariants: ["I-BASE"], reason_codes: [] },
-        "comms/profile-case": { boundary_id: "boundary.original", owner_document: "comms", profile: "profile-v1", spec_refs: ["heterodyne:0.6.0#anchor"], invariants: ["I-PROFILE"], reason_codes: [] },
+        "comms/profile-profile-v1": { boundary_id: "boundary.original", owner_document: "comms", profile: "profile-v1", spec_refs: ["heterodyne:0.6.0#anchor"], invariants: ["I-PROFILE"], reason_codes: [] },
+        "comms/profile-case": { boundary_id: "boundary.original", owner_document: "comms", profile: "profile-v1", spec_refs: ["heterodyne:0.6.0#anchor"], invariants: ["I-PROFILE-STATIC"], reason_codes: [] },
         "unknown/bad-owner": { boundary_id: "boundary.original", owner_document: "unknown", spec_refs: ["heterodyne:0.5.0#anchor"], invariants: [], reason_codes: [] },
       } as const) satisfies Readonly<Record<string, unknown>>);
       const TASK_FIFTEEN_BOUNDARIES = Object.freeze({ "comms/base-case": "boundary.override" });
@@ -65,14 +66,36 @@ test("enrichDraft keeps invalid owner and version as unresolved references", () 
   assert.equal(projection.edges.some((edge) => edge.from === "case:unknown/bad-owner" && edge.relation === "declares"), false);
 });
 
+test("enrichDraft does not normalize a valid version ref when its owner is invalid", () => {
+  const projection = projectionFixture();
+  const path = "docs/spec/vectors/generator/src/current-vectors/case-contracts.ts";
+  projection.sourceContents.set(path, projection.sourceContents.get(path).replace(
+    '"heterodyne:0.5.0#anchor"',
+    '"heterodyne:0.6.0#anchor"',
+  ));
+  enrichDraft(projection, { repo: "/synthetic/fixture" });
+  const bad = projection.items.find((item) => item.semantic_id === "case:unknown/bad-owner");
+  assert.deepEqual(bad.spec_refs, []);
+  assert.equal(projection.edges.some((edge) => edge.from === bad.semantic_id && edge.relation === "declares"), false);
+  assert.ok(projection.receipt.unresolved_references.some((entry) => entry.from === bad.semantic_id && entry.reason === "invalid_owner"));
+});
+
 test("enrichDraft does not make final claims for runtime profile oracle overrides", () => {
   const projection = enrichDraft(projectionFixture(), { repo: "/synthetic/fixture" });
-  const profile = projection.items.find((item) => item.semantic_id === "case:comms/profile-case");
+  const profile = projection.items.find((item) => item.semantic_id === "case:comms/profile-profile-v1");
   assert.equal(profile.runtime_override_unresolved, true);
   const gap = projection.receipt.unresolved_references.find((entry) => entry.from === profile.semantic_id && entry.reason === "runtime_profile_override");
   assert.equal(gap.source_path, "docs/spec/vectors/generator/src/current-vectors/profile-oracles.ts");
   assert.equal(Number.isInteger(gap.line), true);
   assert.equal(projection.edges.some((edge) => edge.from === profile.semantic_id && edge.relation === "defined_by"), false);
+});
+
+test("enrichDraft keeps ordinary profile allocations statically resolved", () => {
+  const projection = enrichDraft(projectionFixture(), { repo: "/synthetic/fixture" });
+  const profile = projection.items.find((item) => item.semantic_id === "case:comms/profile-case");
+  assert.equal(profile.runtime_override_unresolved, undefined);
+  assert.equal(projection.receipt.unresolved_references.some((entry) => entry.from === profile.semantic_id && entry.reason === "runtime_profile_override"), false);
+  assert.ok(projection.edges.some((edge) => edge.from === profile.semantic_id && edge.relation === "defined_by"));
 });
 
 test("enrichDraft resolves cyclic local imports and records missing dynamic and external imports", () => {
@@ -91,4 +114,24 @@ test("enrichDraft preserves input provenance and does not mutate sourceContents"
   enrichDraft(projection, { repo: "/synthetic/fixture" });
   assert.deepEqual([...projection.sourceContents.entries()], before);
   assert.deepEqual(projection.receipt.unresolved_references instanceof Array, true);
+});
+
+test("enrichDraft reports a missing case contract catalog instead of silently returning", () => {
+  const projection = projectionFixture();
+  projection.sourceContents.delete("docs/spec/vectors/generator/src/current-vectors/case-contracts.ts");
+  enrichDraft(projection, { repo: "/synthetic/fixture" });
+  assert.ok(projection.receipt.unresolved_references.some((entry) => entry.reason === "missing_contract_catalog"));
+});
+
+test("enrichDraft reports an unsupported boundary override declaration", () => {
+  const projection = projectionFixture();
+  const path = "docs/spec/vectors/generator/src/current-vectors/case-contracts.ts";
+  projection.sourceContents.set(path, projection.sourceContents.get(path).replace(
+    "const TASK_FIFTEEN_BOUNDARIES = Object.freeze({ \"comms/base-case\": \"boundary.override\" });",
+    "const TASK_FIFTEEN_BOUNDARIES = loadTaskFifteenBoundaries();",
+  ));
+  enrichDraft(projection, { repo: "/synthetic/fixture" });
+  assert.ok(projection.receipt.unresolved_references.some((entry) => entry.reason === "unsupported_boundary_override"));
+  const base = projection.items.find((item) => item.semantic_id === "case:comms/base-case");
+  assert.equal(projection.edges.some((edge) => edge.from === base.semantic_id && edge.relation === "defined_by"), false);
 });

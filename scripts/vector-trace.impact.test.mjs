@@ -125,6 +125,82 @@ test("compareProjections exposes unanchored document changes and reverse schema 
   assert.ok(diff.related.some((entry) => entry.semantic_id === "case:core/identity"));
 });
 
+test("compareProjections ignores shifted anchor locations but keeps document impact and latest citations", () => {
+  const before = graph({
+    items: graph().items.map((entry) => entry.semantic_id === "heterodyne:core#identity"
+      ? { ...entry, source_line: 4, declaration_location: { source_path: entry.source_path, line: 4, column: 1 } }
+      : entry),
+  });
+  const after = graph({
+    items: before.items.map((entry) => entry.semantic_id === "heterodyne:core#identity"
+      ? { ...entry, source_line: 14, declaration_location: { source_path: entry.source_path, line: 14, column: 1 } }
+      : entry),
+    receipt: { ...before.receipt, inputs: before.receipt.inputs.map((input) => input.path === "docs/spec/heterodyne-core.md" ? { ...input, sha256: "core-v2" } : input) },
+  });
+  const diff = compareProjections(before, after);
+  assert.equal(diff.modified.some((entry) => entry.semantic_id === "heterodyne:core#identity"), false);
+  assert.equal(diff.changed.some((entry) => entry.semantic_id === "document:docs/spec/heterodyne-core.md"), true);
+  assert.equal(diff.unresolved.some((entry) => entry.kind === "document_level_impact" && entry.path === "docs/spec/heterodyne-core.md"), true);
+  assert.equal(diff.changed.find((entry) => entry.semantic_id === "document:docs/spec/heterodyne-core.md").source_path, "docs/spec/heterodyne-core.md");
+});
+
+test("compareProjections keeps document scope for mixed anchored and unanchored document edits", () => {
+  const before = graph();
+  const after = graph({
+    items: before.items.map((entry) => entry.semantic_id === "heterodyne:core#identity"
+      ? { ...entry, source_line: 10, source_digest: "anchor-v2" }
+      : entry),
+    receipt: { ...before.receipt, inputs: before.receipt.inputs.map((input) => input.path === "docs/spec/heterodyne-core.md" ? { ...input, sha256: "core-v2" } : input) },
+  });
+  const diff = compareProjections(before, after);
+  assert.equal(diff.modified.some((entry) => entry.semantic_id === "heterodyne:core#identity"), true);
+  assert.equal(diff.changed.some((entry) => entry.semantic_id === "document:docs/spec/heterodyne-core.md"), true);
+  assert.equal(diff.unresolved.some((entry) => entry.kind === "document_level_impact" && entry.path === "docs/spec/heterodyne-core.md"), true);
+});
+
+test("queryPacket traverses cyclic reverse imports without losing non-test intermediates", () => {
+  const source = (id, path) => item(id, "source_module", path);
+  const items = [
+    item("case:root", "draft_case", "contracts.ts"),
+    source("source:a", "src/a.ts"),
+    source("source:b", "src/b.ts"),
+    source("source:fixture", "src/fixture.ts"),
+    source("source:consumer", "src/consumer.ts"),
+    source("source:case.test", "src/case.test.ts"),
+    source("source:fixture.test", "src/fixture.test.ts"),
+    item("heterodyne:core#root", "spec_anchor", "docs/spec/heterodyne-core.md"),
+  ];
+  const edges = [
+    { from: "case:root", to: "source:a", relation: "defined_by", source_path: "contracts.ts" },
+    { from: "source:a", to: "source:b", relation: "imports", source_path: "src/a.ts" },
+    { from: "source:b", to: "source:a", relation: "imports", source_path: "src/b.ts" },
+    { from: "source:consumer", to: "source:fixture", relation: "imports", source_path: "src/consumer.ts" },
+    { from: "source:case.test", to: "source:consumer", relation: "imports", source_path: "src/case.test.ts" },
+    { from: "source:fixture.test", to: "source:fixture", relation: "imports", source_path: "src/fixture.test.ts" },
+    { from: "case:root", to: "source:consumer", relation: "defined_by", source_path: "src/consumer.ts" },
+  ];
+  const projection = graph({ items, edges, replaceEdges: true });
+  const root = queryPacket(projection, "case:root");
+  assert.ok(root.related.some((entry) => entry.semantic_id === "source:a"));
+  assert.ok(root.related.some((entry) => entry.semantic_id === "source:b"));
+  const fixture = queryPacket(projection, "source:fixture");
+  assert.ok(fixture.related.some((entry) => entry.semantic_id === "source:consumer"));
+  assert.ok(fixture.related.some((entry) => entry.semantic_id === "case:root"));
+  assert.ok(fixture.related.some((entry) => entry.semantic_id === "source:fixture.test"));
+  assert.ok(fixture.related.some((entry) => entry.semantic_id === "source:case.test"));
+});
+
+test("compareProjections reports deterministic edge provenance changes", () => {
+  const before = graph();
+  const after = graph({
+    edges: before.edges.map((edge) => edge.relation === "declares" ? { ...edge, raw_ref: "heterodyne:0.6.0#new-anchor" } : edge),
+    replaceEdges: true,
+  });
+  const diff = compareProjections(before, after);
+  assert.equal(diff.edge_changes.removed.some((edge) => edge.relation === "declares" && edge.raw_ref === undefined), true);
+  assert.equal(diff.edge_changes.added.some((edge) => edge.relation === "declares" && edge.raw_ref === "heterodyne:0.6.0#new-anchor"), true);
+});
+
 test("coverage and matrix distinguish declared coverage from execution", () => {
   const report = coverageReport(graph());
   assert.equal(report.declared_only, true);

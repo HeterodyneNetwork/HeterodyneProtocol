@@ -236,11 +236,21 @@ function enrichImports(projection, modules, sourceContents, sourceFiles, unresol
 
 function enrichContracts(projection, modules, sourceContents, sourceFiles, unresolved) {
   const contractPath = [...sourceContents.keys()].find((path) => path.endsWith("/current-vectors/case-contracts.ts"));
-  if (!contractPath) return;
+  if (!contractPath) {
+    addUnresolved(unresolved, {
+      reason: "missing_contract_catalog",
+      source_path: "docs/spec/vectors/generator/src/current-vectors/case-contracts.ts",
+    });
+    return;
+  }
   const contractContent = sourceContents.get(contractPath);
   const sourceFile = sourceFiles.get(contractPath) ?? parseSource(contractPath, contractContent);
   const contracts = staticValue(sourceFile, "CURRENT_CASE_CONTRACTS");
+  const overrideDeclaration = variable(sourceFile, "TASK_FIFTEEN_BOUNDARIES");
   const overrides = staticValue(sourceFile, "TASK_FIFTEEN_BOUNDARIES");
+  const overrideLocation = overrideDeclaration ? location(sourceFile, overrideDeclaration) : undefined;
+  const unsupportedOverrides = overrideDeclaration !== undefined && overrides === undefined;
+  if (unsupportedOverrides) addUnresolved(unresolved, { reason: "unsupported_boundary_override", ...(overrideLocation ?? { source_path: contractPath, line: 1, column: 1 }) });
   const familyPath = [...sourceContents.keys()].find((path) => path.endsWith("/current-vectors/family.ts") || path.endsWith("/src/family.ts"));
   const family = familyPath === undefined ? undefined : staticValue(sourceFiles.get(familyPath) ?? parseSource(familyPath, sourceContents.get(familyPath)), "FAMILY_VERSION");
   const familyVersion = typeof family?.value === "string" && FAMILY_VERSION_PATTERN.test(family.value) ? family.value : undefined;
@@ -249,6 +259,7 @@ function enrichContracts(projection, modules, sourceContents, sourceFiles, unres
   const profileSource = profilePath === undefined ? undefined : (sourceFiles.get(profilePath) ?? parseSource(profilePath, sourceContents.get(profilePath)));
   const profileFunction = profileSource === undefined ? undefined : namedDeclaration(profileSource, "currentProfileOracleForVector");
   const profileLocation = profileFunction ? location(profileSource, profileFunction) : profilePath ? { source_path: profilePath, line: 1, column: 1 } : undefined;
+  const profileLookupSupported = profileFunction?.getText().includes("oracleByVectorId.get") ?? false;
   if (!contracts) {
     addUnresolved(unresolved, { reason: "unsupported_contract_declaration", ...location(sourceFile, variable(sourceFile, "CURRENT_CASE_CONTRACTS") ?? sourceFile) });
     return;
@@ -290,10 +301,15 @@ function enrichContracts(projection, modules, sourceContents, sourceFiles, unres
           }),
       declaration_location: caseLocation,
     };
-    if (profileLocation && metadata.profile !== undefined) {
+    const exactProfileOracle = profileLocation && typeof metadata.profile === "string"
+      && OWNERS.has(metadata.owner_document)
+      && vectorId === `${metadata.owner_document}/profile-${metadata.profile}`;
+    const unsupportedProfileLookup = profileLocation && metadata.profile !== undefined && !profileLookupSupported;
+    if (exactProfileOracle || unsupportedProfileLookup) {
       item.runtime_override_unresolved = true;
       item.runtime_override_location = profileLocation;
     }
+    if (unsupportedOverrides) item.boundary_override_unresolved = true;
     projection.items.push(item);
     if (!OWNERS.has(metadata.owner_document)) {
       addUnresolved(unresolved, { from: semanticId, reason: "invalid_owner", value: metadata.owner_document, ...caseLocation });
@@ -314,12 +330,16 @@ function enrichContracts(projection, modules, sourceContents, sourceFiles, unres
         const qualifier = match[1];
         const anchor = match[2];
         let owner = metadata.owner_document;
+        const ownerValid = OWNERS.has(owner);
+        if (!ownerValid) addUnresolved(unresolved, { from: semanticId, reason: "invalid_owner", raw_ref: rawRef, ...caseLocation });
         if (FAMILY_VERSION_PATTERN.test(qualifier)) {
           if (familyVersion === undefined || qualifier !== familyVersion) {
             addUnresolved(unresolved, { from: semanticId, reason: "invalid_version", raw_ref: rawRef, expected: familyVersion, ...caseLocation });
             continue;
           }
+          if (!ownerValid) continue;
         } else if (OWNERS.has(qualifier)) {
+          if (!ownerValid) continue;
           if (qualifier !== metadata.owner_document) {
             addUnresolved(unresolved, { from: semanticId, reason: "invalid_owner", raw_ref: rawRef, expected: metadata.owner_document, ...caseLocation });
             continue;
@@ -338,6 +358,10 @@ function enrichContracts(projection, modules, sourceContents, sourceFiles, unres
         }
       }
     }
+    if (unsupportedOverrides) {
+      addUnresolved(unresolved, { from: semanticId, reason: "unsupported_boundary_override", raw_case_key: vectorId, ...(overrideLocation ?? caseLocation) });
+      continue;
+    }
     const boundary = typeof overrideValues[vectorId] === "string" ? overrideValues[vectorId] : metadata.boundary_id;
     const isOverride = typeof overrideValues[vectorId] === "string";
     if (typeof boundary !== "string") {
@@ -345,7 +369,7 @@ function enrichContracts(projection, modules, sourceContents, sourceFiles, unres
       continue;
     }
     if (item.runtime_override_unresolved) {
-      addUnresolved(unresolved, { from: semanticId, reason: "runtime_profile_override", boundary_id: boundary, ...(profileLocation ?? caseLocation) });
+      addUnresolved(unresolved, { from: semanticId, reason: unsupportedProfileLookup ? "runtime_profile_lookup_unsupported" : "runtime_profile_override", boundary_id: boundary, ...(profileLocation ?? caseLocation) });
       continue;
     }
     for (const part of splitBoundary(boundary)) {
