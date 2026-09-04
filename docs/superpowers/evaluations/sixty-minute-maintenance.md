@@ -82,13 +82,14 @@ separate timing definition. The archive provides no structured process
 start/exit instrumentation, so process count and duration remain unknown.
 Zero gate launches are confirmed by instrumentation, which does not imply
 that zero launches occurred. Process time requires real process start-to-exit
-timestamps, not a yield wrapper or poll duration. Full-gate
-process/lane/CPU/memory/dependency readiness profiling remains pending and is
-not represented as an acceptance result here.
+timestamps, not a yield wrapper or poll duration. The separate readiness
+profiles below measure actual process lifetimes, not archive wrapper times;
+they are not acceptance results.
 
 ## Exploratory readiness profile
 
-Parent-owned profiles on Node 22.22.2, macOS 15,7, 12 CPU/18 GiB, used a
+Parent-owned profiles on Node 22.22.2, macOS 26.4.1, Mac15,7 hardware,
+12 CPUs and 18 GiB RAM, used a
 fresh clone with normal warmed dependency caches. The completed endpoint tree
 at `0dd1506` passed its ordered draft, snapshot (275 vectors), and independent
 lanes in 136,563 ms (136.55 real, 359.69 user, 17.20 sys, max RSS
@@ -105,6 +106,12 @@ vectors, source commit `08ac4418b14586b0053829349ee7173febeb806e`, schema
 The historical 482-vector snapshot is a preserved earlier reveal stage, not a
 hardcoded final endpoint. The external handoff and independent identity oracle
 remain review-required.
+
+The external snapshot pins a source commit containing earlier original-worker
+implementation. Giving that source history to a worker at the initial base
+would reveal later solution code. A fair complete-brief run therefore still
+needs a reviewed dependency-handoff policy or an evaluator-only historical
+gate; the current fixture helper alone does not solve this boundary.
 
 The fixture and scorer live in `scripts/maintenance-eval/`. Synthetic negative
 fixtures and expected results remain outside worker-visible evidence. No raw
