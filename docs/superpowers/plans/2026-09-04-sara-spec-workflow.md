@@ -1,5 +1,11 @@
 # SARA Spec Workflow Implementation Plan
 
+> **Objective superseded:** The [under-sixty-minute agent maintenance plan](2026-09-04-sixty-minute-maintenance.md)
+> replaces this plan's human-investigation/query-latency objective and governs
+> further workflow work. Existing Phase 1 remains reusable infrastructure; SARA
+> adoption is not the acceptance criterion. No agent-session speedup has yet
+> been demonstrated. Preserve the implementation history below as evidence.
+
 > **For agentic workers:** Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkboxes for tracking.
 
 **Goal:** Reduce the time to locate, change, and verify Heterodyne requirements through a reproducible impact index and a small agent skill.

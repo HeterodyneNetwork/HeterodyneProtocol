@@ -1,5 +1,21 @@
 # SARA workflow efficiency evaluation
 
+## Updated objective: agent workflow, not human lookup time
+
+The maintainer clarified that the day-long work was done by agents, especially
+in the Codex archive. The [replacement implementation plan](../plans/2026-09-04-sixty-minute-maintenance.md)
+targets the selected August 28 worker's complete maintenance output in less
+than 60 minutes, with independent correctness checks. Its [design and archive
+baseline](../specs/2026-09-04-sixty-minute-maintenance-design.md) distinguish
+1,882 outer calls, 332 nested patch operations, repeated reads, repair rounds,
+and verification from individual tool-response latency.
+
+The measurements below remain valid for their stated narrow scope, but do not
+establish agent-session acceleration or a SARA-specific speedup. The previous
+50% human-investigation target is superseded, not an outstanding prerequisite.
+Future evaluation compares matched agent workflows, then model-routing and
+optional-tool variants, counting all agents and repair work.
+
 ## Baseline before implementation
 
 Base: `e36d94d028425fb804e9549a43c344e7deaf6a68`, based on main `adda8b5`.
