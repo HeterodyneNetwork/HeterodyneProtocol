@@ -46,6 +46,8 @@ test('sealed worker cannot read a hidden descendant object or use alternates', a
       workerHistory: { first: FIRST, last: LAST },
       rounds: contract.rounds,
       mode_contracts: contract.mode_contracts,
+      external_snapshot_handoff: 'upfront',
+      reviewed_external_snapshot_handoff: true,
       oracleManifest: { checks: ['independent-oracle'] },
     },
   });
@@ -96,6 +98,8 @@ test('sealing rejects visible payload injection and does not expose a causal fut
     endCommit: base,
     workerHistory: { first: FIRST, last: LAST },
     visibleContract: { mode: 'causal-replay', rounds: contract.rounds, oracleManifest: 'injected' },
+    external_snapshot_handoff: 'upfront',
+    reviewed_external_snapshot_handoff: true,
     oracleManifest: { checks: ['independent-oracle'] },
   };
   await assert.rejects(sealFixture({ evidenceRepo: source, destination, mode: 'synthetic', contract: causal }), /visible contract|payload|mode/i);
@@ -117,4 +121,30 @@ test('causal initial payload contains only the reviewed first round', async () =
   assert.deepEqual(visible.rounds.map(round => round.id), ['round-1']);
   assert.equal(Object.hasOwn(visible, 'oracleManifest'), false);
   assert.equal(Object.hasOwn(visible, 'last_worker_commit'), false);
+});
+
+test('mode policy arrays must match the fixed reviewed sequences', async () => {
+  const cases = [
+    ['complete-brief', ['round-1', 'round-2', 'round-3', 'round-4', 'round-5', 'round-6', 'round-7', 'round-9', 'round-10']],
+    ['complete-brief', ['round-1', 'round-2', 'round-3', 'round-4', 'round-5', 'round-6', 'round-9', 'round-9', 'round-10']],
+    ['causal-replay', ['round-1', 'round-2', 'round-3', 'round-4', 'round-5', 'round-6', 'round-7', 'round-8', 'round-9']],
+    ['causal-replay', ['round-2', 'round-1', 'round-3', 'round-4', 'round-5', 'round-6', 'round-7', 'round-8', 'round-9', 'round-10']],
+  ];
+  for (const [mode, ids] of cases) {
+    const mutated = JSON.parse(JSON.stringify(contract));
+    const key = mode === 'complete-brief' ? 'included_rounds' : 'authorized_rounds';
+    mutated.mode_contracts[mode][key] = ids;
+    mutated.external_snapshot_handoff = 'upfront';
+    mutated.reviewed_external_snapshot_handoff = true;
+    const destination = await fs.mkdtemp(path.join(os.tmpdir(), 'maintenance-policy-'));
+    await assert.rejects(sealFixture({ evidenceRepo: process.cwd(), destination, mode, contract: mutated }), /fixed|sequence|policy|round/i);
+  }
+});
+
+test('required external handoff rejects unresolved, arbitrary, and unreviewed values', async () => {
+  for (const [handoff, reviewed] of [[undefined, undefined], ['unresolved-user-decision', true], ['later', true], ['upfront', false]]) {
+    const mutated = { ...contract, external_snapshot_handoff: handoff, reviewed_external_snapshot_handoff: reviewed };
+    const destination = await fs.mkdtemp(path.join(os.tmpdir(), 'maintenance-handoff-'));
+    await assert.rejects(sealFixture({ evidenceRepo: process.cwd(), destination, mode: 'complete-brief', contract: mutated }), /handoff/i);
+  }
 });

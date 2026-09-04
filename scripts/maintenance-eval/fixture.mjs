@@ -11,6 +11,9 @@ export const REQUIRED_WORKER_HISTORY = Object.freeze({
 });
 
 const ROUND_FIELDS = ['id', 'intent', 'source', 'confidence', 'reveal_after', 'external_inputs', 'checks'];
+const COMPLETE_ROUND_IDS = Object.freeze(['round-1', 'round-2', 'round-3', 'round-4', 'round-5', 'round-6', 'round-9', 'round-10']);
+const CAUSAL_ROUND_IDS = Object.freeze(['round-1', 'round-2', 'round-3', 'round-4', 'round-5', 'round-6', 'round-7', 'round-8', 'round-9', 'round-10']);
+const ALLOWED_HANDOFFS = new Set(['upfront', 'before-round-10']);
 
 function canonical(value) {
   if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
@@ -60,11 +63,35 @@ function validateRounds(rounds) {
   }
 }
 
+function validateModePolicy(contract, mode) {
+  const policyMode = mode === 'synthetic' ? 'complete-brief' : mode;
+  const policy = contract.mode_contracts?.[policyMode];
+  if (!policy) throw new TypeError(`fixture requires ${policyMode} reveal policy`);
+  const expected = policyMode === 'complete-brief' ? COMPLETE_ROUND_IDS : CAUSAL_ROUND_IDS;
+  const supplied = policyMode === 'complete-brief' ? policy.included_rounds : policy.authorized_rounds;
+  if (!Array.isArray(supplied) || supplied.length !== expected.length || supplied.some((id, index) => id !== expected[index])) {
+    throw new TypeError(`${policyMode} reveal policy must match the fixed reviewed sequence`);
+  }
+  if (policyMode === 'complete-brief') {
+    const excluded = ['round-7', 'round-8'];
+    if (!Array.isArray(policy.excluded_rounds) || policy.excluded_rounds.length !== excluded.length ||
+        policy.excluded_rounds.some((id, index) => id !== excluded[index])) {
+      throw new TypeError('complete-brief excluded-round policy must match the fixed reviewed sequence');
+    }
+  }
+  return policy;
+}
+
+function requireReviewedHandoff(contract) {
+  if (!ALLOWED_HANDOFFS.has(contract.external_snapshot_handoff) || contract.reviewed_external_snapshot_handoff !== true) {
+    throw new TypeError('external snapshot handoff must be an allowed reviewed value');
+  }
+}
+
 function deriveVisibleContract(contract, mode) {
   const policyMode = mode === 'synthetic' ? 'complete-brief' : mode;
-  const modePolicy = contract.mode_contracts?.[policyMode];
-  if (!modePolicy) throw new TypeError(`fixture requires ${policyMode} reveal policy`);
-  let ids = modePolicy.included_rounds;
+  const modePolicy = validateModePolicy(contract, mode);
+  let ids = COMPLETE_ROUND_IDS;
   const visible = { contract_version: contract.contract_version, mode, rounds: [] };
   if (mode === 'causal-replay') {
     const cursor = contract.reveal_cursor ?? 'round-1';
@@ -73,10 +100,8 @@ function deriveVisibleContract(contract, mode) {
     if (cursorIndex > 0 && contract.reviewed_reveal_cursor !== true) {
       throw new TypeError('causal future reveal requires reviewed reveal cursor');
     }
-    if (cursorIndex >= 9 && contract.external_snapshot_handoff === 'unresolved-user-decision') {
-      throw new TypeError('round-10 reveal requires reviewed external snapshot handoff');
-    }
-    ids = modePolicy.authorized_rounds.slice(0, cursorIndex + 1);
+    if (cursorIndex >= 9) requireReviewedHandoff(contract);
+    ids = CAUSAL_ROUND_IDS.slice(0, cursorIndex + 1);
     visible.reveal_cursor = cursor;
   }
   const allowed = new Set(ids);
@@ -111,9 +136,8 @@ export async function sealFixture({ evidenceRepo, destination, contract = {}, mo
     }
   }
   if (contract.rounds == null) throw new TypeError('production fixture requires the reviewed ten-round workload');
-  if (mode === 'complete-brief' && contract.external_snapshot_handoff === 'unresolved-user-decision') {
-    throw new TypeError('complete-brief external snapshot handoff requires reviewed maintainer decision');
-  }
+  if (mode !== 'causal-replay' && mode !== 'synthetic') requireReviewedHandoff(contract);
+  if (mode === 'synthetic') requireReviewedHandoff(contract);
   validateRounds(contract.rounds);
   const history = contract.workerHistory ?? REQUIRED_WORKER_HISTORY;
   if (history.first !== REQUIRED_WORKER_HISTORY.first || history.last !== REQUIRED_WORKER_HISTORY.last) {

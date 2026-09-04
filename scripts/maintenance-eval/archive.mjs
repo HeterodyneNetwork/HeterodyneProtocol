@@ -113,25 +113,28 @@ export function summarizeArchive(records) {
 
     const process = processDetails(payload, type);
     if (process) {
-      const current = processes.get(process.id) ?? { id: process.id, started: null, exited: null, callId: null, lines: [] };
+      const current = processes.get(process.id) ?? {
+        id: process.id, started: null, exited: null, callId: null,
+        observedCallStartMs: null, observedResultEndMs: null, lines: [],
+      };
       current.lines.push(line);
       if (current.callId == null && process.callId != null) current.callId = String(process.callId);
-      if (current.started == null && process.started == null && process.callId != null && timestamp != null) {
+      if (current.observedCallStartMs == null && process.callId != null) {
         const launch = records.find(candidate => {
           const candidatePayload = payloadOf(candidate);
           return idOf(candidatePayload, candidate, '') === String(process.callId) &&
             candidatePayload.name === 'exec' &&
             (TOOL_CALL_TYPES.has(candidate.type) || TOOL_CALL_TYPES.has(eventType(candidate, candidatePayload)));
         });
-        if (launch != null) current.started = timestampMs(launch, payloadOf(launch));
+        if (launch != null) current.observedCallStartMs = timestampMs(launch, payloadOf(launch));
       }
       if (process.started != null && current.started == null) current.started = Number(process.started);
       if (process.exited != null) current.exited = Number(process.exited);
-      if (process.outputExit && current.exited == null && timestamp != null) current.exited = timestamp;
+      if (timestamp != null) current.observedResultEndMs = timestamp;
       if (type === 'process_start' && current.started == null && timestamp != null) current.started = timestamp;
       if (type === 'process_exit' && current.exited == null && timestamp != null) current.exited = timestamp;
       processes.set(process.id, current);
-      if (current.callId != null && gateCandidates.has(current.callId) && current.started != null) gateCalls.add(current.callId);
+      if (current.callId != null && gateCandidates.has(current.callId) && current.observedCallStartMs != null) gateCalls.add(current.callId);
     }
 
     const taskId = payload.task_id ?? payload.taskId ?? payload.id;
@@ -155,7 +158,8 @@ export function summarizeArchive(records) {
   for (const process of processes.values()) {
     const durationMs = process.started != null && process.exited != null && process.exited >= process.started
       ? process.exited - process.started : null;
-    processProvenance.push({ id: process.id, lines: process.lines, startMs: process.started, endMs: process.exited, durationMs });
+    processProvenance.push({ id: process.id, lines: process.lines, startMs: process.started, endMs: process.exited,
+      observedCallStartMs: process.observedCallStartMs, observedResultEndMs: process.observedResultEndMs, durationMs });
   }
   const spanMs = timestamps.length ? Math.max(...timestamps) - Math.min(...timestamps) : 0;
   return {
