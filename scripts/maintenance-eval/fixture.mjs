@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { access, mkdir, readFile, readdir } from 'node:fs/promises';
+import { access, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -41,10 +41,23 @@ async function fileDigest(file) {
 function validateRounds(rounds) {
   if (rounds == null) return;
   if (!Array.isArray(rounds) || rounds.length !== 10) throw new TypeError('fixture contract must encode exactly ten rounds');
-  for (const round of rounds) {
+  const expectedIds = Array.from({ length: 10 }, (_, index) => `round-${index + 1}`);
+  for (const [index, round] of rounds.entries()) {
     for (const field of ROUND_FIELDS) {
       if (!(field in round)) throw new TypeError(`round is missing ${field}`);
     }
+    if (round.id !== expectedIds[index] || typeof round.intent !== 'string' || round.intent.trim() === '' ||
+        typeof round.source !== 'string' || round.source.trim() === '' || typeof round.confidence !== 'string' ||
+        round.confidence.trim() === '' || typeof round.reveal_after !== 'string' || round.reveal_after.trim() === '' ||
+        !Array.isArray(round.external_inputs) || !Array.isArray(round.checks) || round.checks.length === 0) {
+      throw new TypeError(`round ${round.id ?? index + 1} has incomplete intent contract fields`);
+    }
+  }
+  const snapshotIds = new Set(['0efa4a9fca289b53289472e9490f531c5682912a', '8f780cea2119738e3db1a37e7c0c94b4cd200cb3']);
+  const finalInputs = new Set(rounds[9].external_inputs);
+  if (![...snapshotIds].every(id => finalInputs.has(id))) throw new TypeError('round-10 must identify both external snapshot inputs');
+  if (rounds.slice(0, 9).some(round => round.external_inputs.some(input => snapshotIds.has(input)))) {
+    throw new TypeError('external snapshot inputs cannot be revealed before round-10');
   }
 }
 
@@ -57,6 +70,15 @@ function validateRounds(rounds) {
 export async function sealFixture({ evidenceRepo, destination, contract = {}, mode = 'complete-brief' }) {
   if (!evidenceRepo || !destination) throw new TypeError('evidenceRepo and destination are required');
   if (!['complete-brief', 'causal-replay', 'synthetic'].includes(mode)) throw new TypeError(`unsupported fixture mode: ${mode}`);
+  if (mode !== 'synthetic') {
+    if (!contract.visibleContract || !Array.isArray(contract.visibleContract.rounds)) {
+      throw new TypeError('production fixture requires a worker-visible ten-round contract');
+    }
+    if (!contract.mode_contracts || !contract.mode_contracts[mode]) {
+      throw new TypeError(`production fixture requires ${mode} reveal policy`);
+    }
+  }
+  if (mode !== 'synthetic' && contract.rounds == null) throw new TypeError('production fixture requires the reviewed ten-round workload');
   validateRounds(contract.rounds);
   const history = contract.workerHistory ?? REQUIRED_WORKER_HISTORY;
   if (history.first !== REQUIRED_WORKER_HISTORY.first || history.last !== REQUIRED_WORKER_HISTORY.last) {
@@ -64,6 +86,9 @@ export async function sealFixture({ evidenceRepo, destination, contract = {}, mo
   }
   const startCommit = contract.startCommit ?? history.first;
   const endCommit = contract.endCommit ?? history.last;
+  if (mode !== 'synthetic' && (startCommit !== REQUIRED_WORKER_HISTORY.first || endCommit !== REQUIRED_WORKER_HISTORY.last)) {
+    throw new Error('production fixture must use the approved worker start and endpoint');
+  }
   if (!/^[0-9a-f]{7,64}$/i.test(startCommit) || !/^[0-9a-f]{7,64}$/i.test(endCommit)) {
     throw new TypeError('startCommit and endCommit must be Git object IDs');
   }
@@ -84,10 +109,10 @@ export async function sealFixture({ evidenceRepo, destination, contract = {}, mo
   const entries = await readdir(destination);
   if (entries.length) throw new Error('destination must be empty');
   await git(destination, ['init', '--quiet']);
-  // Fetching an object ID copies only that commit and its ancestors. It does
-  // not clone source refs, reflogs, alternates, or unreachable future objects.
-  await git(destination, ['fetch', '--no-tags', evidenceRepo, endCommit]);
-  await git(destination, ['checkout', '--quiet', '--detach', endCommit]);
+  // Fetching the base object ID copies only the worker-visible base and its
+  // ancestors. The evaluator endpoint is deliberately never fetched.
+  await git(destination, ['fetch', '--no-tags', evidenceRepo, startCommit]);
+  await git(destination, ['checkout', '--quiet', '--detach', startCommit]);
   const alternates = path.join(destination, '.git', 'objects', 'info', 'alternates');
   try {
     await access(alternates);
@@ -96,15 +121,16 @@ export async function sealFixture({ evidenceRepo, destination, contract = {}, mo
     if (error.code !== 'ENOENT') throw error;
   }
 
-  const forbidden = [...(contract.hiddenCommits ?? []), ...(contract.laterCommits ?? [])];
+  const forbidden = new Set([endCommit, ...(contract.hiddenCommits ?? []), ...(contract.laterCommits ?? [])]);
   for (const object of forbidden) {
+    if (object === startCommit) continue;
     if (await gitSucceeds(destination, ['cat-file', '-e', `${object}^{commit}`])) {
       throw new Error(`forbidden later object is readable in worker fixture: ${object}`);
     }
   }
 
   const baseTree = await git(evidenceRepo, ['rev-parse', `${startCommit}^{tree}`]);
-  const visibleTree = await git(destination, ['rev-parse', `${endCommit}^{tree}`]);
+  const visibleTree = await git(destination, ['rev-parse', `${startCommit}^{tree}`]);
   const digestPaths = contract.digestPaths ?? {};
   const visibleDigests = {
     tree: visibleTree,
@@ -123,5 +149,13 @@ export async function sealFixture({ evidenceRepo, destination, contract = {}, mo
   const oracleManifestDigest = digest(oracleManifest);
   if (contract.visibleContractDigest && contract.visibleContractDigest !== visibleContractDigest) throw new Error('visible contract digest mismatch');
   if (contract.oracleManifestDigest && contract.oracleManifestDigest !== oracleManifestDigest) throw new Error('oracle manifest digest mismatch');
-  return { workerRepo: destination, baseTree, visibleContractDigest, oracleManifestDigest };
+  const visibleContractPath = path.join(destination, 'benchmark-contract.json');
+  try {
+    await access(visibleContractPath);
+    throw new Error('worker-visible contract path already exists in base tree');
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
+  await writeFile(visibleContractPath, `${JSON.stringify(visibleContract, null, 2)}\n`, { flag: 'wx' });
+  return { workerRepo: destination, baseTree, visibleContractDigest, oracleManifestDigest, visibleContractPath };
 }

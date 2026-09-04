@@ -48,12 +48,14 @@ replay additionally exercises the experiment, decision, and rollback.
 ## Sealing and scoring
 
 The evaluator-side fixture creates a new Git object store and fetches only the
-selected endpoint and its permitted ancestors. It verifies the start/end
-ancestry, no alternates, unreadable later objects, and manifest digests for the
-visible tree, lockfile, index, and cache. The worker receives a digest-only
-visible contract; independent oracle material stays evaluator-held. A trusted
-preparer supplies locked dependencies. The fixture does not claim OS-level
-filesystem or network enforcement.
+worker-visible base and its permitted ancestors. The endpoint is an
+evaluator-only reference and is automatically forbidden in the worker store.
+It verifies start/end ancestry, no alternates, unreadable later objects, and
+manifest digests for the visible tree, lockfile, index, and cache. The worker
+receives a concrete `benchmark-contract.json` plus its digest; independent
+oracle material stays evaluator-held. A trusted preparer supplies locked
+dependencies. The fixture does not claim OS-level filesystem or network
+enforcement.
 
 The score is accepted only when the run is complete, every evaluator-supplied
 check passes, no findings remain, and `elapsedMs < 3_600_000`. Missing or
@@ -71,6 +73,26 @@ summed. Process time must use real process start-to-exit timestamps, not a
 yield wrapper or poll duration. Full-gate process/lane/CPU/memory/dependency
 readiness profiling remains pending and is not represented as an acceptance
 result here.
+
+## Exploratory readiness profile
+
+Parent-owned profiles on Node 22.22.2, macOS 15,7, 12 CPU/18 GiB, used a
+fresh clone with normal warmed dependency caches. The completed endpoint tree
+at `0dd1506` passed its ordered draft, snapshot (275 vectors), and independent
+lanes in 136,563 ms (136.55 real, 359.69 user, 17.20 sys, max RSS
+795,852,800 bytes). The historical base at `b6416fda` took 31,379 ms and
+failed in the snapshot lane because it is an incomplete base; it is not a
+workflow regression. Current main at immutable `8d263b8` had a separate
+606,669 ms exploratory gate profile and passed, fitting the provisional
+15-minute gate reserve on this machine. These are environment measurements
+only, not a sub-sixty-minute workflow result or acceptance evidence.
+
+The completed endpoint snapshot is stage-specific: its manifest has 275
+vectors, source commit `08ac4418b14586b0053829349ee7173febeb806e`, schema
+`3.0.0`, and snapshot commit `0efa4a9fca289b53289472e9490f531c5682912a`.
+The historical 482-vector snapshot is a preserved earlier reveal stage, not a
+hardcoded final endpoint. The external handoff and independent identity oracle
+remain review-required.
 
 The fixture and scorer live in `scripts/maintenance-eval/`. Synthetic negative
 fixtures and expected results remain outside worker-visible evidence. No raw

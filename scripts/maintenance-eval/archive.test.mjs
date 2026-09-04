@@ -34,3 +34,18 @@ test('outer calls and nested patch operations have separate counting levels', ()
   assert.equal(result.outerCalls, 1);
   assert.equal(result.nestedCalls, 1);
 });
+
+test('correlates function call output sessions and write_stdin polls without counting mentions as launches', () => {
+  const records = [
+    { line: 1, timestamp: 1000, type: 'response_item', payload: { type: 'function_call', call_id: 'exec-1', name: 'exec', arguments: { command: 'scripts/conformance-ci.sh' } } },
+    { line: 2, timestamp: 1001, type: 'response_item', payload: { type: 'function_call_output', call_id: 'exec-1', session_id: 'session-1', started_at_ms: 1000, output: 'Command running in session session-1' } },
+    { line: 3, timestamp: 1100, type: 'response_item', payload: { type: 'function_call', call_id: 'poll-1', name: 'write_stdin', arguments: { session_id: 'session-1', chars: '' } } },
+    { line: 4, timestamp: 2000, type: 'response_item', payload: { type: 'function_call_output', call_id: 'poll-1', session_id: 'session-1', exited_at_ms: 2000, exit_code: 0, output: 'completed' } },
+    { line: 5, timestamp: 2100, type: 'response_item', payload: { type: 'function_call', call_id: 'mention', name: 'exec', arguments: { command: 'printf scripts/conformance-ci.sh' } } },
+    { line: 6, timestamp: 2101, type: 'response_item', payload: { type: 'function_call_output', call_id: 'mention', output: 'printed a path; no process launched' } },
+  ];
+  const result = summarizeArchive(records);
+  assert.equal(result.processes, 1);
+  assert.equal(result.confirmedGateLaunches, 1);
+  assert.equal(result.provenance.processes[0].durationMs, 1000);
+});

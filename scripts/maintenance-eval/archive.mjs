@@ -44,6 +44,12 @@ function idOf(payload, record, fallback) {
   return String(payload.call_id ?? payload.id ?? record.id ?? fallback);
 }
 
+function sessionFromOutput(output) {
+  if (typeof output !== 'string') return null;
+  const match = output.match(/(?:session|cell)(?:\s+with)?\s+(?:ID\s+)?[`'\"]?([A-Za-z0-9_-]+)[`'\"]?/i);
+  return match?.[1] ?? null;
+}
+
 function textContains(value, pattern) {
   if (typeof value === 'string') return pattern.test(value);
   if (Array.isArray(value)) return value.some(item => textContains(item, pattern));
@@ -52,13 +58,17 @@ function textContains(value, pattern) {
 }
 
 function processDetails(payload, type) {
-  if (!payload.process && payload.process_id == null && !String(type).startsWith('process_')) return null;
+  const output = typeof payload.output === 'string' ? payload.output : '';
+  const outputSession = sessionFromOutput(output);
+  if (!payload.process && payload.process_id == null && payload.session_id == null && payload.cell_id == null &&
+      outputSession == null && payload.started_at_ms == null && payload.exited_at_ms == null && !String(type).startsWith('process_')) return null;
   const process = payload.process && typeof payload.process === 'object' ? payload.process : payload;
-  const id = process.id ?? process.process_id ?? payload.process_id;
+  const id = process.id ?? process.process_id ?? payload.process_id ?? payload.session_id ?? payload.cell_id ?? outputSession;
   if (id == null) return null;
   const started = process.started_at_ms ?? process.start_ms ?? payload.started_at_ms;
   const exited = process.exited_at_ms ?? process.exit_ms ?? payload.exited_at_ms;
-  return { id: String(id), started, exited };
+  const outputExit = payload.exit_code != null || /\b(?:completed|exited|finished|exit\s+code)\b/i.test(output);
+  return { id: String(id), started, exited, outputExit, callId: payload.call_id ?? null };
 }
 
 /**
@@ -76,6 +86,7 @@ export function summarizeArchive(records) {
   const tasks = new Map();
   const timestamps = [];
   let confirmedGateLaunches = 0;
+  const gateCandidates = new Set();
   const gateCalls = new Set();
 
   records.forEach((record, index) => {
@@ -96,19 +107,30 @@ export function summarizeArchive(records) {
         seenNested.set(id, { id, line, timestampMs: timestamp, name: String(name) });
       }
       if (!nested && textContains(payload.arguments ?? payload.input ?? payload.command ?? payload, /scripts\/conformance-ci\.sh/)) {
-        gateCalls.add(id);
+        gateCandidates.add(id);
       }
     }
 
     const process = processDetails(payload, type);
     if (process) {
-      const current = processes.get(process.id) ?? { id: process.id, started: null, exited: null, lines: [] };
+      const current = processes.get(process.id) ?? { id: process.id, started: null, exited: null, callId: null, lines: [] };
       current.lines.push(line);
+      if (current.callId == null && process.callId != null) current.callId = String(process.callId);
+      if (current.started == null && process.started == null && process.callId != null && timestamp != null) {
+        const launch = records.find(candidate => {
+          const candidatePayload = payloadOf(candidate);
+          return idOf(candidatePayload, candidate, '') === String(process.callId) &&
+            (TOOL_CALL_TYPES.has(candidate.type) || TOOL_CALL_TYPES.has(eventType(candidate, candidatePayload)));
+        });
+        if (launch != null) current.started = timestampMs(launch, payloadOf(launch));
+      }
       if (process.started != null && current.started == null) current.started = Number(process.started);
       if (process.exited != null) current.exited = Number(process.exited);
+      if (process.outputExit && current.exited == null && timestamp != null) current.exited = timestamp;
       if (type === 'process_start' && current.started == null && timestamp != null) current.started = timestamp;
       if (type === 'process_exit' && current.exited == null && timestamp != null) current.exited = timestamp;
       processes.set(process.id, current);
+      if (current.callId != null && gateCandidates.has(current.callId) && current.started != null) gateCalls.add(current.callId);
     }
 
     const taskId = payload.task_id ?? payload.taskId ?? payload.id;

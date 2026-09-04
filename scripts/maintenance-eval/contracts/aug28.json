@@ -1,0 +1,118 @@
+{
+  "contract_version": "aug28-redacted-v1",
+  "review_required": true,
+  "provenance": "design section 2 and public task reports; encrypted child briefs were not literally recovered",
+  "worker_history": {
+    "first_observed_head": "b6416fda157529b708c86f21cc4ea66a7b24384c",
+    "last_worker_commit": "0dd150682903d14eddd8d14b57892395f750c47f"
+  },
+  "external_snapshot_inputs": [
+    { "commit": "0efa4a9fca289b53289472e9490f531c5682912a", "role": "external prerequisite", "reveal_after": "round-10 handoff" },
+    { "commit": "8f780cea2119738e3db1a37e7c0c94b4cd200cb3", "role": "external prerequisite", "reveal_after": "round-10 handoff" }
+  ],
+  "external_snapshot_handoff": "unresolved-user-decision",
+  "mode_contracts": {
+    "complete-brief": {
+      "included_rounds": ["round-1", "round-2", "round-3", "round-4", "round-5", "round-6", "round-9", "round-10"],
+      "excluded_rounds": ["round-7", "round-8"],
+      "note": "withdrawn runtime architecture obligations are not supplied upfront; external snapshot handoff remains unresolved"
+    },
+    "causal-replay": {
+      "authorized_rounds": ["round-1", "round-2", "round-3", "round-4", "round-5", "round-6", "round-7", "round-8", "round-9", "round-10"],
+      "maintainer_decisions": ["round-7 decision boundary", "round-8 approval boundary", "round-9 rollback boundary", "round-10 external handoff"],
+      "note": "deliver each currently authorized round only at its reveal boundary"
+    }
+  },
+  "rounds": [
+    {
+      "id": "round-1",
+      "intent": "Six-family current catalog, schema-3 traceability, current-only imports, temporary author/verify, frozen snapshot preservation",
+      "source": "design section 2 round 1; public task report",
+      "confidence": "review-required",
+      "reveal_after": "upfront in complete-brief; round-1 boundary in causal-replay",
+      "external_inputs": [],
+      "checks": ["catalog", "schema-3-traceability", "snapshot-preserved"]
+    },
+    {
+      "id": "round-2",
+      "intent": "Executable boundary evidence and exact rejection traces; no registry-derived semantic labels",
+      "source": "design section 2 round 2; public task report",
+      "confidence": "review-required",
+      "reveal_after": "upfront in complete-brief; round-2 boundary in causal-replay",
+      "external_inputs": [],
+      "checks": ["boundary-evidence", "rejection-traces", "no-derived-labels"]
+    },
+    {
+      "id": "round-3",
+      "intent": "Private identity-bound evidence, profile/reason/invariant closure, exact loader resolution, audited exclusions",
+      "source": "design section 2 round 3; public task report",
+      "confidence": "review-required",
+      "reveal_after": "upfront in complete-brief; round-3 boundary in causal-replay",
+      "external_inputs": [],
+      "checks": ["identity-evidence", "loader-resolution", "audited-exclusions"]
+    },
+    {
+      "id": "round-4",
+      "intent": "Independent 31-row profile oracle, scope-aware loader analysis, byte-derived Assurance/KERI classification",
+      "source": "design section 2 round 4; public task report",
+      "confidence": "review-required",
+      "reveal_after": "upfront in complete-brief; round-4 boundary in causal-replay",
+      "external_inputs": [],
+      "checks": ["profile-oracle", "scope-aware-loader", "byte-classification"]
+    },
+    {
+      "id": "round-5",
+      "intent": "Composition-only static audit, exact Core/Tier-3/Control/revocation semantics, complete CESR framing",
+      "source": "design section 2 round 5; public task report",
+      "confidence": "review-required",
+      "reveal_after": "upfront in complete-brief; round-5 boundary in causal-replay",
+      "external_inputs": [],
+      "checks": ["composition-audit", "revocation-semantics", "cesr-framing"]
+    },
+    {
+      "id": "round-6",
+      "intent": "Concealed-capability denial, module-owned Tier-3 authority, revocation verification through merge/effect",
+      "source": "design section 2 round 6; public task report",
+      "confidence": "review-required",
+      "reveal_after": "upfront in complete-brief; round-6 boundary in causal-replay",
+      "external_inputs": [],
+      "checks": ["capability-denial", "tier-3-authority", "revocation-merge-effect"]
+    },
+    {
+      "id": "round-7",
+      "intent": "Investigate runtime isolation; wait for architecture direction before implementing it",
+      "source": "design section 2 round 7; public task report",
+      "confidence": "review-required",
+      "reveal_after": "round-7 decision boundary",
+      "external_inputs": [],
+      "checks": ["investigation-only", "architecture-direction"]
+    },
+    {
+      "id": "round-8",
+      "intent": "Approved bounded child-runtime experiment with exact graph/assets and same-process semantic closure",
+      "source": "design section 2 round 8; public task report",
+      "confidence": "review-required",
+      "reveal_after": "round-8 approval boundary",
+      "external_inputs": [],
+      "checks": ["bounded-experiment", "graph-assets", "semantic-closure"]
+    },
+    {
+      "id": "round-9",
+      "intent": "Runtime-isolation withdrawal; restore direct authoring and retain composition-only graph audit",
+      "source": "design section 2 round 9; public task report",
+      "confidence": "review-required",
+      "reveal_after": "round-9 rollback boundary",
+      "external_inputs": [],
+      "checks": ["runtime-withdrawn", "direct-authoring", "graph-audit"]
+    },
+    {
+      "id": "round-10",
+      "intent": "Resolve 44 stale/mismatched references to 27 live anchors; reject invalid references before authoring mutation",
+      "source": "design section 2 round 10; public task report",
+      "confidence": "review-required",
+      "reveal_after": "round-10 external handoff",
+      "external_inputs": ["0efa4a9fca289b53289472e9490f531c5682912a", "8f780cea2119738e3db1a37e7c0c94b4cd200cb3"],
+      "checks": ["live-anchor-resolution", "pre-mutation-rejection"]
+    }
+  ]
+}

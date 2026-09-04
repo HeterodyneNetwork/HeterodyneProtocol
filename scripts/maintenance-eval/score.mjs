@@ -19,3 +19,46 @@ export function scoreRun({ elapsedMs, requiredChecks, completed, findings }) {
   if (!underBudget) reasons.push('elapsed time is not under sixty minutes');
   return { correct, underBudget, accepted: correct && underBudget, reasons };
 }
+
+function rejectedScore(elapsedMs, reasons) {
+  return {
+    correct: false,
+    underBudget: Number.isFinite(elapsedMs) && elapsedMs >= 0 && elapsedMs < 3600000,
+    accepted: false,
+    reasons,
+  };
+}
+
+/**
+ * Trusted evaluator entry point. Policy and isolation attestations must come
+ * from the evaluator boundary; cooperative worker metadata is not OS
+ * enforcement and can never create an acceptance result by itself.
+ */
+export function scoreTrustedRun({ run = {}, policy = {} }) {
+  const reasons = [];
+  if (policy.reviewed !== true) reasons.push('mandatory policy is not reviewed');
+  if (!Array.isArray(policy.mandatoryCheckIds) || policy.mandatoryCheckIds.length === 0) reasons.push('mandatory check IDs are missing');
+  if (policy.requireIsolation !== true) reasons.push('policy does not require enforced isolation');
+  for (const [field, label] of [
+    ['oracleIdentityDigest', 'independent oracle identity'],
+    ['expectedTreeDigest', 'tree'],
+    ['expectedToolchainDigest', 'toolchain'],
+    ['expectedContractDigest', 'contract'],
+  ]) {
+    if (typeof policy[field] !== 'string' || policy[field].length === 0) reasons.push(`${label} digest is missing from policy`);
+  }
+  if (reasons.length) return rejectedScore(run.elapsedMs, reasons);
+
+  const expected = [...new Set(policy.mandatoryCheckIds)].sort();
+  const actual = Array.isArray(run.requiredChecks) ? run.requiredChecks.map(check => check?.id).sort() : [];
+  if (expected.length !== policy.mandatoryCheckIds.length || expected.join('\u0000') !== actual.join('\u0000')) {
+    reasons.push('run checks do not exactly match the reviewed mandatory check IDs');
+  }
+  if (run.oracleIdentityDigest !== policy.oracleIdentityDigest) reasons.push('independent oracle identity digest mismatch');
+  if (run.treeDigest !== policy.expectedTreeDigest) reasons.push('tree digest mismatch');
+  if (run.toolchainDigest !== policy.expectedToolchainDigest) reasons.push('toolchain digest mismatch');
+  if (run.contractDigest !== policy.expectedContractDigest) reasons.push('contract digest mismatch');
+  if (run.isolationEnforced !== true) reasons.push('enforced isolation is absent');
+  if (reasons.length) return rejectedScore(run.elapsedMs, reasons);
+  return scoreRun(run);
+}
