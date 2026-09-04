@@ -39,7 +39,6 @@ async function fileDigest(file) {
 }
 
 function validateRounds(rounds) {
-  if (rounds == null) return;
   if (!Array.isArray(rounds) || rounds.length !== 10) throw new TypeError('fixture contract must encode exactly ten rounds');
   const expectedIds = Array.from({ length: 10 }, (_, index) => `round-${index + 1}`);
   for (const [index, round] of rounds.entries()) {
@@ -61,6 +60,42 @@ function validateRounds(rounds) {
   }
 }
 
+function deriveVisibleContract(contract, mode) {
+  const policyMode = mode === 'synthetic' ? 'complete-brief' : mode;
+  const modePolicy = contract.mode_contracts?.[policyMode];
+  if (!modePolicy) throw new TypeError(`fixture requires ${policyMode} reveal policy`);
+  let ids = modePolicy.included_rounds;
+  const visible = { contract_version: contract.contract_version, mode, rounds: [] };
+  if (mode === 'causal-replay') {
+    const cursor = contract.reveal_cursor ?? 'round-1';
+    const cursorIndex = contract.rounds.findIndex(round => round.id === cursor);
+    if (cursorIndex < 0) throw new TypeError('causal reveal cursor is not a valid round');
+    if (cursorIndex > 0 && contract.reviewed_reveal_cursor !== true) {
+      throw new TypeError('causal future reveal requires reviewed reveal cursor');
+    }
+    if (cursorIndex >= 9 && contract.external_snapshot_handoff === 'unresolved-user-decision') {
+      throw new TypeError('round-10 reveal requires reviewed external snapshot handoff');
+    }
+    ids = modePolicy.authorized_rounds.slice(0, cursorIndex + 1);
+    visible.reveal_cursor = cursor;
+  }
+  const allowed = new Set(ids);
+  visible.rounds = contract.rounds.filter(round => allowed.has(round.id)).map(round => ({
+    id: round.id,
+    intent: round.intent,
+    source: round.source,
+    confidence: round.confidence,
+    reveal_after: round.reveal_after,
+    external_inputs: round.external_inputs,
+    checks: round.checks,
+  }));
+  if (visible.rounds.length !== ids.length) throw new TypeError('reveal policy references an unknown round');
+  if (contract.visibleContract && canonical(contract.visibleContract) !== canonical(visible)) {
+    throw new TypeError('supplied visible contract is not the closed derived payload');
+  }
+  return visible;
+}
+
 /**
  * Build a worker-visible repository from only the selected commit's reachable
  * objects. `evidenceRepo` is used by this evaluator-side function and is not
@@ -71,14 +106,14 @@ export async function sealFixture({ evidenceRepo, destination, contract = {}, mo
   if (!evidenceRepo || !destination) throw new TypeError('evidenceRepo and destination are required');
   if (!['complete-brief', 'causal-replay', 'synthetic'].includes(mode)) throw new TypeError(`unsupported fixture mode: ${mode}`);
   if (mode !== 'synthetic') {
-    if (!contract.visibleContract || !Array.isArray(contract.visibleContract.rounds)) {
-      throw new TypeError('production fixture requires a worker-visible ten-round contract');
-    }
     if (!contract.mode_contracts || !contract.mode_contracts[mode]) {
       throw new TypeError(`production fixture requires ${mode} reveal policy`);
     }
   }
-  if (mode !== 'synthetic' && contract.rounds == null) throw new TypeError('production fixture requires the reviewed ten-round workload');
+  if (contract.rounds == null) throw new TypeError('production fixture requires the reviewed ten-round workload');
+  if (mode === 'complete-brief' && contract.external_snapshot_handoff === 'unresolved-user-decision') {
+    throw new TypeError('complete-brief external snapshot handoff requires reviewed maintainer decision');
+  }
   validateRounds(contract.rounds);
   const history = contract.workerHistory ?? REQUIRED_WORKER_HISTORY;
   if (history.first !== REQUIRED_WORKER_HISTORY.first || history.last !== REQUIRED_WORKER_HISTORY.last) {
@@ -143,7 +178,7 @@ export async function sealFixture({ evidenceRepo, destination, contract = {}, mo
       if (visibleDigests[key] !== expected) throw new Error(`visible ${key} digest does not match fixture manifest`);
     }
   }
-  const visibleContract = contract.visibleContract ?? {};
+  const visibleContract = deriveVisibleContract(contract, mode);
   const oracleManifest = contract.oracleManifest ?? {};
   const visibleContractDigest = digest(visibleContract);
   const oracleManifestDigest = digest(oracleManifest);

@@ -49,3 +49,23 @@ test('correlates function call output sessions and write_stdin polls without cou
   assert.equal(result.confirmedGateLaunches, 1);
   assert.equal(result.provenance.processes[0].durationMs, 1000);
 });
+
+test('an orphan write_stdin result does not fabricate a process start', () => {
+  const result = summarizeArchive([
+    { line: 1, timestamp: 1000, type: 'response_item', payload: { type: 'function_call', call_id: 'poll-1', name: 'write_stdin', arguments: { session_id: 'orphan-session', chars: '' } } },
+    { line: 2, timestamp: 2000, type: 'response_item', payload: { type: 'function_call_output', call_id: 'poll-1', session_id: 'orphan-session', exited_at_ms: 2000, exit_code: 0, output: 'completed' } },
+  ]);
+  assert.equal(result.processes, 1);
+  assert.equal(result.confirmedGateLaunches, 0);
+  assert.equal(result.provenance.processes[0].durationMs, null);
+});
+
+test('a functions.wait cell result is unknown without a correlated exec launch', () => {
+  const result = summarizeArchive([
+    { line: 1, timestamp: 1000, type: 'response_item', payload: { type: 'function_call', call_id: 'wait-1', name: 'wait', arguments: { cell_id: 'orphan-cell' } } },
+    { line: 2, timestamp: 2000, type: 'response_item', payload: { type: 'function_call_output', call_id: 'wait-1', cell_id: 'orphan-cell', output: 'Script running with cell ID orphan-cell' } },
+    { line: 3, timestamp: 3000, type: 'response_item', payload: { type: 'function_call_output', call_id: 'wait-1', cell_id: 'orphan-cell', output: 'completed' } },
+  ]);
+  assert.equal(result.processes, 1);
+  assert.equal(result.provenance.processes[0].durationMs, null);
+});

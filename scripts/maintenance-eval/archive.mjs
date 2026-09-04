@@ -120,6 +120,7 @@ export function summarizeArchive(records) {
         const launch = records.find(candidate => {
           const candidatePayload = payloadOf(candidate);
           return idOf(candidatePayload, candidate, '') === String(process.callId) &&
+            candidatePayload.name === 'exec' &&
             (TOOL_CALL_TYPES.has(candidate.type) || TOOL_CALL_TYPES.has(eventType(candidate, candidatePayload)));
         });
         if (launch != null) current.started = timestampMs(launch, payloadOf(launch));

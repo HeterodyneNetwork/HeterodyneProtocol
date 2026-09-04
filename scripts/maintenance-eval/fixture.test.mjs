@@ -44,7 +44,8 @@ test('sealed worker cannot read a hidden descendant object or use alternates', a
       endCommit: solution,
       hiddenCommits: [solution, hidden],
       workerHistory: { first: FIRST, last: LAST },
-      visibleContract: { rounds: 10 },
+      rounds: contract.rounds,
+      mode_contracts: contract.mode_contracts,
       oracleManifest: { checks: ['independent-oracle'] },
     },
   });
@@ -54,7 +55,9 @@ test('sealed worker cannot read a hidden descendant object or use alternates', a
   assert.throws(() => git(destination, 'cat-file', '-e', `${solution}^{commit}`));
   assert.throws(() => git(destination, 'cat-file', '-e', `${hidden}^{commit}`));
   await assert.rejects(fs.access(path.join(destination, '.git', 'objects', 'info', 'alternates')));
-  assert.deepEqual(JSON.parse(await fs.readFile(path.join(destination, 'benchmark-contract.json'), 'utf8')), { rounds: 10 });
+  const visible = JSON.parse(await fs.readFile(path.join(destination, 'benchmark-contract.json'), 'utf8'));
+  assert.equal(visible.mode, 'synthetic');
+  assert.deepEqual(visible.rounds.map(round => round.id), ['round-1', 'round-2', 'round-3', 'round-4', 'round-5', 'round-6', 'round-9', 'round-10']);
 });
 
 test('the redacted archive contract contains ten reviewable sourced rounds', () => {
@@ -71,6 +74,47 @@ test('production sealing rejects a missing reviewed ten-round contract', async (
   const destination = await fs.mkdtemp(path.join(os.tmpdir(), 'maintenance-production-contract-'));
   await assert.rejects(
     sealFixture({ evidenceRepo: process.cwd(), destination, mode: 'complete-brief', contract: {} }),
-    /ten-round|visible contract|reviewed/i,
+    /ten-round|visible contract|reveal policy|reviewed/i,
   );
+});
+
+test('sealing rejects visible payload injection and does not expose a causal future round', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'maintenance-causal-contract-'));
+  const source = path.join(root, 'evidence');
+  const destination = path.join(root, 'worker');
+  await fs.mkdir(source);
+  git(source, 'init', '--quiet');
+  git(source, 'config', 'user.email', 'fixture@example.invalid');
+  git(source, 'config', 'user.name', 'Fixture');
+  await fs.writeFile(path.join(source, 'visible.txt'), 'visible\n');
+  git(source, 'add', 'visible.txt');
+  git(source, 'commit', '--quiet', '-m', 'visible input');
+  const base = git(source, 'rev-parse', 'HEAD');
+  const causal = {
+    ...contract,
+    startCommit: base,
+    endCommit: base,
+    workerHistory: { first: FIRST, last: LAST },
+    visibleContract: { mode: 'causal-replay', rounds: contract.rounds, oracleManifest: 'injected' },
+    oracleManifest: { checks: ['independent-oracle'] },
+  };
+  await assert.rejects(sealFixture({ evidenceRepo: source, destination, mode: 'synthetic', contract: causal }), /visible contract|payload|mode/i);
+});
+
+test('causal initial payload contains only the reviewed first round', async () => {
+  const destination = await fs.mkdtemp(path.join(os.tmpdir(), 'maintenance-causal-initial-'));
+  const result = await sealFixture({
+    evidenceRepo: process.cwd(),
+    destination,
+    mode: 'causal-replay',
+    contract: {
+      ...contract,
+      workerHistory: { first: FIRST, last: LAST },
+      hiddenCommits: [git(process.cwd(), 'rev-parse', 'HEAD')],
+    },
+  });
+  const visible = JSON.parse(await fs.readFile(result.visibleContractPath, 'utf8'));
+  assert.deepEqual(visible.rounds.map(round => round.id), ['round-1']);
+  assert.equal(Object.hasOwn(visible, 'oracleManifest'), false);
+  assert.equal(Object.hasOwn(visible, 'last_worker_commit'), false);
 });
