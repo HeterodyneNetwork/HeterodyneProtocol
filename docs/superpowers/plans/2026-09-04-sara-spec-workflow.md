@@ -86,11 +86,18 @@ product comparison or performance benchmark was performed for this revision.
 
 ## Task 1: Measure the actual contributor workflow
 
+Execution scope: Phase 1 measures automated packet production and a fresh-agent
+before/after scenario. It does not establish the human investigation-time
+target: no matched human editing trial was available. That part of Task 1
+remains open rather than being inferred from command timings. Measurements and
+limitations are recorded in the [efficiency evaluation](../evaluations/sara-workflow-efficiency.md)
+and [skill evaluation](../evaluations/using-sara-baseline.md).
+
 **Files:** Create `docs/superpowers/evaluations/sara-workflow-efficiency.md`.
 
-- [ ] Record Git base, machine, Node/SARA versions, dependency installation,
+- [x] Record Git base, machine, Node/SARA versions, dependency installation,
   cold/warm state, wall time, peak memory where available, and command count.
-- [ ] Time five repetitions each of: anchor reverse lookup; a local Comms
+- [x] Time five repetitions each of: anchor reverse lookup; a local Comms
   requirement edit; a Workspace change crossing Control/Assurance; and a shared
   registry/schema change. Use temporary copies and record exact changed paths.
   Include one case with intentionally absent links to expose incomplete impact.
@@ -98,11 +105,11 @@ product comparison or performance benchmark was performed for this revision.
   Record first useful answer time, files opened, manually corrected omissions,
   and time to the first relevant test result. Keep dependency installation and
   full acceptance-gate time separate from repeated edit-loop cost.
-- [ ] Record proposed targets: warm query p95 at most 2 seconds, cold index at
+- [x] Record proposed targets: warm query p95 at most 2 seconds, cold index at
   most 10 seconds, and at least 50% less median investigation time on the same
   tasks. These are targets, not measured results. Correctness requires every
   known dependency in fixtures to be reported or explicitly marked unresolved.
-- [ ] Commit the reproducible measurements before optimizing. Failure to meet
+- [x] Commit the reproducible measurements before optimizing. Failure to meet
   a target triggers profiling and a documented scope decision, not weaker checks.
 
 ## Task 2: Port the projection core to current snapshot contracts
@@ -116,20 +123,20 @@ product comparison or performance benchmark was performed for this revision.
 source provenance. Receipt records resolved commits, all input digests, parser
 and graph versions, unresolved references, and canonical graph digest.
 
-- [ ] Port stable IDs, bounded Git blob reads, paragraph/heading anchors, and
+- [x] Port stable IDs, bounded Git blob reads, paragraph/heading anchors, and
   input path checks from the existing branch. Add failing tests for schema 3,
   unnumbered paths, incorrect declared owner, and historical schema 2.
-- [ ] Implement manifest-to-vector matching from actual `vector_id` fields.
+- [x] Implement manifest-to-vector matching from actual `vector_id` fields.
   Validate the closed inventory and hashes; read coverage only at the snapshot
   commit and source artifacts only at its source pin.
-- [ ] Make lane selection explicit in the CLI. `draft` reads current bytes;
+- [x] Make lane selection explicit in the CLI. `draft` reads current bytes;
   `snapshot` uses history; `reconciliation` requires an explicit vector ref and
   labels combined results maintenance-only. Do not default a spec-edit request
   to historical evidence.
-- [ ] Test changes during indexing, file additions/deletions, missing objects,
+- [x] Test changes during indexing, file additions/deletions, missing objects,
   stale cache, symlink escape, unknown schema, and conflicting IDs. Hash the
   input inventory as well as contents; timestamps alone do not prove freshness.
-- [ ] Run `node --test scripts/vector-trace.test.mjs` and commit the port.
+- [x] Run `node --test scripts/vector-trace.test.mjs` and commit the port.
 
 ## Task 3: Produce useful current-draft change packets
 
@@ -142,28 +149,28 @@ and graph versions, unresolved references, and canonical graph digest.
 around a single requirement. Suggested checks are recommendations, not proof
 that omitted tests are safe to skip.
 
-- [ ] Add fixtures for version-qualified draft refs, owner-qualified snapshot
+- [x] Add fixtures for version-qualified draft refs, owner-qualified snapshot
   refs, contract overrides, terminal-only exclusions, and profile allocations.
   Normalize the reference only after owner/version/anchor validation.
-- [ ] Build a conservative static inventory using the locked TypeScript parser.
+- [x] Build a conservative static inventory using the locked TypeScript parser.
   Read contract declarations and explicit overrides; support only tested literal
   and reference forms. Represent unresolved runtime profile computations as
   gaps with exact source locations. Do not execute arbitrary historical code,
   fixture builders, or crypto to answer a lookup.
-- [ ] Include source relationships from explicit boundary allocations and
+- [x] Include source relationships from explicit boundary allocations and
   resolved import/export references. Topic basename matching is insufficient.
   Preserve both allocation and override provenance. Only label a relation
   complete when all relevant supported references resolve.
-- [ ] Compare both ends of a diff, retaining deleted anchors and old edges.
+- [x] Compare both ends of a diff, retaining deleted anchors and old edges.
   Include changes to schemas, registry entries, contracts, evaluator modules,
   and text outside explicit anchors. Treat unanchored changes conservatively
   as document-level impact, not as no impact.
-- [ ] Derive candidate test files from resolved dependencies and existing test
+- [x] Derive candidate test files from resolved dependencies and existing test
   configuration. Dynamic/unresolved dependencies require broader checks. Add
   tests for shared fixtures, deleted imports, cyclic imports, and shared specs.
-- [ ] Expose `worklist` with owned files and collision groups. Two different
+- [x] Expose `worklist` with owned files and collision groups. Two different
   vector IDs are not independent if they edit the same contract or fixture file.
-- [ ] Run focused tests and repeat Task 1 lookup measurements. Commit a useful
+- [x] Run focused tests and repeat Task 1 lookup measurements. Commit a useful
   draft packet even if some profile links remain explicitly unresolved.
 
 ## Task 4: Integrate SARA and the agent skill
@@ -172,48 +179,55 @@ that omitted tests are safe to skip.
 `scripts/vector-trace/sara.mjs`, `.agents/skills/using-sara/SKILL.md`, and
 `docs/superpowers/evaluations/using-sara-baseline.md`; update `AGENTS.md`.
 
-- [ ] Retest the prior SARA 0.10.x compatibility choice against its official
+- [x] Retest the prior SARA 0.10.x compatibility choice against its official
   CLI documentation and real fixture traversal before retaining the pin.
   Keep SARA installation optional and outside ordinary conformance CI.
-- [ ] Materialize temporary graph items for anchors, draft cases, snapshot
+- [x] Materialize temporary graph items for anchors, draft cases, snapshot
   vectors, modules, schemas, and registry artifacts. Distinguish declared links
   from executed evidence in the model. Use stable semantic IDs at the CLI.
-- [ ] Test graph cleanup, missing/unsupported SARA, broken relations, JSON
+- [x] Test graph cleanup, missing/unsupported SARA, broken relations, JSON
   preambles, and output-path safety. Core receipt and draft packet operations
   should remain available without SARA; SARA-specific validation fails clearly
   if the tool is missing.
-- [ ] Implement `check`, `query`, `coverage`, `matrix`, `impact`, `worklist`, and
+- [x] Implement `check`, `query`, `coverage`, `matrix`, `impact`, `worklist`, and
   `receipt`. Label coverage as declared relationships; absence of an edge is
   neither proof of absent tests nor a claim of protocol nonconformance.
-- [ ] Write a skill under 500 words with frontmatter `name: using-sara` and a
+- [x] Write a skill under 500 words with frontmatter `name: using-sara` and a
   description covering spec changes, reverse lookup, impact, and reconciliation.
   Route ordinary edits to a draft packet; historical questions to snapshot;
   mixed questions to reconciliation. Verify the receipt included with the query
   instead of requiring two complete graph builds for receipt then query.
-- [ ] Require citations to normative anchors and exact source locations. Use
+- [x] Require citations to normative anchors and exact source locations. Use
   Semble to investigate gaps and implementation details. The skill is a query
   recipe, not an automatically generated second specification.
 - [ ] Evaluate the same editing scenario before/after the skill; record actual
   responses, time, source citations, and lane mistakes. Validate frontmatter
   with the installed skill-creator validator. Add a direct AGENTS skill link.
-- [ ] Run focused tests plus one real SARA integration test and commit.
+- [x] Run focused tests plus one real SARA integration test and commit.
 
 ## Task 5: Verify Phase 1 and make the next optimization decision
 
-- [ ] Derive expected snapshot query IDs directly from the selected coverage
+- [x] Derive expected snapshot query IDs directly from the selected coverage
   manifest and compare sets exactly; do not hard-code the old privacy count.
-- [ ] Run focused wrapper tests and `scripts/conformance-ci.sh` once with locked
+- [x] Run focused wrapper tests and `scripts/conformance-ci.sh` once with locked
   dependencies. The latter already runs both read-only lanes and independent
   conformance. Record failures without repairing unrelated protocol artifacts.
-- [ ] Check `git diff --check` and confirm only Phase 1 paths changed. Re-run
+- [x] Check `git diff --check` and confirm only Phase 1 paths changed. Re-run
   Task 1 scenarios and publish measured results including unresolved links.
-- [ ] Require no loss of dependency recall in known fixtures; benchmark human
+- [x] Require no loss of dependency recall in known fixtures; benchmark human
   editing tasks separately from graph traversal latency. State explicitly if
   faster generation or verification has not yet been demonstrated.
 - [ ] Push the feature branch and open a PR with results, limitations, and the
   next proposed optimization. Do not merge automatically.
 
 ## Phase 2: Gated, evidence-driven maintenance improvements
+
+Phase 1 implementation and verification evidence are in the linked evaluations.
+The remaining unchecked measurement steps concern complete matched human timing,
+not missing adapter functionality. The qualitative agent skill evaluation passed;
+it does not substitute for the unmeasured human speedup target. Full-gate runtime
+is unchanged, so Phase 2 should prioritize metadata/fixture separation and
+selected feedback before additional graph features or broad parallelism.
 
 After maintainer confirmation, write the detailed implementation tasks against
 the then-current main in this order:

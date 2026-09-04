@@ -1,0 +1,206 @@
+{
+  "head": "5f4ecddc49e94d8201bd42debde0d490ad08360e",
+  "node": "v22.22.2",
+  "platform": "darwin",
+  "arch": "arm64",
+  "cache": "no persistent graph cache; OS cache uncontrolled; each sample is a new CLI process",
+  "observations": [
+    {
+      "scenario": "snapshot anchor reverse lookup",
+      "changed_paths": [],
+      "command": [
+        "node",
+        "scripts/vector-trace.mjs",
+        "query",
+        "heterodyne:comms#comms-privacy-tiers",
+        "--lane",
+        "snapshot",
+        "--repo",
+        "<temporary clone>"
+      ],
+      "wall_ms": [
+        835.9,
+        800.36,
+        802.18,
+        810.05,
+        845.18
+      ],
+      "related": 0,
+      "changed": 1,
+      "unresolved": 0,
+      "receipt": {
+        "lane": "snapshot",
+        "spec_ref": "c72f5ccdf855069550511d8e3e837dae55ed299c",
+        "vector_ref": "80da4ded273ac746b9c56bc53a8f1c067835ad64"
+      }
+    },
+    {
+      "scenario": "draft issuer-continuity reverse lookup",
+      "changed_paths": [],
+      "command": [
+        "node",
+        "scripts/vector-trace.mjs",
+        "query",
+        "heterodyne:comms#comms-issuer-continuity",
+        "--lane",
+        "draft",
+        "--repo",
+        "<temporary clone>"
+      ],
+      "wall_ms": [
+        1079.55,
+        1092.59,
+        1085.32,
+        1111.52,
+        1147.44
+      ],
+      "related": 96,
+      "changed": 1,
+      "unresolved": 64,
+      "receipt": {
+        "lane": "draft",
+        "spec_ref": "WORKTREE",
+        "vector_ref": null
+      }
+    },
+    {
+      "scenario": "Comms local draft change",
+      "changed_paths": [
+        "docs/spec/heterodyne-comms.md"
+      ],
+      "command": [
+        "node",
+        "scripts/vector-trace.mjs",
+        "impact",
+        "--lane",
+        "draft",
+        "--base",
+        "5f4ecddc49e94d8201bd42debde0d490ad08360e",
+        "--head",
+        "WORKTREE",
+        "--repo",
+        "<temporary clone>"
+      ],
+      "wall_ms": [
+        2248.53,
+        2197.94,
+        2155.37,
+        2171.77,
+        2152.27
+      ],
+      "related": 96,
+      "changed": 1,
+      "unresolved": 64,
+      "receipt": {
+        "lane": "draft",
+        "spec_ref": "WORKTREE",
+        "vector_ref": null
+      }
+    },
+    {
+      "scenario": "Workspace with Control and Assurance changes",
+      "changed_paths": [
+        "docs/spec/heterodyne-workspace.md",
+        "docs/spec/heterodyne-control.md",
+        "docs/spec/heterodyne-assurance.md"
+      ],
+      "command": [
+        "node",
+        "scripts/vector-trace.mjs",
+        "impact",
+        "--lane",
+        "draft",
+        "--base",
+        "5f4ecddc49e94d8201bd42debde0d490ad08360e",
+        "--head",
+        "WORKTREE",
+        "--repo",
+        "<temporary clone>"
+      ],
+      "wall_ms": [
+        2147.77,
+        2160.53,
+        2188.52,
+        2193.48,
+        2207.83
+      ],
+      "related": 122,
+      "changed": 3,
+      "unresolved": 64,
+      "receipt": {
+        "lane": "draft",
+        "spec_ref": "WORKTREE",
+        "vector_ref": null
+      }
+    },
+    {
+      "scenario": "shared registry and schema change",
+      "changed_paths": [
+        "docs/spec/registry/proof-domains.json",
+        "docs/spec/schemas/comms/oidc-continuity-manifest-v1.schema.json"
+      ],
+      "command": [
+        "node",
+        "scripts/vector-trace.mjs",
+        "impact",
+        "--lane",
+        "draft",
+        "--base",
+        "5f4ecddc49e94d8201bd42debde0d490ad08360e",
+        "--head",
+        "WORKTREE",
+        "--repo",
+        "<temporary clone>"
+      ],
+      "wall_ms": [
+        2227.64,
+        2218.78,
+        2191.29,
+        2167.28,
+        2172.5
+      ],
+      "related": 3,
+      "changed": 2,
+      "unresolved": 64,
+      "receipt": {
+        "lane": "draft",
+        "spec_ref": "WORKTREE",
+        "vector_ref": null
+      }
+    },
+    {
+      "scenario": "unanchored text with intentionally absent relationship",
+      "changed_paths": [
+        "docs/spec/heterodyne-core.md"
+      ],
+      "command": [
+        "node",
+        "scripts/vector-trace.mjs",
+        "impact",
+        "--lane",
+        "draft",
+        "--base",
+        "5f4ecddc49e94d8201bd42debde0d490ad08360e",
+        "--head",
+        "WORKTREE",
+        "--repo",
+        "<temporary clone>"
+      ],
+      "wall_ms": [
+        2336.46,
+        2306.71,
+        2300.93,
+        2308.43,
+        2350.82
+      ],
+      "related": 199,
+      "changed": 1,
+      "unresolved": 65,
+      "receipt": {
+        "lane": "draft",
+        "spec_ref": "WORKTREE",
+        "vector_ref": null
+      }
+    }
+  ]
+}

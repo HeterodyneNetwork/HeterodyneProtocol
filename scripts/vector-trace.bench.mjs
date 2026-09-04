@@ -31,7 +31,10 @@ try {
       if(path.endsWith('.json')) changed=text+'\n';
       else if(scenario.name.startsWith('unanchored')) changed='<!-- local benchmark edit -->\n'+text;
       else {
-        changed=text.replace(/(<a id="[^"]+"><\/a>\s*\n#{1,6} [^\n]*\n)/,'$1\nSynthetic local benchmark requirement edit.\n');
+        const anchor=scenario.name.startsWith('Comms local')
+          ? /(<a id="comms-issuer-continuity"><\/a>\s*\n#{1,6} [^\n]*\n)/
+          : /(<a id="[^"]+"><\/a>\s*\n#{1,6} [^\n]*\n)/;
+        changed=text.replace(anchor,'$1\nSynthetic local benchmark requirement edit.\n');
         if(changed===text) throw Error(`No anchored heading in ${path}`);
       }
       writeFileSync(join(clone,path),changed);
@@ -47,6 +50,8 @@ try {
       const packet=JSON.parse(result.stdout);
       if(!scenario.args) assert.deepEqual([...packet.receipt.changed_paths].sort(),[...scenario.paths].sort());
       if(scenario.name.startsWith('draft issuer')) assert.deepEqual(packet.related.filter(item=>item.type==='draft_case').map(item=>item.semantic_id).sort(),['case:comms/oidc-issuer-mismatch','case:comms/oidc-issuer-persona-continuity']);
+      if(scenario.name.startsWith('Comms local') || scenario.name.startsWith('Workspace with')) assert.equal(packet.unresolved.some(entry=>entry.kind==='document_level_impact'),false,'anchored edits should not force document-wide fallback');
+      if(scenario.name.startsWith('Comms local')) assert.ok(packet.related.some(item=>item.semantic_id==='case:comms/oidc-issuer-persona-continuity'));
       if(scenario.name.startsWith('unanchored')) assert.ok(packet.unresolved.some(entry=>entry.kind==='document_level_impact'),'unanchored text must remain explicit document-level impact');
       samples.push(Math.round(ms*100)/100);
       summary={related:packet.related?.length,changed:packet.changed?.length,unresolved:packet.unresolved?.length,receipt:packet.receipt};
