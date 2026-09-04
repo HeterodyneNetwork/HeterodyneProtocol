@@ -84,6 +84,18 @@ anchors and normative artifacts, not ADRs.
   Heterodyne-specific changes.
 - Preserve unrelated user changes and untracked files.
 
+## Spec and vector traceability
+
+For specification changes, case/vector reverse lookup, coverage, impact, or
+maintenance worklists, read the repository-local
+[using-sara skill](.agents/skills/using-sara/SKILL.md). Start with its current-draft
+change packet for ordinary edits and select the snapshot lane for historical
+coverage. The wrapper returns a freshness receipt and unresolved links; its
+derived declarations do not establish executed conformance or protocol authority.
+Use Semble for implementation discovery and to investigate missing exact links.
+Suggested checks do not replace the normal acceptance gate. This workflow does
+not authorize rolling-snapshot regeneration or generator restructuring.
+
 ## Dual-use defensive assurance
 
 Act as a defensive protocol security reviewer and maintainer. Deliverables are

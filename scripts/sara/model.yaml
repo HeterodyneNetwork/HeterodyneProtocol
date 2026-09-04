@@ -8,51 +8,64 @@ item_types:
       - {name: source_path, display_name: source_path, field_type: text, required: true}
       - {name: source_digest, display_name: source_digest, field_type: text, required: true}
       - {name: evidence_kind, display_name: evidence_kind, field_type: text, required: true}
-    allowed_targets: &links
-      - {relation: covers, targets: [spec_anchor, vector, draft_case, source_module, schema_artifact, registry_artifact]}
-      - {relation: covered_by, targets: [spec_anchor, vector, draft_case, source_module, schema_artifact, registry_artifact]}
-      - {relation: declares, targets: [spec_anchor, vector, draft_case, source_module, schema_artifact, registry_artifact]}
-      - {relation: declared_by, targets: [spec_anchor, vector, draft_case, source_module, schema_artifact, registry_artifact]}
-      - {relation: defined_by, targets: [spec_anchor, vector, draft_case, source_module, schema_artifact, registry_artifact]}
-      - {relation: defines, targets: [spec_anchor, vector, draft_case, source_module, schema_artifact, registry_artifact]}
-      - {relation: uses_schema, targets: [spec_anchor, vector, draft_case, source_module, schema_artifact, registry_artifact]}
-      - {relation: schema_used_by, targets: [spec_anchor, vector, draft_case, source_module, schema_artifact, registry_artifact]}
-      - {relation: uses_registry, targets: [spec_anchor, vector, draft_case, source_module, schema_artifact, registry_artifact]}
-      - {relation: registry_used_by, targets: [spec_anchor, vector, draft_case, source_module, schema_artifact, registry_artifact]}
-      - {relation: imports, targets: [spec_anchor, vector, draft_case, source_module, schema_artifact, registry_artifact]}
-      - {relation: imported_by, targets: [spec_anchor, vector, draft_case, source_module, schema_artifact, registry_artifact]}
-      - {relation: references, targets: [spec_anchor, vector, draft_case, source_module, schema_artifact, registry_artifact]}
-      - {relation: referenced_by, targets: [spec_anchor, vector, draft_case, source_module, schema_artifact, registry_artifact]}
+    allowed_targets:
+      - {relation: uses_schema, targets: [schema_artifact]}
+      - {relation: uses_registry, targets: [registry_artifact]}
+      - {relation: references, targets: [spec_anchor]}
+      - {relation: referenced_by, targets: [registry_artifact, schema_artifact, source_module, spec_anchor]}
+      - {relation: covered_by, targets: [vector]}
+      - {relation: declared_by, targets: [draft_case]}
   - id: vector
     display_name: vector
     prefix: HT1
     id_format: "{uuid4}"
     fields: *provenance
-    allowed_targets: *links
+    allowed_targets:
+      - {relation: covers, targets: [spec_anchor]}
+      - {relation: defined_by, targets: [source_module]}
+      - {relation: uses_schema, targets: [schema_artifact]}
+      - {relation: uses_registry, targets: [registry_artifact]}
   - id: draft_case
     display_name: draft case
     prefix: HT2
     id_format: "{uuid4}"
     fields: *provenance
-    allowed_targets: *links
+    allowed_targets:
+      - {relation: declares, targets: [spec_anchor]}
+      - {relation: defined_by, targets: [source_module]}
+      - {relation: uses_schema, targets: [schema_artifact]}
+      - {relation: uses_registry, targets: [registry_artifact]}
   - id: source_module
     display_name: source module
     prefix: HT3
     id_format: "{uuid4}"
     fields: *provenance
-    allowed_targets: *links
+    allowed_targets:
+      - {relation: imports, targets: [source_module]}
+      - {relation: references, targets: [spec_anchor]}
+      - {relation: uses_schema, targets: [schema_artifact]}
+      - {relation: uses_registry, targets: [registry_artifact]}
+      - {relation: defines, targets: [draft_case, vector]}
+      - {relation: imported_by, targets: [source_module]}
   - id: schema_artifact
     display_name: schema artifact
     prefix: HT4
     id_format: "{uuid4}"
     fields: *provenance
-    allowed_targets: *links
+    allowed_targets:
+      - {relation: uses_schema, targets: [schema_artifact]}
+      - {relation: references, targets: [spec_anchor]}
+      - {relation: schema_used_by, targets: [draft_case, registry_artifact, schema_artifact, source_module, spec_anchor, vector]}
   - id: registry_artifact
     display_name: registry artifact
     prefix: HT5
     id_format: "{uuid4}"
     fields: *provenance
-    allowed_targets: *links
+    allowed_targets:
+      - {relation: uses_schema, targets: [schema_artifact]}
+      - {relation: references, targets: [spec_anchor]}
+      - {relation: uses_registry, targets: [registry_artifact]}
+      - {relation: registry_used_by, targets: [draft_case, registry_artifact, source_module, spec_anchor, vector]}
 relations:
   - {id: covers, display_name: covers, inverse: covered_by, direction: upstream, primary: true}
   - {id: covered_by, display_name: covered_by, inverse: covers, direction: downstream, primary: false}

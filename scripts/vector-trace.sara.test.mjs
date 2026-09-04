@@ -70,3 +70,12 @@ test('real SARA validates and traverses the generated custom graph', {skip: !pro
     assert.match(JSON.stringify(result.value), /22222222-2222-5222-8222-222222222222/);
   });
 });
+
+test('real SARA rejects a relation with incompatible endpoint types', {skip: !process.env.SARA_BIN}, async () => {
+  const {withGraph,runSara}=await adapter();
+  const invalid={...graph,edges:[{...graph.edges[0],relation:'imports'}]};
+  await withGraph(invalid,{},async root=>{
+    const result=runSara(['check','--format','json'],root,process.env.SARA_BIN);
+    assert.notEqual(result.status,0);
+  });
+});
