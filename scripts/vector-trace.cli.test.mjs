@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {spawnSync} from 'node:child_process';
-import {readFileSync} from 'node:fs';
+import {spawnSync,execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 
 const repo = fileURLToPath(new URL('..',import.meta.url));
@@ -27,7 +26,8 @@ test('snapshot reverse lookup exactly matches the selected coverage manifest',()
   const result=run(['query',anchor,'--lane','snapshot']);
   assert.equal(result.status,0,result.stderr);
   const packet=JSON.parse(result.stdout);
-  const expected=JSON.parse(readFileSync(new URL('../docs/spec/vectors/coverage/manifest.json',import.meta.url),'utf8')).filter(entry=>entry.spec_refs.includes(anchor)).map(entry=>'vector:'+entry.vector_id).sort();
+  const manifest=execFileSync('git',['show',`${packet.receipt.vector_ref}:docs/spec/vectors/coverage/manifest.json`],{cwd:repo,encoding:'utf8'});
+  const expected=JSON.parse(manifest).filter(entry=>entry.spec_refs.includes(anchor)).map(entry=>'vector:'+entry.vector_id).sort();
   assert.deepEqual(packet.related.filter(item=>item.type==='vector').map(item=>item.semantic_id).sort(),expected);
   assert.equal(packet.receipt.lane,'snapshot');
   assert.equal(packet.receipt.fresh,true);

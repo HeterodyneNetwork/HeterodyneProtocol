@@ -37,6 +37,7 @@ export async function withGraph(projection, {output,keepGraph=false,repo=process
   if (output) {
     const parent = await realpath(dirname(resolve(output)));
     root = join(parent,resolve(output).split(sep).at(-1));
+    if (root.split(sep).some(part => part.toLowerCase() === '.git')) throw Error('SARA output must not enter Git metadata');
     const repository = await realpath(repo);
     if (root === repository || root.startsWith(repository+sep)) throw Error('SARA output must be outside the repository');
     await mkdir(root); // Deliberately refuses an existing directory.

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, mkdtempSync, mkdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -42,6 +42,9 @@ test('explicit output refuses existing directories and repository destinations',
   try {
     await assert.rejects(withGraph(graph,{output:parent},async()=>{}), /exist/);
     await assert.rejects(withGraph(graph,{repo:parent,output:join(parent,'nested')},async()=>{}), /repository/);
+    mkdirSync(join(parent,'.git'));
+    await assert.rejects(withGraph(graph,{output:join(parent,'.git','graph')},async()=>{}), /Git metadata/);
+    assert.equal(existsSync(join(parent,'.git','graph')),false);
   } finally { rmSync(parent,{recursive:true,force:true}); }
 });
 
