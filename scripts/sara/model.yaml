@@ -1,0 +1,70 @@
+item_types:
+  - id: spec_anchor
+    display_name: spec anchor
+    prefix: HT0
+    id_format: "{uuid4}"
+    fields: &provenance
+      - {name: semantic_id, display_name: semantic_id, field_type: text, required: true}
+      - {name: source_path, display_name: source_path, field_type: text, required: true}
+      - {name: source_digest, display_name: source_digest, field_type: text, required: true}
+      - {name: evidence_kind, display_name: evidence_kind, field_type: text, required: true}
+    allowed_targets: &links
+      - {relation: covers, targets: [spec_anchor, vector, draft_case, source_module, schema_artifact, registry_artifact]}
+      - {relation: covered_by, targets: [spec_anchor, vector, draft_case, source_module, schema_artifact, registry_artifact]}
+      - {relation: declares, targets: [spec_anchor, vector, draft_case, source_module, schema_artifact, registry_artifact]}
+      - {relation: declared_by, targets: [spec_anchor, vector, draft_case, source_module, schema_artifact, registry_artifact]}
+      - {relation: defined_by, targets: [spec_anchor, vector, draft_case, source_module, schema_artifact, registry_artifact]}
+      - {relation: defines, targets: [spec_anchor, vector, draft_case, source_module, schema_artifact, registry_artifact]}
+      - {relation: uses_schema, targets: [spec_anchor, vector, draft_case, source_module, schema_artifact, registry_artifact]}
+      - {relation: schema_used_by, targets: [spec_anchor, vector, draft_case, source_module, schema_artifact, registry_artifact]}
+      - {relation: uses_registry, targets: [spec_anchor, vector, draft_case, source_module, schema_artifact, registry_artifact]}
+      - {relation: registry_used_by, targets: [spec_anchor, vector, draft_case, source_module, schema_artifact, registry_artifact]}
+      - {relation: imports, targets: [spec_anchor, vector, draft_case, source_module, schema_artifact, registry_artifact]}
+      - {relation: imported_by, targets: [spec_anchor, vector, draft_case, source_module, schema_artifact, registry_artifact]}
+      - {relation: references, targets: [spec_anchor, vector, draft_case, source_module, schema_artifact, registry_artifact]}
+      - {relation: referenced_by, targets: [spec_anchor, vector, draft_case, source_module, schema_artifact, registry_artifact]}
+  - id: vector
+    display_name: vector
+    prefix: HT1
+    id_format: "{uuid4}"
+    fields: *provenance
+    allowed_targets: *links
+  - id: draft_case
+    display_name: draft case
+    prefix: HT2
+    id_format: "{uuid4}"
+    fields: *provenance
+    allowed_targets: *links
+  - id: source_module
+    display_name: source module
+    prefix: HT3
+    id_format: "{uuid4}"
+    fields: *provenance
+    allowed_targets: *links
+  - id: schema_artifact
+    display_name: schema artifact
+    prefix: HT4
+    id_format: "{uuid4}"
+    fields: *provenance
+    allowed_targets: *links
+  - id: registry_artifact
+    display_name: registry artifact
+    prefix: HT5
+    id_format: "{uuid4}"
+    fields: *provenance
+    allowed_targets: *links
+relations:
+  - {id: covers, display_name: covers, inverse: covered_by, direction: upstream, primary: true}
+  - {id: covered_by, display_name: covered_by, inverse: covers, direction: downstream, primary: false}
+  - {id: declares, display_name: declares, inverse: declared_by, direction: upstream, primary: true}
+  - {id: declared_by, display_name: declared_by, inverse: declares, direction: downstream, primary: false}
+  - {id: defined_by, display_name: defined_by, inverse: defines, direction: upstream, primary: true}
+  - {id: defines, display_name: defines, inverse: defined_by, direction: downstream, primary: false}
+  - {id: uses_schema, display_name: uses_schema, inverse: schema_used_by, direction: upstream, primary: true}
+  - {id: schema_used_by, display_name: schema_used_by, inverse: uses_schema, direction: downstream, primary: false}
+  - {id: uses_registry, display_name: uses_registry, inverse: registry_used_by, direction: upstream, primary: true}
+  - {id: registry_used_by, display_name: registry_used_by, inverse: uses_registry, direction: downstream, primary: false}
+  - {id: imports, display_name: imports, inverse: imported_by, direction: upstream, primary: true}
+  - {id: imported_by, display_name: imported_by, inverse: imports, direction: downstream, primary: false}
+  - {id: references, display_name: references, inverse: referenced_by, direction: upstream, primary: true}
+  - {id: referenced_by, display_name: referenced_by, inverse: references, direction: downstream, primary: false}
