@@ -1,5 +1,5 @@
 import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync } from "node:fs";
-import { resolve, sep } from "node:path";
+import { join, resolve, sep } from "node:path";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 
@@ -13,13 +13,31 @@ function git(repo, args, options = {}) {
 }
 
 function safePath(repo, path) {
-  if (typeof path !== "string" || path === "" || path.startsWith("/") || path.split("/").includes("..")) {
+  validateInputPath(path);
+  if (path.startsWith("/")) {
     throw new Error(`unsafe repository path: ${path}`);
   }
   const root = realpathSync(repo);
   const candidate = resolve(root, path);
   if (!candidate.startsWith(`${root}${sep}`)) throw new Error(`path escapes repository: ${path}`);
+  let parent = root;
+  for (const component of path.split("/")) {
+    parent = join(parent, component);
+    try {
+      if (lstatSync(parent).isSymbolicLink()) throw new Error(`symlink input is not allowed: ${path}`);
+    } catch (error) {
+      if (error?.message === `symlink input is not allowed: ${path}`) throw error;
+      if (error?.code !== "ENOENT") throw error;
+      break;
+    }
+  }
   return candidate;
+}
+
+function validateInputPath(path) {
+  if (typeof path !== "string" || path === "" || path.includes("\0") || path.includes("\n") || path.includes("\r") || path.startsWith("/") || path.split("/").some((component) => component === "" || component === "." || component === "..")) {
+    throw new Error(`unsafe repository path: ${path}`);
+  }
 }
 
 function walk(repo, path, output) {
@@ -47,6 +65,7 @@ function readHistorical(repo, ref, paths) {
     throw new Error(`missing Git object ${ref}; fetch full history and retry`);
   }
   if (paths.length === 0) return { resolved, contents: new Map() };
+  paths.forEach(validateInputPath);
   const requests = paths.map((path) => `${resolved}:${path}`).join("\n") + "\n";
   const raw = git(repo, ["cat-file", "--batch"], { input: requests });
   const contents = new Map();
@@ -70,6 +89,8 @@ function readHistorical(repo, ref, paths) {
 /** Read a bounded source inventory without executing bytes from the selected ref. */
 export function readInputs(repo, ref, { roots = [], paths = [], filter = () => true } = {}) {
   const root = realpathSync(repo);
+  roots.forEach(validateInputPath);
+  paths.forEach(validateInputPath);
   let selected = [...paths];
   let resolvedRef = ref;
   let contents;
@@ -104,6 +125,6 @@ export function readInputs(repo, ref, { roots = [], paths = [], filter = () => t
     resolvedRef = historical.resolved;
     contents = historical.contents;
   }
-  const inputs = selected.map((path) => ({ path, ref, sha256: digest(contents.get(path)) }));
+  const inputs = selected.map((path) => ({ path, ref: resolvedRef, sha256: digest(contents.get(path)) }));
   return { contents, inputs, resolved_ref: resolvedRef };
 }
