@@ -12,7 +12,7 @@ function git(repo, args, options = {}) {
   return result.stdout;
 }
 
-function safePath(repo, path) {
+function safePath(repo, path, { allowFinalSymlink = false } = {}) {
   validateInputPath(path);
   if (path.startsWith("/")) {
     throw new Error(`unsafe repository path: ${path}`);
@@ -21,10 +21,14 @@ function safePath(repo, path) {
   const candidate = resolve(root, path);
   if (!candidate.startsWith(`${root}${sep}`)) throw new Error(`path escapes repository: ${path}`);
   let parent = root;
-  for (const component of path.split("/")) {
+  const components = path.split("/");
+  for (const [index, component] of components.entries()) {
     parent = join(parent, component);
     try {
-      if (lstatSync(parent).isSymbolicLink()) throw new Error(`symlink input is not allowed: ${path}`);
+      if (lstatSync(parent).isSymbolicLink()) {
+        if (allowFinalSymlink && index === components.length - 1) break;
+        throw new Error(`symlink input is not allowed: ${path}`);
+      }
     } catch (error) {
       if (error?.message === `symlink input is not allowed: ${path}`) throw error;
       if (error?.code !== "ENOENT") throw error;
@@ -40,17 +44,20 @@ function validateInputPath(path) {
   }
 }
 
-function walk(repo, path, output) {
-  const absolute = safePath(repo, path);
+function walk(repo, path, output, filter = () => true) {
+  const absolute = safePath(repo, path, { allowFinalSymlink: !filter(path) });
   if (!existsSync(absolute)) return;
   const stat = lstatSync(absolute);
-  if (stat.isSymbolicLink()) throw new Error(`symlink input is not allowed: ${path}`);
+  if (stat.isSymbolicLink()) {
+    if (filter(path)) throw new Error(`symlink input is not allowed: ${path}`);
+    return;
+  }
   if (stat.isFile()) {
-    output.push(path);
+    if (filter(path)) output.push(path);
     return;
   }
   if (!stat.isDirectory()) return;
-  for (const name of readdirSync(absolute).sort()) walk(repo, `${path}/${name}`, output);
+  for (const name of readdirSync(absolute).sort()) walk(repo, `${path}/${name}`, output, filter);
 }
 
 function digest(content) {
@@ -75,7 +82,7 @@ function readHistorical(repo, ref, paths) {
     if (newline < 0) throw new Error(`could not read Git blob ${resolved}:${path}`);
     const header = raw.subarray(offset, newline).toString();
     offset = newline + 1;
-    if (header.endsWith(" missing")) throw new Error(`missing Git object ${resolved}:${path}; fetch full history and retry`);
+    if (header.endsWith(" missing")) throw new Error(`missing repository input ${resolved}:${path}`);
     const match = header.match(/^[0-9a-f]+ blob ([0-9]+)$/);
     if (!match) throw new Error(`unexpected Git object for ${resolved}:${path}`);
     const size = Number(match[1]);
@@ -87,16 +94,20 @@ function readHistorical(repo, ref, paths) {
 }
 
 /** Read a bounded source inventory without executing bytes from the selected ref. */
-export function readInputs(repo, ref, { roots = [], paths = [], filter = () => true } = {}) {
+export function readInputs(repo, ref, { roots = [], paths = [], optionalPaths = [], filter = () => true } = {}) {
   const root = realpathSync(repo);
   roots.forEach(validateInputPath);
   paths.forEach(validateInputPath);
-  let selected = [...paths];
+  optionalPaths.forEach(validateInputPath);
+  const optional = new Set(optionalPaths);
+  let selected = [...paths, ...optionalPaths];
   let resolvedRef = ref;
   let contents;
   if (ref === "WORKTREE") {
-    for (const inputRoot of roots) walk(root, inputRoot, selected);
-    selected = [...new Set(selected)].filter(filter).sort();
+    for (const inputRoot of roots) walk(root, inputRoot, selected, filter);
+    selected = [...new Set(selected)].filter(filter)
+      .filter((path) => optional.has(path) ? existsSync(safePath(root, path)) : true)
+      .sort();
     contents = new Map();
     let total = 0;
     for (const path of selected) {
@@ -114,13 +125,18 @@ export function readInputs(repo, ref, { roots = [], paths = [], filter = () => t
     if (roots.length) {
       let listing;
       try {
-        listing = git(root, ["ls-tree", "-r", "--name-only", "-z", `${ref}^{commit}`, "--", ...roots]);
+        listing = git(root, ["ls-tree", "-r", "--name-only", "-z", `${ref}^{commit}`, "--", ...roots, ...optionalPaths]);
       } catch {
         throw new Error(`missing Git object ${ref}; fetch full history and retry`);
       }
-      selected.push(...listing.toString().split("\0").filter(Boolean));
+      const available = new Set(listing.toString().split("\0").filter(Boolean));
+      selected.push(...available);
+      selected = [...new Set(selected)].filter(filter)
+        .filter((path) => optional.has(path) ? available.has(path) : true)
+        .sort();
+    } else {
+      selected = [...new Set(selected)].filter(filter).sort();
     }
-    selected = [...new Set(selected)].filter(filter).sort();
     const historical = readHistorical(root, ref, selected);
     resolvedRef = historical.resolved;
     contents = historical.contents;

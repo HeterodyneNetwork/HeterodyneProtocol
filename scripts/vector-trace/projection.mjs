@@ -35,7 +35,12 @@ const SUPPORT_PATHS = new Set([
 ]);
 const OPTIONAL_SUPPORT_PATHS = new Set(["coverage/assurance.md"]);
 const require = createRequire(import.meta.url);
-const { default: Ajv } = require("../../docs/spec/vectors/generator/node_modules/ajv");
+let Ajv;
+
+function getAjv() {
+  if (Ajv === undefined) ({ default: Ajv } = require("../../docs/spec/vectors/generator/node_modules/ajv"));
+  return Ajv;
+}
 
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
@@ -209,16 +214,24 @@ function sourceFilter(path) {
   return false;
 }
 
-function loadSources(repo, ref) {
+function loadSources(repo, ref, { vectorSchemaVersion } = {}) {
+  const historical = ref !== "WORKTREE";
+  const requiredSpecs = historical && vectorSchemaVersion !== "3.0.0"
+    ? [...SPECS.keys()].filter((path) => path !== "docs/spec/heterodyne-assurance.md")
+    : [...SPECS.keys()];
+  const requiredGenerator = [
+    "docs/spec/vectors/generator/package.json",
+    "docs/spec/vectors/generator/package-lock.json",
+    "docs/spec/vectors/generator/tsconfig.json",
+  ];
+  if (!historical) requiredGenerator.push(
+    "docs/spec/vectors/generator/tsconfig.current.json",
+    "docs/spec/vectors/generator/vitest.current.config.ts",
+  );
   return readInputs(repo, ref, {
-    paths: [...SPECS.keys(),
-      "docs/spec/vectors/generator/package.json",
-      "docs/spec/vectors/generator/package-lock.json",
-      "docs/spec/vectors/generator/tsconfig.json",
-      "docs/spec/vectors/generator/tsconfig.current.json",
-      "docs/spec/vectors/generator/vitest.current.config.ts",
-    ],
-    roots: ["docs/spec/registry", "docs/spec/schemas", "docs/spec/vectors/generator/src"],
+    paths: [...requiredSpecs, ...requiredGenerator],
+    optionalPaths: historical && vectorSchemaVersion !== "3.0.0" ? ["docs/spec/heterodyne-assurance.md"] : [],
+    roots: ["docs/spec/registry", "docs/spec/schemas", "docs/spec/vectors/generator"],
     filter: sourceFilter,
   });
 }
@@ -291,7 +304,7 @@ function createGraph(sourceContents, vectorData) {
     if (!Array.isArray(coverage)) throw new Error(`malformed coverage manifest: ${COVERAGE}`);
     const schema = parseJson(vectorData.contents.get(VECTOR_SCHEMA), `${vectorData.resolved_ref}:${VECTOR_SCHEMA}`);
     if (schema?.properties?.vector_schema_version?.const !== vectorData.snapshot.vector_schema_version) throw new Error("snapshot schema version disagreement: packaged vector schema");
-    const validateVector = new Ajv({ allErrors: true, strict: false }).compile(schema);
+    const validateVector = new (getAjv())({ allErrors: true, strict: false }).compile(schema);
     const vectors = new Map();
     for (const path of vectorData.snapshot.artifacts.map(({ path }) => path).filter(isVectorArtifact)) {
       const content = vectorData.contents.get(path);
@@ -351,14 +364,14 @@ export async function buildProjection({ repo, lane, vectorRef, ref } = {}) {
     vectors = loadVectors(root, vectorRef);
     specRef = ref ?? "WORKTREE";
   }
-  const sources = loadSources(root, specRef);
+  const sources = loadSources(root, specRef, { vectorSchemaVersion: vectors?.snapshot.vector_schema_version });
   const graph = createGraph(sources.contents, vectors);
-  const inputs = [...sources.inputs, ...(vectors?.inputs ?? [])].sort((a, b) => a.ref.localeCompare(b.ref) || a.path.localeCompare(b.path));
+  const inputs = [...sources.inputs, ...(vectors?.inputs ?? [])].sort(compareInputs);
   const receipt = {
     receipt_schema: "1", parser_version: "2", graph_version: "2", lane,
     repository_head: repositoryHead, spec_ref: specRef === "WORKTREE" ? "WORKTREE" : sources.resolved_ref,
     vector_ref: vectors?.resolved_ref ?? null, ...(lane === "reconciliation" ? { maintenance_only: true } : {}),
-    inputs, input_inventory_sha256: graphDigest(inputs),
+    inputs, input_inventory_sha256: inputInventoryDigest(inputs),
     unresolved_references: graph.unresolved, graph_sha256: graphDigest({ items: graph.items, edges: graph.edges }),
   };
   const projection = { repository_root: root, items: graph.items, edges: graph.edges, receipt };
@@ -379,18 +392,43 @@ export function verifyReceipt(projection) {
   if (projection.receipt.graph_sha256 !== graphDigest({ items: projection.items, edges: projection.edges })) {
     issues.push("graph digest mismatch");
   }
+  const suppliedInputs = projection.receipt?.inputs;
+  let suppliedInventoryValid = Array.isArray(suppliedInputs);
+  if (!suppliedInventoryValid) {
+    issues.push("malformed receipt input inventory");
+  } else {
+    const seen = new Set();
+    for (const input of suppliedInputs) {
+      if (input === null || typeof input !== "object" || Array.isArray(input)
+        || typeof input.ref !== "string" || (!FULL_COMMIT.test(input.ref) && input.ref !== "WORKTREE")
+        || typeof input.path !== "string" || typeof input.sha256 !== "string" || !SHA256.test(input.sha256)) {
+        suppliedInventoryValid = false;
+        issues.push("malformed receipt input");
+        continue;
+      }
+      const key = `${input.ref}\0${input.path}`;
+      if (seen.has(key)) issues.push(`duplicate receipt input: ${input.path}`);
+      seen.add(key);
+    }
+    if (suppliedInventoryValid && inputInventoryDigest(suppliedInputs) !== projection.receipt.input_inventory_sha256) {
+      issues.push("receipt input inventory mismatch");
+    }
+  }
   try {
-    const currentSources = loadSources(projection.repository_root, projection.receipt.spec_ref);
     const currentVectors = projection.receipt.vector_ref === null ? undefined : loadVectors(projection.repository_root, projection.receipt.vector_ref);
+    const currentSources = loadSources(projection.repository_root, projection.receipt.spec_ref, {
+      vectorSchemaVersion: currentVectors?.snapshot.vector_schema_version,
+    });
     const currentInputs = [...currentSources.inputs, ...(currentVectors?.inputs ?? [])]
-      .sort((a, b) => a.ref.localeCompare(b.ref) || a.path.localeCompare(b.path));
-    const inventory = graphDigest(currentInputs);
+      .sort(compareInputs);
+    const inventory = inputInventoryDigest(currentInputs);
     if (inventory !== projection.receipt.input_inventory_sha256) issues.push("stale input inventory");
+    if (suppliedInventoryValid && inputInventoryDigest(suppliedInputs) !== inventory) issues.push("receipt input inventory mismatch");
   } catch (error) {
     issues.push(`unavailable input inventory: ${error.message}`);
   }
   const groups = new Map();
-  for (const input of projection.receipt.inputs) {
+  for (const input of suppliedInventoryValid ? suppliedInputs : []) {
     if (!groups.has(input.ref)) groups.set(input.ref, []);
     groups.get(input.ref).push(input);
   }
@@ -401,4 +439,12 @@ export function verifyReceipt(projection) {
     for (const input of inputs) if (sha256(read.contents.get(input.path)) !== input.sha256) issues.push(`stale input: ${input.path}`);
   }
   return { fresh: issues.length === 0, issues: issues.sort() };
+}
+
+function compareInputs(a, b) {
+  return a.ref.localeCompare(b.ref) || a.path.localeCompare(b.path);
+}
+
+function inputInventoryDigest(inputs) {
+  return graphDigest([...inputs].sort(compareInputs));
 }

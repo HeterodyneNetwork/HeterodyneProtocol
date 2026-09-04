@@ -25,6 +25,7 @@ afterEach(() => {
 
 function snapshotFixture({
   vectorSchema = "2.0.0",
+  historicalLayout = false,
   manifestOwner = "core",
   vectorOwner = "core",
   extraVector = false,
@@ -38,6 +39,7 @@ function snapshotFixture({
   execFileSync("git", ["config", "user.email", "test@example.invalid"], { cwd: fixture });
   execFileSync("git", ["config", "user.name", "Test"], { cwd: fixture });
   for (const name of ["core", "assurance", "comms", "control", "social", "workspace"]) {
+    if (historicalLayout && name === "assurance") continue;
     mkdirSync(join(fixture, "docs/spec"), { recursive: true });
     const link = linkedArtifact && name === "core" ? "\nSee [the schema](schemas/example.json)." : "";
     writeFileSync(join(fixture, `docs/spec/heterodyne-${name}.md`), `# ${name}\n\n<a id=\"${name}-anchor\"></a>\nRequirement.${link}\n`);
@@ -47,8 +49,12 @@ function snapshotFixture({
     writeFileSync(join(fixture, "docs/spec/schemas/example.json"), "{}\n");
   }
   mkdirSync(join(fixture, "docs/spec/vectors/generator/src"), { recursive: true });
-  for (const path of ["package.json", "package-lock.json", "tsconfig.json", "tsconfig.current.json"]) writeFileSync(join(fixture, "docs/spec/vectors/generator", path), "{}\n");
-  writeFileSync(join(fixture, "docs/spec/vectors/generator/vitest.current.config.ts"), "export default {};\n");
+  for (const path of ["package.json", "package-lock.json", "tsconfig.json"])
+    writeFileSync(join(fixture, "docs/spec/vectors/generator", path), "{}\n");
+  if (!historicalLayout) {
+    writeFileSync(join(fixture, "docs/spec/vectors/generator/tsconfig.current.json"), "{}\n");
+    writeFileSync(join(fixture, "docs/spec/vectors/generator/vitest.current.config.ts"), "export default {};\n");
+  }
   writeFileSync(join(fixture, "docs/spec/vectors/generator/src/core.ts"), "export const value = 1;\n");
   execFileSync("git", ["add", "."], { cwd: fixture });
   execFileSync("git", ["commit", "-qm", "source"], { cwd: fixture });
@@ -169,6 +175,19 @@ test("snapshot projection supports historical schema 2 and matches actual vector
   assert.equal(vector.source_path, "docs/spec/vectors/misc/unusual-file-name.json");
 });
 
+test("snapshot projection accepts the historical schema 2 source layout", async () => {
+  const fixture = snapshotFixture({ historicalLayout: true });
+  const projection = await buildProjection({ repo: fixture, lane: "snapshot" });
+  assert.equal(projection.receipt.inputs.some(({ path }) => path === "docs/spec/heterodyne-assurance.md"), false);
+  assert.equal(projection.receipt.inputs.some(({ path }) => path.endsWith("/tsconfig.current.json")), false);
+  assert.equal(projection.receipt.inputs.some(({ path }) => path.endsWith("/vitest.current.config.ts")), false);
+});
+
+test("snapshot projection keeps schema 3 source requirements strict", async () => {
+  const fixture = snapshotFixture({ historicalLayout: true, vectorSchema: "3.0.0" });
+  await assert.rejects(buildProjection({ repo: fixture, lane: "snapshot" }), /missing repository input .*heterodyne-assurance\.md/);
+});
+
 test("snapshot projection rejects an incorrect declared owner", async () => {
   const fixture = snapshotFixture({ vectorOwner: "social" });
   await assert.rejects(buildProjection({ repo: fixture, lane: "snapshot" }), /incorrect declared owner/);
@@ -210,6 +229,20 @@ test("verifyReceipt detects graph mutations and finalizeProjection refreshes the
   assert.deepEqual(verifyReceipt(projection), { fresh: true, issues: [] });
 });
 
+test("verifyReceipt rejects a receipt with a deleted input record", async () => {
+  const projection = await buildProjection({ repo, lane: "draft" });
+  projection.receipt.inputs.shift();
+  assert.equal(verifyReceipt(projection).fresh, false);
+  assert.equal(verifyReceipt(projection).issues.includes("receipt input inventory mismatch"), true);
+});
+
+test("verifyReceipt rejects a receipt with a duplicated input record", async () => {
+  const projection = await buildProjection({ repo, lane: "draft" });
+  projection.receipt.inputs.push(projection.receipt.inputs[0]);
+  assert.equal(verifyReceipt(projection).fresh, false);
+  assert.equal(verifyReceipt(projection).issues.includes("receipt input inventory mismatch"), true);
+});
+
 test("readInputs reads immutable commits and refuses symlink worktree inputs", () => {
   const fixture = mkdtempSync(join(tmpdir(), "vector-trace-"));
   execFileSync("git", ["init", "-q"], { cwd: fixture });
@@ -226,4 +259,6 @@ test("readInputs reads immutable commits and refuses symlink worktree inputs", (
   execFileSync("ln", ["-s", "../../../outside", "docs/spec/registry/link.json"], { cwd: fixture });
   assert.throws(() => readInputs(fixture, "WORKTREE", { roots: ["docs/spec/registry"] }), /symlink input is not allowed/);
   assert.throws(() => readInputs(fixture, "HEAD", { paths: ["docs/spec/registry/a.json\nunsafe"] }), /unsafe repository path/);
+  assert.throws(() => readInputs(fixture, "HEAD", { paths: ["docs/spec/registry/missing.json"] }), /missing repository input/);
+  assert.throws(() => readInputs(fixture, "missing-ref", { paths: ["docs/spec/registry/a.json"] }), /missing Git object .*fetch full history/);
 });
