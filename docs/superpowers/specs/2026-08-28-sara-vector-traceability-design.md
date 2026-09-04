@@ -1,8 +1,48 @@
 # SARA Vector Traceability and Maintenance Design
 
-**Status:** Approved in chat; awaiting written-design review
+**Status:** Original design approved; implementation revised for 0.6 main on 2026-09-04
 
 **Date:** 2026-08-28
+
+## 0. Current implementation direction (2026-09-04)
+
+The [revised implementation plan](../plans/2026-09-04-sara-spec-workflow.md)
+supersedes the August 28 plan and the obsolete implementation prescriptions
+below. It is based on main `adda8b522f9cb558b31cb27ac0f7e4f1150d5fac`.
+The original sections remain as historical design rationale; where they
+conflict with this revision, follow this section and the revised plan.
+
+Main now contains a 267-vector schema-3 snapshot. Read mutable snapshot facts
+from its manifest and history instead of encoding them in the adapter.
+Current authoring uses explicit `current-vectors/case-contracts.ts` allocations
+and boundary execution certificates. Preserve that separation. The old proposal
+to move traceability authority into lazy fixture builders and delete the global
+legacy mapper is superseded. Resolve profile and boundary overrides, and report
+computations a static projection cannot resolve. Declared metadata is not proof
+of executed conformance.
+
+The first deliverable is a current-draft change packet with requirement,
+case declaration, boundary, source, schema, registry, and candidate-test links,
+plus explicit gaps and shared-file collisions. Historical reverse lookup alone
+does not meet the efficiency objective. Draft references are version-qualified;
+snapshot references are owner-qualified. Normalize only with validated owner,
+version, and anchor evidence, preserving raw references.
+
+The skill remains a recipe for fresh queries and normative citations. Return
+the receipt with every query to avoid duplicate builds. Core indexing and
+change packets work without SARA; SARA-specific operations require a tested
+compatible CLI. Generated graph items remain disposable.
+
+Measure cold indexing, warm lookup, investigation time, and time to relevant
+test feedback. Proposed targets are 10 seconds cold, 2 seconds warm p95, and
+50% lower median investigation time; no such gains have yet been measured.
+Profile before introducing caches or parallelism. Current test workers are
+explicitly serialized, and boundary execution carries private state. Preserve
+these constraints and the independent full gate.
+
+The merged snapshot establishes a new baseline for planning. Further generator
+restructuring still follows the previously agreed maintainer-confirmation gate;
+this documentation update neither performs reconciliation nor changes vectors.
 
 **Scope:** Add a derived, provenance-bearing SARA query layer and a small
 repository-local agent skill without changing current vector definitions or
