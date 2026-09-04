@@ -217,7 +217,7 @@ that omitted tests are safe to skip.
 - [x] Require no loss of dependency recall in known fixtures; benchmark human
   editing tasks separately from graph traversal latency. State explicitly if
   faster generation or verification has not yet been demonstrated.
-- [ ] Push the feature branch and open a PR with results, limitations, and the
+- [x] Push the feature branch and open a PR with results, limitations, and the
   next proposed optimization. Do not merge automatically.
 
 ## Phase 2: Gated, evidence-driven maintenance improvements
