@@ -1,14 +1,12 @@
 /**
- * Summarise an event archive without treating wrapper polls as work.
- *
- * The importer intentionally consumes event metadata only.  It never needs
- * message text, model output, or private prompt fields; callers can pass
- * parsed JSONL records or records with a `line` field for provenance.
+ * Summarise public event metadata without treating source text or wrapper
+ * output as observed nested work.
  */
 
 const TOOL_CALL_TYPES = new Set(['custom_tool_call', 'function_call']);
 const TASK_START_TYPES = new Set(['task_started', 'task_start']);
 const TASK_END_TYPES = new Set(['task_complete', 'task_completed', 'task_finished', 'task_end']);
+const STATIC_SITE_SYNTAX = 'direct tools.<name>(...) call sites outside comments and literals';
 
 function payloadOf(record) {
   return record && record.payload && typeof record.payload === 'object'
@@ -44,50 +42,137 @@ function idOf(payload, record, fallback) {
   return String(payload.call_id ?? payload.id ?? record.id ?? fallback);
 }
 
-function sessionFromOutput(output) {
-  if (typeof output !== 'string') return null;
-  const match = output.match(/(?:session|cell)(?:\s+with)?\s+(?:ID\s+)?[`'\"]?([A-Za-z0-9_-]+)[`'\"]?/i);
-  return match?.[1] ?? null;
+function sortedCounts(counts) {
+  return Object.fromEntries([...counts].sort(([left], [right]) => left.localeCompare(right)));
 }
 
-function textContains(value, pattern) {
-  if (typeof value === 'string') return pattern.test(value);
-  if (Array.isArray(value)) return value.some(item => textContains(item, pattern));
-  if (value && typeof value === 'object') return Object.values(value).some(item => textContains(item, pattern));
-  return false;
+function increment(counts, key) {
+  counts.set(key, (counts.get(key) ?? 0) + 1);
 }
 
-function processDetails(payload, type) {
-  const output = typeof payload.output === 'string' ? payload.output : '';
-  const outputSession = sessionFromOutput(output);
-  if (!payload.process && payload.process_id == null && payload.session_id == null && payload.cell_id == null &&
-      outputSession == null && payload.started_at_ms == null && payload.exited_at_ms == null && !String(type).startsWith('process_')) return null;
-  const process = payload.process && typeof payload.process === 'object' ? payload.process : payload;
-  const id = process.id ?? process.process_id ?? payload.process_id ?? payload.session_id ?? payload.cell_id ?? outputSession;
+/**
+ * Parse only direct dotted call sites. Quoted strings, template literals, and
+ * comments are skipped, so the result is deliberately a static lower bound.
+ */
+function directToolCallSites(source) {
+  if (typeof source !== 'string') return [];
+  const sites = [];
+  let index = 0;
+
+  const skipSpace = () => {
+    while (index < source.length && /\s/.test(source[index])) index += 1;
+  };
+  const identifier = () => {
+    if (!/[A-Za-z_$]/.test(source[index] ?? '')) return null;
+    const start = index;
+    index += 1;
+    while (index < source.length && /[A-Za-z0-9_$]/.test(source[index])) index += 1;
+    return source.slice(start, index);
+  };
+  const skipQuoted = quote => {
+    index += 1;
+    while (index < source.length) {
+      if (source[index] === '\\') {
+        index += 2;
+      } else if (source[index] === quote) {
+        index += 1;
+        return;
+      } else {
+        index += 1;
+      }
+    }
+  };
+
+  while (index < source.length) {
+    if (source[index] === '/' && source[index + 1] === '/') {
+      index += 2;
+      while (index < source.length && source[index] !== '\n') index += 1;
+      continue;
+    }
+    if (source[index] === '/' && source[index + 1] === '*') {
+      index += 2;
+      while (index < source.length && !(source[index] === '*' && source[index + 1] === '/')) index += 1;
+      index = Math.min(source.length, index + 2);
+      continue;
+    }
+    if (source[index] === '\'' || source[index] === '"' || source[index] === '`') {
+      skipQuoted(source[index]);
+      continue;
+    }
+
+    const start = index;
+    const root = identifier();
+    if (root === null) {
+      index += 1;
+      continue;
+    }
+    if (root !== 'tools') continue;
+    skipSpace();
+    if (source[index] !== '.') {
+      index = Math.max(index, start + root.length);
+      continue;
+    }
+    index += 1;
+    skipSpace();
+    const name = identifier();
+    if (name === null) continue;
+    skipSpace();
+    if (source[index] === '(') sites.push(name);
+  }
+  return sites;
+}
+
+function callArguments(payload) {
+  const raw = payload.arguments;
+  return typeof raw === 'string' ? safeJson(raw) : (raw && typeof raw === 'object' ? raw : {});
+}
+
+function hasWrapperProcessReference(payload) {
+  if (payload.session_id != null || payload.cell_id != null) return true;
+  const args = callArguments(payload);
+  return args.session_id != null || args.cell_id != null;
+}
+
+function explicitProcessDetails(payload, type) {
+  const embedded = payload.process && typeof payload.process === 'object' ? payload.process : null;
+  const isProcessEvent = String(type).startsWith('process_');
+  if (!embedded && !isProcessEvent) return null;
+  const process = embedded ?? payload;
+  const id = process.id ?? process.process_id ?? payload.process_id;
   if (id == null) return null;
-  const started = process.started_at_ms ?? process.start_ms ?? payload.started_at_ms;
-  const exited = process.exited_at_ms ?? process.exit_ms ?? payload.exited_at_ms;
-  const outputExit = payload.exit_code != null || /\b(?:completed|exited|finished|exit\s+code)\b/i.test(output);
-  return { id: String(id), started, exited, outputExit, callId: payload.call_id ?? null };
+  return {
+    id: String(id),
+    started: process.started_at_ms ?? process.start_ms ?? payload.started_at_ms ?? null,
+    exited: process.exited_at_ms ?? process.exit_ms ?? payload.exited_at_ms ?? null,
+    command: process.command ?? payload.command ?? null,
+  };
+}
+
+function commandIsGate(command) {
+  if (Array.isArray(command)) return command.some(part => part === 'scripts/conformance-ci.sh');
+  return command === 'scripts/conformance-ci.sh';
 }
 
 /**
  * @param {Array<object>} records parsed JSONL archive records
  * @returns {{spanMs:number, taskIntervalsMs:number[], outerCalls:number,
- *   nestedCalls:number, processes:number, confirmedGateLaunches:number,
+ *   nestedCalls:number|null, processes:number|null, confirmedGateLaunches:number,
  *   provenance:object}}
  */
 export function summarizeArchive(records) {
   if (!Array.isArray(records)) throw new TypeError('records must be an array');
 
-  const seenCalls = new Map();
-  const seenNested = new Map();
-  const processes = new Map();
+  const observedOuterCalls = new Map();
+  const observedOuterByKind = new Map();
+  const observedNestedCalls = new Map();
+  const observedNestedByKind = new Map();
+  const staticSitesByKind = new Map();
+  const staticSites = [];
+  const instrumentedProcesses = new Map();
   const tasks = new Map();
   const timestamps = [];
-  let confirmedGateLaunches = 0;
-  const gateCandidates = new Set();
-  const gateCalls = new Set();
+  const confirmedGateProcessIds = new Set();
+  let unsupportedProcessEvidence = false;
 
   records.forEach((record, index) => {
     const payload = payloadOf(record);
@@ -98,87 +183,152 @@ export function summarizeArchive(records) {
 
     if (TOOL_CALL_TYPES.has(record.type) || TOOL_CALL_TYPES.has(type)) {
       const id = idOf(payload, record, `call-${index}`);
-      const name = payload.name ?? record.name ?? '';
-      const patchOperation = textContains(payload.arguments ?? payload.input ?? payload.command ?? payload, /apply_patch/i);
-      const nested = payload.nested === true || payload.parent_call_id != null ||
-        /^(apply[_ -]?patch|patch)$/i.test(String(name));
-      if (!nested && !seenCalls.has(id)) seenCalls.set(id, { id, line, timestampMs: timestamp, name: String(name) });
-      if ((nested || patchOperation) && !seenNested.has(id)) {
-        seenNested.set(id, { id, line, timestampMs: timestamp, name: String(name) });
-      }
-      if (!nested && textContains(payload.arguments ?? payload.input ?? payload.command ?? payload, /scripts\/conformance-ci\.sh/)) {
-        gateCandidates.add(id);
+      const name = String(payload.name ?? record.name ?? 'unknown');
+      const explicitlyNested = payload.nested === true || payload.parent_call_id != null;
+      if (explicitlyNested && !observedNestedCalls.has(id)) {
+        observedNestedCalls.set(id, { id, line, timestampMs: timestamp, name });
+        increment(observedNestedByKind, name);
+      } else if (!explicitlyNested && !observedOuterCalls.has(id)) {
+        observedOuterCalls.set(id, { id, line, timestampMs: timestamp, name });
+        increment(observedOuterByKind, name);
+        if (name === 'exec') {
+          const source = typeof payload.input === 'string' ? payload.input : null;
+          for (const siteName of directToolCallSites(source)) {
+            increment(staticSitesByKind, siteName);
+            staticSites.push({ outerCallId: id, line, name: siteName });
+            if (siteName === 'exec_command' || siteName === 'write_stdin') unsupportedProcessEvidence = true;
+          }
+        }
       }
     }
 
-    const process = processDetails(payload, type);
+    if (hasWrapperProcessReference(payload)) unsupportedProcessEvidence = true;
+
+    const process = explicitProcessDetails(payload, type);
     if (process) {
-      const current = processes.get(process.id) ?? {
-        id: process.id, started: null, exited: null, callId: null,
-        observedCallStartMs: null, observedResultEndMs: null, lines: [],
+      const current = instrumentedProcesses.get(process.id) ?? {
+        id: process.id, started: null, exited: null, lines: [], gate: false,
       };
       current.lines.push(line);
-      if (current.callId == null && process.callId != null) current.callId = String(process.callId);
-      if (current.observedCallStartMs == null && process.callId != null) {
-        const launch = records.find(candidate => {
-          const candidatePayload = payloadOf(candidate);
-          return idOf(candidatePayload, candidate, '') === String(process.callId) &&
-            candidatePayload.name === 'exec' &&
-            (TOOL_CALL_TYPES.has(candidate.type) || TOOL_CALL_TYPES.has(eventType(candidate, candidatePayload)));
-        });
-        if (launch != null) current.observedCallStartMs = timestampMs(launch, payloadOf(launch));
-      }
       if (process.started != null && current.started == null) current.started = Number(process.started);
       if (process.exited != null) current.exited = Number(process.exited);
-      if (timestamp != null) current.observedResultEndMs = timestamp;
-      if (type === 'process_start' && current.started == null && timestamp != null) current.started = timestamp;
-      if (type === 'process_exit' && current.exited == null && timestamp != null) current.exited = timestamp;
-      processes.set(process.id, current);
-      if (current.callId != null && gateCandidates.has(current.callId) && current.observedCallStartMs != null) gateCalls.add(current.callId);
+      if (commandIsGate(process.command)) current.gate = true;
+      instrumentedProcesses.set(process.id, current);
+      if (current.gate && current.started != null) confirmedGateProcessIds.add(process.id);
+    } else if (payload.process_id != null && instrumentedProcesses.has(String(payload.process_id))) {
+      instrumentedProcesses.get(String(payload.process_id)).lines.push(line);
     }
 
-    const taskId = payload.task_id ?? payload.taskId ?? payload.id;
+    const taskId = payload.task_id ?? payload.taskId ?? payload.turn_id ?? payload.id;
     if (taskId != null && (TASK_START_TYPES.has(type) || TASK_END_TYPES.has(type))) {
-      const task = tasks.get(String(taskId)) ?? { id: String(taskId), started: null, ended: null, startLine: null, endLine: null };
-      if (TASK_START_TYPES.has(type)) { task.started = timestamp; task.startLine = line; }
-      if (TASK_END_TYPES.has(type)) { task.ended = timestamp; task.endLine = line; }
-      tasks.set(String(taskId), task);
+      const key = String(taskId);
+      const task = tasks.get(key) ?? {
+        id: key, started: null, ended: null, startLine: null, endLine: null,
+        reportedDurationMs: null,
+      };
+      if (TASK_START_TYPES.has(type)) {
+        task.started = timestamp;
+        task.startLine = line;
+      }
+      if (TASK_END_TYPES.has(type)) {
+        task.ended = timestamp;
+        task.endLine = line;
+        if (typeof payload.duration_ms === 'number' && Number.isFinite(payload.duration_ms) && payload.duration_ms >= 0) {
+          task.reportedDurationMs = payload.duration_ms;
+        }
+      }
+      tasks.set(key, task);
     }
   });
 
   const taskIntervalsMs = [];
   const taskProvenance = [];
   for (const task of tasks.values()) {
-    if (task.started != null && task.ended != null && task.ended >= task.started) {
-      taskIntervalsMs.push(task.ended - task.started);
-      taskProvenance.push({ id: task.id, lines: [task.startLine, task.endLine], startMs: task.started, endMs: task.ended });
-    }
+    if (task.started == null || task.ended == null || task.ended < task.started) continue;
+    const observedEventSpanMs = task.ended - task.started;
+    const intervalMs = task.reportedDurationMs ?? observedEventSpanMs;
+    taskIntervalsMs.push(intervalMs);
+    taskProvenance.push({
+      id: task.id,
+      lines: [task.startLine, task.endLine],
+      startMs: task.started,
+      endMs: task.ended,
+      observedEventSpanMs,
+      reportedDurationMs: task.reportedDurationMs,
+      intervalMs,
+      intervalSource: task.reportedDurationMs == null
+        ? 'outer event timestamps'
+        : 'task_complete.duration_ms',
+    });
   }
+
   const processProvenance = [];
-  for (const process of processes.values()) {
+  for (const process of instrumentedProcesses.values()) {
     const durationMs = process.started != null && process.exited != null && process.exited >= process.started
-      ? process.exited - process.started : null;
-    processProvenance.push({ id: process.id, lines: process.lines, startMs: process.started, endMs: process.exited,
-      observedCallStartMs: process.observedCallStartMs, observedResultEndMs: process.observedResultEndMs, durationMs });
+      ? process.exited - process.started
+      : null;
+    processProvenance.push({
+      id: process.id,
+      lines: process.lines,
+      startMs: process.started,
+      endMs: process.exited,
+      durationMs,
+      timing: durationMs == null ? 'unknown' : 'explicit-instrumentation',
+    });
   }
+
+  const processCount = instrumentedProcesses.size > 0
+    ? instrumentedProcesses.size
+    : (unsupportedProcessEvidence ? null : 0);
+  const processStatus = instrumentedProcesses.size > 0
+    ? 'observed-instrumented-lower-bound'
+    : (unsupportedProcessEvidence ? 'unknown' : 'known-absent');
   const spanMs = timestamps.length ? Math.max(...timestamps) - Math.min(...timestamps) : 0;
   return {
     spanMs,
     taskIntervalsMs,
-    outerCalls: seenCalls.size,
-    nestedCalls: seenNested.size,
-    processes: processes.size,
-    confirmedGateLaunches: gateCalls.size,
+    outerCalls: observedOuterCalls.size,
+    nestedCalls: null,
+    processes: processCount,
+    confirmedGateLaunches: confirmedGateProcessIds.size,
     provenance: {
-      source: 'event metadata',
+      source: 'public event metadata and static parsing of orchestration source',
       rules: [
-        'count unique call_id values; repeated output and poll records are not launches',
-        'count nested patch calls separately from outer tool/orchestration calls',
-        'process duration is explicit process start-to-exit time, never wrapper yield/poll time',
-        'task intervals use task start and completion event timestamps',
+        'outer calls count unique observed call_id values; repeated outputs are not calls',
+        'nested runtime invocation totals are unknown; static direct call sites are reported separately and are not execution evidence',
+        'wrapper session/cell identifiers and free-form output do not establish a shell process or timing',
+        'gate launches require structured process instrumentation with the gate command',
+        'task intervals prefer task_complete.duration_ms and retain the outer event span separately',
       ],
-      calls: [...seenCalls.values()],
-      nestedCalls: [...seenNested.values()],
+      counts: {
+        observedOuterCalls: {
+          status: 'observed',
+          total: observedOuterCalls.size,
+          byKind: sortedCounts(observedOuterByKind),
+        },
+        observedNestedCalls: {
+          status: observedNestedCalls.size > 0 ? 'observed-lower-bound' : 'unknown',
+          total: observedNestedCalls.size > 0 ? observedNestedCalls.size : null,
+          ...(observedNestedCalls.size > 0 ? { byKind: sortedCounts(observedNestedByKind) } : {}),
+        },
+        staticNestedCallSites: {
+          status: 'parsed-static-lower-bound',
+          total: staticSites.length,
+          byKind: sortedCounts(staticSitesByKind),
+          syntax: STATIC_SITE_SYNTAX,
+        },
+        processes: {
+          status: processStatus,
+          total: processCount,
+          durations: processProvenance.map(process => process.durationMs),
+        },
+        confirmedGateLaunches: {
+          status: 'confirmed-by-explicit-process-instrumentation',
+          total: confirmedGateProcessIds.size,
+        },
+      },
+      calls: [...observedOuterCalls.values()],
+      staticNestedCallSites: staticSites,
       processes: processProvenance,
       tasks: taskProvenance,
     },

@@ -74,6 +74,18 @@ yield wrapper or poll duration. Full-gate process/lane/CPU/memory/dependency
 readiness profiling remains pending and is not represented as an acceptance
 result here.
 
+Archive-parser correction (2026-09-04): the 332 patch operations and gate
+launch estimate above came from orchestration source, not observed nested
+runtime events. The archive has 1,882 observed outer calls (1,562 `exec`, 226
+`wait`, 88 `send_message`, and 6 `wait_agent`) and a static lower bound of
+1,599 direct `tools.*` call sites (1,073 `exec_command`, 163 `write_stdin`, 332
+`apply_patch`, 22 `mcp__semble__search`, and 9 `update_plan`). Those static
+sites are not execution or process evidence. Ten `turn_id` task pairs report
+28,227,508 ms total duration; their separately retained outer-event spans sum
+28,227,438 ms. The archive provides no structured process start/exit
+instrumentation, so process count and duration remain unknown and zero gate
+launches are explicitly confirmed; the total launch count is unknown.
+
 ## Exploratory readiness profile
 
 Parent-owned profiles on Node 22.22.2, macOS 15,7, 12 CPU/18 GiB, used a
