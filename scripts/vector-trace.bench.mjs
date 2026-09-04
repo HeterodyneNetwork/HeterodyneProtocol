@@ -18,6 +18,7 @@ try {
   execFileSync('git',['checkout','--quiet',head],{cwd:clone});
   const scenarios=[
     {name:'snapshot anchor reverse lookup',paths:[],args:['query','heterodyne:comms#comms-privacy-tiers','--lane','snapshot']},
+    {name:'draft issuer-continuity reverse lookup',paths:[],args:['query','heterodyne:comms#comms-issuer-continuity','--lane','draft']},
     {name:'Comms local draft change',paths:['docs/spec/heterodyne-comms.md']},
     {name:'Workspace with Control and Assurance changes',paths:['docs/spec/heterodyne-workspace.md','docs/spec/heterodyne-control.md','docs/spec/heterodyne-assurance.md']},
     {name:'shared registry and schema change',paths:['docs/spec/registry/proof-domains.json','docs/spec/schemas/comms/oidc-continuity-manifest-v1.schema.json']},
@@ -45,6 +46,7 @@ try {
       if(result.status!==0) throw Error(`${scenario.name}: ${result.stderr||result.error}`);
       const packet=JSON.parse(result.stdout);
       if(!scenario.args) assert.deepEqual([...packet.receipt.changed_paths].sort(),[...scenario.paths].sort());
+      if(scenario.name.startsWith('draft issuer')) assert.deepEqual(packet.related.filter(item=>item.type==='draft_case').map(item=>item.semantic_id).sort(),['case:comms/oidc-issuer-mismatch','case:comms/oidc-issuer-persona-continuity']);
       if(scenario.name.startsWith('unanchored')) assert.ok(packet.unresolved.some(entry=>entry.kind==='document_level_impact'),'unanchored text must remain explicit document-level impact');
       samples.push(Math.round(ms*100)/100);
       summary={related:packet.related?.length,changed:packet.changed?.length,unresolved:packet.unresolved?.length,receipt:packet.receipt};
