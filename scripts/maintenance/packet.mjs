@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { lstat, readFile, realpath } from "node:fs/promises";
+import { lstat, readFile, realpath, writeFile } from "node:fs/promises";
 import { isAbsolute, join, normalize, relative, sep } from "node:path";
 import { spawnSync } from "node:child_process";
 import { buildGraph } from "../vector-trace.mjs";
@@ -146,7 +146,7 @@ function makeChunk(fields) {
   return { chunkId: chunkId(fields), ...fields };
 }
 
-function relationSummary(packet, graph, semanticIds, inputDigest) {
+function relationSummary(packet) {
   const related = packet.related ?? [];
   const edges = packet.edges ?? [];
   const typeCounts = Object.fromEntries(Object.entries(related.reduce((counts, item) => {
@@ -159,19 +159,10 @@ function relationSummary(packet, graph, semanticIds, inputDigest) {
     counts[relation] = (counts[relation] ?? 0) + 1;
     return counts;
   }, {})).sort());
-  const graphDigest = graph.receipt?.graph_sha256 ?? sha256(canonicalJson({ items: graph.items, edges: graph.edges }));
   return {
     related: { count: related.length, digest: sha256(canonicalJson(related)), typeCounts },
     edges: { count: edges.length, digest: sha256(canonicalJson(edges)), relationCounts },
-    graphArtifact: {
-      kind: "trace-query",
-      artifactId: `sha256:${graphDigest}`,
-      digest: graphDigest,
-      lane: graph.receipt?.lane ?? null,
-      inputDigest,
-      query: { semanticIds: [...semanticIds], direction: "both" },
-      rebuild: "buildGraph + queryPacket",
-    },
+    graphArtifact: null,
   };
 }
 
@@ -182,14 +173,117 @@ function deduplicateRecords(records) {
 }
 
 const UNRESOLVED_PACKET_KEYS = [
-  "reason", "from", "to", "path", "id", "fields", "inputRef", "expected",
-  "actual", "value", "detail",
+  "reason", "from", "to", "semanticId", "source_path", "path", "line", "column",
+  "startByte", "endByte", "sourceDigest", "relation", "symbol", "boundaryId",
+  "selector", "id", "fields", "inputRef", "expected", "actual", "value", "detail",
 ];
 
 function compactUnresolved(records) {
   return records.map((record) => Object.fromEntries(UNRESOLVED_PACKET_KEYS
     .filter((key) => record[key] !== undefined)
     .map((key) => [key, record[key]])));
+}
+
+async function checkedArtifactDirectory(artifactDirectory, repo) {
+  if (typeof artifactDirectory !== "string" || artifactDirectory.length === 0) {
+    throw new TypeError("artifactDirectory must be an existing directory path");
+  }
+  const status = await lstat(artifactDirectory);
+  if (!status.isDirectory() || status.isSymbolicLink()) throw new Error("artifactDirectory must be a real directory");
+  const resolved = await realpath(artifactDirectory);
+  if (repo !== undefined) {
+    const repository = await realpath(repo);
+    const rel = relative(repository, resolved);
+    if (rel === "" || (!rel.startsWith(`..${sep}`) && rel !== ".." && !isAbsolute(rel))) {
+      throw new Error("artifactDirectory must be outside the repository worktree");
+    }
+  }
+  return resolved;
+}
+
+function artifactComponent(value) {
+  return { count: value.length, digest: sha256(canonicalJson(value)) };
+}
+
+async function persistPacketContext({ artifactDirectory, repo, related, edges, unresolved, receipt }) {
+  const directory = await checkedArtifactDirectory(artifactDirectory, repo);
+  const payload = {
+    schema: "heterodyne-maintenance-packet-context-v1",
+    kind: "maintenance-packet-context",
+    version: 1,
+    related,
+    edges,
+    unresolved,
+    receipt,
+  };
+  const bytes = Buffer.from(`${canonicalJson(payload)}\n`, "utf8");
+  const digest = sha256(bytes);
+  const path = join(directory, `${digest}.json`);
+  try {
+    await writeFile(path, bytes, { flag: "wx", mode: 0o600 });
+  } catch (error) {
+    if (error?.code !== "EEXIST") throw error;
+    const status = await lstat(path);
+    if (!status.isFile() || status.isSymbolicLink()) throw new Error(`packet artifact conflicts with non-file bytes: ${digest}`);
+    const existing = await readFile(path);
+    if (!existing.equals(bytes)) throw new Error(`packet artifact digest conflict: ${digest}`);
+  }
+  return {
+    kind: "maintenance-packet-context",
+    version: 1,
+    digest,
+    artifactId: `sha256:${digest}`,
+    related: artifactComponent(related),
+    edges: artifactComponent(edges),
+    unresolved: artifactComponent(unresolved),
+    receiptDigest: sha256(canonicalJson(receipt)),
+  };
+}
+
+/** Resolve and verify one compiler-owned content-addressed context sidecar. */
+export async function resolvePacketHandle({ artifactDirectory, handle }) {
+  if (
+    !handle || handle.kind !== "maintenance-packet-context" || handle.version !== 1
+    || typeof handle.digest !== "string" || !/^[a-f0-9]{64}$/u.test(handle.digest)
+  ) throw new Error("unsupported packet handle");
+  const directory = await checkedArtifactDirectory(artifactDirectory);
+  const path = join(directory, `${handle.digest}.json`);
+  let status;
+  try {
+    status = await lstat(path);
+  } catch (error) {
+    throw new Error(`packet artifact missing: ${handle.digest}`, { cause: error });
+  }
+  if (!status.isFile() || status.isSymbolicLink()) throw new Error(`packet artifact is not a regular file: ${handle.digest}`);
+  const bytes = await readFile(path);
+  if (sha256(bytes) !== handle.digest) throw new Error(`packet artifact digest mismatch (tampered): ${handle.digest}`);
+  let payload;
+  try {
+    payload = JSON.parse(bytes.toString("utf8"));
+  } catch (error) {
+    throw new Error(`packet artifact is malformed: ${handle.digest}`, { cause: error });
+  }
+  if (
+    payload?.schema !== "heterodyne-maintenance-packet-context-v1"
+    || payload.kind !== handle.kind || payload.version !== handle.version
+    || !Array.isArray(payload.related) || !Array.isArray(payload.edges)
+    || !Array.isArray(payload.unresolved) || !payload.receipt
+  ) throw new Error(`unsupported packet artifact format: ${handle.digest}`);
+  for (const key of ["related", "edges", "unresolved"]) {
+    const actual = artifactComponent(payload[key]);
+    if (actual.count !== handle[key]?.count || actual.digest !== handle[key]?.digest) {
+      throw new Error(`packet artifact ${key} mismatch: ${handle.digest}`);
+    }
+  }
+  if (sha256(canonicalJson(payload.receipt)) !== handle.receiptDigest) {
+    throw new Error(`packet artifact receipt mismatch: ${handle.digest}`);
+  }
+  return {
+    related: payload.related,
+    edges: payload.edges,
+    unresolved: payload.unresolved,
+    receipt: payload.receipt,
+  };
 }
 
 function inputMap(receipt, unresolved) {
@@ -259,6 +353,33 @@ function directCases(graph, selectedIds) {
   return [...result];
 }
 
+function directVectors(graph, selectedIds) {
+  const selected = new Set(selectedIds);
+  const itemById = new Map(graph.items.map((item) => [item.semantic_id, item]));
+  const result = new Set(selectedIds.filter((id) => itemById.get(id)?.type === "vector"));
+  for (const edge of graph.edges) {
+    if (edge.relation === "covers" && selected.has(edge.to) && itemById.get(edge.from)?.type === "vector") {
+      result.add(edge.from);
+    }
+  }
+  return [...result];
+}
+
+function governingAnchors(graph, selectedIds) {
+  const selected = new Set(selectedIds);
+  const itemById = new Map(graph.items.map((item) => [item.semantic_id, item]));
+  const result = new Set(selectedIds.filter((id) => itemById.get(id)?.type === "spec_anchor"));
+  for (const edge of graph.edges) {
+    if (edge.relation === "covers" && selected.has(edge.from) && itemById.get(edge.to)?.type === "spec_anchor") {
+      result.add(edge.to);
+    }
+    if (edge.relation === "declares" && selected.has(edge.from) && itemById.get(edge.to)?.type === "spec_anchor") {
+      result.add(edge.to);
+    }
+  }
+  return [...result];
+}
+
 function directBoundaries(graph, caseIds) {
   const cases = new Set(caseIds);
   const result = [];
@@ -300,7 +421,7 @@ function estimateTokens(value) {
  * Compile a version-1, bounded task packet. The task shape is camelCase:
  * `{taskId, semanticIds, ownedPaths?, acceptanceChecks?, contract?, selectors?}`.
  */
-export async function compilePacket({ repo, graph, task, deliveredChunkIds = [] }) {
+export async function compilePacket({ repo, graph, task, deliveredChunkIds = [], artifactDirectory }) {
   if (typeof repo !== "string" || !graph || !task?.taskId || !Array.isArray(task.semanticIds)) {
     throw new TypeError("repo, graph, and task {taskId, semanticIds} are required");
   }
@@ -320,6 +441,20 @@ export async function compilePacket({ repo, graph, task, deliveredChunkIds = [] 
   await Promise.all([...inputs.keys()].map((path) => loadInput({ repo, path, inputs, receipt, cache, unresolved })));
 
   const items = new Map(graph.items.map((item) => [item.semantic_id, item]));
+  for (const semanticId of task.semanticIds) {
+    const item = items.get(semanticId);
+    if (!item) continue;
+    const selectedBySymbol = item.type === "source_module"
+      && (task.selectors ?? []).some((selector) => selector?.path === item.source_path && typeof selector.symbol === "string");
+    if (!["spec_anchor", "draft_case", "vector"].includes(item.type) && !selectedBySymbol) {
+      unresolved.push({
+        reason: "unsupported_selection_type",
+        semanticId,
+        path: item.source_path,
+        value: item.type ?? null,
+      });
+    }
+  }
   const queryPackets = [];
   for (const id of task.semanticIds) {
     if (!items.has(id)) {
@@ -343,13 +478,15 @@ export async function compilePacket({ repo, graph, task, deliveredChunkIds = [] 
     edges: graph.edges.filter((edge) => selectedEdgeKeys.has(canonicalJson(edge))),
   };
   const inputDigest = receipt.input_inventory_sha256 ?? sha256(canonicalJson(receipt.inputs ?? []));
-  const relationships = relationSummary(queryView, graph, task.semanticIds, inputDigest);
+  const relationships = relationSummary(queryView);
 
   const caseIds = directCases(graph, task.semanticIds);
+  const vectorIds = directVectors(graph, task.semanticIds);
+  const anchorIds = governingAnchors(graph, task.semanticIds);
   const boundaryRefs = directBoundaries(graph, caseIds);
   const requiredChunks = [];
 
-  for (const semanticId of task.semanticIds) {
+  for (const semanticId of anchorIds) {
     const item = items.get(semanticId);
     if (item?.type !== "spec_anchor" || typeof item.source_path !== "string") continue;
     const loaded = await loadInput({ repo, path: item.source_path, inputs, receipt, cache, unresolved });
@@ -377,6 +514,41 @@ export async function compilePacket({ repo, graph, task, deliveredChunkIds = [] 
     } catch (error) {
       unresolved.push({ reason: "anchor_span_unavailable", semanticId, path: item.source_path, detail: error.message });
     }
+  }
+
+  for (const semanticId of vectorIds) {
+    const item = items.get(semanticId);
+    if (!item?.source_path) {
+      unresolved.push({ reason: "vector_source_unavailable", semanticId });
+      continue;
+    }
+    const loaded = await loadInput({ repo, path: item.source_path, inputs, receipt, cache, unresolved });
+    if (!loaded) continue;
+    if (typeof item.source_digest === "string" && item.source_digest !== loaded.fullSourceDigest) {
+      unresolved.push({ reason: "item_digest_mismatch", semanticId, path: item.source_path, expected: item.source_digest, actual: loaded.fullSourceDigest });
+    }
+    try {
+      const value = JSON.parse(loaded.bytes.toString("utf8"));
+      if (value?.vector_id !== semanticId.replace(/^vector:/u, "")) {
+        unresolved.push({ reason: "vector_identity_mismatch", semanticId, path: item.source_path, value: value?.vector_id ?? null });
+      }
+    } catch (error) {
+      unresolved.push({ reason: "vector_json_invalid", semanticId, path: item.source_path, detail: error.message });
+    }
+    requiredChunks.push(makeChunk({
+      lane,
+      inputRef: loaded.inputRef,
+      sourceDigest: loaded.fullSourceDigest,
+      fullSourceDigest: loaded.fullSourceDigest,
+      semanticId,
+      symbolOrAnchor: semanticId,
+      startByte: 0,
+      endByte: loaded.bytes.length,
+      kind: "historical-vector",
+      path: item.source_path,
+      content: loaded.bytes.toString("utf8"),
+      evidenceKind: item.evidence_kind ?? "historical_vector",
+    }));
   }
 
   for (const semanticId of caseIds) {
@@ -490,15 +662,15 @@ export async function compilePacket({ repo, graph, task, deliveredChunkIds = [] 
   const cumulativeDelivered = unique([...deliveredChunkIds, ...mustRead.map(({ chunkId: id }) => id)]);
 
   const unresolvedFull = deduplicateRecords(unresolved);
-  const unresolvedDeduplicated = compactUnresolved(unresolvedFull);
-  relationships.graphArtifact.unresolved = {
+  relationships.unresolved = {
     count: unresolvedFull.length,
     digest: sha256(canonicalJson(unresolvedFull)),
-    retainedFields: UNRESOLVED_PACKET_KEYS,
   };
   const expandedSemanticIds = unique([
     ...task.semanticIds,
+    ...anchorIds,
     ...caseIds,
+    ...vectorIds,
     ...boundaryRefs.map(({ semanticId }) => semanticId),
   ]);
   relationships.expandedSemanticIds = expandedSemanticIds;
@@ -521,6 +693,23 @@ export async function compilePacket({ repo, graph, task, deliveredChunkIds = [] 
     });
   }
 
+  let unresolvedOutput;
+  if (artifactDirectory !== undefined) {
+    relationships.graphArtifact = await persistPacketContext({
+      artifactDirectory,
+      repo,
+      related: queryView.related,
+      edges: queryView.edges,
+      unresolved: unresolvedFull,
+      receipt,
+    });
+    unresolvedOutput = compactUnresolved(unresolvedFull);
+  } else {
+    relationships.related.records = queryView.related;
+    relationships.edges.records = queryView.edges;
+    unresolvedOutput = unresolvedFull;
+  }
+
   const ownedPaths = unique(task.ownedPaths ?? []).sort((left, right) => left.localeCompare(right, "en"));
   const acceptanceChecks = unique(task.acceptanceChecks ?? []).sort((left, right) => left.localeCompare(right, "en"));
   const contractDigest = sha256(canonicalJson(task.contract ?? {}));
@@ -531,7 +720,7 @@ export async function compilePacket({ repo, graph, task, deliveredChunkIds = [] 
     "acceptanceChecks", "backend", "tokenEstimator", "budget", "lane", "inputRef",
   ];
   const baseComplete = task.semanticIds.every((id) => items.has(id))
-    && unresolvedDeduplicated.length === 0
+    && unresolvedOutput.length === 0
     && alreadyDeliveredObligations + mustRead.length === allChunks.length;
   const result = {
     version: 1,
@@ -540,7 +729,7 @@ export async function compilePacket({ repo, graph, task, deliveredChunkIds = [] 
     inputDigest,
     mustRead,
     mayNeed: [],
-    unresolved: unresolvedDeduplicated,
+    unresolved: unresolvedOutput,
     deferred: [],
     deliveredChunkIds: cumulativeDelivered,
     alreadyDeliveredObligations,

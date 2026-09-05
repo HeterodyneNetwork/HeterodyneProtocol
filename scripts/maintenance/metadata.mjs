@@ -300,7 +300,10 @@ function extractProfileOracles(path, bytes) {
   const file = sourceFile(path, bytes);
   const rowsDeclaration = variable(file, "rows");
   const lookup = file.text.includes("oracleByVectorId.get(vectorId)");
-  if (!rowsDeclaration || !lookup) return { supported: false, records: new Map() };
+  const initialRows = literal(rowsDeclaration?.initializer);
+  if (!rowsDeclaration || !lookup || !initialRows.ok || !Array.isArray(initialRows.value)) {
+    return { supported: false, records: new Map() };
+  }
   const records = new Map();
   let supported = true;
 

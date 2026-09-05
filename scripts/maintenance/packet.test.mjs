@@ -5,7 +5,7 @@ import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promis
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { spawnSync } from "node:child_process";
-import { compilePacket } from "./packet.mjs";
+import { compilePacket, resolvePacketHandle } from "./packet.mjs";
 import { buildGraph } from "../vector-trace.mjs";
 
 const realRepo = new URL("../../", import.meta.url).pathname;
@@ -28,6 +28,12 @@ async function put(root, path, content) {
 
 async function fixtureRepo(t) {
   const root = await mkdtemp(join(tmpdir(), "maintenance-packet-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  return root;
+}
+
+async function artifactDirectory(t) {
+  const root = await mkdtemp(join(tmpdir(), "maintenance-packet-artifacts-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   return root;
 }
@@ -146,6 +152,7 @@ function buildFixtureGraph({ spec, catalog, oidc, profile, unresolved = [], refs
 
 async function currentFixture(t, options = {}) {
   const root = await fixtureRepo(t);
+  const artifacts = await artifactDirectory(t);
   const body = options.body ?? "Implementations MUST bind a stable issuer to its persona.\n\n### Nested rule\nReject a changed issuer before use.";
   const spec = specSource(body, options.newline ?? "\n");
   const catalog = catalogSource();
@@ -159,7 +166,7 @@ async function currentFixture(t, options = {}) {
   ]);
   const graph = buildFixtureGraph({ spec, catalog, profile, oidc, unresolved: options.unresolved ?? [] });
   if (options.body !== undefined) graph.items[0].source_digest = sha256(normalizedSection(body));
-  return { root, graph, spec, catalog, profile, oidc, body };
+  return { root, artifactDirectory: artifacts, graph, spec, catalog, profile, oidc, body };
 }
 
 const task = {
@@ -172,7 +179,7 @@ const task = {
 
 test("96-related packet expands only governing section, two declaring cases, and exact boundary", async (t) => {
   const fixture = await currentFixture(t);
-  const packet = await compilePacket({ repo: fixture.root, graph: fixture.graph, task, deliveredChunkIds: [] });
+  const packet = await compilePacket({ repo: fixture.root, graph: fixture.graph, task, deliveredChunkIds: [], artifactDirectory: fixture.artifactDirectory });
 
   assert.equal(packet.relationships.related.count, 96);
   assert.equal(packet.relationships.edges.count, 999);
@@ -199,7 +206,7 @@ test("96-related packet expands only governing section, two declaring cases, and
 
 test("partial graph keeps normative context, every edge, and explicit unknowns", async (t) => {
   const fixture = await currentFixture(t, { unresolved: [{ reason: "unknown_profile_override", from: CASE_IDS[0] }] });
-  const packet = await compilePacket({ repo: fixture.root, graph: fixture.graph, task, deliveredChunkIds: [] });
+  const packet = await compilePacket({ repo: fixture.root, graph: fixture.graph, task, deliveredChunkIds: [], artifactDirectory: fixture.artifactDirectory });
   assert.equal(packet.complete, false);
   assert.ok(packet.unresolved.length > 0);
   assert.equal(packet.mustRead.some((chunk) => chunk.kind === "normative"), true);
@@ -210,7 +217,7 @@ test("freshness checks receipt flag and full input bytes while accepting bounded
   const fixture = await currentFixture(t, { newline: "\r\n" });
   const expectedNormalized = normalizedSection();
   fixture.graph.items[0].source_digest = sha256(expectedNormalized);
-  const packet = await compilePacket({ repo: fixture.root, graph: fixture.graph, task, deliveredChunkIds: [] });
+  const packet = await compilePacket({ repo: fixture.root, graph: fixture.graph, task, deliveredChunkIds: [], artifactDirectory: fixture.artifactDirectory });
   const normative = packet.mustRead.find(({ kind }) => kind === "normative");
   const raw = await readFile(join(fixture.root, SPEC));
   assert.equal(sha256(raw), fixture.graph.receipt.inputs.find(({ path }) => path === SPEC).sha256);
@@ -221,21 +228,21 @@ test("freshness checks receipt flag and full input bytes while accepting bounded
   assert.equal(packet.complete, true);
 
   await put(fixture.root, OIDC, `${fixture.oidc}// changed under the same path\n`);
-  const stale = await compilePacket({ repo: fixture.root, graph: fixture.graph, task, deliveredChunkIds: [] });
+  const stale = await compilePacket({ repo: fixture.root, graph: fixture.graph, task, deliveredChunkIds: [], artifactDirectory: fixture.artifactDirectory });
   assert.equal(stale.complete, false);
   assert.ok(stale.unresolved.some(({ reason, path }) => reason === "input_digest_mismatch" && path === OIDC));
 
   const notFresh = structuredClone(fixture.graph);
   notFresh.receipt.fresh = false;
-  const rejected = await compilePacket({ repo: fixture.root, graph: notFresh, task, deliveredChunkIds: [] });
+  const rejected = await compilePacket({ repo: fixture.root, graph: notFresh, task, deliveredChunkIds: [], artifactDirectory: fixture.artifactDirectory });
   assert.equal(rejected.complete, false);
   assert.ok(rejected.unresolved.some(({ reason }) => reason === "receipt_not_fresh"));
 });
 
 test("three calls retain cumulative delivery, count satisfied obligations, and resend only changed chunks", async (t) => {
   const fixture = await currentFixture(t);
-  const first = await compilePacket({ repo: fixture.root, graph: fixture.graph, task, deliveredChunkIds: [] });
-  const second = await compilePacket({ repo: fixture.root, graph: fixture.graph, task, deliveredChunkIds: first.deliveredChunkIds });
+  const first = await compilePacket({ repo: fixture.root, graph: fixture.graph, task, deliveredChunkIds: [], artifactDirectory: fixture.artifactDirectory });
+  const second = await compilePacket({ repo: fixture.root, graph: fixture.graph, task, deliveredChunkIds: first.deliveredChunkIds, artifactDirectory: fixture.artifactDirectory });
   assert.equal(second.mustRead.length + second.mayNeed.length, 0);
   assert.deepEqual(second.deliveredChunkIds, first.deliveredChunkIds);
   assert.equal(second.alreadyDeliveredObligations, 4);
@@ -250,7 +257,7 @@ test("three calls retain cumulative delivery, count satisfied obligations, and r
   specInput.sha256 = sha256(Buffer.from(changedSpec));
   changed.receipt.input_inventory_sha256 = inventoryDigest(changed.receipt.inputs);
 
-  const third = await compilePacket({ repo: fixture.root, graph: changed, task, deliveredChunkIds: second.deliveredChunkIds });
+  const third = await compilePacket({ repo: fixture.root, graph: changed, task, deliveredChunkIds: second.deliveredChunkIds, artifactDirectory: fixture.artifactDirectory });
   assert.deepEqual(third.mustRead.map(({ kind }) => kind), ["normative"]);
   assert.equal(third.alreadyDeliveredObligations, 3);
   assert.equal(third.deliveredChunkIds.length, first.deliveredChunkIds.length + 1);
@@ -261,7 +268,7 @@ test("three calls retain cumulative delivery, count satisfied obligations, and r
 test("over-budget requirement is intact and requests explicit expansion", async (t) => {
   const body = `Implementations MUST retain this obligation.\n${"normative detail ".repeat(2400)}`;
   const fixture = await currentFixture(t, { body });
-  const packet = await compilePacket({ repo: fixture.root, graph: fixture.graph, task, deliveredChunkIds: [] });
+  const packet = await compilePacket({ repo: fixture.root, graph: fixture.graph, task, deliveredChunkIds: [], artifactDirectory: fixture.artifactDirectory });
   const normative = packet.mustRead.find(({ kind }) => kind === "normative");
   assert.equal(normative.normalizedContent, normalizedSection(body));
   assert.equal(packet.estimatedTokens > 8000, true);
@@ -269,14 +276,16 @@ test("over-budget requirement is intact and requests explicit expansion", async 
   assert.equal(packet.complete, false);
 });
 
-test("missing anchors stay unresolved and expose cited source-span discovery handles", async () => {
+test("missing anchors stay unresolved and expose cited source-span discovery handles", async (t) => {
   const graph = await buildGraph({ repo: realRepo, lane: "draft", ref: "8f780ce" });
+  const artifacts = await artifactDirectory(t);
   const staleCase = "case:comms/agent-attribution-encrypted-inner";
   const packet = await compilePacket({
     repo: realRepo,
     graph,
     task: { ...task, taskId: "stale-anchor", semanticIds: [staleCase] },
     deliveredChunkIds: [],
+    artifactDirectory: artifacts,
   });
   const missing = packet.unresolved.find(({ reason, from }) => reason === "missing_anchor" && from === staleCase);
   assert.equal(missing.to, "heterodyne:comms#comms-mandatory-pre-sign-attribution");
@@ -290,6 +299,7 @@ test("missing anchors stay unresolved and expose cited source-span discovery han
 
 test("reconciliation reads each source at its receipt input ref, not a universal spec ref", async (t) => {
   const root = await fixtureRepo(t);
+  const artifacts = await artifactDirectory(t);
   git(root, ["init", "-q"]);
   const bodyA = "A historical normative obligation MUST be used.";
   const specA = specSource(bodyA);
@@ -319,13 +329,139 @@ test("reconciliation reads each source at its receipt input ref, not a universal
   graph.items[0].source_digest = sha256(normalizedSection(bodyA));
   graph.items.filter(({ type }) => type === "draft_case").forEach((item) => { item.source_digest = sha256(Buffer.from(catalogB)); });
   graph.items.find(({ semantic_id }) => semantic_id === `source:${OIDC}`).source_digest = sha256(Buffer.from(oidcB));
-  const packet = await compilePacket({ repo: root, graph, task, deliveredChunkIds: [] });
+  const packet = await compilePacket({ repo: root, graph, task, deliveredChunkIds: [], artifactDirectory: artifacts });
   assert.equal(packet.mustRead.find(({ kind }) => kind === "normative").inputRef, specRef);
   assert.equal(packet.mustRead.find(({ kind }) => kind === "normative").content.includes("historical normative"), true);
   assert.equal(packet.mustRead.filter(({ kind }) => kind === "case-declaration").every(({ inputRef }) => inputRef === vectorRef), true);
   assert.equal(packet.mustRead.find(({ kind }) => kind === "interface").inputRef, vectorRef);
   assert.equal(packet.mustRead.find(({ kind }) => kind === "interface").content.includes("vector-ref"), true);
   assert.equal(packet.mustRead.some(({ content }) => content.includes("WORKTREE")), false);
+});
+
+test("artifact handle resolves exact omitted context after WORKTREE changes and rejects missing or tampered bytes", async (t) => {
+  const fixture = await currentFixture(t);
+  const packet = await compilePacket({
+    repo: fixture.root,
+    graph: fixture.graph,
+    task,
+    deliveredChunkIds: [],
+    artifactDirectory: fixture.artifactDirectory,
+  });
+  const handle = packet.relationships.graphArtifact;
+  assert.equal(handle.kind, "maintenance-packet-context");
+  assert.equal(handle.version, 1);
+  const resolved = await resolvePacketHandle({ artifactDirectory: fixture.artifactDirectory, handle });
+  assert.equal(resolved.related.length, 96);
+  assert.equal(resolved.edges.length, 999);
+  assert.deepEqual(resolved.unresolved, []);
+  assert.deepEqual(resolved.receipt, fixture.graph.receipt);
+
+  await put(fixture.root, SPEC, specSource("Changed WORKTREE bytes MUST NOT alter an immutable stored artifact."));
+  assert.deepEqual(await resolvePacketHandle({ artifactDirectory: fixture.artifactDirectory, handle }), resolved);
+
+  const emptyArtifacts = await artifactDirectory(t);
+  await assert.rejects(resolvePacketHandle({ artifactDirectory: emptyArtifacts, handle }), /missing|ENOENT/u);
+  await writeFile(join(fixture.artifactDirectory, `${handle.digest}.json`), "{}\n", "utf8");
+  await assert.rejects(resolvePacketHandle({ artifactDirectory: fixture.artifactDirectory, handle }), /digest|tamper/u);
+});
+
+test("without an artifact directory all omitted relationships and unknown detail stay inline with honest expansion", async (t) => {
+  const unresolved = [{
+    reason: "boundary_source_unavailable",
+    semanticId: CASE_IDS[0],
+    source_path: CATALOG,
+    line: 17,
+    column: 9,
+    relation: "defined_by",
+    symbol: "validateIssuerMetadata",
+    boundaryId: "oidc.validateIssuerMetadata",
+    selector: { path: OIDC, symbol: "validateIssuerMetadata" },
+  }];
+  const fixture = await currentFixture(t, { unresolved });
+  const packet = await compilePacket({ repo: fixture.root, graph: fixture.graph, task, deliveredChunkIds: [] });
+  assert.equal(packet.relationships.graphArtifact, null);
+  assert.equal(packet.relationships.related.records.length, 96);
+  assert.equal(packet.relationships.edges.records.length, 999);
+  assert.deepEqual(packet.unresolved.find(({ reason }) => reason === "boundary_source_unavailable"), unresolved[0]);
+  assert.ok(packet.deferred.some(({ reason }) => reason === "budget_expansion_required"));
+  assert.equal(packet.complete, false);
+});
+
+test("stored packets retain essential inline repair coordinates while the resolver keeps full unknowns", async (t) => {
+  const unresolved = [{
+    reason: "invalid_selector",
+    semanticId: CASE_IDS[0],
+    source_path: CATALOG,
+    line: 23,
+    column: 5,
+    startByte: 640,
+    endByte: 704,
+    sourceDigest: "a".repeat(64),
+    relation: "defined_by",
+    symbol: "missingBoundary",
+    boundaryId: "oidc.missingBoundary",
+    selector: { path: OIDC, symbol: "missingBoundary", extra: "full-detail" },
+  }];
+  const fixture = await currentFixture(t, { unresolved });
+  const packet = await compilePacket({
+    repo: fixture.root,
+    graph: fixture.graph,
+    task,
+    deliveredChunkIds: [],
+    artifactDirectory: fixture.artifactDirectory,
+  });
+  const inline = packet.unresolved.find(({ reason }) => reason === "invalid_selector");
+  assert.deepEqual(inline, unresolved[0]);
+  const resolved = await resolvePacketHandle({ artifactDirectory: fixture.artifactDirectory, handle: packet.relationships.graphArtifact });
+  assert.deepEqual(resolved.unresolved.find(({ reason }) => reason === "invalid_selector"), unresolved[0]);
+});
+
+test("real snapshot vector and anchor roots expand immutable vector JSON plus governing prose", async (t) => {
+  const graph = await buildGraph({ repo: realRepo, lane: "snapshot" });
+  const artifacts = await artifactDirectory(t);
+  const vectorId = "vector:comms/oidc-issuer-mismatch";
+  const vectorPacket = await compilePacket({
+    repo: realRepo,
+    graph,
+    task: { ...task, taskId: "snapshot-vector", semanticIds: [vectorId] },
+    deliveredChunkIds: [],
+    artifactDirectory: artifacts,
+  });
+  assert.deepEqual(vectorPacket.mustRead.map(({ kind }) => kind).sort(), ["historical-vector", "normative"]);
+  const vector = vectorPacket.mustRead.find(({ kind }) => kind === "historical-vector");
+  assert.equal(JSON.parse(vector.content).vector_id, "comms/oidc-issuer-mismatch");
+  assert.equal(vector.inputRef, graph.receipt.vector_ref);
+  assert.equal(vectorPacket.mustRead.find(({ kind }) => kind === "normative").inputRef, graph.receipt.spec_ref);
+  assert.equal(vectorPacket.complete, true);
+
+  const anchorPacket = await compilePacket({
+    repo: realRepo,
+    graph,
+    task: { ...task, taskId: "snapshot-anchor", semanticIds: [ROOT_ID] },
+    deliveredChunkIds: [],
+    artifactDirectory: artifacts,
+  });
+  assert.equal(anchorPacket.mustRead.filter(({ kind }) => kind === "historical-vector").length, 2);
+  assert.equal(anchorPacket.mustRead.some(({ kind }) => kind === "normative"), true);
+  assert.equal(anchorPacket.complete, true);
+});
+
+test("unsupported selected node types are unresolved instead of complete empty packets", async (t) => {
+  const fixture = await currentFixture(t);
+  for (const semanticId of [`source:${OIDC}`, "schema:unsupported-fixture"]) {
+    const graph = structuredClone(fixture.graph);
+    if (semanticId.startsWith("schema:")) graph.items.push({ semantic_id: semanticId, type: "schema_artifact" });
+    const packet = await compilePacket({
+      repo: fixture.root,
+      graph,
+      task: { ...task, taskId: semanticId, semanticIds: [semanticId] },
+      deliveredChunkIds: [],
+      artifactDirectory: fixture.artifactDirectory,
+    });
+    assert.ok(packet.unresolved.some(({ reason, semanticId: selected }) =>
+      reason === "unsupported_selection_type" && selected === semanticId));
+    assert.equal(packet.complete, false);
+  }
 });
 
 test("historical packets refuse symlink blobs named by receipt inputs", async (t) => {
@@ -352,9 +488,10 @@ test("historical packets refuse symlink blobs named by receipt inputs", async (t
   assert.equal(packet.complete, false);
 });
 
-test("real buildGraph issuer slice stays bounded to two cases while retaining trace handles", async () => {
+test("real buildGraph issuer slice stays bounded to two cases while retaining trace handles", async (t) => {
   const graph = await buildGraph({ repo: realRepo, lane: "draft" });
-  const packet = await compilePacket({ repo: realRepo, graph, task, deliveredChunkIds: [] });
+  const artifacts = await artifactDirectory(t);
+  const packet = await compilePacket({ repo: realRepo, graph, task, deliveredChunkIds: [], artifactDirectory: artifacts });
   assert.equal(packet.relationships.related.count, 96);
   assert.equal(packet.relationships.edges.count, 999);
   assert.deepEqual(packet.mustRead.filter(({ kind }) => kind === "case-declaration").map(({ semanticId }) => semanticId).sort(), CASE_IDS);

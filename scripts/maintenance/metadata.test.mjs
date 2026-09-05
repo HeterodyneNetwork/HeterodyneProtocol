@@ -98,6 +98,34 @@ test("unsupported canonical expressions are unresolved and never converted into 
   assert.ok(result.unresolved.some(({ reason, id }) => reason === "unsupported_profile_oracle" && id === record.id));
 });
 
+test("a dynamic rows initializer makes otherwise recognized profile lookup unknown", async (t) => {
+  const root = await fixtureRepo(t);
+  await put(root, `${ROOT}/current-vectors/case-contracts.ts`, `
+    const CURRENT_CASE_CONTRACTS = {
+      "comms/profile-profile-v1": {
+        boundary_id: "boundary.base", owner_document: "comms", profile: "profile-v1",
+        spec_refs: ["heterodyne:0.6.0#anchor"], invariants: ["I-BASE"], reason_codes: ["base"]
+      }
+    } as const;
+    const TASK_FIFTEEN_BOUNDARIES = Object.freeze({});
+  `);
+  await put(root, `${ROOT}/current-vectors/profile-oracles.ts`, `
+    const rows = loadRowsFromRuntime();
+    const oracleByVectorId = new Map(rows.map((entry) => [entry.vector_id, entry]));
+    export function currentProfileOracleForVector(vectorId: string) {
+      return oracleByVectorId.get(vectorId);
+    }
+  `);
+  const result = await readDeclaredContracts({ repo: root, layout: "current-catalog" });
+  const record = result.records[0];
+  assert.equal(record.boundaryId, null);
+  assert.equal(record.ownerDocument, null);
+  assert.equal(record.profile, null);
+  assert.deepEqual(record.invariants, []);
+  assert.deepEqual(record.reasonCodes, []);
+  assert.ok(result.unresolved.some(({ reason, id }) => reason === "unsupported_profile_oracle" && id === record.id));
+});
+
 test("legacy auto-detection reads cited authoring inputs at their real locations and preserves unknowns", async (t) => {
   const root = await fixtureRepo(t);
   await put(root, "docs/spec/vectors/README.md", "# Test vectors\n\nGenerator declarations are authoring inputs, not boundary execution evidence.\n");
