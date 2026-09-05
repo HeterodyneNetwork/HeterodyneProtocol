@@ -28,7 +28,7 @@ function git(root, args) {
   return result.stdout.trim();
 }
 
-test("current catalog statically reproduces profile, terminal, and boundary transforms", async () => {
+test("current catalog retains declarations and boundary overrides while executable profile setup stays unknown", async () => {
   const result = await readDeclaredContracts({ repo, layout: "current-catalog" });
   assert.equal(result.layout, "current-catalog");
   assert.deepEqual(result.layoutSelection, {
@@ -39,23 +39,23 @@ test("current catalog statically reproduces profile, terminal, and boundary tran
 
   const senderProof = result.records.find(({ id }) => id === "comms/agent-sender-proof-invalid");
   assert.equal(senderProof.boundaryId, "agent-publication-authorization.authorizeAndSignAgentPublication");
-  assert.deepEqual(senderProof.unknownFields, []);
 
   const terminal = result.records.find(({ id }) => id === "comms/auth-rejected-permanent");
   assert.deepEqual(terminal.invariants, []);
   assert.deepEqual(terminal.reasonCodes, []);
-  assert.deepEqual(terminal.unknownFields, []);
 
   const profile = result.records.find(({ id }) => id === "core/profile-heterodyne-core-rotation-breadcrumb-profile-v1");
-  assert.equal(profile.boundaryId, "core-policy.validateCorePersonaSignedEvent");
-  assert.equal(profile.ownerDocument, "core");
-  assert.equal(profile.profile, "heterodyne-core-rotation-breadcrumb-profile-v1");
-  assert.deepEqual(profile.invariants, ["CORE-I-IDENTITY-INTEGRITY"]);
+  assert.equal(profile.boundaryId, null);
+  assert.equal(profile.ownerDocument, null);
+  assert.equal(profile.profile, null);
+  assert.deepEqual(profile.invariants, []);
   assert.deepEqual(profile.reasonCodes, []);
   assert.ok(profile.provenance.some(({ path, kind }) => path.endsWith("/case-contracts.ts") && kind === "catalog_declaration"));
-  assert.ok(profile.provenance.some(({ path, kind }) => path.endsWith("/profile-oracles.ts") && kind === "profile_oracle_override"));
+  assert.equal(profile.provenance.some(({ kind }) => kind === "profile_oracle_override"), false);
 
   for (const record of [senderProof, terminal, profile]) {
+    assert.deepEqual(record.unknownFields.sort(), ["boundaryId", "invariants", "ownerDocument", "profile", "reasonCodes"]);
+    assert.ok(result.unresolved.some(({ reason, id }) => reason === "unsupported_profile_oracle" && id === record.id));
     for (const provenance of record.provenance) {
       const source = await readFile(join(repo, provenance.path));
       assert.equal(provenance.sourceDigest, sha256(source));
@@ -200,6 +200,59 @@ const pureProfileFreezer = `function deepFreeze<T>(value: T, seen = new WeakSet<
   if (!ArrayBuffer.isView(object)) Object.freeze(object);
   return value;
 }`;
+
+for (const [name, prelude, supported] of [
+  ["throw", 'throw new Error("module initialization rejected");', false],
+  ["runtime call", "initializeRuntime();", false],
+  ["freezer dependency mutation", "Object.freeze = (value) => [];", false],
+  ["while loop", "while (true) { throw new Error(); }", false],
+  ["literal for-of loop", "for (const value of []) {}", false],
+  ["unevaluable initializer", "const setup = initializeRuntime();", false],
+  ["destructuring initializer", "const { setup } = initializeRuntime();", false],
+  ["runtime import", 'import { setup } from "./runtime.js";', false],
+  ["side-effect import", 'import "./runtime.js";', false],
+  ["empty runtime import", 'import {} from "./runtime.js";', false],
+  ["push before initialization", 'rows.push(oracle(fixedTuple(1, "profile-v1", "comms", "tag:test", false), "boundary.override", ["I-OVERRIDE"]));', false],
+  ["safe declarations", `
+    import type { Profile } from "./types.js";
+    type LocalProfile = Profile;
+    interface Declaration { id: string }
+    function unused() { throw new Error("not executed"); }
+    const VERSION = "heterodyne/0.6.0";
+  `, true],
+]) {
+  test(`profile prelude ${supported ? "accepts" : "rejects"} ${name}`, async (t) => {
+    const root = await fixtureRepo(t);
+    await put(root, `${ROOT}/current-vectors/case-contracts.ts`, `
+      const CURRENT_CASE_CONTRACTS = {
+        "comms/profile-profile-v1": {
+          boundary_id: "boundary.base", owner_document: "comms", profile: "profile-v1",
+          spec_refs: [], invariants: ["I-BASE"], reason_codes: []
+        }
+      } as const;
+      const TASK_FIFTEEN_BOUNDARIES = Object.freeze({});
+    `);
+    await put(root, `${ROOT}/current-vectors/profile-oracles.ts`, `
+      ${prelude}
+      ${pureProfileFreezer}
+      const rows = [];
+      const CURRENT_PROFILE_ORACLES = deepFreeze(rows);
+      const oracleByVectorId = new Map(CURRENT_PROFILE_ORACLES.map((entry) => [entry.vector_id, entry]));
+      export function currentProfileOracleForVector(vectorId: string) {
+        return oracleByVectorId.get(vectorId);
+      }
+    `);
+    const result = await readDeclaredContracts({ repo: root, layout: "current-catalog" });
+    const record = result.records[0];
+    assert.equal(record.boundaryId, supported ? "boundary.base" : null);
+    assert.equal(record.ownerDocument, supported ? "comms" : null);
+    assert.equal(record.profile, supported ? "profile-v1" : null);
+    assert.deepEqual(record.invariants, supported ? ["I-BASE"] : []);
+    assert.deepEqual(record.reasonCodes, []);
+    assert.deepEqual(record.unknownFields.sort(), supported ? [] : ["boundaryId", "invariants", "ownerDocument", "profile", "reasonCodes"]);
+    assert.equal(result.unresolved.some(({ reason, id }) => reason === "unsupported_profile_oracle" && id === record.id), !supported);
+  });
+}
 
 for (const [name, source] of [
   ["mutating freezer", `function deepFreeze(value) { value.push(loadRuntimeOracle()); return value; }`],

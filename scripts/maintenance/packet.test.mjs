@@ -488,7 +488,7 @@ test("historical packets refuse symlink blobs named by receipt inputs", async (t
   assert.equal(packet.complete, false);
 });
 
-test("real buildGraph issuer slice stays bounded to two cases while retaining trace handles", async (t) => {
+test("real buildGraph issuer slice retains obligations and requests expansion for explicit profile unknowns", async (t) => {
   const graph = await buildGraph({ repo: realRepo, lane: "draft" });
   const artifacts = await artifactDirectory(t);
   const packet = await compilePacket({ repo: realRepo, graph, task, deliveredChunkIds: [], artifactDirectory: artifacts });
@@ -499,7 +499,14 @@ test("real buildGraph issuer slice stays bounded to two cases while retaining tr
   const normative = packet.mustRead.find(({ kind }) => kind === "normative");
   const fullSpec = await readFile(join(realRepo, SPEC));
   assert.equal(normative.endByte - normative.startByte < fullSpec.length, true);
-  assert.equal(packet.estimatedTokens < 8000, true);
+  assert.equal(normative.content, fullSpec.subarray(normative.startByte, normative.endByte).toString("utf8"));
+  assert.equal(packet.estimatedTokens > packet.budget.maxTokens, true);
+  const expansion = packet.deferred.find(({ reason }) => reason === "budget_expansion_required");
+  assert.ok(expansion);
+  assert.equal(expansion.maxTokens, packet.budget.maxTokens);
+  assert.equal(expansion.requestedAdditionalTokens > 0, true);
+  assert.equal(expansion.normativeObligationsTruncated, false);
+  t.diagnostic(`Issuer packet: ${packet.estimatedTokens} estimated tokens; ${expansion.requestedAdditionalTokens} additional tokens requested.`);
   assert.equal(packet.budget.measuredFields.includes("relationships"), true);
   assert.equal(packet.complete, false);
   assert.equal(packet.unresolved.length >= 64, true);

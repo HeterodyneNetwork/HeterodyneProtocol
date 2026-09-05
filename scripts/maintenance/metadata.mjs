@@ -449,7 +449,7 @@ function extractProfileOracles(path, bytes) {
       if (ts.isVariableStatement(statement)) {
         for (const declaration of statement.declarationList.declarations) {
           if (!ts.isIdentifier(declaration.name)) {
-            if (rowsDeclared) supported = false;
+            supported = false;
             continue;
           }
           const name = declaration.name.text;
@@ -470,12 +470,16 @@ function extractProfileOracles(path, bytes) {
           }
           const parsed = literal(declaration.initializer, env);
           if (parsed.ok) env.set(declaration.name.text, parsed.value);
-          else if (rowsDeclared) supported = false;
+          else supported = false;
           if (declaration === rowsDeclaration) rowsDeclared = true;
         }
         continue;
       }
       if (ts.isForOfStatement(statement)) {
+        if (!rowsDeclared) {
+          supported = false;
+          continue;
+        }
         const iterable = literal(statement.expression, env);
         const declaration = statement.initializer.declarations?.[0];
         if (!iterable.ok || !Array.isArray(iterable.value) || !declaration) {
@@ -505,8 +509,9 @@ function extractProfileOracles(path, bytes) {
         if (!finalized || records.size !== 31) supported = false;
         continue;
       }
-      if (isNonexecutedProfileDeclaration(statement) || ts.isImportDeclaration(statement)) continue;
-      if (rowsDeclared) supported = false;
+      if (isNonexecutedProfileDeclaration(statement)
+        || (ts.isImportDeclaration(statement) && statement.importClause?.isTypeOnly)) continue;
+      supported = false;
     }
   };
 
