@@ -49,6 +49,14 @@ function canonicalAst(node, placeholders) {
   if (placeholders.has(node)) return ['SpecRefsInitializer'];
   const value = [node.kind];
   if (ts.isIdentifier(node) || ts.isPrivateIdentifier(node) || ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isNumericLiteral(node) || ts.isBigIntLiteral(node)) value.push(node.text);
+  if (ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) {
+    value.push(node.text);
+    let parent = node.parent;
+    while (parent && (ts.isTemplateSpan(parent) || ts.isTemplateExpression(parent))) parent = parent.parent;
+    if (parent && ts.isTaggedTemplateExpression(parent)) value.push(node.rawText);
+  } else if (ts.isNoSubstitutionTemplateLiteral(node) && node.parent && ts.isTaggedTemplateExpression(node.parent)) {
+    value.push(node.rawText);
+  }
   const children = [];
   ts.forEachChild(node, child => { children.push(canonicalAst(child, placeholders)); });
   value.push(children);

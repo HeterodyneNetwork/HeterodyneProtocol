@@ -31,6 +31,8 @@ const CURRENT_CASE_CONTRACTS = ({
   },
 }) as const satisfies Readonly<Record<string, C>>;
 export function currentCaseIds() { return Object.keys(CURRENT_CASE_CONTRACTS); }
+export function diagnostic(first: string, second: string) { return \`head \${first} middle \${second} tail\`; }
+export function tagged(tag: Function, first: string, second: string) { return tag\`raw-head\\n\${first} raw-middle\\t\${second} raw-tail\\u0061\`; }
 `;
 }
 
@@ -143,6 +145,30 @@ test('rejects effective allocation changes in catalog consumer logic after the l
 
   assert.equal(result.accepted, false);
   assert.ok(result.findings.some(({ code }) => code === 'catalog-non-reference-changed'));
+});
+
+test('rejects same-shape cooked and tagged-raw changes in every template fragment', async () => {
+  const base = await makeRepo();
+  const catalogPath = 'docs/spec/vectors/generator/src/current-vectors/case-contracts.ts';
+  const mutations = [
+    ['cooked head', 'head ${first}', 'deny ${first}'],
+    ['cooked middle', '} middle ${second}', '} altered ${second}'],
+    ['cooked tail', '} tail`', '} stop`'],
+    ['raw head', 'raw-head\\n${first}', 'raw-head\n${first}'],
+    ['raw middle', '} raw-middle\\t${second}', '} raw-middle\t${second}'],
+    ['raw tail', '} raw-tail\\u0061`', '} raw-taila`'],
+  ];
+  for (const [label, before, after] of mutations) {
+    const candidate = await candidateFrom(base);
+    const source = await fs.readFile(path.join(candidate, catalogPath), 'utf8');
+    assert.ok(source.includes(before), `${label} fixture is present`);
+    await write(candidate, catalogPath, source.replace(before, after));
+
+    const result = await inspectReferenceSlice({ baseRepo: base, candidateRepo: candidate, baseRef: 'HEAD' });
+
+    assert.equal(result.accepted, false, label);
+    assert.ok(result.findings.some(({ code }) => code === 'catalog-non-reference-changed'), label);
+  }
 });
 
 test('new helper acceptance requires exact reviewed bytes and reports patch provenance', async () => {
