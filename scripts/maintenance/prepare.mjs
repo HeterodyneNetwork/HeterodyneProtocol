@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { lstat, mkdir, mkdtemp, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
+import { lstat, mkdir, mkdtemp, readFile, readdir, realpath, rename, rm, writeFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { basename, dirname, isAbsolute, join, normalize, relative, sep } from "node:path";
 import { buildGraph } from "../vector-trace.mjs";
@@ -85,6 +85,9 @@ export function renderReferences(graph) {
 
 export function renderAnchors(graph) {
   const groups = new Map();
+  const fullDigests = new Map((graph?.receipt?.inputs ?? [])
+    .filter((input) => typeof input?.path === "string")
+    .map((input) => [input.path, input.sha256 ?? "?"]));
   for (const item of graphItems(graph, "spec_anchor")) {
     const owner = itemOwner(item);
     if (!groups.has(owner)) groups.set(owner, []);
@@ -94,7 +97,7 @@ export function renderAnchors(graph) {
   for (const [owner, items] of [...groups.entries()].sort(([left], [right]) => left.localeCompare(right, "en"))) {
     lines.push(`## ${owner}`, "");
     for (const item of items.sort((left, right) => left.semantic_id.localeCompare(right.semantic_id, "en"))) {
-      lines.push(`- \`${item.semantic_id}\` — ${item.heading ?? "?"}; ${item.source_path ?? "?"}:${itemLine(item)}; digest: \`${item.source_digest ?? "?"}\``);
+      lines.push(`- \`${item.semantic_id}\` — ${item.heading ?? "?"}; ${item.source_path ?? "?"}:${itemLine(item)}; section digest: \`${item.source_digest ?? "?"}\`; full source digest: \`${fullDigests.get(item.source_path) ?? "?"}\``);
     }
     lines.push("");
   }
@@ -206,6 +209,39 @@ async function fileInventory(repo, paths) {
   return files;
 }
 
+async function generatedInventory(root) {
+  const files = [];
+  async function visit(directory, prefix) {
+    const entries = await readdir(directory, { withFileTypes: true });
+    for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name, "en"))) {
+      const absolute = join(directory, entry.name);
+      const path = `${prefix}/${entry.name}`;
+      if (entry.isDirectory()) await visit(absolute, path);
+      else if (entry.isSymbolicLink() || !entry.isFile()) throw new Error(`generated artifact is not a regular file: ${path}`);
+      else {
+        const bytes = await readFile(absolute);
+        files.push({ path, sha256: sha256(bytes), bytes: bytes.length });
+      }
+    }
+  }
+  await visit(join(root, "artifacts"), "artifacts");
+  return files;
+}
+
+function byteSummary(files) {
+  const combinedUtf8Bytes = files.reduce((total, file) => total + file.bytes, 0);
+  const estimatedTokens = Math.ceil(combinedUtf8Bytes / 4);
+  return {
+    files,
+    combinedUtf8Bytes,
+    estimatedTokens,
+    tokenEstimator: TOKEN_ESTIMATOR,
+    maxTokens: MAX_TOKENS,
+    expansionBeyond8000: Math.max(0, estimatedTokens - MAX_TOKENS),
+    exceeds8000: estimatedTokens > MAX_TOKENS,
+  };
+}
+
 function startHere() {
   return [
     "# Prepared maintenance context", "", "Read [references.md](references.md),",
@@ -219,9 +255,7 @@ function startHere() {
   ].join("\n");
 }
 
-async function writeJson(path, value) { await writeFile(path, `${JSON.stringify(value, null, 2)}\n`, { flag: "wx", mode: 0o600 }); }
-
-export async function prepareContext({ repo, recipe, outputDirectory }) {
+export async function prepareContext({ repo, recipe, outputDirectory, buildGraphFn = buildGraph, compilePacketFn = compilePacket }) {
   if (!recipe || typeof recipe !== "object" || Array.isArray(recipe)) throw new TypeError("recipe is required");
   if (typeof recipe.inputCommit !== "string" || !/^[0-9a-f]{40}$/u.test(recipe.inputCommit)) throw new Error("recipe.inputCommit must be a full commit ID");
   const repository = await canonicalRepo(repo);
@@ -234,7 +268,7 @@ export async function prepareContext({ repo, recipe, outputDirectory }) {
     const bytes = await regularSource(repository, excerpt?.path);
     excerptRecord(excerpt, bytes.toString("utf8"));
   }
-  const graph = await buildGraph({ repo: repository, lane: "draft" });
+  const graph = await buildGraphFn({ repo: repository, lane: "draft" });
   const paths = inputPaths(graph, recipe);
   await dirtyInputs(repository, paths);
   const files = await fileInventory(repository, paths);
@@ -247,11 +281,24 @@ export async function prepareContext({ repo, recipe, outputDirectory }) {
   try {
     const artifacts = join(staging, "artifacts");
     await mkdir(artifacts);
-    const packet = await compilePacket({ repo: repository, graph, task: recipe.task, deliveredChunkIds: [], artifactDirectory: artifacts });
-    const combinedUtf8Bytes = files.reduce((total, file) => total + file.bytes, 0);
-    const estimatedTokens = Math.ceil(combinedUtf8Bytes / 4);
+    const packet = await compilePacketFn({ repo: repository, graph, task: recipe.task, deliveredChunkIds: [], artifactDirectory: artifacts });
+    const packetBytes = Buffer.from(`${JSON.stringify(packet, null, 2)}\n`, "utf8");
+    const referencesBytes = Buffer.from(renderReferences(graph), "utf8");
+    const anchorsBytes = Buffer.from(renderAnchors(graph), "utf8");
+    const testsBytes = Buffer.from(renderTests(tests), "utf8");
+    const startHereBytes = Buffer.from(startHere(), "utf8");
+    const rootFiles = [
+      ["packet.json", packetBytes],
+      ["references.md", referencesBytes],
+      ["anchors.md", anchorsBytes],
+      ["tests.md", testsBytes],
+      ["START-HERE.md", startHereBytes],
+    ].map(([path, bytes]) => ({ path, sha256: sha256(bytes), bytes: bytes.length }));
+    const sidecarFiles = await generatedInventory(staging);
+    const sourceInputs = byteSummary(files);
+    const optionalSidecars = byteSummary(sidecarFiles);
     const manifest = {
-      version: 1,
+      version: 2,
       inputCommit: head,
       graphInputDigest: graph.receipt?.input_inventory_sha256 ?? null,
       recipeDigest: digestJson(recipe),
@@ -263,20 +310,29 @@ export async function prepareContext({ repo, recipe, outputDirectory }) {
         digest: digestJson(recipe),
         taskId: recipe.task?.taskId ?? null,
       },
-      files,
-      combinedUtf8Bytes,
-      estimatedTokens,
-      tokenEstimator: TOKEN_ESTIMATOR,
-      maxTokens: MAX_TOKENS,
-      expansionBeyond8000: Math.max(0, estimatedTokens - MAX_TOKENS),
-      exceeds8000: estimatedTokens > MAX_TOKENS,
+      sourceInputs,
+      rootReadingSet: byteSummary([...rootFiles, { path: "manifest.json", bytes: 0 }]),
+      optionalSidecars,
+      sidecars: sidecarFiles,
+      compiler: { estimatedTokens: packet.estimatedTokens ?? null, tokenEstimator: packet.tokenEstimator ?? null, maxTokens: packet.budget?.maxTokens ?? packet.maxTokens ?? null },
     };
-    await writeJson(join(staging, "packet.json"), packet);
-    await writeFile(join(staging, "references.md"), renderReferences(graph), { flag: "wx", mode: 0o600 });
-    await writeFile(join(staging, "anchors.md"), renderAnchors(graph), { flag: "wx", mode: 0o600 });
-    await writeFile(join(staging, "tests.md"), renderTests(tests), { flag: "wx", mode: 0o600 });
-    await writeJson(join(staging, "manifest.json"), manifest);
-    await writeFile(join(staging, "START-HERE.md"), startHere(), { flag: "wx", mode: 0o600 });
+    let manifestBytes;
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      manifestBytes = Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+      const manifestEntry = manifest.rootReadingSet.files.find((file) => file.path === "manifest.json");
+      const previous = manifestEntry.bytes;
+      manifestEntry.bytes = manifestBytes.length;
+      const summary = byteSummary(manifest.rootReadingSet.files);
+      Object.assign(manifest.rootReadingSet, summary);
+      if (previous === manifestBytes.length) break;
+    }
+    manifestBytes = Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+    await writeFile(join(staging, "packet.json"), packetBytes, { flag: "wx", mode: 0o600 });
+    await writeFile(join(staging, "references.md"), referencesBytes, { flag: "wx", mode: 0o600 });
+    await writeFile(join(staging, "anchors.md"), anchorsBytes, { flag: "wx", mode: 0o600 });
+    await writeFile(join(staging, "tests.md"), testsBytes, { flag: "wx", mode: 0o600 });
+    await writeFile(join(staging, "manifest.json"), manifestBytes, { flag: "wx", mode: 0o600 });
+    await writeFile(join(staging, "START-HERE.md"), startHereBytes, { flag: "wx", mode: 0o600 });
     try {
       await rename(staging, target);
     } catch (error) {
