@@ -10,7 +10,7 @@
 
 **Spec:** [Verified repository maintenance in under sixty minutes](../specs/2026-09-04-sixty-minute-maintenance-design.md).
 
-Status: Phase 1 tooling is implemented and under final verification; no
+Status: Phase 1 tooling is implemented, reviewed, and locally verified; no
 sub-hour result is established. The first matched historical slice has not
 demonstrated fewer total steps at equal correctness. Tasks 3–7 remain gated,
 not completed. See the [pilot findings and next bounded experiment](../evaluations/sixty-minute-maintenance-pilot.md)

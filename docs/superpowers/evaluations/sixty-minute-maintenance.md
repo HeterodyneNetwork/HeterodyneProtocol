@@ -171,3 +171,36 @@ Result: 149 tests, 147 passed, two optional SARA skips, zero failures
 (18,548.366 ms). These tests do not replace a fresh candidate conformance gate
 or the plan's matched slice and full-workload acceptance trials. No durable
 store, scheduler, new agent skill, or default routing is claimed yet.
+
+## Final local verification
+
+The consolidated repair `59d93c6` passed scoped independent review. A fresh
+coordinator run of the command above passed 147 tests, with two optional SARA
+skips and zero failures, in 21,014.456 ms. Subsequent changes were documentation
+only.
+
+The first fresh `scripts/conformance-ci.sh` attempt failed two existing test
+timeouts: 2,014 draft tests passed and two failed; snapshot and independent
+lanes were not reached. It took 2,484.91 seconds wall time versus 560.74 user
+and 9.25 system CPU seconds. Local power logs recorded 954- and 1,015-second
+sleep intervals aligned with the two unusually long tests. The generator,
+dependencies, gate, and test limits were unchanged from the base tree.
+
+The unchanged gate was rerun with a command-lifetime idle-sleep inhibitor
+(no permanent power-setting change):
+
+```bash
+/usr/bin/caffeinate -i -t 1200 /usr/bin/time -p scripts/conformance-ci.sh
+```
+
+It passed on the final source tree (`88370c6`, before this documentation-only
+evidence update): 2,016 draft tests in 86 files, 267 history-bound snapshot
+vectors, and 178 independent tests in 19 files. Actual process time was
+564.13 seconds wall, 609.22 user and 19.89 system CPU seconds. The snapshot
+remained bound to source `c72f5ccdf855069550511d8e3e837dae55ed299c` and snapshot
+commit `80da4ded273ac746b9c56bc53a8f1c067835ad64`. No snapshot was reconciled.
+
+Locked installs reported the existing audit findings (five in the generator
+package and one in conformance); no dependency upgrade was attempted. These
+verification results establish the partial tooling branch's local readiness,
+not fewer workflow steps or completion of the full maintenance plan.
