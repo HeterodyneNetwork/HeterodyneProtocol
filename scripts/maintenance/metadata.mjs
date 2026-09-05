@@ -296,6 +296,73 @@ function oracleFromPush(statement, env, file, bytes, path) {
   return { matched: true, ok: true, record };
 }
 
+function isProfileRowsFinalizer(declaration) {
+  if (!ts.isIdentifier(declaration.name) || declaration.name.text !== "CURRENT_PROFILE_ORACLES") return false;
+  const call = unwrap(declaration.initializer);
+  return Boolean(
+    call && ts.isCallExpression(call)
+    && ts.isIdentifier(call.expression) && call.expression.text === "deepFreeze"
+    && call.arguments.length === 1
+    && ts.isIdentifier(unwrap(call.arguments[0])) && unwrap(call.arguments[0]).text === "rows",
+  );
+}
+
+function isProfileLookup(declaration) {
+  if (!ts.isIdentifier(declaration.name) || declaration.name.text !== "oracleByVectorId") return false;
+  const construct = unwrap(declaration.initializer);
+  if (
+    !construct || !ts.isNewExpression(construct)
+    || !ts.isIdentifier(construct.expression) || construct.expression.text !== "Map"
+    || construct.arguments?.length !== 1
+  ) return false;
+  const map = unwrap(construct.arguments[0]);
+  if (
+    !map || !ts.isCallExpression(map)
+    || !ts.isPropertyAccessExpression(map.expression)
+    || !ts.isIdentifier(map.expression.expression)
+    || !["rows", "CURRENT_PROFILE_ORACLES"].includes(map.expression.expression.text)
+    || map.expression.name.text !== "map" || map.arguments.length !== 1
+  ) return false;
+  const callback = unwrap(map.arguments[0]);
+  if (!callback || !ts.isArrowFunction(callback) || callback.parameters.length !== 1) return false;
+  const parameter = callback.parameters[0].name;
+  const body = unwrap(callback.body);
+  return Boolean(
+    ts.isIdentifier(parameter)
+    && body && ts.isArrayLiteralExpression(body) && body.elements.length === 2
+    && ts.isPropertyAccessExpression(unwrap(body.elements[0]))
+    && ts.isIdentifier(unwrap(body.elements[0]).expression)
+    && unwrap(body.elements[0]).expression.text === parameter.text
+    && unwrap(body.elements[0]).name.text === "vector_id"
+    && ts.isIdentifier(unwrap(body.elements[1]))
+    && unwrap(body.elements[1]).text === parameter.text,
+  );
+}
+
+function isProfileCountGuard(statement) {
+  if (!ts.isIfStatement(statement) || statement.elseStatement) return false;
+  const condition = unwrap(statement.expression);
+  if (!condition || !ts.isBinaryExpression(condition)) return false;
+  const left = unwrap(condition.left);
+  const right = literal(condition.right);
+  const body = ts.isBlock(statement.thenStatement)
+    ? [...statement.thenStatement.statements]
+    : [statement.thenStatement];
+  return Boolean(
+    condition.operatorToken.kind === ts.SyntaxKind.ExclamationEqualsEqualsToken
+    && left && ts.isPropertyAccessExpression(left)
+    && ts.isIdentifier(left.expression) && left.expression.text === "CURRENT_PROFILE_ORACLES"
+    && left.name.text === "length" && right.ok && right.value === 31
+    && body.length === 1 && ts.isThrowStatement(body[0]),
+  );
+}
+
+function isNonexecutedProfileDeclaration(statement) {
+  return ts.isFunctionDeclaration(statement)
+    || ts.isTypeAliasDeclaration(statement)
+    || ts.isInterfaceDeclaration(statement);
+}
+
 function extractProfileOracles(path, bytes) {
   const file = sourceFile(path, bytes);
   const rowsDeclaration = variable(file, "rows");
@@ -306,14 +373,20 @@ function extractProfileOracles(path, bytes) {
   }
   const records = new Map();
   let supported = true;
+  let rowsDeclared = false;
 
   const executeStatements = (statements, env) => {
     for (const statement of statements) {
       if (ts.isVariableStatement(statement)) {
         for (const declaration of statement.declarationList.declarations) {
-          if (!ts.isIdentifier(declaration.name)) continue;
+          if (!ts.isIdentifier(declaration.name)) {
+            if (rowsDeclared) supported = false;
+            continue;
+          }
           const parsed = literal(declaration.initializer, env);
           if (parsed.ok) env.set(declaration.name.text, parsed.value);
+          else if (rowsDeclared && !isProfileRowsFinalizer(declaration) && !isProfileLookup(declaration)) supported = false;
+          if (declaration === rowsDeclaration) rowsDeclared = true;
         }
         continue;
       }
@@ -340,7 +413,10 @@ function extractProfileOracles(path, bytes) {
         if (!oracle.ok) supported = false;
         else if (records.has(oracle.record.id)) supported = false;
         else records.set(oracle.record.id, oracle.record);
+        continue;
       }
+      if (isProfileCountGuard(statement) || isNonexecutedProfileDeclaration(statement) || ts.isImportDeclaration(statement)) continue;
+      if (rowsDeclared) supported = false;
     }
   };
 
