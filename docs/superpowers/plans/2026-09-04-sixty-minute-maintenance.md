@@ -11,15 +11,19 @@
 **Spec:** [Verified repository maintenance in under sixty minutes](../specs/2026-09-04-sixty-minute-maintenance-design.md).
 
 Status: Phase 1 tooling is implemented, reviewed, and locally verified; no
-sub-hour result is established. The first matched historical slice has not
-demonstrated fewer total steps at equal correctness. Tasks 3–7 remain gated,
+complete-workload sub-hour result is established. Neither matched historical
+trial has demonstrated fewer total steps at equal correctness. In the second
+trial the prepared-context arm completed its slice in 40 minutes 16 seconds,
+but the baseline remained unaccepted because one preserved case lacked exact
+live normative authority within scope. Tasks 3–7 remain gated,
 not completed. See the [pilot findings and next bounded experiment](../evaluations/sixty-minute-maintenance-pilot.md)
 and [tooling evidence](../evaluations/sixty-minute-maintenance.md).
 Existing SARA infrastructure is reusable, not completion of this plan.
 
 Approved continuation: [pre-run predictable queries for the second slice](../evaluations/sixty-minute-maintenance-pilot-v2.md).
 The revised preparation retains source authority and unknowns; its preparation
-failure and capacity recovery are explicitly recorded before the timed matched trial.
+failures, capacity recovery, matched trial, actual reads, repairs and verification
+are explicitly recorded.
 Tasks 3–7 remain gated on demonstrated improvement, not merely implementing this
 preparation recipe.
 

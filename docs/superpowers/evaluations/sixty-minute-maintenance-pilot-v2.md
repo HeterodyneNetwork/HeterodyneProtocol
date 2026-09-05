@@ -201,3 +201,80 @@ If prepared results reduce total agent work at equal correctness, retain the
 useful preparation steps and evaluate the smallest justified parallel/state
 mechanism next. If not, change task decomposition or test deterministic bulk
 edits; do not add a platform to compensate for an ineffective packet.
+
+## Second matched trial result
+
+The sequential cooperative-host trial ran on September 5 with fresh Luna/high
+workers and fresh Sol/high reviewers. The common brief and verification policy
+were frozen before dispatch. The treatment's only additional input was the
+deterministically generated `START-HERE.md` set. This remains exploratory: the
+host did not enforce read isolation, and earlier preparation failures remain
+part of the record.
+
+The baseline did not reach accepted correctness. Its first candidate and two
+repair commits were `b1ab0bb`, `bbe9c4c`, and `39a6a6c`. Review found 19
+semantic allocation errors, missing pre-mutation coverage, duplicate-anchor
+handling, and a repair-introduced production test seam. Repairs corrected 18
+allocations and the implementation/test defects, but the preserved
+`core/org-member-add-unauthorized` behavior has no exact governing rule in the
+six live specifications within the frozen edit scope. No catalog-only change
+could supply missing normative authority. The baseline therefore stopped at
+spec/quality FAIL before the full gate and evaluator, rather than fabricating a
+reference. Its original 06:11:59 UTC preparation start, ENOSPC failure, later
+retry, session suspension, and all repair work remain counted; it cannot support
+an under-hour claim.
+
+The treatment reached accepted slice output at `929e478`. Its initial worker
+used all six generated root files, summarized the optional 208,858-byte sidecar,
+opened four full specifications, and left Control and Social full sources on
+demand. Independent review opened the generated reference/anchor indexes and all
+six normative specifications. The initial candidate still had a fail-open
+version regex and 19 wrong-but-existing allocations; one repair round fixed both.
+Scoped review then passed with no Critical or Important findings.
+
+Coordinator evaluator evidence on the immutable candidate passed: 275 cases,
+275 references, 123 reference changes, four allowed changed paths, no findings,
+approved helper hashes, successful real authoring, and synthetic missing-anchor
+rejection with the complete seeded output manifest unchanged. The unchanged
+ordered gate also passed:
+
+```text
+/usr/bin/caffeinate -i -t 1200 /usr/bin/time -p scripts/conformance-ci.sh
+64 current-draft files / 1,179 tests passed; document-family check passed
+275 history-bound snapshot vectors verified
+19 independent-conformance files / 176 tests passed
+real 138.41; user 353.81; sys 17.77 seconds
+```
+
+Successful treatment preparation began at 20:47:12 UTC and final evidence ended
+at 21:27:28 UTC: 40 minutes 16 seconds. Immediately preceding it, two controller
+commands failed before cloning (nonexistent working directory and a wrong macOS
+`date` path), and the first clone command then used relative package prefixes
+from the wrong directory; clone succeeded but that install invocation failed.
+Those coordination failures are retained in team totals rather than hidden.
+
+Observed agent operations were lower for the treatment, but the comparison gate
+was not met because correctness was unequal:
+
+| Arm | Worker operations | Reviewer operations | Outcome |
+| --- | --- | --- | --- |
+| Baseline | about 122 tool calls; about 89 shell invocations; 275 trace queries plus reported reads; 3 commits and 2 repair rounds | 45 tool calls; about 36 shell executions; initial review plus 2 scoped re-reviews | Not accepted: one normative-authority gap |
+| Prepared context | 73 tool calls; 64 shell commands; 35 read/search batches; 10 patches; 2 commits and 1 repair round | 44 tool calls; 38 shell invocations; 38 read/hash batches; initial review, scoped re-review, final hash approval | Accepted; evaluator and full gate passed |
+
+The treatment used 117 worker-plus-reviewer tool calls versus about 167 for the
+baseline, but that is not a fewer-steps/equal-correctness result. Counts are
+agent-reported operational counters; shell/read classifiers differ slightly by
+report and are not process, token, or billing counters. Controller preparation,
+dispatch, waits, packaging retries, evaluator, gate, reporting, the earlier
+failed preparation series, and preparer development/review are additional team
+work. The treatment interval contained 35 reconstructed controller tool calls
+from successful preparation through the gate, plus the three preparation-command
+failures described above. The baseline's long suspension makes elapsed comparison
+descriptive only.
+
+The correct decision is to keep Tasks 3–7 gated. Prepared context is useful and
+the treatment slice itself finished under an hour, but the matched pair did not
+demonstrate fewer steps at equal correctness, and neither arm is the complete
+August 28 workload. The next bounded work should resolve the historical fixture's
+normative/scope inconsistency or choose a slice whose correct accepted output is
+defined identically for both arms before adding workflow infrastructure.
