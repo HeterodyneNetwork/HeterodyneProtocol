@@ -89,6 +89,14 @@ read/search classifier does not establish fewer reads either. Four failed
 baseline-review trace commands used a script path absent from the historical
 tree; that asymmetry is disclosed and must not be credited as packet benefit.
 
+Full gates ran on all four baseline candidates (145.28, 142.57, 141.58,
+139.02 seconds) and all three packet candidates (144.41, 143.98, 135.98
+seconds). Those seven gates consumed 992.82 seconds of aggregate process wall
+time, already included within worker task intervals, not an additional amount
+to add to them. The next trial should schedule focused checks during repair
+and one required unchanged full gate on the reviewed final candidate, while
+retaining a fresh gate whenever a subsequent code change invalidates it.
+
 The final baseline candidate was
 `573811230060f0e63d1181701a3beaf44b173295`. It also passed independent review,
 all 275 static reference checks (63 changed allocations), and the actual
