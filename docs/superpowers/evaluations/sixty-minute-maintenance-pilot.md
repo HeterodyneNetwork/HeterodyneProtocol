@@ -149,6 +149,10 @@ work excluded from the goal.
 
 ## Next bounded experiment, before Task 3
 
+The approved [second experiment](sixty-minute-maintenance-pilot-v2.md) pre-runs
+predictable source queries into files. Its preparation encountered host disk
+exhaustion; the failure and retry are recorded, with no second matched result yet.
+
 Revise packet selection to include the existing family-metadata validator,
 its layering/cardinality tests, the fixed `buildCurrentVectors` certification
 contract, and source-cited governing-reference groups. Distinguish structural
