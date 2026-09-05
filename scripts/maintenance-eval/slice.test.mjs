@@ -4,6 +4,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { inspectReferenceSlice, probeAuthoringNoMutation } from './slice.mjs';
 
 const OWNERS = ['core', 'assurance', 'comms', 'control', 'social', 'workspace'];
@@ -65,6 +66,7 @@ export async function authorAllVectors(outputDir) {
   return ['positive.json'];
 }\n`;
   await write(root, 'docs/spec/vectors/generator/src/author.ts', authorSource);
+  await write(root, 'docs/spec/vectors/generator/package-lock.json', await fs.readFile(path.join(process.cwd(), 'docs/spec/vectors/generator/package-lock.json')));
   await write(root, 'docs/spec/vectors/snapshot.json', '{"frozen":true}\n');
   git(root, 'add', '.');
   git(root, 'commit', '--quiet', '-m', 'base');
@@ -127,6 +129,85 @@ test('rejects non-reference catalog allocation edits and frozen snapshot changes
   assert.ok(result.findings.some(({ code, path: findingPath }) => code === 'forbidden-path-change' && findingPath === 'docs/spec/vectors/snapshot.json'));
 });
 
+test('rejects effective allocation changes in catalog consumer logic after the literal', async () => {
+  const base = await makeRepo();
+  const candidate = await candidateFrom(base);
+  const catalogPath = 'docs/spec/vectors/generator/src/current-vectors/case-contracts.ts';
+  const source = await fs.readFile(path.join(candidate, catalogPath), 'utf8');
+  await write(candidate, catalogPath, source.replace(
+    'return Object.keys(CURRENT_CASE_CONTRACTS);',
+    'return [{ ...CURRENT_CASE_CONTRACTS["comms/cross-owner"], boundary_id: "comms.changed" }];',
+  ));
+
+  const result = await inspectReferenceSlice({ baseRepo: base, candidateRepo: candidate, baseRef: 'HEAD' });
+
+  assert.equal(result.accepted, false);
+  assert.ok(result.findings.some(({ code }) => code === 'catalog-non-reference-changed'));
+});
+
+test('new helper acceptance requires exact reviewed bytes and reports patch provenance', async () => {
+  const base = await makeRepo();
+  const candidate = await candidateFrom(base);
+  const helperPath = 'docs/spec/vectors/generator/src/maintenance-reference-validation.ts';
+  const contents = 'export const reviewed = true;\n';
+  await write(candidate, helperPath, contents);
+
+  let result = await inspectReferenceSlice({ baseRepo: base, candidateRepo: candidate, baseRef: 'HEAD' });
+  assert.equal(result.accepted, false);
+  assert.ok(result.findings.some(({ code }) => code === 'new-file-scope-review-pending'));
+  assert.deepEqual(result.inventory.newReferenceHelpers, [{
+    path: helperPath,
+    size: Buffer.byteLength(contents),
+    sha256: createHash('sha256').update(contents).digest('hex'),
+    patchProvenance: 'untracked',
+    approved: false,
+  }]);
+
+  result = await inspectReferenceSlice({
+    baseRepo: base,
+    candidateRepo: candidate,
+    baseRef: 'HEAD',
+    approvedNewFiles: [{ path: helperPath, sha256: '0'.repeat(64) }],
+  });
+  assert.equal(result.accepted, false);
+  assert.ok(result.findings.some(({ code }) => code === 'new-file-scope-review-pending'));
+
+  result = await inspectReferenceSlice({
+    baseRepo: base,
+    candidateRepo: candidate,
+    baseRef: 'HEAD',
+    approvedNewFiles: [{ path: helperPath, sha256: createHash('sha256').update(contents).digest('hex') }],
+  });
+  assert.equal(result.accepted, true);
+  assert.equal(result.inventory.newReferenceHelpers[0].approved, true);
+});
+
+test('oversized, differently named, wrong-digest, and duplicate helper approvals stay rejected', async () => {
+  const base = await makeRepo();
+  const candidate = await candidateFrom(base);
+  const helperPath = 'docs/spec/vectors/generator/src/maintenance-reference-validation.test.ts';
+  const contents = 'x'.repeat(65537);
+  const sha256 = createHash('sha256').update(contents).digest('hex');
+  await write(candidate, helperPath, contents);
+  await write(candidate, 'docs/spec/vectors/generator/src/reference-validation-helper.ts', 'small\n');
+
+  const result = await inspectReferenceSlice({
+    baseRepo: base,
+    candidateRepo: candidate,
+    baseRef: 'HEAD',
+    approvedNewFiles: [
+      { path: helperPath, sha256 },
+      { path: helperPath, sha256 },
+      { path: 'docs/spec/vectors/generator/src/reference-validation-helper.ts', sha256: '0'.repeat(64) },
+    ],
+  });
+
+  assert.equal(result.accepted, false);
+  assert.ok(result.findings.some(({ code }) => code === 'new-file-too-large'));
+  assert.ok(result.findings.some(({ code }) => code === 'new-file-path-out-of-scope'));
+  assert.ok(result.findings.some(({ code }) => code === 'new-file-approval-invalid'));
+});
+
 test('rejects untracked nonignored and ignored path additions', async () => {
   const base = await makeRepo();
   const candidate = await candidateFrom(base);
@@ -165,6 +246,9 @@ test('dynamic probe accepts a real pre-mutation missing-reference rejection', as
   assert.equal(result.negative.started, true);
   assert.equal(result.negative.imported, true);
   assert.equal(result.negative.outputManifestEqual, true);
+  assert.equal(result.dependencyProvenance.matched, true);
+  assert.match(result.dependencyProvenance.lockSha256, /^[0-9a-f]{64}$/u);
+  assert.equal(result.positive.dependencyLockSha256, result.dependencyProvenance.lockSha256);
 });
 
 test('dynamic probe detects an author that writes and then throws', async () => {
@@ -182,4 +266,16 @@ test('dynamic probe distinguishes loader failure from reference rejection', asyn
   assert.equal(result.positive.status, 'runner-failure');
   assert.equal(result.positive.runnerFailure, true);
   assert.equal(result.positive.boundaryRejected, false);
+});
+
+test('dynamic fallback rejects a candidate lockfile that differs from the dependency provider', async () => {
+  const repo = await makeRepo();
+  await write(repo, 'docs/spec/vectors/generator/package-lock.json', '{"mismatched":true}\n');
+
+  const result = await probeAuthoringNoMutation({ repo });
+
+  assert.equal(result.accepted, false);
+  assert.equal(result.positive.status, 'dependency-lock-mismatch');
+  assert.equal(result.positive.runnerFailure, true);
+  assert.equal(result.negative.status, 'not-run');
 });

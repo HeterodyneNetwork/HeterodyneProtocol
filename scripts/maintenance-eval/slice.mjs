@@ -14,6 +14,11 @@ const AUTHOR = `${GENERATOR}/src/author.ts`;
 const OWNERS = ['core', 'assurance', 'comms', 'control', 'social', 'workspace'];
 const OWNER_SET = new Set(OWNERS);
 const EXACT_EDITABLE = new Set([AUTHOR, CONTRACTS]);
+const OPTIONAL_NEW_FILES = new Set([
+  `${GENERATOR}/src/maintenance-reference-validation.ts`,
+  `${GENERATOR}/src/maintenance-reference-validation.test.ts`,
+]);
+const MAX_NEW_FILE_BYTES = 65536;
 const require = createRequire(import.meta.url);
 const ts = require(path.join(EVALUATOR_ROOT, GENERATOR, 'node_modules/typescript/lib/typescript.js'));
 
@@ -54,13 +59,11 @@ function parseCatalog(source, sourcePath) {
   const sourceFile = ts.createSourceFile(sourcePath, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   if (sourceFile.parseDiagnostics.length) throw new OracleError('catalog-unparseable', `${sourcePath} has TypeScript parse diagnostics`);
   const declarations = [];
-  let declarationStatement;
   for (const statement of sourceFile.statements) {
     if (!ts.isVariableStatement(statement)) continue;
     for (const declaration of statement.declarationList.declarations) {
       if (ts.isIdentifier(declaration.name) && declaration.name.text === 'CURRENT_CASE_CONTRACTS') {
         declarations.push(declaration);
-        declarationStatement = statement;
       }
     }
   }
@@ -98,8 +101,7 @@ function parseCatalog(source, sourcePath) {
     placeholders.add(refsNode);
     cases.set(caseId, { ownerDocument, refs });
   }
-  const declarationKind = declarationStatement.declarationList.flags & (ts.NodeFlags.Const | ts.NodeFlags.Let);
-  return { cases, skeleton: JSON.stringify([declarationKind, canonicalAst(declarations[0], placeholders)]), sourceFile };
+  return { cases, skeleton: JSON.stringify(canonicalAst(sourceFile, placeholders)), sourceFile };
 }
 
 function deriveDocuments(read) {
@@ -164,12 +166,6 @@ async function baseBlob(baseRepo, baseRef, relativePath) {
   return runGit(baseRepo, ['show', `${baseRef}:${relativePath}`], { encoding: 'buffer' });
 }
 
-function isNewReferenceHelper(relativePath) {
-  if (!relativePath.startsWith(`${GENERATOR}/src/`) || !relativePath.endsWith('.ts')) return false;
-  const name = path.posix.basename(relativePath).toLowerCase();
-  return name.includes('reference') && name.includes('validat');
-}
-
 async function sameWorkingFile(leftRoot, rightRoot, relativePath) {
   try {
     const [left, right] = await Promise.all([fs.readFile(path.join(leftRoot, relativePath)), fs.readFile(path.join(rightRoot, relativePath))]);
@@ -179,7 +175,7 @@ async function sameWorkingFile(leftRoot, rightRoot, relativePath) {
   }
 }
 
-async function inspectPaths({ baseRepo, candidateRepo, baseRef }, findings) {
+async function inspectPaths({ baseRepo, candidateRepo, baseRef, approvedNewFiles }, findings) {
   const basePaths = await nulGit(baseRepo, ['ls-tree', '-r', '--name-only', baseRef]);
   const candidateTracked = new Set(await nulGit(candidateRepo, ['ls-files']));
   const untracked = await nulGit(candidateRepo, ['ls-files', '--others', '--exclude-standard']);
@@ -187,6 +183,22 @@ async function inspectPaths({ baseRepo, candidateRepo, baseRef }, findings) {
     .filter(relativePath => !relativePath.split('/').includes('node_modules'));
   const changedPaths = [];
   const newHelpers = [];
+  const approvals = new Map();
+  const duplicateApprovals = new Set();
+  if (!Array.isArray(approvedNewFiles)) {
+    findings.push(finding('new-file-approval-invalid', 'approvedNewFiles must be an array'));
+  } else {
+    for (const approval of approvedNewFiles) {
+      if (!approval || typeof approval !== 'object' || !OPTIONAL_NEW_FILES.has(approval.path) || !/^[0-9a-f]{64}$/u.test(approval.sha256 ?? '')) {
+        findings.push(finding('new-file-approval-invalid', 'approval must name an exact optional path and lowercase SHA-256', { path: approval?.path }));
+        continue;
+      }
+      if (approvals.has(approval.path)) {
+        duplicateApprovals.add(approval.path);
+        findings.push(finding('new-file-approval-invalid', `duplicate approval for ${approval.path}`, { path: approval.path }));
+      } else approvals.set(approval.path, approval.sha256);
+    }
+  }
   for (const relativePath of basePaths) {
     let equal = false;
     try {
@@ -208,18 +220,34 @@ async function inspectPaths({ baseRepo, candidateRepo, baseRef }, findings) {
     changedPaths.push(relativePath);
     let regular = false;
     try { regular = (await fs.lstat(path.join(candidateRepo, relativePath))).isFile(); } catch {}
-    if (!regular) findings.push(finding('path-type-unsupported', `new candidate path is not a regular file: ${relativePath}`, { path: relativePath }));
-    else if (isNewReferenceHelper(relativePath)) newHelpers.push(relativePath);
-    else findings.push(finding('untracked-path', `new path is outside the bounded helper allowance: ${relativePath}`, { path: relativePath }));
+    if (!regular) {
+      findings.push(finding('path-type-unsupported', `new candidate path is not a regular file: ${relativePath}`, { path: relativePath }));
+    } else if (OPTIONAL_NEW_FILES.has(relativePath)) {
+      const bytes = await fs.readFile(path.join(candidateRepo, relativePath));
+      const sha256 = digest(bytes);
+      const size = bytes.length;
+      const approved = size <= MAX_NEW_FILE_BYTES && !duplicateApprovals.has(relativePath) && approvals.get(relativePath) === sha256;
+      const patchProvenance = additions.includes(relativePath) ? 'tracked' : 'untracked';
+      newHelpers.push({ path: relativePath, size, sha256, patchProvenance, approved });
+      if (size > MAX_NEW_FILE_BYTES) findings.push(finding('new-file-too-large', `${relativePath} exceeds ${MAX_NEW_FILE_BYTES} bytes`, { path: relativePath, size, maximum: MAX_NEW_FILE_BYTES }));
+      if (!approved) findings.push(finding('new-file-scope-review-pending', `${relativePath} lacks approval for its exact reviewed bytes`, { path: relativePath, size, sha256, patchProvenance }));
+    } else {
+      findings.push(finding('new-file-path-out-of-scope', `new path is outside the two optional pilot helper paths: ${relativePath}`, { path: relativePath }));
+      findings.push(finding('untracked-path', `new path is outside the bounded helper allowance: ${relativePath}`, { path: relativePath }));
+    }
+  }
+  const presentHelpers = new Set(newHelpers.map(({ path: value }) => value));
+  for (const approvedPath of approvals.keys()) {
+    if (!presentHelpers.has(approvedPath)) findings.push(finding('new-file-approval-invalid', `approval does not match a new candidate file: ${approvedPath}`, { path: approvedPath }));
   }
   for (const relativePath of ignored) {
     if (!await sameWorkingFile(baseRepo, candidateRepo, relativePath)) findings.push(finding('ignored-path-change', `ignored candidate path differs from evaluator base: ${relativePath}`, { path: relativePath }));
   }
-  return { changedPaths: [...new Set(changedPaths)].sort(), untrackedPaths: untracked.sort(), ignoredChangedPaths: findings.filter(({ code }) => code === 'ignored-path-change').map(({ path: value }) => value).sort(), newReferenceHelpers: newHelpers.sort(), scopeApprovalRequired: newHelpers.length > 0 };
+  return { changedPaths: [...new Set(changedPaths)].sort(), untrackedPaths: untracked.sort(), ignoredChangedPaths: findings.filter(({ code }) => code === 'ignored-path-change').map(({ path: value }) => value).sort(), newReferenceHelpers: newHelpers.sort((left, right) => left.path.localeCompare(right.path)), scopeApprovalRequired: newHelpers.some(({ approved }) => !approved) };
 }
 
 /** Independently inspect the bounded reference-only maintenance slice. */
-export async function inspectReferenceSlice({ baseRepo, candidateRepo, baseRef }) {
+export async function inspectReferenceSlice({ baseRepo, candidateRepo, baseRef, approvedNewFiles = [] }) {
   if (!baseRepo || !candidateRepo || !baseRef) throw new TypeError('baseRepo, candidateRepo, and baseRef are required');
   const findings = [];
   let inventory = { changedPaths: [], untrackedPaths: [], ignoredChangedPaths: [], newReferenceHelpers: [], scopeApprovalRequired: false };
@@ -227,7 +255,7 @@ export async function inspectReferenceSlice({ baseRepo, candidateRepo, baseRef }
   let candidateCatalog;
   let documents;
   let version = null;
-  try { inventory = await inspectPaths({ baseRepo, candidateRepo, baseRef }, findings); } catch (error) { findings.push(finding('path-inventory-failed', error.message)); }
+  try { inventory = await inspectPaths({ baseRepo, candidateRepo, baseRef, approvedNewFiles }, findings); } catch (error) { findings.push(finding('path-inventory-failed', error.message)); }
   try {
     const [baseSource, candidateSource] = await Promise.all([baseBlob(baseRepo, baseRef, CONTRACTS).then(value => value.toString('utf8')), fs.readFile(path.join(candidateRepo, CONTRACTS), 'utf8')]);
     baseCatalog = parseCatalog(baseSource, `${baseRef}:${CONTRACTS}`);
@@ -326,7 +354,26 @@ export async function probeAuthoringNoMutation({ repo }) {
   const runner = path.join(tempRoot, 'runner.mjs');
   const evaluatorDependencies = path.join(EVALUATOR_ROOT, GENERATOR, 'node_modules');
   let dependencySource = path.join(repo, GENERATOR, 'node_modules');
-  try { await fs.access(dependencySource); } catch { dependencySource = evaluatorDependencies; }
+  let usesFallback = false;
+  try { await fs.access(dependencySource); } catch { dependencySource = evaluatorDependencies; usesFallback = true; }
+  let dependencyProvenance;
+  try {
+    const candidateLock = await fs.readFile(path.join(repo, GENERATOR, 'package-lock.json'));
+    const candidateLockSha256 = digest(candidateLock);
+    if (usesFallback) {
+      const providerLockSha256 = digest(await fs.readFile(path.join(EVALUATOR_ROOT, GENERATOR, 'package-lock.json')));
+      dependencyProvenance = { source: 'evaluator-fallback', matched: candidateLockSha256 === providerLockSha256, lockSha256: candidateLockSha256, providerLockSha256 };
+    } else {
+      dependencyProvenance = { source: 'candidate', matched: true, lockSha256: candidateLockSha256, providerLockSha256: candidateLockSha256 };
+    }
+  } catch (error) {
+    dependencyProvenance = { source: usesFallback ? 'evaluator-fallback' : 'candidate', matched: false, lockSha256: null, providerLockSha256: null, diagnostic: bounded(error.message) };
+  }
+  if (!dependencyProvenance.matched) {
+    const positive = { status: 'dependency-lock-mismatch', runnerFailure: true, boundaryRejected: false, started: false, imported: false, completed: false, exitCode: null, dependencyLockSha256: dependencyProvenance.lockSha256, diagnostic: 'candidate and dependency-provider generator lockfiles do not match' };
+    const negative = { status: 'not-run', runnerFailure: true, boundaryRejected: false, outputManifestEqual: false, dependencyLockSha256: dependencyProvenance.lockSha256 };
+    return { accepted: false, dependencySource, dependencyProvenance, positive, negative, limitations: ['exploratory evaluator execution; no OS isolation', 'does not establish governing-semantic correctness or full conformance'] };
+  }
   const loader = path.join(dependencySource, 'tsx/dist/loader.mjs');
   await copyCandidate(repo, repoCopy);
   await fs.symlink(dependencySource, path.join(repoCopy, GENERATOR, 'node_modules'), 'dir');
@@ -340,7 +387,7 @@ catch (error) { process.stdout.write(JSON.stringify({event:'import-error',error:
 if (loaded) { try { await loaded.authorAllVectors(outputDir); process.stdout.write(JSON.stringify({event:'completed'})+'\\n'); }
 catch (error) { process.stdout.write(JSON.stringify({event:'author-error',error:String(error?.stack ?? error)})+'\\n'); process.exitCode=23; } }
 `);
-  const positive = classifyPositive(await invokeAuthor({ repoCopy, outputDir: positiveDir, runner, loader }));
+  const positive = { ...classifyPositive(await invokeAuthor({ repoCopy, outputDir: positiveDir, runner, loader })), dependencyLockSha256: dependencyProvenance.lockSha256 };
 
   await fs.writeFile(path.join(negativeDir, 'sentinel.bin'), Buffer.from([0, 1, 2, 255]));
   await fs.writeFile(path.join(negativeDir, 'fixtures.json'), '{"sentinel":"fixtures"}\n');
@@ -366,9 +413,9 @@ catch (error) { process.stdout.write(JSON.stringify({event:'author-error',error:
     const runnerFailure = !run.started || !run.imported || run.phase === 'import-error';
     const boundaryRejected = rejectionDiagnostic && run.exitCode !== 0;
     const status = runnerFailure ? 'runner-failure' : run.completed ? 'missing-reference-accepted' : !outputManifestEqual ? 'mutation-before-rejection' : boundaryRejected ? 'boundary-rejected' : 'unrelated-author-failure';
-    negative = { ...run, status, runnerFailure, boundaryRejected, outputManifestEqual, beforeManifest: before, afterManifest: after, syntheticReference };
+    negative = { ...run, status, runnerFailure, boundaryRejected, outputManifestEqual, beforeManifest: before, afterManifest: after, syntheticReference, dependencyLockSha256: dependencyProvenance.lockSha256 };
   } catch (error) {
     negative = { status: 'probe-runner-failure', runnerFailure: true, boundaryRejected: false, outputManifestEqual: false, diagnostic: bounded(error.stack ?? error.message) };
   }
-  return { accepted: positive.status === 'completed' && negative.status === 'boundary-rejected', dependencySource, positive, negative, limitations: ['exploratory evaluator execution; no OS isolation', 'does not establish governing-semantic correctness or full conformance'] };
+  return { accepted: positive.status === 'completed' && negative.status === 'boundary-rejected', dependencySource, dependencyProvenance, positive, negative, limitations: ['exploratory evaluator execution; no OS isolation', 'does not establish governing-semantic correctness or full conformance'] };
 }
