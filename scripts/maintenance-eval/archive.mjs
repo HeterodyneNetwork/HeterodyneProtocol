@@ -6,7 +6,7 @@
 const TOOL_CALL_TYPES = new Set(['custom_tool_call', 'function_call']);
 const TASK_START_TYPES = new Set(['task_started', 'task_start']);
 const TASK_END_TYPES = new Set(['task_complete', 'task_completed', 'task_finished', 'task_end']);
-const STATIC_SITE_SYNTAX = 'direct tools.<name>(...) call sites outside comments and literals';
+const LEXICAL_CANDIDATE_SYNTAX = 'tools.<name>( tokens outside comments and quoted/template strings; may include regex literals and nested receivers';
 
 function payloadOf(record) {
   return record && record.payload && typeof record.payload === 'object'
@@ -51,10 +51,11 @@ function increment(counts, key) {
 }
 
 /**
- * Parse only direct dotted call sites. Quoted strings, template literals, and
- * comments are skipped, so the result is deliberately a static lower bound.
+ * Scan lexical candidates only. Quoted strings, template literals, and comments
+ * are skipped, but regex literals and nested receivers can be false positives.
+ * This is neither a call-expression count nor a lower bound on invocations.
  */
-function directToolCallSites(source) {
+function lexicalToolCallCandidates(source) {
   if (typeof source !== 'string') return [];
   const sites = [];
   let index = 0;
@@ -155,8 +156,8 @@ export function summarizeArchive(records) {
   const observedOuterByKind = new Map();
   const observedNestedCalls = new Map();
   const observedNestedByKind = new Map();
-  const staticSitesByKind = new Map();
-  const staticSites = [];
+  const lexicalCandidatesByKind = new Map();
+  const lexicalCandidates = [];
   const instrumentedProcesses = new Map();
   const tasks = new Map();
   const timestamps = [];
@@ -181,9 +182,9 @@ export function summarizeArchive(records) {
         increment(observedOuterByKind, name);
         if (name === 'exec') {
           const source = typeof payload.input === 'string' ? payload.input : null;
-          for (const siteName of directToolCallSites(source)) {
-            increment(staticSitesByKind, siteName);
-            staticSites.push({ outerCallId: id, line, name: siteName });
+          for (const candidateName of lexicalToolCallCandidates(source)) {
+            increment(lexicalCandidatesByKind, candidateName);
+            lexicalCandidates.push({ outerCallId: id, line, name: candidateName });
           }
         }
       }
@@ -277,10 +278,10 @@ export function summarizeArchive(records) {
     processes: processCount,
     confirmedGateLaunches: confirmedGateProcessIds.size,
     provenance: {
-      source: 'public event metadata and static parsing of orchestration source',
+      source: 'public event metadata and lexical scanning of orchestration source',
       rules: [
         'outer calls count unique observed call_id values; repeated outputs are not calls',
-        'nested runtime invocation totals are unknown; static direct call sites are reported separately and are not execution evidence',
+        'nested runtime invocation totals are unknown; lexical candidates may include regex literals and nested receivers and are not execution evidence or a lower bound',
         'wrapper session/cell identifiers and free-form output do not establish a shell process or timing',
         'gate launches require structured process instrumentation with the gate command',
         'task intervals prefer task_complete.duration_ms and retain the outer event span separately',
@@ -296,11 +297,11 @@ export function summarizeArchive(records) {
           total: observedNestedCalls.size > 0 ? observedNestedCalls.size : null,
           ...(observedNestedCalls.size > 0 ? { byKind: sortedCounts(observedNestedByKind) } : {}),
         },
-        staticNestedCallSites: {
-          status: 'parsed-static-lower-bound',
-          total: staticSites.length,
-          byKind: sortedCounts(staticSitesByKind),
-          syntax: STATIC_SITE_SYNTAX,
+        lexicalNestedCallCandidates: {
+          status: 'lexical-candidates',
+          total: lexicalCandidates.length,
+          byKind: sortedCounts(lexicalCandidatesByKind),
+          syntax: LEXICAL_CANDIDATE_SYNTAX,
         },
         processes: {
           status: processStatus,
@@ -313,7 +314,7 @@ export function summarizeArchive(records) {
         },
       },
       calls: [...observedOuterCalls.values()],
-      staticNestedCallSites: staticSites,
+      lexicalNestedCallCandidates: lexicalCandidates,
       processes: processProvenance,
       tasks: taskProvenance,
     },

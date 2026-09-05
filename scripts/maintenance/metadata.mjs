@@ -250,52 +250,6 @@ function bindLoop(name, value, env) {
   return null;
 }
 
-function fixedTuple(node, env) {
-  const call = unwrap(node);
-  if (!call || !ts.isCallExpression(call) || !ts.isIdentifier(call.expression) || call.expression.text !== "fixedTuple") return { ok: false };
-  const fields = ["kind", "profile_id", "owner", "discriminator", "stamping"];
-  const tuple = {};
-  for (let index = 0; index < fields.length; index += 1) {
-    const parsed = literal(call.arguments[index], env);
-    if (!parsed.ok) return { ok: false };
-    tuple[fields[index]] = parsed.value;
-  }
-  return { ok: true, value: tuple };
-}
-
-function oracleFromPush(statement, env, file, bytes, path) {
-  if (!ts.isExpressionStatement(statement)) return { matched: false };
-  const push = unwrap(statement.expression);
-  if (
-    !push || !ts.isCallExpression(push)
-    || !ts.isPropertyAccessExpression(push.expression)
-    || !ts.isIdentifier(push.expression.expression)
-    || push.expression.expression.text !== "rows"
-    || push.expression.name.text !== "push"
-    || push.arguments.length !== 1
-  ) return { matched: false };
-  const oracleCall = unwrap(push.arguments[0]);
-  if (!oracleCall || !ts.isCallExpression(oracleCall) || !ts.isIdentifier(oracleCall.expression) || oracleCall.expression.text !== "oracle") {
-    return { matched: true, ok: false };
-  }
-  const tuple = fixedTuple(oracleCall.arguments[0], env);
-  const boundary = literal(oracleCall.arguments[1], env);
-  const invariants = literal(oracleCall.arguments[2], env);
-  if (!tuple.ok || !boundary.ok || typeof boundary.value !== "string" || !invariants.ok || !Array.isArray(invariants.value)) {
-    return { matched: true, ok: false };
-  }
-  const record = {
-    id: `${tuple.value.owner}/profile-${tuple.value.profile_id}`,
-    boundaryId: boundary.value,
-    ownerDocument: tuple.value.owner,
-    profile: tuple.value.profile_id,
-    invariants: invariants.value,
-    reasonCodes: [],
-    provenance: provenance(file, bytes, oracleCall, path, "profile_oracle_override"),
-  };
-  return { matched: true, ok: true, record };
-}
-
 // This is a closed recognizer, not a helper evaluator. Formatting/comments may
 // vary; any change to the observed helper's tokens requires explicit support.
 const PROFILE_FREEZER = `function deepFreeze<T>(value: T, seen = new WeakSet<object>()): T {
@@ -498,19 +452,14 @@ function extractProfileOracles(path, bytes) {
         }
         continue;
       }
-      const oracle = oracleFromPush(statement, env, file, bytes, path);
-      if (oracle.matched) {
-        if (!rowsDeclared || finalized || lookupDeclared || !oracle.ok) supported = false;
-        else if (records.has(oracle.record.id)) supported = false;
-        else records.set(oracle.record.id, oracle.record);
-        continue;
-      }
       if (isProfileCountGuard(statement)) {
         if (!finalized || records.size !== 31) supported = false;
         continue;
       }
       if (isNonexecutedProfileDeclaration(statement)
         || (ts.isImportDeclaration(statement) && statement.importClause?.isTypeOnly)) continue;
+      // Row-construction calls are unsupported. Helper names and literal
+      // arguments cannot establish what their unvalidated bodies return.
       supported = false;
     }
   };

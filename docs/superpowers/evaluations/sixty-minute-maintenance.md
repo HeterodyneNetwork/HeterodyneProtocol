@@ -67,11 +67,14 @@ regardless of elapsed time.
 ## Baseline and pending readiness
 
 The redacted August 28 archive has 1,882 observed outer calls (1,562 `exec`,
-226 `wait`, 88 `send_message`, and 6 `wait_agent`) and a static lower bound of
-1,599 direct `tools.*` call sites (1,073 `exec_command`, 163 `write_stdin`, 332
-`apply_patch`, 22 `mcp__semble__search`, and 9 `update_plan`). Those static
-sites are not observed nested runtime events, executions, or processes. A
-prior manual source audit identified approximately 600 read/search-bearing
+226 `wait`, 88 `send_message`, and 6 `wait_agent`) and 1,599 lexical `tools.*`
+call candidates (1,073 `exec_command`, 163 `write_stdin`, 332 `apply_patch`,
+22 `mcp__semble__search`, and 9 `update_plan`). The scanner skips comments and
+quoted/template strings but can include regex literals and nested receivers;
+this is not a lower bound on direct calls. The historical count is retained,
+not remeasured. These candidates are not observed nested runtime events,
+executions, or processes. A prior manual source audit identified approximately
+600 read/search-bearing
 shell-command candidates and at least 14 full-gate command candidates; it did
 not instrument or confirm their launches. The archive also contains 16
 explicit compaction records.
@@ -157,13 +160,13 @@ reference to reject without changing any seeded output. Governing semantic
 correctness still needs independent review; merely finding an anchor is not
 enough. New pilot helper files require exact reviewed path/digest approvals.
 
-Tool readiness at `7ddbe54`:
+Tool readiness after the consolidated Phase 1 review repairs (September 4):
 
 ```bash
 node --test scripts/maintenance/*.test.mjs scripts/maintenance-eval/*.test.mjs scripts/vector-trace*.test.mjs
 ```
 
-Result: 139 tests, 137 passed, two optional SARA skips, zero failures
-(22,684.705 ms). These tests do not replace a fresh candidate conformance gate
+Result: 149 tests, 147 passed, two optional SARA skips, zero failures
+(18,548.366 ms). These tests do not replace a fresh candidate conformance gate
 or the plan's matched slice and full-workload acceptance trials. No durable
 store, scheduler, new agent skill, or default routing is claimed yet.

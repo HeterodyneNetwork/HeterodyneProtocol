@@ -177,6 +177,27 @@ const task = {
   contract: { requirement: ROOT_ID },
 };
 
+for (const [name, path, extra, reason, symbol, selectors] of [
+  ["nested boundary", OIDC, 'function helper() { function validateIssuerMetadata() { return "nested"; } }\n', "boundary_span_ambiguous", "validateIssuerMetadata", []],
+  ["overloaded boundary", OIDC, 'export function validateIssuerMetadata(metadata: unknown): unknown;\n', "boundary_span_ambiguous", "validateIssuerMetadata", []],
+  ["case property", CATALOG, 'const unrelated = { "comms/oidc-issuer-mismatch": { unrelated: true } };\n', "case_span_ambiguous", "comms/oidc-issuer-mismatch", []],
+  ["explicit selector", OIDC, 'function helper() { function unrelatedOidcOperation() { return "nested"; } }\n', "selector_span_ambiguous", "unrelatedOidcOperation", [{ path: OIDC, symbol: "unrelatedOidcOperation" }]],
+]) {
+  test(`packet leaves ${name} ambiguity unresolved without delivering an arbitrary span`, async (t) => {
+    const fixture = await currentFixture(t);
+    const catalog = path === CATALOG ? extra + fixture.catalog : fixture.catalog;
+    const oidc = path === OIDC ? extra + fixture.oidc : fixture.oidc;
+    await put(fixture.root, path, path === CATALOG ? catalog : oidc);
+    const graph = buildFixtureGraph({ ...fixture, catalog, oidc });
+    const packet = await compilePacket({ repo: fixture.root, graph, task: { ...task, selectors }, deliveredChunkIds: [] });
+    assert.equal(packet.complete, false);
+    assert.ok(packet.unresolved.some((entry) => entry.reason === reason && entry.symbol === symbol && entry.candidateCount === 2));
+    assert.equal(packet.mustRead.some((chunk) => chunk.path === path && chunk.symbolOrAnchor === symbol), false);
+    assert.ok(packet.mustRead.some(({ kind }) => kind === "normative"));
+    assert.equal(packet.unresolved.some(({ reason }) => reason === "receipt_not_fresh" || reason === "item_digest_mismatch"), false);
+  });
+}
+
 test("96-related packet expands only governing section, two declaring cases, and exact boundary", async (t) => {
   const fixture = await currentFixture(t);
   const packet = await compilePacket({ repo: fixture.root, graph: fixture.graph, task, deliveredChunkIds: [], artifactDirectory: fixture.artifactDirectory });

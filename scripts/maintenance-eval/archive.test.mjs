@@ -2,6 +2,25 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { summarizeArchive } from './archive.mjs';
 
+for (const [name, source] of [
+  ['regex literal', 'const pattern = /tools.exec_command()/;'],
+  ['nested receiver', 'const value = other.tools.exec_command();'],
+]) {
+  test(`${name} is only a lexical candidate, not an observed nested invocation`, () => {
+    const result = summarizeArchive([{ type: 'custom_tool_call', payload: {
+      call_id: 'outer-1', name: 'exec', input: source,
+    } }]);
+    assert.equal(result.outerCalls, 1);
+    assert.equal(result.nestedCalls, null);
+    assert.equal(result.processes, null);
+    assert.deepEqual(result.provenance.counts.lexicalNestedCallCandidates, {
+      status: 'lexical-candidates', total: 1, byKind: { exec_command: 1 },
+      syntax: 'tools.<name>( tokens outside comments and quoted/template strings; may include regex literals and nested receivers',
+    });
+    assert.equal(result.provenance.counts.staticNestedCallSites, undefined);
+  });
+}
+
 test('a yielded command and polls count one process with its start-to-exit duration', () => {
   const records = [
     { line: 1, timestamp: '2026-08-28T11:13:53.000Z', type: 'event_msg', payload: { type: 'task_started', task_id: 'r1' } },
@@ -38,11 +57,11 @@ test('observed outer and explicitly nested records have separate counting levels
     total: 1,
     byKind: { apply_patch: 1 },
   });
-  assert.deepEqual(result.provenance.counts.staticNestedCallSites, {
-    status: 'parsed-static-lower-bound',
+  assert.deepEqual(result.provenance.counts.lexicalNestedCallCandidates, {
+    status: 'lexical-candidates',
     total: 0,
     byKind: {},
-    syntax: 'direct tools.<name>(...) call sites outside comments and literals',
+    syntax: 'tools.<name>( tokens outside comments and quoted/template strings; may include regex literals and nested receivers',
   });
 });
 
@@ -138,7 +157,7 @@ test('real task event fields match turn_id and prefer reported duration without 
   }]);
 });
 
-test('reports observed outer calls separately from static direct nested call sites', () => {
+test('reports observed outer calls separately from lexical nested call candidates', () => {
   const result = summarizeArchive([
     { line: 1, timestamp: 1000, type: 'response_item', payload: {
       type: 'custom_tool_call', call_id: 'outer-1', name: 'exec', input: String.raw`
@@ -159,8 +178,8 @@ test('reports observed outer calls separately from static direct nested call sit
   assert.equal(result.outerCalls, 2);
   assert.equal(result.nestedCalls, null);
   assert.deepEqual(result.provenance.counts.observedOuterCalls.byKind, { exec: 1, wait: 1 });
-  assert.deepEqual(result.provenance.counts.staticNestedCallSites, {
-    status: 'parsed-static-lower-bound',
+  assert.deepEqual(result.provenance.counts.lexicalNestedCallCandidates, {
+    status: 'lexical-candidates',
     total: 5,
     byKind: {
       apply_patch: 1,
@@ -169,7 +188,7 @@ test('reports observed outer calls separately from static direct nested call sit
       update_plan: 1,
       write_stdin: 1,
     },
-    syntax: 'direct tools.<name>(...) call sites outside comments and literals',
+    syntax: 'tools.<name>( tokens outside comments and quoted/template strings; may include regex literals and nested receivers',
   });
   assert.equal(result.processes, null);
   assert.equal(result.confirmedGateLaunches, 0);

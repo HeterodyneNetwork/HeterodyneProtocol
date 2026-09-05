@@ -201,6 +201,43 @@ const pureProfileFreezer = `function deepFreeze<T>(value: T, seen = new WeakSet<
   return value;
 }`;
 
+for (const [name, helperSource, extraArgument = ""] of [
+  ["changed oracle result", 'function oracle() { return { semantic_boundary: "actual.otherBoundary", exercised_invariants: ["ACTUAL"] }; }'],
+  ["changed tuple result", 'function fixedTuple() { return { owner: "core", profile_id: "actual" }; } function oracle(tuple, boundary, invariants) { return { tuple, boundary, invariants }; }'],
+  ["shadowed tuple", 'function fixedTuple() { return {}; } function fixedTuple() { return { owner: "core" }; } function oracle(tuple, boundary, invariants) { return { tuple, boundary, invariants }; }'],
+  ["unvalidated argument cardinality", 'function oracle(tuple, boundary, invariants, replacement) { return replacement; }', ', { semantic_boundary: "actual.otherBoundary" }'],
+]) {
+  test(`helper-driven profile rows reject ${name}`, async (t) => {
+    const root = await fixtureRepo(t);
+    await put(root, `${ROOT}/current-vectors/case-contracts.ts`, `
+      const CURRENT_CASE_CONTRACTS = {
+        "comms/profile-profile-v1": {
+          boundary_id: "boundary.base", owner_document: "comms", profile: "profile-v1",
+          spec_refs: [], invariants: ["I-BASE"], reason_codes: []
+        }
+      } as const;
+      const TASK_FIFTEEN_BOUNDARIES = Object.freeze({});
+    `);
+    await put(root, `${ROOT}/current-vectors/profile-oracles.ts`, `
+      ${name.includes("tuple") ? "" : "function fixedTuple(kind, profile_id, owner, discriminator, stamping) { return { kind, profile_id, owner, discriminator, stamping }; }"}
+      ${helperSource}
+      const rows = [];
+      rows.push(oracle(fixedTuple(1, "profile-v1", "comms", "tag:test", false), "reported.boundary", ["REPORTED"]${extraArgument}));
+      const oracleByVectorId = new Map(rows.map((entry) => [entry.vector_id, entry]));
+      export function currentProfileOracleForVector(vectorId) { return oracleByVectorId.get(vectorId); }
+    `);
+    const result = await readDeclaredContracts({ repo: root, layout: "current-catalog" });
+    const record = result.records[0];
+    assert.equal(record.boundaryId, null);
+    assert.equal(record.ownerDocument, null);
+    assert.equal(record.profile, null);
+    assert.deepEqual(record.invariants, []);
+    assert.deepEqual(record.reasonCodes, []);
+    assert.ok(result.unresolved.some(({ reason, id }) => reason === "unsupported_profile_oracle" && id === record.id));
+    assert.equal(record.provenance.some(({ kind }) => kind === "profile_oracle_override"), false);
+  });
+}
+
 for (const [name, prelude, supported] of [
   ["throw", 'throw new Error("module initialization rejected");', false],
   ["runtime call", "initializeRuntime();", false],

@@ -564,7 +564,12 @@ export async function compilePacket({ repo, graph, task, deliveredChunkIds = [],
     }
     const source = loaded.bytes.toString("utf8");
     const symbol = semanticId.replace(/^case:/u, "");
-    const span = symbolSpans({ source, filePath: item.source_path }).find((candidate) => candidate.symbol === symbol);
+    const candidates = symbolSpans({ source, filePath: item.source_path }).filter((candidate) => candidate.symbol === symbol);
+    if (candidates.length > 1) {
+      unresolved.push({ reason: "case_span_ambiguous", semanticId, path: item.source_path, symbol, candidateCount: candidates.length });
+      continue;
+    }
+    const [span] = candidates;
     if (!span) {
       unresolved.push({ reason: "case_span_unavailable", semanticId, path: item.source_path });
       continue;
@@ -597,7 +602,12 @@ export async function compilePacket({ repo, graph, task, deliveredChunkIds = [],
       unresolved.push({ reason: "item_digest_mismatch", semanticId: boundary.semanticId, path: item.source_path, expected: item.source_digest, actual: loaded.fullSourceDigest });
     }
     const source = loaded.bytes.toString("utf8");
-    const span = symbolSpans({ source, filePath: item.source_path }).find((candidate) => candidate.symbol === boundary.symbol);
+    const candidates = symbolSpans({ source, filePath: item.source_path }).filter((candidate) => candidate.symbol === boundary.symbol);
+    if (candidates.length > 1) {
+      unresolved.push({ reason: "boundary_span_ambiguous", ...boundary, path: item.source_path, candidateCount: candidates.length });
+      continue;
+    }
+    const [span] = candidates;
     if (!span) {
       unresolved.push({ reason: "boundary_span_unavailable", ...boundary, path: item.source_path });
       continue;
@@ -626,7 +636,12 @@ export async function compilePacket({ repo, graph, task, deliveredChunkIds = [],
     const loaded = await loadInput({ repo, path: selector.path, inputs, receipt, cache, unresolved });
     if (!loaded) continue;
     const source = loaded.bytes.toString("utf8");
-    const span = symbolSpans({ source, filePath: selector.path }).find((candidate) => candidate.symbol === selector.symbol);
+    const candidates = symbolSpans({ source, filePath: selector.path }).filter((candidate) => candidate.symbol === selector.symbol);
+    if (candidates.length > 1) {
+      unresolved.push({ reason: "selector_span_ambiguous", ...selector, candidateCount: candidates.length });
+      continue;
+    }
+    const [span] = candidates;
     if (!span) {
       unresolved.push({ reason: "selector_span_unavailable", ...selector });
       continue;
