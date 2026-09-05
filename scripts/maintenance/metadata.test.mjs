@@ -189,6 +189,64 @@ test("a method-indirect rows mutation makes profile transforms unknown", async (
   assert.ok(result.unresolved.some(({ reason, id }) => reason === "unsupported_profile_oracle" && id === record.id));
 });
 
+const pureProfileFreezer = `function deepFreeze<T>(value: T, seen = new WeakSet<object>()): T {
+  if (value === null || typeof value !== "object") return value;
+  const object = value as object;
+  if (seen.has(object)) return value;
+  seen.add(object);
+  for (const key of Reflect.ownKeys(object)) {
+    deepFreeze((object as Record<PropertyKey, unknown>)[key], seen);
+  }
+  if (!ArrayBuffer.isView(object)) Object.freeze(object);
+  return value;
+}`;
+
+for (const [name, source] of [
+  ["mutating freezer", `function deepFreeze(value) { value.push(loadRuntimeOracle()); return value; }`],
+  ["replacing freezer", `function deepFreeze(value) { return loadRuntimeRows(); }`],
+  ["renamed freezer", pureProfileFreezer.replaceAll("deepFreeze", "otherFreeze")],
+  ["shadowed freezer", `${pureProfileFreezer}\nfunction deepFreeze(value) { return []; }`],
+  ["shadowed Map", `${pureProfileFreezer}\nfunction Map(entries) { return loadRuntimeLookup(); }`],
+  ["shadowed Object", `${pureProfileFreezer}\nconst Object = { freeze: [] };`],
+  ["shadowed Reflect", `${pureProfileFreezer}\nfunction Reflect() {}`],
+  ["shadowed WeakSet", `${pureProfileFreezer}\nfunction WeakSet() {}`],
+  ["shadowed ArrayBuffer", `${pureProfileFreezer}\nfunction ArrayBuffer() {}`],
+  ["rejecting row count", `${pureProfileFreezer}`],
+  ["replacing lookup", `${pureProfileFreezer}`],
+  ["shadowed rows", `${pureProfileFreezer}\nfunction rows() {}`],
+]) {
+  test(`profile finalization rejects ${name}`, async (t) => {
+    const root = await fixtureRepo(t);
+    await put(root, `${ROOT}/current-vectors/case-contracts.ts`, `
+      const CURRENT_CASE_CONTRACTS = {
+        "comms/profile-profile-v1": {
+          boundary_id: "boundary.base", owner_document: "comms", profile: "profile-v1",
+          spec_refs: [], invariants: ["I-BASE"], reason_codes: []
+        }
+      } as const;
+      const TASK_FIFTEEN_BOUNDARIES = Object.freeze({});
+    `);
+    await put(root, `${ROOT}/current-vectors/profile-oracles.ts`, `
+      ${source}
+      const rows = [];
+      const CURRENT_PROFILE_ORACLES = deepFreeze(rows);
+      ${name === "rejecting row count" ? 'if (CURRENT_PROFILE_ORACLES.length !== 31) { throw new Error("count"); }' : ""}
+      const oracleByVectorId = new Map(CURRENT_PROFILE_ORACLES.map((entry) => [entry.vector_id, entry]));
+      export function currentProfileOracleForVector(vectorId: string) {
+        ${name === "replacing lookup" ? "return loadRuntimeOracle(vectorId); // oracleByVectorId.get(vectorId)" : "return oracleByVectorId.get(vectorId);"}
+      }
+    `);
+    const result = await readDeclaredContracts({ repo: root, layout: "current-catalog" });
+    const record = result.records[0];
+    assert.equal(record.boundaryId, null);
+    assert.equal(record.ownerDocument, null);
+    assert.equal(record.profile, null);
+    assert.deepEqual(record.invariants, []);
+    assert.deepEqual(record.reasonCodes, []);
+    assert.ok(result.unresolved.some(({ reason, id }) => reason === "unsupported_profile_oracle" && id === record.id));
+  });
+}
+
 test("legacy auto-detection reads cited authoring inputs at their real locations and preserves unknowns", async (t) => {
   const root = await fixtureRepo(t);
   await put(root, "docs/spec/vectors/README.md", "# Test vectors\n\nGenerator declarations are authoring inputs, not boundary execution evidence.\n");
