@@ -255,7 +255,7 @@ function startHere() {
   ].join("\n");
 }
 
-export async function prepareContext({ repo, recipe, outputDirectory, buildGraphFn = buildGraph, compilePacketFn = compilePacket }) {
+export async function prepareContext({ repo, recipe, outputDirectory }) {
   if (!recipe || typeof recipe !== "object" || Array.isArray(recipe)) throw new TypeError("recipe is required");
   if (typeof recipe.inputCommit !== "string" || !/^[0-9a-f]{40}$/u.test(recipe.inputCommit)) throw new Error("recipe.inputCommit must be a full commit ID");
   const repository = await canonicalRepo(repo);
@@ -268,7 +268,7 @@ export async function prepareContext({ repo, recipe, outputDirectory, buildGraph
     const bytes = await regularSource(repository, excerpt?.path);
     excerptRecord(excerpt, bytes.toString("utf8"));
   }
-  const graph = await buildGraphFn({ repo: repository, lane: "draft" });
+  const graph = await buildGraph({ repo: repository, lane: "draft" });
   const paths = inputPaths(graph, recipe);
   await dirtyInputs(repository, paths);
   const files = await fileInventory(repository, paths);
@@ -281,7 +281,7 @@ export async function prepareContext({ repo, recipe, outputDirectory, buildGraph
   try {
     const artifacts = join(staging, "artifacts");
     await mkdir(artifacts);
-    const packet = await compilePacketFn({ repo: repository, graph, task: recipe.task, deliveredChunkIds: [], artifactDirectory: artifacts });
+    const packet = await compilePacket({ repo: repository, graph, task: recipe.task, deliveredChunkIds: [], artifactDirectory: artifacts });
     const packetBytes = Buffer.from(`${JSON.stringify(packet, null, 2)}\n`, "utf8");
     const referencesBytes = Buffer.from(renderReferences(graph), "utf8");
     const anchorsBytes = Buffer.from(renderAnchors(graph), "utf8");

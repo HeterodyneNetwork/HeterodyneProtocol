@@ -6,6 +6,8 @@ import { dirname, join } from "node:path";
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { renderAnchors, renderReferences, renderTests } from "./prepare.mjs";
+import { buildGraph } from "../vector-trace.mjs";
+import { compilePacket } from "./packet.mjs";
 
 const sha256 = (value) => createHash("sha256").update(value).digest("hex");
 
@@ -167,52 +169,48 @@ async function gitFixture(t) {
   git(root, "init", "-q");
   git(root, "config", "user.email", "test@example.invalid");
   git(root, "config", "user.name", "test");
-  await mkdir(join(root, "src"));
-  await writeFile(join(root, "src", "selected.txt"), "selected\n");
+  const specs = ["core", "assurance", "comms", "control", "social", "workspace"];
+  await mkdir(join(root, "docs", "spec"), { recursive: true });
+  for (const owner of specs) await writeFile(join(root, "docs", "spec", `heterodyne-${owner}.md`), `# ${owner}\n\n<a id="${owner}-a"></a>\n## A\nA small fixture anchor.\n`);
+  await mkdir(join(root, "docs", "spec", "vectors", "generator", "src", "current-vectors"), { recursive: true });
+  await writeFile(join(root, "docs", "spec", "vectors", "generator", "package.json"), "{}\n");
+  await writeFile(join(root, "docs", "spec", "vectors", "generator", "package-lock.json"), "{}\n");
+  await writeFile(join(root, "docs", "spec", "vectors", "generator", "tsconfig.json"), "{}\n");
+  await writeFile(join(root, "docs", "spec", "vectors", "generator", "tsconfig.current.json"), "{}\n");
+  await writeFile(join(root, "docs", "spec", "vectors", "generator", "vitest.current.config.ts"), "export default {};\n");
+  await writeFile(join(root, "docs", "spec", "vectors", "generator", "src", "current-vectors", "family.ts"), 'const FAMILY_VERSION = "0.1.0";\n');
+  await writeFile(join(root, "docs", "spec", "vectors", "generator", "src", "current-vectors", "case-contracts.ts"), 'const CURRENT_CASE_CONTRACTS = { "core/example": { boundary_id: "fixture.validateThing", owner_document: "core", spec_refs: ["heterodyne:core#core-a"] } };\n');
+  await writeFile(join(root, "docs", "spec", "vectors", "generator", "src", "fixture.ts"), "export function validateThing(value) { return value; }\n");
   git(root, "add", ".");
   git(root, "commit", "-qm", "fixture");
   return { root, commit: git(root, "rev-parse", "HEAD") };
-}
-
-function fixtureGraph(root, bytes) {
-  const sourcePath = "src/selected.txt";
-  const anchor = "heterodyne:core#core-a";
-  const input = { path: sourcePath, ref: "WORKTREE", sha256: sha256(bytes) };
-  return {
-    items: [
-      { semantic_id: anchor, type: "spec_anchor", owner: "core", heading: "A", source_path: sourcePath, source_line: 1, source_digest: sha256(bytes) },
-      { semantic_id: "case:core/one", type: "draft_case", source_path: sourcePath, source_line: 1, boundary_id: "core.example", spec_refs: [anchor] },
-    ],
-    edges: [{ from: "case:core/one", to: anchor, relation: "declares", raw_ref: anchor }],
-    receipt: { lane: "draft", spec_ref: "WORKTREE", fresh: true, inputs: [input], input_inventory_sha256: sha256(`${JSON.stringify([input])}\n`), unresolved_references: [] },
-  };
 }
 
 test("publishes a small Git fixture with labeled output and sidecar accounting", async (t) => {
   const fixture = await gitFixture(t);
   const outputDirectory = join(await mkdtemp(join(tmpdir(), "maintenance-prepare-result-")), "prepared");
   t.after(() => rm(outputDirectory, { recursive: true, force: true }));
-  const bytes = Buffer.from("selected\n");
-  const graph = fixtureGraph(fixture.root, bytes);
   const recipe = { version: 2, inputCommit: fixture.commit, task: { taskId: "fixture", semanticIds: ["heterodyne:core#core-a"] } };
+  let injectedGraphCalled = false;
+  let injectedPacketCalled = false;
   const result = await (await import("./prepare.mjs")).prepareContext({
     repo: fixture.root,
     recipe,
     outputDirectory,
-    buildGraphFn: async () => graph,
-    compilePacketFn: async ({ artifactDirectory }) => {
-      await writeFile(join(artifactDirectory, "sidecar.json"), '{"sidecar":true}\n');
-      return { version: 1, taskId: "fixture", complete: true, unknown: { preserved: true }, relationships: { graphArtifact: { kind: "maintenance-packet-context", digest: "a".repeat(64) } } };
-    },
+    buildGraphFn: async (options) => { injectedGraphCalled = true; return buildGraph(options); },
+    compilePacketFn: async (options) => { injectedPacketCalled = true; return compilePacket(options); },
   });
+  assert.equal(injectedGraphCalled, false);
+  assert.equal(injectedPacketCalled, false);
   assert.equal(result.outputDirectory, join(await realpath(dirname(outputDirectory)), "prepared"));
   const manifest = JSON.parse(await readFile(join(outputDirectory, "manifest.json"), "utf8"));
   assert.equal(manifest.input.commit, fixture.commit);
   assert.equal(manifest.recipe.taskId, "fixture");
-  assert.equal(manifest.sourceInputs.files[0].path, "src/selected.txt");
+  assert.equal(manifest.sourceInputs.files.some(({ path }) => path === "docs/spec/heterodyne-core.md"), true);
   assert.equal(manifest.rootReadingSet.files.some(({ path }) => path === "manifest.json"), true);
   assert.equal(manifest.rootReadingSet.files.find(({ path }) => path === "manifest.json").sha256, undefined);
-  assert.equal(manifest.sidecars[0].path, "artifacts/sidecar.json");
+  assert.equal(manifest.sidecars.length, 1);
+  assert.match(manifest.sidecars[0].path, /^artifacts\/[a-f0-9]{64}\.json$/u);
   assert.match(manifest.sidecars[0].sha256, /^[a-f0-9]{64}$/u);
   const sidecarActual = await readFile(join(outputDirectory, manifest.sidecars[0].path));
   assert.equal(manifest.sidecars[0].bytes, sidecarActual.length);
@@ -228,7 +226,7 @@ test("publishes a small Git fixture with labeled output and sidecar accounting",
   assert.equal(manifest.rootReadingSet.files.find(({ path }) => path === "manifest.json").bytes, manifestActual.length);
   assert.equal(manifest.rootReadingSet.combinedUtf8Bytes, manifest.rootReadingSet.files.reduce((sum, file) => sum + file.bytes, 0));
   assert.equal(manifest.rootReadingSet.estimatedTokens, Math.ceil(manifest.rootReadingSet.combinedUtf8Bytes / 4));
-  assert.equal(JSON.parse(await readFile(join(outputDirectory, "packet.json"), "utf8")).unknown.preserved, true);
+  assert.equal(JSON.parse(await readFile(join(outputDirectory, "packet.json"), "utf8")).taskId, "fixture");
 });
 
 test("rejects wrong pin, dirty selected inputs, and symlink excerpts without creating output", async (t) => {
@@ -236,8 +234,6 @@ test("rejects wrong pin, dirty selected inputs, and symlink excerpts without cre
   const outside = await mkdtemp(join(tmpdir(), "maintenance-prepare-rejections-"));
   t.after(() => rm(outside, { recursive: true, force: true }));
   const prepare = (await import("./prepare.mjs")).prepareContext;
-  const bytes = Buffer.from("selected\n");
-  const graph = fixtureGraph(fixture.root, bytes);
   const base = { version: 2, inputCommit: fixture.commit, task: { taskId: "fixture", semanticIds: ["heterodyne:core#core-a"] } };
   const wrongOutput = join(outside, "wrong-output");
   await assert.rejects(
@@ -246,30 +242,27 @@ test("rejects wrong pin, dirty selected inputs, and symlink excerpts without cre
   );
   await assert.rejects(lstat(wrongOutput), { code: "ENOENT" });
 
-  await writeFile(join(fixture.root, "src", "selected.txt"), "dirty\n");
+  await writeFile(join(fixture.root, "docs", "spec", "heterodyne-core.md"), "dirty\n");
   const dirtyOutput = join(outside, "dirty-output");
   await assert.rejects(
-    prepare({ repo: fixture.root, recipe: base, outputDirectory: dirtyOutput, buildGraphFn: async () => graph, compilePacketFn: async () => { throw new Error("must not compile"); } }),
+    prepare({ repo: fixture.root, recipe: base, outputDirectory: dirtyOutput }),
     /source inputs are dirty/u,
   );
   await assert.rejects(lstat(dirtyOutput), { code: "ENOENT" });
 
-  git(fixture.root, "checkout", "--", "src/selected.txt");
-  await writeFile(join(fixture.root, "src", "untracked.txt"), "untracked\n");
-  const untrackedGraph = fixtureGraph(fixture.root, Buffer.from("untracked\n"));
-  untrackedGraph.receipt.inputs[0].path = "src/untracked.txt";
-  untrackedGraph.items.forEach((item) => { item.source_path = "src/untracked.txt"; });
+  git(fixture.root, "checkout", "--", "docs/spec/heterodyne-core.md");
+  await writeFile(join(fixture.root, "docs", "spec", "untracked.txt"), "untracked\n");
   const untrackedOutput = join(outside, "untracked-output");
   await assert.rejects(
-    prepare({ repo: fixture.root, recipe: base, outputDirectory: untrackedOutput, buildGraphFn: async () => untrackedGraph, compilePacketFn: async () => { throw new Error("must not compile"); } }),
+    prepare({ repo: fixture.root, recipe: { ...base, task: { ...base.task, selectors: [{ path: "docs/spec/untracked.txt", symbol: "unused" }] } }, outputDirectory: untrackedOutput }),
     /source inputs are dirty/u,
   );
   await assert.rejects(lstat(untrackedOutput), { code: "ENOENT" });
 
-  await symlink(join(fixture.root, "src", "selected.txt"), join(fixture.root, "src", "link.txt"));
+  await symlink(join(fixture.root, "docs", "spec", "heterodyne-core.md"), join(fixture.root, "docs", "spec", "link.txt"));
   const symlinkOutput = join(outside, "symlink-output");
   await assert.rejects(
-    prepare({ repo: fixture.root, recipe: { ...base, additionalSourceExcerpts: [{ path: "src/link.txt", startLine: 1, endLine: 1 }] }, outputDirectory: symlinkOutput, buildGraphFn: async () => { throw new Error("must not build"); } }),
+    prepare({ repo: fixture.root, recipe: { ...base, additionalSourceExcerpts: [{ path: "docs/spec/link.txt", startLine: 1, endLine: 1 }] }, outputDirectory: symlinkOutput }),
     /regular file/u,
   );
   await assert.rejects(lstat(symlinkOutput), { code: "ENOENT" });
