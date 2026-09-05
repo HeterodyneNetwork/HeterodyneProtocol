@@ -1,8 +1,9 @@
 # Sixty-minute maintenance evaluation contract
 
 Status: Phase 1 harness, static packet compiler, and independent slice checks
-are implemented; matched-pilot results and later phases remain pending. This
-is not an acceptance result. The current host can provide Git object isolation, but it
+are implemented. The [first matched pilot](sixty-minute-maintenance-pilot.md)
+found equal worker-plus-reviewer tool-call counts; later phases remain gated.
+This is not a sub-hour acceptance result. The current host can provide Git object isolation, but it
 does not provide an OS-sealed worker/evaluator boundary; runs here are
 exploratory until an isolated runner enforces permitted read roots and blocks
 future Git/network access.

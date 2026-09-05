@@ -10,8 +10,12 @@
 
 **Spec:** [Verified repository maintenance in under sixty minutes](../specs/2026-09-04-sixty-minute-maintenance-design.md).
 
-Status: proposed implementation; no sub-hour result is established. Existing
-SARA Phase 1 is reusable infrastructure, not completion of this plan.
+Status: Phase 1 tooling is implemented and under final verification; no
+sub-hour result is established. The first matched historical slice has not
+demonstrated fewer total steps at equal correctness. Tasks 3–7 remain gated,
+not completed. See the [pilot findings and next bounded experiment](../evaluations/sixty-minute-maintenance-pilot.md)
+and [tooling evidence](../evaluations/sixty-minute-maintenance.md).
+Existing SARA infrastructure is reusable, not completion of this plan.
 
 ## Global Constraints
 
