@@ -1,14 +1,18 @@
 # Second slice: pre-run predictable queries
 
-Status: deterministic preparation implemented and tested; **no second matched
-result yet**. The first
+Status: deterministic preparation implemented and tested; the second matched
+trial ran, with the treatment reaching accepted slice output in **40 minutes 16
+seconds**. The matched equal-correctness gate was not met because the baseline
+was not accepted. The first
 [pilot](sixty-minute-maintenance-pilot.md) remains a 204/204 worker-plus-reviewer
-outer-call tie. No under-sixty-minute claim or Phase 2 rollout is justified.
+outer-call tie. No complete-workload under-sixty-minute claim or Phase 2 rollout
+is justified.
 
-The next timed dispatch is blocked by the collaboration host's thread limit:
-fresh Luna worker creation was rejected. Reusing the preparation agent would
-contaminate the baseline with treatment-specific source knowledge, so that agent
-is not substituted as the baseline. A fresh-agent-capable session is required
+The earlier pre-run dispatch block from the collaboration host's thread limit
+is preserved as historical context: fresh Luna worker creation was rejected.
+Reusing the preparation agent would contaminate the baseline with
+treatment-specific source knowledge, so that agent was not substituted as the
+baseline. A fresh-agent-capable session was required and was subsequently used
 to run this comparison fairly.
 
 ## Change under test
