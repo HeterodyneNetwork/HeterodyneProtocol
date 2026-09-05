@@ -1,7 +1,8 @@
 # Sixty-minute maintenance evaluation contract
 
-Status: initial redacted contract and harness definition. This is not an
-acceptance result. The current host can provide Git object isolation, but it
+Status: Phase 1 harness, static packet compiler, and independent slice checks
+are implemented; matched-pilot results and later phases remain pending. This
+is not an acceptance result. The current host can provide Git object isolation, but it
 does not provide an OS-sealed worker/evaluator boundary; runs here are
 exploratory until an isolated runner enforces permitted read roots and blocks
 future Git/network access.
@@ -117,3 +118,52 @@ The fixture and scorer live in `scripts/maintenance-eval/`. Synthetic negative
 fixtures and expected results remain outside worker-visible evidence. No raw
 session archive, hidden reasoning, credential, or private message is checked
 in.
+
+## Phase 1 tools and limits
+
+`scripts/maintenance/metadata.mjs` reads declared current or historical
+allocations with the locked TypeScript parser. It does not execute family
+builders or turn declarations into execution evidence. Unsupported runtime
+initializers/imports and transformations remain explicit unknowns, including
+the live profile-oracle module's runtime prelude.
+
+`scripts/maintenance/packet.mjs` exports `compilePacket()` and
+`resolvePacketHandle()`. Callers supply the existing `buildGraph()` result,
+task semantic IDs, exact optional symbol selectors, owned paths, acceptance
+checks, and a contract. Source spans use UTF-8 byte coordinates and content
+digests; normative section hashes and full-file freshness hashes retain their
+different meanings. Current-draft and historical snapshot inputs are resolved
+from their own receipt refs. Unchanged delivered chunk IDs are cumulative;
+changed source cannot silently reuse a prior chunk.
+
+An optional `artifactDirectory` outside the source worktree stores immutable,
+digest-checked relationship/receipt sidecars. The returned
+`relationships.graphArtifact` handle is resolved with that same directory;
+it is not a request to reconstruct old WORKTREE state from today's files.
+Without a backing store, details remain inline. The approximate budget is
+8,000 tokens using `utf8-json-bytes-per-4-v1`; an excess produces an explicit
+expansion request, not missing obligations. Partial packets remain incomplete.
+
+The real current issuer-continuity packet has two exact declaring cases,
+one governing section and one implementation interface, preserving 96 related
+records and 999 edges through a resolvable sidecar. Its 8,240 estimated tokens
+request a 240-token expansion after unsupported live profile setup is exposed
+as unknown. This is a bounded-context observation, not a measured speedup.
+
+`scripts/maintenance-eval/slice.mjs` provides evaluator-owned static
+reference/scope/preservation checks and an actual temporary authoring probe.
+The latter requires valid authoring to complete and an injected invalid
+reference to reject without changing any seeded output. Governing semantic
+correctness still needs independent review; merely finding an anchor is not
+enough. New pilot helper files require exact reviewed path/digest approvals.
+
+Tool readiness at `7ddbe54`:
+
+```bash
+node --test scripts/maintenance/*.test.mjs scripts/maintenance-eval/*.test.mjs scripts/vector-trace*.test.mjs
+```
+
+Result: 139 tests, 137 passed, two optional SARA skips, zero failures
+(22,684.705 ms). These tests do not replace a fresh candidate conformance gate
+or the plan's matched slice and full-workload acceptance trials. No durable
+store, scheduler, new agent skill, or default routing is claimed yet.
