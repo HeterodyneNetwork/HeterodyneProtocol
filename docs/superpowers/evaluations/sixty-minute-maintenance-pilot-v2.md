@@ -1,6 +1,7 @@
 # Second slice: pre-run predictable queries
 
-Status: preparation in progress; **no second matched result yet**. The first
+Status: deterministic preparation implemented and tested; **no second matched
+result yet**. The first
 [pilot](sixty-minute-maintenance-pilot.md) remains a 204/204 worker-plus-reviewer
 outer-call tie. No under-sixty-minute claim or Phase 2 rollout is justified.
 
@@ -45,9 +46,10 @@ node --input-type=module -e '
   import {prepareContext} from "./scripts/maintenance/prepare.mjs";
   const recipe = JSON.parse(await fs.readFile(
     "scripts/maintenance-eval/contracts/reference-pilot-v2.json", "utf8"));
-  console.log(await prepareContext({
+  const result = await prepareContext({
     repo: process.argv[1], recipe, outputDirectory: process.argv[2]
-  }));
+  });
+  console.log(result.outputDirectory);
 ' /absolute/path/to/historical-input /absolute/path/to/run/prepared-context
 ```
 
@@ -62,6 +64,71 @@ compiler-owned detailed context in `artifacts/`. File identities and combined
 size estimates make explicit expansion visible. The files are input context,
 not passing evidence after an edit. Do not tell the agent to run these same
 queries again unless an input changed or the prepared result leaves a relevant gap.
+
+## Concrete preparation evidence
+
+The default, real graph/compiler path at final implementation commit `61a167b`
+prepared the pinned historical input in **832 ms**. This is preparation on an
+existing dependency-ready checkout, not a complete job or a speedup comparison.
+It emitted nine source chunks and retained 107 unresolved records; the packet
+remains explicitly incomplete. The inventory retains all 275 declarations,
+including 44 allocations pointing at missing anchors. Existing anchors still
+require governing-semantic review.
+
+The corrected manifest distinguishes these measurements:
+
+| Byte universe | Bytes | Approximate tokens |
+| --- | ---: | ---: |
+| Generated root reading files, including manifest | 251,271 | 62,818 |
+| Optional graph-context sidecar | 208,858 | 52,215 |
+| Available original source inputs, not copied or preloaded | 4,458,482 | 1,114,621 |
+
+These estimates use UTF-8 bytes divided by four, rounded up; they are not billed
+tokens. The compiler separately estimates its compact packet fields at 11,691
+tokens. Reading every generated root file is substantially above the initial
+8,000-token target; that expansion is explicit. The trial must measure what
+agents actually load, including later expansion, rather than treating all
+available context as either free or already consumed.
+
+An initial manifest incorrectly presented full source availability as delivered
+context size and omitted generated-file identities. Independent review caught
+that error. The repair separates categories, hashes every non-manifest generated
+file, labels section versus full-source hashes, and budgets the manifest's own
+serialized bytes without a recursive self-hash. Parent verification independently
+checked all six non-manifest output hashes/sizes, the exact root-file set, and
+the root/optional byte totals on the real prepared directory.
+
+Fresh combined maintenance/evaluator/trace verification after the repair:
+`node --test scripts/maintenance/*.test.mjs scripts/maintenance-eval/*.test.mjs scripts/vector-trace*.test.mjs`
+passed 154 tests with two optional SARA skips and zero failures in 22,796.683 ms.
+This verifies tooling behavior, not completion of a maintenance task. Protocol,
+generator, dependency, snapshot and independent-conformance sources are unchanged
+by this continuation.
+
+The final scoped review passed after removing caller-selectable graph/compiler
+test callbacks; the public entry point always uses the fixed implementations.
+The regression now exercises a real temporary Git fixture and the real graph/
+packet dependencies. Earlier valid default-path preparation took 799 ms; the
+832 ms rerun verifies the repaired entry point, not a claimed timing trend.
+
+The unchanged full gate also passed on this implementation:
+
+```text
+/usr/bin/caffeinate -i -t 1200 /usr/bin/time -p scripts/conformance-ci.sh
+86 current-draft files / 2,016 tests passed; document-family check passed
+267 history-bound snapshot vectors verified
+19 independent-conformance files / 178 tests passed
+real 560.32; user 609.78; sys 18.06 seconds
+```
+
+Snapshot source was `c72f5ccdf855069550511d8e3e837dae55ed299c`, history-bound
+to snapshot commit `80da4ded273ac746b9c56bc53a8f1c067835ad64`. Temporary historical
+authoring is the existing snapshot-check procedure, not reconciliation of the
+repository snapshot. Tracked/index state stayed unchanged throughout the gate;
+only reporting prose was finalized afterward. The process-scoped sleep inhibitor
+does not change persistent power settings. Locked installs reported the existing
+five generator dependency audit findings (one low, four high) and one high
+independent-package finding; dependencies were not changed in this task.
 
 ## Preregistered comparison
 
