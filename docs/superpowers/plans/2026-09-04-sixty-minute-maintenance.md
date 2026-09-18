@@ -22,8 +22,9 @@ Existing SARA infrastructure is reusable, not completion of this plan.
 
 Approved continuation: a fail-fast source-authority feasibility preflight before
 any edit dispatch, documented in [the v3 preflight](../evaluations/sixty-minute-maintenance-preflight-v3.md).
-The four-case read-only diagnostic retains source authority and unknowns; draft
-results remain pending until measured reports are supplied.
+The four-case read-only diagnostic retains source authority and unknowns; its
+measured baseline and treatment reports are recorded, while the separately
+reviewed feasible edit trial remains pending.
 Tasks 3–7 remain gated on demonstrated improvement, not merely implementing this
 preparation recipe.
 

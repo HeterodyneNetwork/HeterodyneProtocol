@@ -156,8 +156,9 @@ governing live-spec rule, so passing structural checks, authoring probes, or a
 full gate cannot establish equal correctness for that case. The candidate
 repositories and raw evidence are no longer available for a byte-for-byte
 rerun. This correction does not claim a re-review of all 275 allocations. The
-immutable authority record is the [pinned Core threshold passage](https://github.com/HeterodyneNetwork/HeterodyneProtocol/blob/8f780cea2119738e3db1a37e7c0c94b4cd200cb3/docs/spec/heterodyne-core.md#L322-L334)
-and the [vector schema `spec_refs` rule](https://github.com/HeterodyneNetwork/HeterodyneProtocol/blob/8f780cea2119738e3db1a37e7c0c94b4cd200cb3/docs/spec/vectors/schema/vector.schema.json#L111-L118).
+normative authority evidence is the [pinned Core threshold passage](https://github.com/HeterodyneNetwork/HeterodyneProtocol/blob/8f780cea2119738e3db1a37e7c0c94b4cd200cb3/docs/spec/heterodyne-core.md#L322-L334);
+the frozen, non-normative [vector-envelope schema `spec_refs` rule](https://github.com/HeterodyneNetwork/HeterodyneProtocol/blob/8f780cea2119738e3db1a37e7c0c94b4cd200cb3/docs/spec/vectors/schema/vector.schema.json#L111-L118)
+records benchmark reference shape only and is not protocol authority.
 
 ## Next bounded experiment, before Task 3
 

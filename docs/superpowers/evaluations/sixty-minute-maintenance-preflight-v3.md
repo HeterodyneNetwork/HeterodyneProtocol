@@ -1,6 +1,6 @@
 # V3 source-authority feasibility preflight
 
-Status: **pending measured reports**. This is a four-case, read-only diagnostic
+Status: **measured; feasible edit trial pending**. This is a four-case, read-only diagnostic
 of the historical input `8f780cea2119738e3db1a37e7c0c94b4cd200cb3`, not an edit
 throughput trial, full-slice acceptance, or protocol change.
 
@@ -15,7 +15,8 @@ supplied to workers.
 
 The exact recipe is
 `scripts/maintenance-eval/contracts/reference-preflight-v3.json`. Initial
-packets use selective, line-cited context, while each worker may load the whole
+packets use selective, source-cited context with UTF-8 byte spans and content
+digests, while each worker may load the whole
 assigned historical checkout on demand under the common intent. Unloaded source
 remains an explicit unknown, not evidence of support; packet excerpts are
 navigation aids, never authority.
@@ -46,20 +47,28 @@ result obtained by mapping the organization-member case to
 scheduler, workflow rollout, vector regeneration, or Tasks 3–7 work is
 authorized by this preflight.
 
-V3 results, elapsed times, operation counts, reviewer reports, and any causal
-speed conclusion are intentionally **pending**. No token or dollar savings are
-claimed. Permanent run records belong in the ignored ledger location; ephemeral
+For this diagnostic, “output authoring” means mutation of the assigned
+checkout's protocol, vector, or generated output artifacts. The frozen common
+brief expressly permitted the outside-checkout ledger report; that report is
+not protocol output or an edit result.
+
+V3 results, elapsed times, operation counts, and reviewer reports are now
+recorded below. The separately reviewed feasible edit trial and complete
+August 28 target remain **pending**. No token or dollar savings are claimed.
+Permanent run records belong in the ignored ledger location; ephemeral
 candidate repositories and raw archives are not public evidence. The former
 40m16s treatment interval records time to withdrawn approval, not correct
 accepted output.
 
-The immutable source anchors are the pinned [Core identity/conformance
+The normative authority evidence is the pinned [Core threshold/conformance
 prose](https://github.com/HeterodyneNetwork/HeterodyneProtocol/blob/8f780cea2119738e3db1a37e7c0c94b4cd200cb3/docs/spec/heterodyne-core.md#L322-L334),
 [created-at bound](https://github.com/HeterodyneNetwork/HeterodyneProtocol/blob/8f780cea2119738e3db1a37e7c0c94b4cd200cb3/docs/spec/heterodyne-core.md#L444-L462),
 [source-neutral selection](https://github.com/HeterodyneNetwork/HeterodyneProtocol/blob/8f780cea2119738e3db1a37e7c0c94b4cd200cb3/docs/spec/heterodyne-core.md#L426-L442),
 and [NIP-03 advisory](https://github.com/HeterodyneNetwork/HeterodyneProtocol/blob/8f780cea2119738e3db1a37e7c0c94b4cd200cb3/docs/spec/heterodyne-core.md#L463-L478)
-sections. The [vector schema](https://github.com/HeterodyneNetwork/HeterodyneProtocol/blob/8f780cea2119738e3db1a37e7c0c94b4cd200cb3/docs/spec/vectors/schema/vector.schema.json#L111-L118)
-requires a family-document anchor for `spec_refs`; the [reason-code
+sections. Separately, the frozen, non-normative [vector-envelope
+schema](https://github.com/HeterodyneNetwork/HeterodyneProtocol/blob/8f780cea2119738e3db1a37e7c0c94b4cd200cb3/docs/spec/vectors/schema/vector.schema.json#L111-L118)
+records the benchmark's permitted `spec_refs` shape; it is not protocol
+authority. The [reason-code
 registry](https://github.com/HeterodyneNetwork/HeterodyneProtocol/blob/8f780cea2119738e3db1a37e7c0c94b4cd200cb3/docs/spec/registry/reason-codes.json#L373-L381)
 provides vocabulary, not the missing operation rule.
 

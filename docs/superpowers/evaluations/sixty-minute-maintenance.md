@@ -4,7 +4,8 @@ Status: Phase 1 harness, static packet compiler, and independent slice checks
 are implemented. The [first matched pilot](sixty-minute-maintenance-pilot.md)
 retains its equal 204/204 worker-plus-reviewer call count, but its semantic
 acceptance is withdrawn after source-authority adjudication; later phases remain
-gated. The [v3 preflight](sixty-minute-maintenance-preflight-v3.md) is pending.
+gated. The [v3 preflight](sixty-minute-maintenance-preflight-v3.md) is measured;
+its separately reviewed feasible edit trial remains pending.
 This is not a sub-hour acceptance result. The current host can provide Git object isolation, but it
 does not provide an OS-sealed worker/evaluator boundary; runs here are
 exploratory until an isolated runner enforces permitted read roots and blocks
