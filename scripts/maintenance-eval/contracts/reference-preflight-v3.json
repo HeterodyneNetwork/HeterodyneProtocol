@@ -1,0 +1,34 @@
+{
+  "version": 3,
+  "purpose": "Exploratory four-case read-only authority preflight; not maintenance implementation or full-workload acceptance",
+  "inputCommit": "8f780cea2119738e3db1a37e7c0c94b4cd200cb3",
+  "task": {
+    "taskId": "historical-reference-feasibility-v3",
+    "semanticIds": [
+      "case:core/org-member-add-unauthorized",
+      "case:core/replaceable-future-quarantined",
+      "case:core/replaceable-equal-time-lowest-id",
+      "case:core/replaceable-advisory-nip03-ignored"
+    ],
+    "selectors": [
+      {"path": "docs/spec/vectors/generator/src/current-vectors/core.ts", "symbol": "buildCoreCases"}
+    ],
+    "ownedPaths": [],
+    "acceptanceChecks": [
+      "Classify each selected case from actual fixture/boundary behavior and historical normative sources",
+      "Identify whether reference-only maintenance preserving behavior is feasible",
+      "No repository edits or output authoring"
+    ],
+    "contract": {
+      "authority": "Supplied historical six-document live specification family and normative artifacts only",
+      "uncertainty": "Declared refs are candidates, not certified governing requirements; report unresolved authority rather than inventing a mapping"
+    }
+  },
+  "loadingPolicy": "Compile with a sidecar. Read task, declared metadata, mustRead chunks and unresolved summaries first; expand original sources or sidecar only for a named unresolved question. Do not load repository-wide indexes by default.",
+  "limitations": [
+    "Four-case diagnosis does not establish 275-case implementation throughput",
+    "Source selectors provide no corrected mappings or expected verdicts",
+    "All preparation, failed attempts, independent review and coordinator work must remain visible",
+    "Cooperative host only; no OS-sealed acceptance claim"
+  ]
+}
