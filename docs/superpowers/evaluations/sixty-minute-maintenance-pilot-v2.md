@@ -1,12 +1,16 @@
 # Second slice: pre-run predictable queries
 
-Status: deterministic preparation implemented and tested; the second matched
-trial ran, with the treatment reaching accepted slice output in **40 minutes 16
-seconds**. The matched equal-correctness gate was not met because the baseline
-was not accepted. The first
-[pilot](sixty-minute-maintenance-pilot.md) remains a 204/204 worker-plus-reviewer
-outer-call tie. No complete-workload under-sixty-minute claim or Phase 2 rollout
-is justified.
+Status: former treatment approval is **withdrawn** after independent source-
+authority adjudication. The treatment reached its former approval point in
+**40 minutes 16 seconds**, but that interval is not time to a correct accepted
+output: `core/org-member-add-unauthorized` remains an authority gap. The
+baseline and treatment therefore do not form an equal-correctness comparison.
+No complete-workload under-sixty-minute claim or Phase 2 rollout is justified.
+
+The ephemeral candidate repositories are absent and the exact treatment mapping
+was recovered from visible archived tool output; a byte-for-byte candidate
+rerun is unavailable. Original tests, counters, candidate identifiers and
+timings remain historical observations only.
 
 The earlier pre-run dispatch block from the collaboration host's thread limit
 is preserved as historical context: fresh Luna worker creation was rejected.
@@ -206,7 +210,7 @@ useful preparation steps and evaluate the smallest justified parallel/state
 mechanism next. If not, change task decomposition or test deterministic bulk
 edits; do not add a platform to compensate for an ineffective packet.
 
-## Second matched trial result
+## Second matched trial result (former approval, now withdrawn)
 
 The sequential cooperative-host trial ran on September 5 with fresh Luna/high
 workers and fresh Sol/high reviewers. The common brief and verification policy
@@ -228,19 +232,22 @@ reference. Its original 06:11:59 UTC preparation start, ENOSPC failure, later
 retry, session suspension, and all repair work remain counted; it cannot support
 an under-hour claim.
 
-The treatment reached accepted slice output at `929e478`. Its initial worker
+The treatment reached its former approval point at `929e478`. Its initial worker
 used all six generated root files, summarized the optional 208,858-byte sidecar,
 opened four full specifications, and left Control and Social full sources on
 demand. Independent review opened the generated reference/anchor indexes and all
 six normative specifications. The initial candidate still had a fail-open
-version regex and 19 wrong-but-existing allocations; one repair round fixed both.
-Scoped review then passed with no Critical or Important findings.
+version regex and 19 wrong-but-existing allocations; the worker reported both
+fixed in one repair round, but later authority adjudication found that the
+organization-member semantic gap persisted.
+Scoped review was reported to pass with no Critical or Important findings;
+that former approval is withdrawn by the adjudication below.
 
-Coordinator evaluator evidence on the immutable candidate passed: 275 cases,
+Coordinator evaluator evidence on the then-immutable candidate reported 275 cases,
 275 references, 123 reference changes, four allowed changed paths, no findings,
 approved helper hashes, successful real authoring, and synthetic missing-anchor
 rejection with the complete seeded output manifest unchanged. The unchanged
-ordered gate also passed:
+ordered gate was reported to pass:
 
 ```text
 /usr/bin/caffeinate -i -t 1200 /usr/bin/time -p scripts/conformance-ci.sh
@@ -250,20 +257,22 @@ ordered gate also passed:
 real 138.41; user 353.81; sys 17.77 seconds
 ```
 
-Successful treatment preparation began at 20:47:12 UTC and final evidence ended
+Successful treatment preparation began at 20:47:12 UTC and former approval evidence ended
 at 21:27:28 UTC: 40 minutes 16 seconds. Immediately preceding it, two controller
 commands failed before cloning (nonexistent working directory and a wrong macOS
 `date` path), and the first clone command then used relative package prefixes
 from the wrong directory; clone succeeded but that install invocation failed.
 Those coordination failures are retained in team totals rather than hidden.
 
-Observed agent operations were lower for the treatment, but the comparison gate
-was not met because correctness was unequal:
+Observed agent operations were lower for the treatment. The original comparison
+was not an equal-correctness result because the baseline was unaccepted while
+the treatment received former approval; reassessment finds neither arm
+semantically accepted for the preserved organization-member case:
 
 | Arm | Worker operations | Reviewer operations | Outcome |
 | --- | --- | --- | --- |
 | Baseline | about 122 tool calls; about 89 shell invocations; 275 trace queries plus reported reads; 3 commits and 2 repair rounds | 45 tool calls; about 36 shell executions; initial review plus 2 scoped re-reviews | Not accepted: one normative-authority gap |
-| Prepared context | 73 tool calls; 64 shell commands; 35 read/search batches; 10 patches; 2 commits and 1 repair round | 44 tool calls; 38 shell invocations; 38 read/hash batches; initial review, scoped re-review, final hash approval | Accepted; evaluator and full gate passed |
+| Prepared context | 73 tool calls; 64 shell commands; 35 read/search batches; 10 patches; 2 commits and 1 repair round | 44 tool calls; 38 shell invocations; 38 read/hash batches; initial review, scoped re-review, final hash approval | Former approval withdrawn: authority gap |
 
 The treatment used 117 worker-plus-reviewer tool calls versus about 167 for the
 baseline, but that is not a fewer-steps/equal-correctness result. Counts are
@@ -277,8 +286,23 @@ failures described above. The baseline's long suspension makes elapsed compariso
 descriptive only.
 
 The correct decision is to keep Tasks 3–7 gated. Prepared context is useful and
-the treatment slice itself finished under an hour, but the matched pair did not
+the former treatment approval was under an hour, but the matched pair did not
 demonstrate fewer steps at equal correctness, and neither arm is the complete
-August 28 workload. The next bounded work should resolve the historical fixture's
-normative/scope inconsistency or choose a slice whose correct accepted output is
-defined identically for both arms before adding workflow infrastructure.
+August 28 workload. The next bounded work is a fail-fast source-authority
+feasibility preflight before any edit dispatch; it must not invent a reference.
+
+## Adjudication correction
+
+The recovered treatment mapping changed this case from
+`heterodyne:0.6.0#core-conformance` to
+`heterodyne:0.6.0#core-threshold-authority`. The latter permits threshold
+custody and higher-layer policy but does not entail the tested combination of
+member-KEL authorization and organization-admin-threshold authorization. The
+reason-code registry's `org_member_add_unauthorized` entry is vocabulary, not a
+substitute for a governing family-document anchor; the frozen schema permits a
+family-document `spec_refs` URI, not a reason-code reference. Accordingly the
+former approval is withdrawn. This adjudication does not re-review all 275
+allocations. The immutable sources are [Core threshold authority at
+8f780ce](https://github.com/HeterodyneNetwork/HeterodyneProtocol/blob/8f780cea2119738e3db1a37e7c0c94b4cd200cb3/docs/spec/heterodyne-core.md#L322-L334),
+the [reason-code registry entry](https://github.com/HeterodyneNetwork/HeterodyneProtocol/blob/8f780cea2119738e3db1a37e7c0c94b4cd200cb3/docs/spec/registry/reason-codes.json#L373-L381),
+and the [vector schema's `spec_refs` constraint](https://github.com/HeterodyneNetwork/HeterodyneProtocol/blob/8f780cea2119738e3db1a37e7c0c94b4cd200cb3/docs/spec/vectors/schema/vector.schema.json#L111-L118).

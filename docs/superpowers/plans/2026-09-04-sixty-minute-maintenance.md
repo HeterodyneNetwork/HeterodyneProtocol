@@ -11,21 +11,28 @@
 **Spec:** [Verified repository maintenance in under sixty minutes](../specs/2026-09-04-sixty-minute-maintenance-design.md).
 
 Status: Phase 1 tooling is implemented, reviewed, and locally verified; no
-complete-workload sub-hour result is established. Neither matched historical
-trial has demonstrated fewer total steps at equal correctness. In the second
-trial the prepared-context arm completed its slice in 40 minutes 16 seconds,
-but the baseline remained unaccepted because one preserved case lacked exact
-live normative authority within scope. Tasks 3–7 remain gated,
-not completed. See the [pilot findings and next bounded experiment](../evaluations/sixty-minute-maintenance-pilot.md)
+complete-workload sub-hour result is established. The former second-trial
+treatment approval at 40 minutes 16 seconds was withdrawn after source-
+authority adjudication found that one preserved case lacks an exact governing
+rule. The first trial's all-275 semantic acceptance is withdrawn for the same
+case; its 204/204 observed call counts remain historical metrics. Tasks 3–7
+remain gated, not completed. See the [pilot findings and bounded continuation](../evaluations/sixty-minute-maintenance-pilot.md)
 and [tooling evidence](../evaluations/sixty-minute-maintenance.md).
 Existing SARA infrastructure is reusable, not completion of this plan.
 
-Approved continuation: [pre-run predictable queries for the second slice](../evaluations/sixty-minute-maintenance-pilot-v2.md).
-The revised preparation retains source authority and unknowns; its preparation
-failures, capacity recovery, matched trial, actual reads, repairs and verification
-are explicitly recorded.
+Approved continuation: a fail-fast source-authority feasibility preflight before
+any edit dispatch, documented in [the v3 preflight](../evaluations/sixty-minute-maintenance-preflight-v3.md).
+The four-case read-only diagnostic retains source authority and unknowns; draft
+results remain pending until measured reports are supplied.
 Tasks 3–7 remain gated on demonstrated improvement, not merely implementing this
 preparation recipe.
+
+The v3 preflight now reports three supported controls and one authority gap.
+There is no honest all-275 ref-only repair to dispatch: the next bounded step is
+to review a feasible edit contract separately, then prepare narrow line-cited
+context for a representative edit trial. Do not infer speed from the baseline
+and treatment intervals, and do not begin Tasks 3–7 until that trial has equal,
+source-backed acceptance.
 
 ## Global Constraints
 

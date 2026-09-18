@@ -97,8 +97,8 @@ to add to them. The next trial should schedule focused checks during repair
 and one required unchanged full gate on the reviewed final candidate, while
 retaining a fresh gate whenever a subsequent code change invalidates it.
 
-The final baseline candidate was
-`573811230060f0e63d1181701a3beaf44b173295`. It also passed independent review,
+The former final baseline candidate was
+`573811230060f0e63d1181701a3beaf44b173295`. It was reported to pass independent review,
 all 275 static reference checks (63 changed allocations), and the actual
 authoring/no-mutation probe. Its final gate passed 1,178 generator and 176
 independent tests; the different generator test counts reflect the arms' own
@@ -109,11 +109,11 @@ The baseline dispatch clock was 02:29:23 UTC, making the paired experiment
 earlier preparation. Sequential arm/repair queues make this diagnostic rather
 than a per-arm speed comparison.
 
-The final packet candidate was `7d6e988a541cc2ed8be5e9bd7930a3c8c5b82447`.
-It passed independent governing-reference/scope review, all 275 static
+The former final packet candidate was `7d6e988a541cc2ed8be5e9bd7930a3c8c5b82447`.
+It was reported to pass independent governing-reference/scope review, all 275 static
 reference checks (63 changed allocations), and a successful authoring control
 followed by invalid-reference rejection with byte-identical seeded output.
-Its unchanged full gate passed 1,177 generator and 176 independent conformance
+Its unchanged full gate was reported to pass 1,177 generator and 176 independent conformance
 tests in 135.98 seconds. That is the final gate, not the whole job.
 
 Packet worker effort across its initial attempt and two repairs was 1,814,203
@@ -146,6 +146,18 @@ turns. Their per-turn snapshots are not safely additive, so no verified dollar
 or token-bill saving is claimed. Luna performed all historical candidate coding
 and repairs; higher-tier review and tooling repairs are real costs, not free
 work excluded from the goal.
+
+## Adjudication correction
+
+The historical 204/204 worker-plus-reviewer outer-call counts remain observed
+metrics, but the first pilot's all-275 semantic acceptance is withdrawn. The
+same preserved `core/org-member-add-unauthorized` behavior lacks an exact
+governing live-spec rule, so passing structural checks, authoring probes, or a
+full gate cannot establish equal correctness for that case. The candidate
+repositories and raw evidence are no longer available for a byte-for-byte
+rerun. This correction does not claim a re-review of all 275 allocations. The
+immutable authority record is the [pinned Core threshold passage](https://github.com/HeterodyneNetwork/HeterodyneProtocol/blob/8f780cea2119738e3db1a37e7c0c94b4cd200cb3/docs/spec/heterodyne-core.md#L322-L334)
+and the [vector schema `spec_refs` rule](https://github.com/HeterodyneNetwork/HeterodyneProtocol/blob/8f780cea2119738e3db1a37e7c0c94b4cd200cb3/docs/spec/vectors/schema/vector.schema.json#L111-L118).
 
 ## Next bounded experiment, before Task 3
 
