@@ -24,16 +24,34 @@ Approved continuation: a fail-fast source-authority feasibility preflight before
 any edit dispatch, documented in [the v3 preflight](../evaluations/sixty-minute-maintenance-preflight-v3.md).
 The four-case read-only diagnostic retains source authority and unknowns; its
 measured baseline and treatment reports are recorded, while the separately
-reviewed feasible edit trial remains pending.
+reviewed feasible edit trial is tracked in the [v4 edit evaluation](../evaluations/sixty-minute-maintenance-edit-v4.md).
 Tasks 3–7 remain gated on demonstrated improvement, not merely implementing this
 preparation recipe.
 
 The v3 preflight now reports three supported controls and one authority gap.
-There is no honest all-275 ref-only repair to dispatch: the next bounded step is
-to review a feasible edit contract separately, then prepare narrow line-cited
-context for a representative edit trial. Do not infer speed from the baseline
-and treatment intervals, and do not begin Tasks 3–7 until that trial has equal,
-source-backed acceptance.
+There is no honest all-275 ref-only repair to dispatch. Independent v4 review
+selected three supported OIDC reference edits and excluded another case whose
+frozen behavior lacks authority in the pinned specification. The existing
+context renderer supplies narrow, line-cited excerpts; the common intent and
+recipe are versioned under `scripts/maintenance-eval/contracts/reference-edit-v4.*`.
+This tiny same-anchor trial tests source-bundle feasibility, not representative
+full-workload throughput. Do not infer speed from unequal-quality or confounded
+intervals. Tasks 3–7 still require a representative trial with fewer operations
+and equal, source-backed acceptance; three substitutions cannot unlock them.
+
+V4 did not establish that improvement: the baseline's edits were correct but
+its evidence/operation ledger failed; the prepared candidate substituted a
+current-style identifier prefix for the historical normative reference format.
+Before another timed replay, freeze and verify the pinned reference conventions
+alongside case-specific context, generate source citations and operation records
+deterministically, and guard verification with exact checkout/HEAD assertions.
+Reuse the existing schema's reference-format validation before the expensive
+gate. Evaluate separating agent selection of a governing anchor from mechanical
+reference rewriting that preserves the pinned qualifier; this is a proposed
+bounded design, not an implemented or demonstrated optimization.
+These are bounded correctness and measurement prerequisites, not authorization
+for the datastore/scheduler. Preserve the failed trials; do not repair them
+retroactively or use smaller input size as a proxy for accepted output.
 
 ## Global Constraints
 
