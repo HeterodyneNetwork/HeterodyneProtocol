@@ -34,6 +34,11 @@ impossible. No helper timing or speedup is claimed; the original tooling result
 (154 passed, two optional SARA skips) is unchanged. A distinct upfront-complete-
 acceptance and batch-review idea is unvalidated and is not authorized here.
 
+Subsequent authorization on September 21 is tracked in the separate
+[acceptance-first experiment plan](2026-09-21-acceptance-first-maintenance.md).
+Its procedure and workload-readiness audit do not restart this plan's stopped
+tasks or establish a speedup.
+
 Historical continuation record only: a fail-fast source-authority feasibility
 preflight was measured before edit dispatch and is documented in [the v3
 preflight](../evaluations/sixty-minute-maintenance-preflight-v3.md).
