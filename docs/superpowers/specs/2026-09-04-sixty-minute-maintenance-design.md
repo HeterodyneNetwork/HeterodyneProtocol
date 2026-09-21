@@ -1,8 +1,15 @@
 # Verified repository maintenance in under sixty minutes
 
-Status: proposed architecture and acceptance criteria. No under-sixty-minute
-result has been demonstrated. This is a planning deliverable, not authorization
-to restructure the generator or reconcile the live snapshot.
+Status: **goal not met; packet/reference optimization is abandoned as the
+primary sub-hour acceleration route.** No under-sixty-minute result has been
+demonstrated. The experimental helper is not retained or shipped: three
+synthetic tests passed, but broader negative coverage was missing and its
+historical dry run failed in `parseCatalog` (`catalog object is not static`)
+before any edits. This is a compatibility bug, not proof that the approach is
+fundamentally impossible. No helper timing or speedup is claimed. Tasks 3–7 expansion,
+the proposed datastore/scheduler/replay work, and another packet/reference
+trial are stopped. This remains a planning record, not authorization to
+restructure the generator or reconcile the live snapshot.
 
 ## 1. Outcome, not product adoption
 
@@ -26,13 +33,17 @@ The relevant Codex archive is session
 | Parsed read/search-bearing shell commands | approximately 600 |
 | Nested patch operations | 332 |
 | Explicitly identified compactions (not all context records) | 16 |
-| Explicit full-gate launches | at least 14 |
+| Identified full-gate command candidates | at least 14 |
 
 These are one worker's records, not the sum of all cooperating agents. Command
-categories overlap. A yielded tool's 1–11-second wrapper duration is **not** the
-underlying test-process runtime. No runtime attribution uses that shortcut.
-The target needs roughly an eightfold reduction in recorded task-interval time;
-merely removing the gaps between handoffs is insufficient.
+categories overlap. The at-least-14 figure is a lexical/identified command
+candidate count; actual gate launches are unknown because the archive lacks
+structured process start/exit instrumentation. A yielded tool's 1–11-second
+wrapper duration is **not** the underlying test-process runtime. No runtime
+attribution uses that shortcut.
+The target needs roughly an eightfold reduction in recorded task-interval time
+(about 87.2% from 7h50m28s to under 60 minutes); merely removing the gaps
+between handoffs is insufficient.
 
 ## 2. Define the workload before claiming a speedup
 
