@@ -10,8 +10,61 @@
 
 **Spec:** [Verified repository maintenance in under sixty minutes](../specs/2026-09-04-sixty-minute-maintenance-design.md).
 
-Status: proposed implementation; no sub-hour result is established. Existing
-SARA Phase 1 is reusable infrastructure, not completion of this plan.
+Status precedence: **goal not met; packet/reference optimization is abandoned
+as the primary sub-hour acceleration route.** Phase 1 tooling remains reusable,
+but no complete-workload sub-hour result is established. The former second-
+trial treatment approval at 40 minutes 16 seconds was withdrawn after source-
+authority adjudication found that one preserved case lacks an exact governing
+rule. The first trial's all-275 semantic acceptance is withdrawn for the same
+case; its 204/204 observed call counts remain historical metrics. Tasks 3–7
+expansion is stopped based on the matched trials. See the [reference-guard
+go/no-go evaluation](../evaluations/sixty-minute-maintenance-reference-guard.md),
+[pilot findings](../evaluations/sixty-minute-maintenance-pilot.md), and
+[tooling evidence](../evaluations/sixty-minute-maintenance.md). Existing SARA
+infrastructure is reusable, not completion of this plan.
+
+This status block overrides the packet-iteration and automatic expansion
+instructions below. Do not add the proposed datastore, scheduler, or agent
+replay infrastructure, and do not start or authorize a new packet/reference
+replay. The experimental helper is not retained or shipped: three synthetic
+tests passed, but broader negative coverage was missing and its historical dry
+run failed in `parseCatalog` (`catalog object is not static`) before any edits.
+This is a compatibility bug, not proof that the approach is fundamentally
+impossible. No helper timing or speedup is claimed; the original tooling result
+(154 passed, two optional SARA skips) is unchanged. A distinct upfront-complete-
+acceptance and batch-review idea is unvalidated and is not authorized here.
+
+Subsequent authorization on September 21 is tracked in the separate
+[acceptance-first experiment plan](2026-09-21-acceptance-first-maintenance.md).
+Its procedure and workload-readiness audit do not restart this plan's stopped
+tasks or establish a speedup.
+
+Historical continuation record only: a fail-fast source-authority feasibility
+preflight was measured before edit dispatch and is documented in [the v3
+preflight](../evaluations/sixty-minute-maintenance-preflight-v3.md).
+The four-case read-only diagnostic retains source authority and unknowns; its
+measured baseline and treatment reports are recorded, while the separately
+reviewed feasible edit trial is tracked in the [v4 edit evaluation](../evaluations/sixty-minute-maintenance-edit-v4.md).
+Tasks 3–7 are stopped, not merely gated on implementing this preparation recipe.
+
+The v3 preflight now reports three supported controls and one authority gap.
+There is no honest all-275 ref-only repair to dispatch. Independent v4 review
+selected three supported OIDC reference edits and excluded another case whose
+frozen behavior lacks authority in the pinned specification. The existing
+context renderer supplies narrow, line-cited excerpts; the common intent and
+recipe are versioned under `scripts/maintenance-eval/contracts/reference-edit-v4.*`.
+This tiny same-anchor trial tested source-bundle feasibility, not representative
+full-workload throughput. Do not infer speed from unequal-quality or confounded
+intervals. The failed helper compatibility check closes this line; three
+substitutions cannot unlock Tasks 3–7.
+
+V4 did not establish that improvement: the baseline's edits were correct but
+its evidence/operation ledger failed; the prepared candidate substituted a
+current-style identifier prefix for the historical normative reference format.
+The failed helper compatibility check, together with the prior end-to-end
+evidence and limited scope, closes this bounded investment line. This is not an
+impossibility finding. Preserve the failed trials; do not repair them
+retroactively or use smaller input size as a proxy for accepted output.
 
 ## Global Constraints
 
@@ -31,22 +84,21 @@ SARA Phase 1 is reusable infrastructure, not completion of this plan.
 
 ## Delivery order and stop conditions
 
-1. **Phase 1: establish the workload and prove fewer steps** — Tasks 1–2. Use
-   the current host and a representative slice before building a platform.
-2. **Phase 2: make the workflow durable and parallel** — Tasks 3–5. Add only
-   machinery justified by the slice; no new general-purpose agent framework.
-3. **Phase 3: expose and validate the workflow** — Tasks 6–7. Do not make it
-   the default until repeated end-to-end acceptance succeeds.
+1. **Completed/stopped:** Task 1–2 evidence and bounded trials established no
+   equal-correctness acceleration and no shippable helper.
+2. **Stopped:** Tasks 3–5; do not build the datastore, scheduler, or host
+   machinery from this plan.
+3. **Stopped:** Tasks 6–7; do not run matched replays or expose a workflow
+   route based on this packet/reference line.
 
 Task dependency order is `1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7`. Within Task 4's
 pilots, use independent workers with explicit file ownership; Task 5's check
 runner can be developed alongside its host bridge once interfaces are fixed.
 Tell every worker it is not alone and must preserve others' changes.
 
-If the slice does not reduce agent decisions/read operations with equal
-correctness, revise packet/contract design before Task 3. If the complete pilot
-exceeds 90 minutes, address the measured dominant cause before adding tools.
-The 90-minute checkpoint is diagnostic, not a relaxed acceptance threshold.
+The slice and helper trials did not establish equal-correctness improvement;
+the stop decision therefore supersedes the former 90-minute checkpoint and
+prevents further packet/contract iteration under this plan.
 
 ## File and responsibility map
 
@@ -625,8 +677,6 @@ faster search demo, a single lucky run, or a renamed batch of hidden operations.
 
 ## Implementation handoff
 
-Start with Tasks 1–2 only: a reviewed benchmark contract, actual process profile,
-and the smallest matched packet-driven task. The proposed SQLite and model
-routing design answers the central-state/fast-agent request, but its value must
-be demonstrated before completing a larger controller. Keep current SARA work
-available; it need not be the final workflow's central component.
+No further task is authorized under this plan. Keep the reviewed benchmark
+contract and current SARA work available as historical/reusable infrastructure;
+they do not establish a final workflow or a shippable helper.

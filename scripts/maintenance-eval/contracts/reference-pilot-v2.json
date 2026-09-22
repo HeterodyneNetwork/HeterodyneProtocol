@@ -1,0 +1,53 @@
+{
+  "version": 2,
+  "purpose": "Exploratory matched reference-maintenance slice; not sealed full-workload acceptance",
+  "inputCommit": "8f780cea2119738e3db1a37e7c0c94b4cd200cb3",
+  "profiles": { "worker": "gpt-5.6-luna", "reviewer": "gpt-5.6-sol", "reasoningEffort": "high" },
+  "verificationPolicy": "Focused feedback during implementation and repairs; independent semantic/scope review, then a fresh unchanged scripts/conformance-ci.sh and evaluator checks on the immutable committed candidate. Relevant later edits invalidate verification.",
+  "task": {
+    "taskId": "round10-reference-maintenance-v2",
+    "semanticIds": ["heterodyne:core#core-document-conventions"],
+    "selectors": [
+      {"path": "docs/spec/vectors/generator/src/author.ts", "symbol": "authorAllVectors"},
+      {"path": "docs/spec/vectors/generator/src/current-vectors/case-contracts.ts", "symbol": "currentCaseContract"},
+      {"path": "docs/spec/vectors/generator/src/schema.ts", "symbol": "validateFamilyMetadata"},
+      {"path": "docs/spec/vectors/generator/src/family.ts", "symbol": "DOCUMENT_LAYERING"},
+      {"path": "docs/spec/vectors/generator/src/current-vectors/index.ts", "symbol": "bindExecutedCase"},
+      {"path": "docs/spec/vectors/generator/src/current-vectors/index.ts", "symbol": "buildCurrentCases"},
+      {"path": "docs/spec/vectors/generator/src/current-vectors/index.ts", "symbol": "buildCurrentVectors"},
+      {"path": "docs/spec/vectors/generator/src/current-vectors/types.ts", "symbol": "authorCurrentCase"}
+    ],
+    "ownedPaths": [
+      "docs/spec/vectors/generator/src/current-vectors/case-contracts.ts",
+      "docs/spec/vectors/generator/src/author.ts",
+      "docs/spec/vectors/generator/src/maintenance-reference-validation.ts",
+      "docs/spec/vectors/generator/src/maintenance-reference-validation.test.ts"
+    ],
+    "acceptanceChecks": [
+      "Audit all 275 reference allocations, including existing but nongoverning umbrella anchors",
+      "Reject invalid current refs before any authoring output creation, deletion or change",
+      "Preserve case IDs and non-reference allocations, fixed certified builder, private identity and complete-catalog/duplicate checks",
+      "Preserve valid cross-family dependency references and existing reference cardinality",
+      "Valid current authoring completes; frozen snapshot and independent conformance unchanged",
+      "Independent governing-semantic/scope review, evaluator checks and unchanged full gate pass"
+    ],
+    "contract": {
+      "authority": "Supplied live specification family and normative artifacts; derived context is not authority",
+      "preservation": "Only spec_refs may change in catalog; validation may be added without changing valid behavior or adding production test seams",
+      "uncertainty": "Existing anchors can be semantically wrong; all relevant unknowns remain visible and require source review"
+    }
+  },
+  "additionalSourceExcerpts": [
+    {"path": "docs/spec/vectors/generator/src/schema.test.ts", "startLine": 1461, "endLine": 1513, "purpose": "Existing qualified-version, layering and cardinality behavior"},
+    {"path": "docs/spec/vectors/generator/src/family.test.ts", "startLine": 99, "endLine": 145, "purpose": "Existing dependency DAG checks"}
+  ],
+  "anchorIndex": "All input graph spec_anchor headings, grouped by source document, with path, line and input source digest; no case-to-anchor correction map",
+  "declaredReferenceInventory": "Pre-run graph query results grouped by declared target, preserving every case ID and source location; missing anchors marked unresolved, existing anchors not certified as governing",
+  "limitations": [
+    "Historical selectors and line excerpts are pinned to inputCommit, not a live default recipe",
+    "Cooperative host instructions are not OS isolation",
+    "Packet expansion beyond 8000 estimated tokens must be explicit; never truncate obligations",
+    "Baseline and packet share the same brief and verification policy; only packet receives excerpts and index",
+    "First-pilot comparison is descriptive because the common brief and scheduling changed"
+  ]
+}

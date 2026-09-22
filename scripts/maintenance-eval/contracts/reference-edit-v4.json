@@ -1,0 +1,48 @@
+{
+  "version": 4,
+  "purpose": "Exploratory three-case historical reference edit; not full-workload acceptance",
+  "inputCommit": "8f780cea2119738e3db1a37e7c0c94b4cd200cb3",
+  "task": {
+    "taskId": "historical-oidc-reference-edit-v4",
+    "semanticIds": ["case:comms/oidc-claim-release", "case:comms/oidc-client-unregistered", "case:comms/oidc-grant-prohibited"],
+    "ownedPaths": ["docs/spec/vectors/generator/src/current-vectors/case-contracts.ts"],
+    "acceptanceChecks": ["Independent pinned-source semantic review", "Exact expected file bytes and one-path change whitelist", "Unchanged scripts/conformance-ci.sh passes on candidate", "Common worker evidence and scope protocol"],
+    "contract": {
+      "authority": "Pinned historical live specification family and normative artifacts, not derived context",
+      "scope": "Only selected spec_refs array values; preserve every other byte; no global replacement",
+      "onAuthorityGap": "No source edits; report blocked"
+    }
+  },
+  "additionalSourceExcerpts": [
+    {"path":"docs/spec/vectors/generator/src/current-vectors/case-contracts.ts","startLine":1248,"endLine":1259},
+    {"path":"docs/spec/vectors/generator/src/current-vectors/case-contracts.ts","startLine":1273,"endLine":1285},
+    {"path":"docs/spec/vectors/generator/src/current-vectors/case-contracts.ts","startLine":1299,"endLine":1311},
+    {"path":"docs/spec/vectors/generator/src/current-vectors/comms.ts","startLine":723,"endLine":725},
+    {"path":"docs/spec/vectors/generator/src/current-vectors/comms.ts","startLine":734,"endLine":739},
+    {"path":"docs/spec/vectors/generator/src/current-vectors/comms.ts","startLine":868,"endLine":875},
+    {"path":"docs/spec/vectors/generator/src/current-vectors/comms.ts","startLine":1010,"endLine":1010},
+    {"path":"docs/spec/vectors/generator/src/current-vectors/comms.ts","startLine":1142,"endLine":1153},
+    {"path":"docs/spec/vectors/generator/src/oidc-test-support.ts","startLine":54,"endLine":86},
+    {"path":"docs/spec/vectors/generator/src/oidc-test-support.ts","startLine":177,"endLine":217},
+    {"path":"docs/spec/vectors/generator/src/oidc.ts","startLine":448,"endLine":496},
+    {"path":"docs/spec/vectors/generator/src/oidc.ts","startLine":519,"endLine":527},
+    {"path":"docs/spec/vectors/generator/src/oidc.ts","startLine":532,"endLine":583},
+    {"path":"docs/spec/vectors/generator/src/current-vectors/boundary-runners.ts","startLine":576,"endLine":606},
+    {"path":"docs/spec/heterodyne-comms.md","startLine":1671,"endLine":1723}
+  ],
+  "loadingPolicy": "Initially read only generated tests.md. Expand pinned source or other generated files for a named gap. Excerpts are incomplete navigation aids, not governing answers. Freshness receipts and unresolved relationships remain available in the bundle.",
+  "executionPolicy": {
+    "model": "gpt-5.6-luna", "reasoningEffort": "medium", "freshWorkers": true,
+    "order": ["baseline", "prepared-excerpts"], "parallelArms": false,
+    "candidateEvaluationOrder": ["independent semantic and protocol review", "exact byte and scope check", "unchanged full conformance gate"],
+    "repairRounds": 0,
+    "initialContextBudget": {"maxEstimatedTokens":8000,"estimator":"utf8-bytes-per-4-v1"}
+  },
+  "limitations": [
+    "Three same-anchor edits cannot unlock Tasks 3–7 or establish the complete August 28 target",
+    "Cooperative host only, not OS-sealed; hand-selected source ranges are preparer work",
+    "Report all preparation, selection, coordination, review and gate costs; self-reported calls are not measured billing",
+    "No unrelated gate overlaps either measured arm; caches and sequential ordering remain confounds",
+    "Known unrelated reference and authority gaps intentionally remain unchanged"
+  ]
+}
