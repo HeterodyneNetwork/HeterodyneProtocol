@@ -2,8 +2,8 @@
 
 This is an informational device-selection aid, not a change to the protocol.
 The current [Assurance specification](../spec/heterodyne-assurance.md#assurance-reciprocal-enrollment)
-keeps the cold-root secret offline except for enrollment, recovery, or
-downgrade. Its [epoch policy](../spec/heterodyne-assurance.md#assurance-keri-policy)
+says the cold-root secret SHOULD remain offline except for enrollment,
+recovery, or downgrade. Its [epoch policy](../spec/heterodyne-assurance.md#assurance-keri-policy)
 is optional; when enabled, current epoch keys sign threshold proofs over an
 exact 32-byte transition digest. The [Core specification](../spec/heterodyne-core.md#core-verification)
 requires ordinary NIP-01 BIP-340 signatures. The older
