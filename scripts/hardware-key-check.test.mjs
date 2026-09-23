@@ -23,6 +23,35 @@ test('missing or truncated metadata is undetermined', () => {
   assert.equal(assessFidoInterface(parseFidoInfo('versions: FIDO_2_1\n')).prf_vault_unlock.verdict, 'undetermined');
 });
 
+test('incomplete CTAP2 version cannot be a PRF candidate', () => {
+  const info = parseFidoInfo('versions: FIDO_2_\nextensions: hmac-secret\n');
+  assert.equal(assessFidoInterface(info).prf_vault_unlock.verdict, 'undetermined');
+});
+
+test('malformed CTAP2 version cannot be a PRF candidate', () => {
+  const info = parseFidoInfo('versions: FIDO_2_bogus\nextensions: hmac-secret\n');
+  assert.equal(assessFidoInterface(info).prf_vault_unlock.verdict, 'undetermined');
+});
+
+test('truncated capability metadata cannot be a PRF candidate', () => {
+  const info = parseFidoInfo('versions: FIDO_2_1\nextensions: hmac-secret\ncaps: 0x03 (wink, nocbor\n');
+  assert.equal(assessFidoInterface(info).prf_vault_unlock.verdict, 'undetermined');
+});
+
+test('contradictory duplicate capability fields cannot be a PRF candidate', () => {
+  const info = parseFidoInfo('versions: FIDO_2_1\nextensions: hmac-secret\ncaps: 0x03 (wink, nocbor, msg)\ncaps: 0x00 ()\n');
+  assert.equal(assessFidoInterface(info).prf_vault_unlock.verdict, 'undetermined');
+});
+
+test('trailing empty version or extension list item cannot be a PRF candidate', () => {
+  for (const output of [
+    'versions: FIDO_2_1,\nextensions: hmac-secret\n',
+    'versions: FIDO_2_1\nextensions: hmac-secret,\n',
+  ]) {
+    assert.equal(assessFidoInterface(parseFidoInfo(output)).prf_vault_unlock.verdict, 'undetermined');
+  }
+});
+
 test('scanner invokes only read-only listing and information commands', () => {
   const calls = [];
   const run = (command, args) => {

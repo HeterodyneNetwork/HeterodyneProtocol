@@ -11,23 +11,54 @@ export function parseFidoListing(output) {
 }
 
 export function parseFidoInfo(output) {
-  const fields = Object.fromEntries(output.split(/\r?\n/).flatMap(line => {
-    const match = /^(versions|extensions|caps):\s*(.*)$/.exec(line.trim());
-    return match ? [[match[1], match[2]]] : [];
-  }));
-  const split = value => (value ?? '').split(',').map(item => item.trim()).filter(Boolean);
-  const caps = /\(([^)]*)\)/.exec(fields.caps ?? '');
+  const fields = new Map();
+  const parseErrors = [];
+  for (const rawLine of output.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    const match = /^(versions|extensions|caps):\s*(.*)$/.exec(line);
+    if (!match) {
+      if (/^(versions|extensions|caps)\b/i.test(line)) parseErrors.push('Malformed FIDO information field.');
+      continue;
+    }
+    if (fields.has(match[1])) parseErrors.push(`Duplicate ${match[1]} field.`);
+    else fields.set(match[1], match[2]);
+  }
+  const split = (field, value = fields.get(field)) => {
+    if (value === undefined) return [];
+    const items = value.split(',').map(item => item.trim());
+    if (items.some(item => !item)) parseErrors.push(`Malformed ${field} list.`);
+    return items.filter(Boolean);
+  };
+  const versions = split('versions');
+  const extensions = split('extensions');
+  if (versions.some(version => !/^(?:FIDO_2_\d+|U2F_V2)$/.test(version))) {
+    parseErrors.push('Malformed FIDO version.');
+  }
+  if (extensions.some(extension => !/^[A-Za-z][A-Za-z0-9_-]*$/.test(extension))) {
+    parseErrors.push('Malformed FIDO extension.');
+  }
+  const capsValue = fields.get('caps');
+  const caps = capsValue === undefined ? null : /^0x[\da-fA-F]+ \(([^)]*)\)$/.exec(capsValue);
+  if (capsValue !== undefined && !caps) parseErrors.push('Malformed FIDO capabilities.');
+  const capabilities = caps ? (caps[1] ? split('caps', caps[1]) : []) : [];
+  if (capabilities.some(capability => !/^[A-Za-z][A-Za-z0-9_-]*$/.test(capability))) {
+    parseErrors.push('Malformed FIDO capability.');
+  }
   return {
-    versions: split(fields.versions),
-    extensions: split(fields.extensions),
-    capabilities: split(caps?.[1]),
+    versions,
+    extensions,
+    capabilities,
+    parseErrors,
   };
 }
 
 export function assessFidoInterface(info) {
   const u2f = info.capabilities.includes('nocbor');
-  const ctap2 = info.versions.some(version => /^FIDO_2_/.test(version));
-  const prf = u2f
+  const ctap2 = info.versions.some(version => /^FIDO_2_\d+$/.test(version));
+  const prf = info.parseErrors?.length
+    ? {verdict: 'undetermined', reason: 'Malformed or contradictory FIDO metadata cannot establish PRF support.'}
+    : u2f
     ? {verdict: 'incompatible', reason: 'U2F-only interface has no PRF extension.'}
     : ctap2 && info.extensions.includes('hmac-secret')
       ? {verdict: 'candidate', reason: 'Metadata only; credential PRF and slot-open round-trip remain untested.'}
