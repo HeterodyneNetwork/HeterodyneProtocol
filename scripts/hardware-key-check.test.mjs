@@ -53,9 +53,20 @@ test('missing signing evidence and recovery remain visible', () => {
     ...capable,
     capabilities: {...capable.capabilities, arbitrary_32_byte_digest: null, recovery_plan: false},
   });
-  assert.equal(result.verdict, 'undetermined');
+  assert.equal(result.verdict, 'incompatible');
+  assert.deepEqual(result.blockers, ['recovery_plan']);
   assert.deepEqual(result.unknown, ['arbitrary_32_byte_digest']);
   assert.deepEqual(result.cautions, ['No recovery plan for a lost or failed device.']);
+});
+
+test('unknown recovery cannot produce a cold-root candidate', () => {
+  const result = assessProfile({
+    ...capable,
+    capabilities: {...capable.capabilities, recovery_plan: null},
+  });
+  assert.equal(result.verdict, 'undetermined');
+  assert.equal(result.roles.cold_root, 'undetermined');
+  assert.deepEqual(result.unknown, ['recovery_plan']);
 });
 
 test('existing identity requires a way to load or derive its exact key', () => {
