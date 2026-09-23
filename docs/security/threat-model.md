@@ -140,6 +140,13 @@ new author or preserve subordinate authority implicitly. A workspace's hot key
 can no longer authorize its own succession; recovery authority rests with the
 cold root bound at inception.
 
+Local token unlock can gate encrypted software-held cold-root, epoch, and
+backup-recovery keys, but it does not make host-side signing hardware-isolated
+or bypass compromise reset and reauthorization. See the non-normative
+[local key custody choices](local-key-custody.md) for optional methods,
+recoverability limits, and the boundary between backup data restore and
+signing-authority activation.
+
 ## Registry-bound invariants
 
 Each row below is copied exactly from the live security-invariant registry so

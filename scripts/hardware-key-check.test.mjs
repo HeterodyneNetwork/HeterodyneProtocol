@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync, rmSync, writeFileSync} from 'node:fs';
+import {mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {parseFidoInfo, assessFidoInterface, scanDevices, assessProfile, main} from './hardware-key-check.mjs';
@@ -87,4 +87,13 @@ test('assess CLI labels supplied evidence as unverified claims', () => {
   } finally {
     rmSync(directory, {recursive: true});
   }
+});
+
+test('custody guide states optionality and archive boundary', () => {
+  const guide = readFileSync(new URL('../docs/security/local-key-custody.md', import.meta.url), 'utf8');
+  assert.match(guide, /token.*optional/i);
+  assert.match(guide, /two.*either\/or/i);
+  assert.match(guide, /not.*BIP-340 signer/i);
+  assert.match(guide, /portable-backup profile/i);
+  assert.match(guide, /no automatic.*authority activation/i);
 });
