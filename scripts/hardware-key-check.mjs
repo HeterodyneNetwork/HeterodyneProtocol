@@ -12,7 +12,6 @@ const required = [
   'arbitrary_32_byte_digest',
   'public_key_available',
   'on_device_key_generation',
-  'recovery_plan',
 ];
 
 export function assessProfile(profile, {existingIdentity = false} = {}) {
