@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parseFidoInfo, assessFidoInterface, scanDevices} from './hardware-key-check.mjs';
+import {mkdtempSync, rmSync, writeFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {parseFidoInfo, assessFidoInterface, scanDevices, assessProfile, main} from './hardware-key-check.mjs';
 
 test('U2F-only cannot unlock a PRF vault', () => {
   const info = parseFidoInfo('caps: 0x03 (wink, nocbor, msg)\n');
@@ -34,4 +37,54 @@ test('scanner invokes only read-only listing and information commands', () => {
     ['fido2-token', ['-L']],
     ['fido2-token', ['-I', 'test://token']],
   ]);
+});
+
+test('a documented PRF route still needs a slot-open trial', () => {
+  const roles = assessProfile({name: 'Synthetic', capabilities: {
+    fido2_prf_credential: true, slot_open_round_trip: null, recovery_plan: true,
+    secp256k1_bip340: false,
+  }}).roles;
+  assert.equal(roles.prf_vault_unlock.verdict, 'undetermined');
+  assert.deepEqual(roles.prf_vault_unlock.unknown, ['slot_open_round_trip']);
+  assert.equal(roles.direct_bip340_signing.verdict, 'incompatible');
+});
+
+test('missing recovery evidence cannot yield a candidate', () => {
+  const roles = assessProfile({capabilities: {
+    fido2_prf_credential: true, slot_open_round_trip: true, recovery_plan: false,
+  }}).roles;
+  assert.equal(roles.prf_vault_unlock.verdict, 'incompatible');
+  assert.deepEqual(roles.prf_vault_unlock.blockers, ['recovery_plan']);
+});
+
+test('existing direct signer must preserve the exact existing identity', () => {
+  const result = assessProfile({capabilities: {
+    hardware_backed: true, offline_signing: true,
+    non_exportable_private_key: true, secp256k1_bip340: true,
+    arbitrary_32_byte_digest: true, public_key_available: true,
+    on_device_key_generation: true, bip340_integration_trial: true,
+    recovery_plan: true,
+  }}, {existingIdentity: true});
+  assert.deepEqual(result.roles.direct_bip340_signing.unknown, ['existing_key_provisioning']);
+});
+
+test('malformed capability values are rejected', () => {
+  assert.throws(() => assessProfile({capabilities: {recovery_plan: 'yes'}}), /recovery_plan/);
+  assert.throws(() => assessProfile({capabilities: []}), /capabilities/);
+});
+
+test('assess CLI labels supplied evidence as unverified claims', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'hardware-key-check-'));
+  try {
+    const profilePath = join(directory, 'profile.json');
+    writeFileSync(profilePath, JSON.stringify({capabilities: {fido2_prf_credential: true}}));
+    let output = '';
+    const io = {stdout: {write: value => { output += value; }}, stderr: {write: () => {}}};
+    assert.equal(main(['assess', profilePath], io), 0);
+    const result = JSON.parse(output);
+    assert.match(result.note, /claims.*not certification/i);
+    assert.deepEqual(result.roles.prf_vault_unlock.unknown, ['slot_open_round_trip', 'recovery_plan']);
+  } finally {
+    rmSync(directory, {recursive: true});
+  }
 });

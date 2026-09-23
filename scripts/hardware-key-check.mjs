@@ -1,4 +1,5 @@
 import {execFileSync} from 'node:child_process';
+import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
@@ -52,9 +53,48 @@ export function scanDevices(run = execFileSync) {
   });
 }
 
+const prfKeys = ['fido2_prf_credential', 'slot_open_round_trip', 'recovery_plan'];
+const signingKeys = [
+  'hardware_backed', 'offline_signing', 'non_exportable_private_key',
+  'secp256k1_bip340', 'arbitrary_32_byte_digest', 'public_key_available',
+  'on_device_key_generation', 'bip340_integration_trial', 'recovery_plan',
+];
+
+function role(capabilities, keys) {
+  const blockers = keys.filter(key => capabilities[key] === false);
+  const unknown = keys.filter(key => capabilities[key] == null);
+  const verdict = blockers.length ? 'incompatible' : unknown.length ? 'undetermined' : 'candidate';
+  return {verdict, blockers, unknown,
+    reason: verdict === 'candidate' ? 'Claimed capability candidate, not certification.' :
+      blockers.length ? 'Required capability explicitly absent.' : 'Required evidence missing.'};
+}
+
+export function assessProfile(profile, {existingIdentity = false} = {}) {
+  if (!profile || typeof profile !== 'object' || Array.isArray(profile) ||
+      !profile.capabilities || typeof profile.capabilities !== 'object' ||
+      Array.isArray(profile.capabilities)) throw new Error('Profile needs a capabilities object');
+  const capabilities = profile.capabilities;
+  for (const [key, value] of Object.entries(capabilities)) {
+    if (value !== true && value !== false && value !== null) {
+      throw new Error(`${key} must be true, false, or null`);
+    }
+  }
+  return {
+    name: profile.name ?? 'Unnamed device',
+    roles: {
+      prf_vault_unlock: role(capabilities, prfKeys),
+      direct_bip340_signing: role(capabilities, existingIdentity
+        ? [...signingKeys, 'existing_key_provisioning'] : signingKeys),
+    },
+    evidence: profile.evidence ?? null,
+    note: 'Supplied capability claims are not certification or an end-to-end hardware trial.',
+  };
+}
+
 export function main(args, io = {stdout: process.stdout, stderr: process.stderr}, run = execFileSync) {
+  const usage = 'Usage: node scripts/hardware-key-check.mjs scan | assess <profile.json> [--existing-identity]\nRead-only metadata screen; no credential is created or verified.\n';
   if (args.length === 1 && args[0] === '--help') {
-    io.stdout.write('Usage: node scripts/hardware-key-check.mjs scan\nRead-only metadata screen; no credential is created or verified.\n');
+    io.stdout.write(usage);
     return 0;
   }
   if (args.length === 1 && args[0] === 'scan') {
@@ -66,7 +106,20 @@ export function main(args, io = {stdout: process.stdout, stderr: process.stderr}
       return 2;
     }
   }
-  io.stderr.write('Usage: node scripts/hardware-key-check.mjs scan\n');
+  if (args[0] === 'assess' && args[1] &&
+      (args.length === 2 || (args.length === 3 && args[2] === '--existing-identity'))) {
+    try {
+      const profile = JSON.parse(readFileSync(resolve(args[1]), 'utf8'));
+      io.stdout.write(`${JSON.stringify(assessProfile(profile, {
+        existingIdentity: args[2] === '--existing-identity',
+      }), null, 2)}\n`);
+      return 0;
+    } catch (error) {
+      io.stderr.write(`${error.message}\n`);
+      return 2;
+    }
+  }
+  io.stderr.write(usage);
   return 2;
 }
 
