@@ -1,6 +1,10 @@
 # Screening hardware for Assurance cold-root and epoch keys
 
 This is an informational device-selection aid, not a change to the protocol.
+For optional PRF-token unlock of software-held keys and backup custody, see
+the [local key custody guide](../security/local-key-custody.md). PRF unlock
+and direct hardware signing are assessed separately by the current checker.
+
 The current [Assurance specification](../spec/heterodyne-assurance.md#assurance-reciprocal-enrollment)
 says the cold-root secret SHOULD remain offline except for enrollment,
 recovery, or downgrade. Its [epoch policy](../spec/heterodyne-assurance.md#assurance-keri-policy)
@@ -26,7 +30,9 @@ Its assertions cannot stand in for a Nostr BIP-340 signature over an event ID
 or an Assurance proof digest: [FIDO's assertion contract](https://fidoalliance.org/specs/fido-v2.2-ps-20250714/fido-client-to-authenticator-protocol-v2.2-ps-20250714.html)
 binds an assertion to authenticator data and a relying-party challenge. The
 device's exact retail model and any other private signing interface remain
-unconfirmed. A FIDO-only interface is therefore unsuitable for these keys.
+unconfirmed. That FIDO interface is therefore unsuitable for direct signing with these
+keys; this does not rule out a separate PRF-token vault-unlock path on
+compatible hardware.
 
 For a device with a documented signing API, create a JSON capability profile
 and run `assess`. Use `true`, `false`, or `null` for yes, no, or unknown:
@@ -42,6 +48,9 @@ and run `assess`. Use `true`, `false`, or `null` for yes, no, or unknown:
     "arbitrary_32_byte_digest": null,
     "public_key_available": null,
     "on_device_key_generation": null,
+    "bip340_integration_trial": null,
+    "fido2_prf_credential": null,
+    "slot_open_round_trip": null,
     "recovery_plan": null,
     "existing_key_provisioning": null
   },
@@ -66,7 +75,11 @@ existing npub, `existing_key_provisioning` must establish that the exact
 existing private key can be imported or derived. Importing an existing key
 may expose it during provisioning and needs its own handling review.
 
-The script reports `incompatible` for a stated hard failure,
+The script reports separate `roles.direct_bip340_signing` and
+`roles.prf_vault_unlock` results. `bip340_integration_trial` records the
+claimed result of the exact signing integration trial; PRF unlock instead
+requires credential PRF and slot-open evidence. The checker does not execute
+or verify either trial. It reports `incompatible` for a stated hard failure,
 `undetermined` for missing facts, and `candidate` when all hard facts are
 affirmed. These are screening results from supplied claims. Before adoption,
 an implementation must generate a disposable key on the device, verify its
@@ -74,7 +87,10 @@ public key, and verify a synthetic NIP-01 event signature and Assurance proof
 signature through the intended host integration. A separate recovery plan is
 needed for loss or failure of a non-exportable key.
 
-## Options worth checking further
+## Options recorded on September 23, 2026
+
+These historical screening observations require fresh vendor and integration
+review before choosing a device.
 
 | Option | Current finding |
 | --- | --- |
